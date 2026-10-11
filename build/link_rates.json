@@ -1,0 +1,2004 @@
+{
+ "schemes": {
+  "BPSK": {
+   "5 % wrong": 4.322545135863985,
+   "1 % wrong": 7.333493162962929,
+   "quiet (1e-4)": 11.408562069607877
+  },
+  "QPSK": {
+   "5 % wrong": 7.332845092503797,
+   "1 % wrong": 10.34379311960274,
+   "quiet (1e-4)": 14.41886202624769
+  },
+  "FSK": {
+   "5 % wrong": 9.642756800274256,
+   "1 % wrong": 11.944613914059802,
+   "quiet (1e-4)": 15.323564895790547
+  },
+  "OOK": {
+   "5 % wrong": 19.642756800274256,
+   "1 % wrong": 21.9446139140598,
+   "quiet (1e-4)": 25.323564895790547
+  },
+  "whitened": {
+   "5 % wrong": 3.549317146911963,
+   "1 % wrong": 5.658862042159223,
+   "quiet (1e-4)": 9.004539355301835
+  }
+ },
+ "paths": {
+  "fast": {
+   "B_MHz": 100.0,
+   "floor_dBm": -81.01928814585742
+  },
+  "slow": {
+   "B_MHz": 7.5,
+   "floor_dBm": -107.03988805913706
+  }
+ },
+ "scenarios": [
+  {
+   "name": "lab: 2 dBi whips on the SMAs, no cables",
+   "nf_dB": 1.5,
+   "antenna_dBi": 2.0,
+   "margin_dB": 10.0,
+   "indoor": true,
+   "rows": [
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "BPSK",
+     "d_m": [
+      71.98554427423484,
+      71.98554427423484,
+      71.98554427423484
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "QPSK",
+     "d_m": [
+      50.96186260554234,
+      50.96186260554234,
+      50.96186260554234
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "FSK",
+     "d_m": [
+      71.98554427423484,
+      68.24175538173924,
+      46.24903128158405
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "OOK",
+     "d_m": [
+      28.128271501796185,
+      21.579937853434952,
+      14.62522784261818
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "whitened",
+     "d_m": [
+      71.98554427423484,
+      71.98554427423484,
+      71.98554427423484
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "BPSK",
+     "d_m": [
+      599.2706344691958,
+      423.7167139237853,
+      265.04654671123103
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "QPSK",
+     "d_m": [
+      423.7483293991331,
+      299.61296171758903,
+      187.4162105095885
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "FSK",
+     "d_m": [
+      324.7973024680181,
+      249.18365857552098,
+      168.8775846379043
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "OOK",
+     "d_m": [
+      102.70992536775657,
+      78.79879167923949,
+      53.40378132036395
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "whitened",
+     "d_m": [
+      655.065000809286,
+      513.8154411924374,
+      349.561251786564
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "BPSK",
+     "d_m": [
+      719.8554427423484,
+      719.8554427423484,
+      719.8554427423484
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "QPSK",
+     "d_m": [
+      509.61862605542336,
+      509.61862605542336,
+      509.61862605542336
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "FSK",
+     "d_m": [
+      719.8554427423484,
+      682.4175538173923,
+      462.4903128158405
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "OOK",
+     "d_m": [
+      281.28271501796183,
+      215.79937853434927,
+      146.2522784261818
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "whitened",
+     "d_m": [
+      719.8554427423484,
+      719.8554427423484,
+      719.8554427423484
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "BPSK",
+     "d_m": [
+      5992.706344691957,
+      4237.167139237853,
+      2650.4654671123108
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "QPSK",
+     "d_m": [
+      4237.483293991331,
+      2996.12961717589,
+      1874.162105095885
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "FSK",
+     "d_m": [
+      3247.973024680181,
+      2491.83658575521,
+      1688.775846379043
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "OOK",
+     "d_m": [
+      1027.0992536775657,
+      787.9879167923948,
+      534.0378132036394
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "whitened",
+     "d_m": [
+      6550.650008092859,
+      5138.1544119243745,
+      3495.6125178656403
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "BPSK",
+     "d_m": [
+      1035.4932032751533,
+      1035.4932032751533,
+      1035.4932032751533
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "QPSK",
+     "d_m": [
+      733.0730480170729,
+      733.0730480170729,
+      733.0730480170729
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "FSK",
+     "d_m": [
+      1035.4932032751533,
+      981.6397804558754,
+      665.2802035877818
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "OOK",
+     "d_m": [
+      404.6178195031468,
+      310.4217548068208,
+      210.38007255579137
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "whitened",
+     "d_m": [
+      1035.4932032751533,
+      1035.4932032751533,
+      1035.4932032751533
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "BPSK",
+     "d_m": [
+      8620.351143713528,
+      6095.053969595424,
+      3812.6251657621083
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "QPSK",
+     "d_m": [
+      6095.508749929045,
+      4309.853993598909,
+      2695.9331088328713
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "FSK",
+     "d_m": [
+      4672.124140181224,
+      3584.441674000679,
+      2429.2598304443827
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "OOK",
+     "d_m": [
+      1477.4553794028484,
+      1133.4999829868898,
+      768.1994092558698
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "whitened",
+     "d_m": [
+      9422.938492447181,
+      7391.100566881815,
+      5028.347066105295
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "BPSK",
+     "d_m": [
+      2318.180523015931,
+      2318.180523015931,
+      2318.180523015931
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "QPSK",
+     "d_m": [
+      1641.1461287105433,
+      1641.1461287105433,
+      1641.1461287105433
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "FSK",
+     "d_m": [
+      2318.180523015931,
+      2197.617726966155,
+      1489.3768548430144
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "OOK",
+     "d_m": [
+      905.8264655631249,
+      694.9477443575086,
+      470.9823155641908
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "whitened",
+     "d_m": [
+      2318.180523015931,
+      2318.180523015931,
+      2318.180523015931
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "BPSK",
+     "d_m": [
+      19298.56232731326,
+      13645.126162448134,
+      8535.404552029244
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "QPSK",
+     "d_m": [
+      13646.144288794445,
+      9648.561239613047,
+      6035.442438910403
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "FSK",
+     "d_m": [
+      10459.583074639148,
+      8024.565345550615,
+      5438.4353334907755
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "OOK",
+     "d_m": [
+      3307.6105891606667,
+      2537.5903724796062,
+      1719.7842561368252
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "whitened",
+     "d_m": [
+      21095.331590470814,
+      16546.613076362744,
+      11257.066868948008
+     ]
+    }
+   ]
+  },
+  {
+   "name": "campus: panels, 10 m cables, amplifiers at the board",
+   "nf_dB": 6.5,
+   "antenna_dBi": 24.0,
+   "margin_dB": 6.0,
+   "indoor": false,
+   "rows": [
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "BPSK",
+     "d_m": [
+      5718.015030901962,
+      5183.298585290411,
+      3242.29690606811
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "QPSK",
+     "d_m": [
+      4048.044636172177,
+      3665.1455785734875,
+      2292.650128900923
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "FSK",
+     "d_m": [
+      3973.223956162941,
+      3048.2472428602628,
+      2065.8683426360244
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "OOK",
+     "d_m": [
+      1256.4437355419896,
+      963.9404158766866,
+      653.2849308766974
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "whitened",
+     "d_m": [
+      5718.015030901962,
+      5718.015030901962,
+      4276.159713122736
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "BPSK",
+     "d_m": [
+      26768.43596752879,
+      18926.73038298782,
+      11839.194357218083
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "QPSK",
+     "d_m": [
+      18928.14259439749,
+      13383.219399500147,
+      8371.574613774414
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "FSK",
+     "d_m": [
+      14508.162578735702,
+      11130.625171783295,
+      7543.484613983747
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "OOK",
+     "d_m": [
+      4587.883841282687,
+      3519.8127324438146,
+      2385.4592874624695
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "whitened",
+     "d_m": [
+      29260.67876538656,
+      22951.292697446963,
+      15614.327562480948
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "BPSK",
+     "d_m": [
+      57180.15030901962,
+      51832.9858529041,
+      32422.9690606811
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "QPSK",
+     "d_m": [
+      40480.44636172177,
+      36651.45578573488,
+      22926.50128900923
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "FSK",
+     "d_m": [
+      39732.23956162933,
+      30482.47242860263,
+      20658.683426360243
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "OOK",
+     "d_m": [
+      12564.43735541987,
+      9639.404158766865,
+      6532.849308766975
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "whitened",
+     "d_m": [
+      57180.15030901962,
+      57180.15030901962,
+      42761.59713122737
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      83715.74613774415
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "FSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      75434.84613983746
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "OOK",
+     "d_m": [
+      45878.83841282678,
+      35198.127324438145,
+      23854.592874624694
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "BPSK",
+     "d_m": [
+      82252.14882265448,
+      74560.39278062384,
+      46639.59192200291
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "QPSK",
+     "d_m": [
+      58230.062015534924,
+      52722.15934311162,
+      32979.17171982158
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "FSK",
+     "d_m": [
+      57153.78612715894,
+      43848.23833323137,
+      29716.97511255147
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "OOK",
+     "d_m": [
+      18073.614106395613,
+      13866.030451891631,
+      9397.332652620122
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "whitened",
+     "d_m": [
+      82252.14882265448,
+      82252.14882265448,
+      61511.43766016471
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "FSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "OOK",
+     "d_m": [
+      65995.50761144303,
+      50631.58441036398,
+      34314.207161465994
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      73831.16886163969
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "FSK",
+     "d_m": [
+      100000.0,
+      98163.97804558756,
+      66528.02035877819
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "OOK",
+     "d_m": [
+      40461.78195031477,
+      31042.175480682075,
+      21038.00725557914
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "FSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "OOK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      76819.94092558697
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "campus: panels, PA and LNA at the panel",
+   "nf_dB": 2.0,
+   "antenna_dBi": 24.0,
+   "margin_dB": 6.0,
+   "indoor": false,
+   "rows": [
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "BPSK",
+     "d_m": [
+      18081.95119272828,
+      18081.95119272828,
+      17212.8499100982
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "QPSK",
+     "d_m": [
+      12801.04112033171,
+      12801.04112033171,
+      12171.322894976693
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "FSK",
+     "d_m": [
+      18081.95119272828,
+      16182.67043404512,
+      10967.373669347178
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "OOK",
+     "d_m": [
+      6670.264342507155,
+      5117.409719544821,
+      3468.188074529549
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "whitened",
+     "d_m": [
+      18081.95119272828,
+      18081.95119272828,
+      18081.95119272828
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      62852.4411647437
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      71049.42992925027,
+      44443.38736171877
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "FSK",
+     "d_m": [
+      77021.5782742492,
+      59090.757582656195,
+      40047.18636859769
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "OOK",
+     "d_m": [
+      24356.361632756845,
+      18686.138262605895,
+      12664.032280601614
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      82894.03610048314
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "FSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "OOK",
+     "d_m": [
+      66702.64342507141,
+      51174.09719544821,
+      34681.880745295486
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "FSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "OOK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "FSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "OOK",
+     "d_m": [
+      95950.0058011918,
+      73612.59870142443,
+      49888.97722539949
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "FSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "OOK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "FSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "OOK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "FSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "OOK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "mountain: 30 dBi dishes, PA and LNA at the dish",
+   "nf_dB": 2.0,
+   "antenna_dBi": 30.0,
+   "margin_dB": 6.0,
+   "indoor": false,
+   "rows": [
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "BPSK",
+     "d_m": [
+      71985.54427423484,
+      71985.54427423484,
+      68525.5897487121
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "QPSK",
+     "d_m": [
+      50961.86260554234,
+      50961.86260554234,
+      48454.90919612168
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "FSK",
+     "d_m": [
+      71985.54427423484,
+      64424.37138497445,
+      43661.900999067286
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "OOK",
+     "d_m": [
+      26554.80064239405,
+      20372.775040109573,
+      13807.105412983392
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "fast",
+     "scheme": "whitened",
+     "d_m": [
+      71985.54427423484,
+      71985.54427423484,
+      71985.54427423484
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "FSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "OOK",
+     "d_m": [
+      96964.42214594598,
+      74390.85632297485,
+      50416.42059028457
+     ]
+    },
+    {
+     "amplifier": "board alone",
+     "pa_dB": 0.0,
+     "price": "$0",
+     "path": "slow",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "FSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "OOK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "fast",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "FSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "OOK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at +30 dBm (20 dB pad)",
+     "pa_dB": 20.0,
+     "price": "$29, owned",
+     "path": "slow",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "FSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "OOK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "fast",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "FSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "OOK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "2 W module at its P1dB (+33)",
+     "pa_dB": 23.158039199714864,
+     "price": "compressed",
+     "path": "slow",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "FSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "OOK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "fast",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "BPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "QPSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "FSK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "OOK",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    },
+    {
+     "amplifier": "10 W amplifier (+40)",
+     "pa_dB": 30.158039199714864,
+     "price": "$300+",
+     "path": "slow",
+     "scheme": "whitened",
+     "d_m": [
+      100000.0,
+      100000.0,
+      100000.0
+     ]
+    }
+   ]
+  }
+ ],
+ "latency": {
+  "idle_carrier_extra_ns": 0.0,
+  "whitened_extra_ns": 13.25,
+  "slow_confirm_ns": 36.63333333333334,
+  "note": "the whitened stream waits for the next symbol slot (Ts/2 on average) and integrates a whole symbol before deciding"
+ },
+ "walls_dB_at_30m": 18.924017909224887
+}

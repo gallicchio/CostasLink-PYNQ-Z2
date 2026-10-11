@@ -1,0 +1,67 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-10-10T19:21:13",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.6",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/24723b42-5fe3-4667-eb46-0acbb937e3f8",
+            "violations": []
+        },
+        {
+            "path": "/Power and FPGA header/",
+            "uuid_path": "/24723b42-5fe3-4667-eb46-0acbb937e3f8/736e5ddb-ca0a-612e-f491-08e506efd2c2",
+            "violations": []
+        },
+        {
+            "path": "/Receiver and Costas loop/",
+            "uuid_path": "/24723b42-5fe3-4667-eb46-0acbb937e3f8/caa81cf0-f127-99d6-482d-02b88e096324",
+            "violations": []
+        },
+        {
+            "path": "/Transmitter and triggers/",
+            "uuid_path": "/24723b42-5fe3-4667-eb46-0acbb937e3f8/fa307601-ad48-86c4-a774-b26037a4fdb4",
+            "violations": []
+        },
+        {
+            "path": "/Antenna switch: one antenna by T/R/",
+            "uuid_path": "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b9479df7-906a-9090-5596-bc60e4422e88",
+            "violations": []
+        },
+        {
+            "path": "/Slow path: confirm or veto/",
+            "uuid_path": "/24723b42-5fe3-4667-eb46-0acbb937e3f8/6bbffa5f-5c82-d12f-8669-7f065bd8149d",
+            "violations": []
+        },
+        {
+            "path": "/Window comparators: I and Q/",
+            "uuid_path": "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10",
+            "violations": []
+        }
+    ],
+    "source": "CostasLink-PYNQ-Z2.kicad_sch"
+}

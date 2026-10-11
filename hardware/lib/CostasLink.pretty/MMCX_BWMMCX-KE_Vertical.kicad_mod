@@ -1,0 +1,139 @@
+(footprint "MMCX_BWMMCX-KE_Vertical"
+	(version 20260206)
+	(generator "pcbnew")
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(descr "MMCX jack, vertical, through-hole: Bat Wireless BWMMCX-KE (LCSC C5137198), 0-6 GHz, 500 cycles")
+	(tags "MMCX coaxial vertical")
+	(property "Reference" "REF**"
+		(at 0 -3.2 0)
+		(layer "F.SilkS")
+		(uuid "84a514ac-a770-5685-a47a-1efbc4c51587")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "MMCX_BWMMCX-KE_Vertical"
+		(at 0 3.2 0)
+		(layer "F.Fab")
+		(uuid "cda32a85-dafc-5115-98e4-0ea52b34e08f")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "d069fd69-0710-5043-8b97-ff5c725f6b18")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "3f61db7f-4494-5cf4-85f1-d065af17c5f1")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr through_hole)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_rect
+		(start -2.25 -2.25)
+		(end 2.25 2.25)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.SilkS")
+		(uuid "d7924330-2978-590c-889f-97b12b8b93d1")
+	)
+	(fp_rect
+		(start -2.45 -2.45)
+		(end 2.45 2.45)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.CrtYd")
+		(uuid "09039f88-4401-5204-a58d-80fd3f510592")
+	)
+	(fp_rect
+		(start -1.8 -1.8)
+		(end 1.8 1.8)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.Fab")
+		(uuid "b02ad26a-c88f-5a85-96e2-3c96f842f23c")
+	)
+	(pad "1" thru_hole circle
+		(at 0 0)
+		(size 1.52 1.52)
+		(drill 0.92)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "9bd94de6-7f60-5eb0-9f1e-33a23c5a0282")
+	)
+	(pad "2" thru_hole circle
+		(at -1.25 -1.25)
+		(size 1.6 1.6)
+		(drill 1.1)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "32d73b79-9fd4-546c-a63b-0f153741c860")
+	)
+	(pad "2" thru_hole circle
+		(at -1.25 1.25)
+		(size 1.6 1.6)
+		(drill 1.1)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "896e9cb2-64a5-5115-ab5d-3bfae099530b")
+	)
+	(pad "2" thru_hole circle
+		(at 1.25 -1.25)
+		(size 1.6 1.6)
+		(drill 1.1)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "50ea39b7-4ea2-5675-a953-3c5c491cd43c")
+	)
+	(pad "2" thru_hole circle
+		(at 1.25 1.25)
+		(size 1.6 1.6)
+		(drill 1.1)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "3744c884-2ae9-5d38-bfdd-ea1cfa7bcfc9")
+	)
+	(embedded_fonts no)
+	(model "${KIPRJMOD}/lib/CostasLink.3dshapes/MMCX-TH_BWMMCX-KE.wrl"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

@@ -1,0 +1,916 @@
+"""costaslink.py: the CostasLink gateware's driver, for the PYNQ-Z2 and the Icepi Zero (Response 15).
+
+    # on the PYNQ-Z2 (Jupyter, as root: the overlay's .bit and .hwh side by side)
+    from costaslink import CostasLink, PynqBus
+    cl = CostasLink(PynqBus("costaslink_top.bit"))
+
+    # on a host with the Icepi Zero on its USB serial port (the UART at 1 Mbaud)
+    from costaslink import CostasLink, UartBus
+    cl = CostasLink(UartBus("/dev/ttyUSB0"))
+
+    cl.info()                        # board, clock, samples a clock
+    cl.i2c_scan()                    # BRINGUP stage 1.5: 0x0C, 0x48, 0x60, 0x61
+    cl.pll_init()                    # stage 2.1: both synthesizers at the words max2871_regs.py made
+    s = SCHEMES["A3"]                # the plan's corners (PLAN.md section 18)
+    cl.scheme(s)                     # the transmitter's points and the receiver's table for it
+    cl.events(period=1000, count=10000); cl.rx_clear(); cl.tx_go()
+    cl.rx_stats()                    # events, decisions, confirmations, latencies ...
+
+Everything goes through one register bus: register numbers and fields come from regmap.py (one level
+up), the same file the Verilog's regmap.vh is generated from.  A bus is anything with read(reg) and
+write(reg, value): PynqBus (AXI-Lite through MMIO), UartBus (the Icepi's ASCII protocol, uart_cmd.v),
+PipeBus (the simulator, sim_pipe.py), or a fake in a test.
+
+The driver knows nothing that the gateware's registers do not say, except the board's I2C parts and
+their channels (gen/sch_rx.py, sch_slow.py, sch_win.py): the AD5696R at 0x0C (the four window
+thresholds), the MCP4728s at 0x60 and 0x61 (TX references, trims, V_T2) and the ADS1115 at 0x48.
+"""
+import math
+import os
+import sys
+import time
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(HERE))           # gateware/: regmap.py, max2871_regs.py
+import regmap                                      # noqa: E402
+
+R = regmap.BY_NAME
+ID_EXPECTED = 0x434C0002
+BOARDS = {0: "simulation", 1: "PYNQ-Z2", 2: "Icepi Zero"}
+
+# the fast comparators: their bit in the receiver's vectors (RX_IDLE, RX_LUT, RX_LAST), as rx_engine.v
+CMP_I, CMP_QP, CMP_QN, CMP_IP, CMP_IN = 0, 1, 2, 3, 4
+CMP_NAMES = ("CMP_I", "CMP_QP", "CMP_QN", "CMP_IP", "CMP_IN")
+# the fast sample vector adds TRIG_IN as bit 5; the gate's inputs add the slow comparators as 6-8
+FAST_INPUTS = CMP_NAMES + ("TRIG_IN",)
+GATE_INPUTS = FAST_INPUTS + ("CMP_I_S", "CMP_QP_S", "CMP_QN_S")
+# the capture word's 16 context bits, after the 6 x SER fast samples (capture.v)
+CTX_BITS = ("MUX_RX", "MUX_TX", "CMP_I_S", "CMP_QP_S", "CMP_QN_S", "TR_A", "LOOP_HOLD", "TX_DIS",
+            "I0", "I1", "Q0", "Q1", "TX_EVENT", "RX_EVENT", "RX_DECISION", "ZERO")
+
+# the I2C parts (the schematic generator's notes)
+AD5696R = 0x0C              # A = V_TQP, B = V_TQN, C = V_TIP, D = V_TIN: 16 bits, 0-2.5 V
+AD5696R_CH = {"QP": 0, "QN": 1, "IP": 2, "IN": 3}
+AD5696R_VREF = 2.5
+DAC1, DAC2 = 0x60, 0x61     # MCP4728: 12 bits, 0-VDD (3.3 V; the fast write keeps VREF = VDD, gain 1)
+DAC1_CH = {"VR_I": 0, "VR_Q": 1, "Q_OFF_F": 2, "VC_OFF": 3}
+DAC2_CH = {"V_T2": 0, "I_OFF": 1, "Q_OFF": 2, "I_OFF_F": 3}
+MCP4728_VDD = 3.3
+ADS1115 = 0x48              # AIN0 I_P, AIN1 Q_P, AIN2 VC, AIN3 ERR: single-ended, +-4.096 V, 860 SPS
+ADC_CH = {"I": 0, "Q": 1, "VC": 2, "ERR": 3}
+ADC_LSB_V = 4.096 / 32768
+V_MID = 1.65                # the arms' and the comparators' centre
+
+# the transmitter's ladders: a level per axis -> its two bits (tx_symbol.v: 00 = -a, 01 / 10 = 0, 11 = +a)
+LEVEL_CODE = {1: 0b11, 0: 0b01, -1: 0b00}
+
+
+def point_code(i, q):
+    """The ladder point {Q1 Q0 I1 I0} for levels i, q in -1, 0, +1."""
+    return (LEVEL_CODE[q] << 2) | LEVEL_CODE[i]
+
+
+def code_levels(code):
+    lv = {0b11: 1, 0b00: -1, 0b01: 0, 0b10: 0}
+    return lv[code & 3], lv[(code >> 2) & 3]
+
+
+def bits(value, hi, lo):
+    return (value >> lo) & ((1 << (hi - lo + 1)) - 1)
+
+
+# ---------------------------------------------------------------------------------------------------------
+# the buses
+# ---------------------------------------------------------------------------------------------------------
+class PynqBus:
+    """AXI-Lite through PYNQ's MMIO: register n at byte offset 4 n of the core's 4 KB.
+
+    Goes through ip_dict, not `overlay.costaslink_0`: on PYNQ 3.0 a module reference's attribute returns
+    an empty hierarchy (the GPSDO's driver found it, gateware/driver/dmtd.py attach()).  The overlay is
+    downloaded unless one is passed in (Overlay(...) as root; PYNQ 3.1 on the PYNQ-Z2, Vivado 2024.1)."""
+
+    def __init__(self, bitfile=None, overlay=None, name="costaslink_0", download=True):
+        from pynq import MMIO, Overlay
+        if overlay is None:
+            if bitfile is None:
+                bitfile = os.path.join(HERE, "costaslink_top.bit")
+            overlay = Overlay(bitfile, download=download)
+        self.overlay = overlay
+        ip = overlay.ip_dict[name]
+        self.mmio = MMIO(ip["phys_addr"], ip.get("addr_range", 4096))
+
+    def read(self, reg):
+        return self.mmio.read(4 * reg) & 0xFFFFFFFF
+
+    def write(self, reg, value):
+        self.mmio.write(4 * reg, int(value) & 0xFFFFFFFF)
+
+
+class UartBus:
+    """The Icepi Zero's UART (uart_cmd.v): "W aa dddddddd" -> "OK", "R aa" -> "dddddddd", 1 Mbaud 8N1."""
+
+    def __init__(self, port, baud=1_000_000, timeout=0.5):
+        import serial
+        self.ser = serial.Serial(port, baud, timeout=timeout)
+        self.ser.reset_input_buffer()
+
+    def _line(self, cmd):
+        self.ser.write(cmd.encode("ascii"))
+        reply = self.ser.readline().decode("ascii", "replace").strip()
+        if not reply:
+            raise IOError("no reply to %r" % cmd.strip())
+        return reply
+
+    def read(self, reg):
+        reply = self._line("R %02X\n" % reg)
+        try:
+            return int(reply, 16)
+        except ValueError:
+            raise IOError("bad reply %r to R %02X" % (reply, reg))
+
+    def write(self, reg, value):
+        reply = self._line("W %02X %08X\n" % (reg, int(value) & 0xFFFFFFFF))
+        if reply != "OK":
+            raise IOError("bad reply %r to W %02X" % (reply, reg))
+
+
+# ---------------------------------------------------------------------------------------------------------
+# the schemes (PLAN.md section 18, sim/constellations.py), and the receiver's tables for them
+# ---------------------------------------------------------------------------------------------------------
+class Scheme:
+    """An idle plus N messages, as the transmitter sends them and the receiver's comparators see them.
+
+    idle, msgs: ladder points (I, Q) in levels -1, 0, +1, as the transmitter's TX_IDLE and TX_POINTS.
+    pilot: the idle as it is on the air when it is not the ladder point itself (a weak pilot made by the
+      VR_I / VR_Q trims with the ladders at zero), in the transmitter's units (a = 1).
+    rot_deg: the receiver's frame against the transmitter's: its loop turns the idle (or the pilot) onto
+      +I, so the pilot at 45 degrees is -45 here.  The Costas loop's 180-degree twin is rot_deg + 180.
+    mask: the comparators that make events (bit numbers CMP_I ... CMP_IN).
+    use: the comparators the settled decision reads (all five by default; one left out reads as either).
+    t, t2: the window comparators' thresholds and the slow Q window's, as fractions of a (the hardware
+      sets them by counting; here they only decide which side of each threshold a point is on).
+    """
+
+    def __init__(self, name, text, idle, msgs, mask, rot_deg=0.0, pilot=None, t=0.5, t2=0.1, use=None):
+        self.name, self.text = name, text
+        self.idle, self.msgs = tuple(idle), [tuple(m) for m in msgs]
+        self.mask = sum(1 << b for b in mask)
+        self.use = 0x1F if use is None else sum(1 << b for b in use)
+        self.rot_deg, self.pilot, self.t, self.t2 = rot_deg, pilot, t, t2
+
+    @property
+    def n(self):
+        return len(self.msgs)
+
+    def rx_point(self, iq):
+        r = math.radians(self.rot_deg)
+        i, q = iq
+        return (i * math.cos(r) - q * math.sin(r), i * math.sin(r) + q * math.cos(r))
+
+    def rx_idle_point(self):
+        return self.rx_point(self.pilot if self.pilot is not None else self.idle)
+
+    # each comparator 1, 0 or None (the point sits on its threshold: noise decides)
+    def fast(self, p, eps=1e-6):
+        i, q = p
+
+        def gt(x, th):
+            return None if abs(x - th) < eps else int(x > th)
+        return [gt(i, 0.0), gt(q, self.t), gt(-q, self.t), gt(i, self.t), gt(-i, self.t)]
+
+    def slow(self, p, eps=1e-6):
+        i, q = p
+
+        def gt(x, th):
+            return None if abs(x - th) < eps else int(x > th)
+        return [gt(i, 0.0), gt(q, self.t2), gt(-q, self.t2)]
+
+    def idle_vector(self):
+        v = self.fast(self.rx_idle_point())
+        if any(b is None for k, b in enumerate(v) if self.mask >> k & 1):
+            raise ValueError("%s: the idle sits on a masked comparator's threshold" % self.name)
+        return sum((b or 0) << k for k, b in enumerate(v))
+
+    @staticmethod
+    def _expand(tri):
+        """every 5-bit vector a list of 1 / 0 / None allows"""
+        out = [0]
+        for k, b in enumerate(tri):
+            if b is None:
+                out = [x | (y << k) for x in out for y in (0, 1)]
+            else:
+                out = [x | (b << k) for x in out]
+        return set(out)
+
+    def settled_sets(self):
+        """message k -> the vectors the five comparators can show once it has settled (a comparator the
+        decision does not use reads as either: the decision samples all five)"""
+        sets = []
+        for m in self.msgs:
+            tri = self.fast(self.rx_point(m))
+            tri = [b if self.use >> k & 1 else None for k, b in enumerate(tri)]
+            sets.append(self._expand(tri))
+        return sets
+
+    def changed_sets(self):
+        """message k -> the masked comparators that may leave their idle value on its way"""
+        iv = self.idle_vector()
+        out = []
+        for m in self.msgs:
+            tri = self.fast(self.rx_point(m))
+            s = 0
+            for k, b in enumerate(tri):
+                if self.mask >> k & 1 and (b is None or b != (iv >> k & 1)):
+                    s |= 1 << k
+            out.append(s)
+        return out
+
+    def lut(self, first_edge=False):
+        """the 32-entry table {valid, message}: a vector (or a first-fired set) one message alone can
+        make maps to it; one two can make, and the idle, stay invalid"""
+        table = [0] * 32
+        if first_edge:
+            ch = self.changed_sets()
+            for f in range(1, 32):
+                owners = [k for k, s in enumerate(ch) if f & ~s == 0]
+                if len(owners) == 1:
+                    table[f] = 0x8 | owners[0]
+        else:
+            iv = self.idle_vector()
+            sets = self.settled_sets()
+            for v in range(32):
+                owners = [k for k, s in enumerate(sets) if v in s]
+                if len(owners) == 1 and v != iv:
+                    table[v] = 0x8 | owners[0]
+        return table
+
+    def slow_exp(self):
+        """RX_SLOW_EXP: message k in [4k+3:4k] = {care, CMP_QN_S, CMP_QP_S, CMP_I_S}"""
+        w = 0
+        for k, m in enumerate(self.msgs):
+            s = self.slow(self.rx_point(m))
+            if None in s:
+                continue
+            w |= (0x8 | s[2] << 2 | s[1] << 1 | s[0]) << (4 * k)
+        return w
+
+    def tx_points(self):
+        w = 0
+        for k, (i, q) in enumerate(self.msgs):
+            w |= point_code(i, q) << (4 * k)
+        return w
+
+    def tx_idle(self):
+        return point_code(*self.idle)
+
+    def twin(self):
+        """the same scheme seen through the Costas loop's other lock point (180 degrees)"""
+        s = Scheme(self.name + "'", self.text + " (the loop's 180-degree twin)", self.idle, self.msgs, [],
+                   self.rot_deg + 180.0, self.pilot, self.t, self.t2)
+        s.mask, s.use = self.mask, self.use
+        return s
+
+
+RHO = 0.2                   # the weak pilot, a fraction of a (about -14 dBc: PLAN.md section 18's B2 choice)
+_P45 = (RHO / math.sqrt(2), RHO / math.sqrt(2))
+SCHEMES = {s.name: s for s in [
+    Scheme("A1", "BPSK flip, an event and no bit, decided at zero by sign(I)", (1, 0), [(-1, 0)], [CMP_I]),
+    Scheme("A1w", "the BPSK flip decided beside the idle: IP leaves its window (its threshold near the idle)",
+           (1, 0), [(-1, 0)], [CMP_IP]),
+    Scheme("A2", "1 bit: the Q step, QP / QN", (1, 0), [(1, 1), (1, -1)], [CMP_QP, CMP_QN]),
+    Scheme("A3", "2 bits: the corners round a full idle (the plan's QPSK): QP / QN the event and the Q bit, "
+           "sign(I) the I bit", (1, 0), [(1, 1), (1, -1), (-1, 1), (-1, -1)], [CMP_QP, CMP_QN]),
+    Scheme("A4", "1 bit: the pilot at 45 degrees, TX (-1, 1) / (1, -1) onto +Q / -Q", (0, 0), [(-1, 1), (1, -1)],
+           [CMP_QP, CMP_QN], rot_deg=-45.0, pilot=_P45),
+    Scheme("B1", "2 bits: a weak pilot on +I and the four axis points, one window each", (0, 0),
+           [(1, 0), (-1, 0), (0, 1), (0, -1)], [CMP_IP, CMP_IN, CMP_QP, CMP_QN], pilot=(RHO, 0.0)),
+    Scheme("B2", "2 bits: the pilot at 45 degrees and the four corners onto the axes, one window each", (0, 0),
+           [(1, 1), (-1, -1), (-1, 1), (1, -1)], [CMP_IP, CMP_IN, CMP_QP, CMP_QN], rot_deg=-45.0, pilot=_P45),
+]}
+
+
+# ---------------------------------------------------------------------------------------------------------
+# the board
+# ---------------------------------------------------------------------------------------------------------
+class CostasLink:
+    """The register bus with names, and the operations BRINGUP.md's stages are made of."""
+
+    def __init__(self, bus, check=True):
+        self.bus = bus
+        self._dac = {DAC1: [2048] * 4, DAC2: [2048] * 4}
+        if check:
+            ident = self.rd("ID")
+            if ident != ID_EXPECTED:
+                raise IOError("ID reads 0x%08X, not 0x%08X: wrong overlay, or no board" % (ident, ID_EXPECTED))
+        b = self.rd("BUILD")
+        self.ser = bits(b, 7, 0) or 1
+        self.board = bits(b, 11, 8)
+        self.clk_mhz = bits(b, 31, 16) or 100
+        self.t_clk = 1e-6 / self.clk_mhz
+        self.t_sample = self.t_clk / self.ser
+
+    def wait_s(self, seconds):
+        """wall time on a board; the simulator's clocks on a bus that has them (PipeBus)"""
+        if hasattr(self.bus, "clocks"):
+            self.bus.clocks(max(1, int(round(seconds / self.t_clk))))
+        else:
+            time.sleep(seconds)
+
+    # ---- registers ----
+    def rd(self, name):
+        return self.bus.read(R[name])
+
+    def wr(self, name, value):
+        self.bus.write(R[name], value)
+
+    def info(self):
+        return {"board": BOARDS.get(self.board, self.board), "clock_MHz": self.clk_mhz, "samples_per_clock": self.ser,
+                "sample_ns": self.t_sample * 1e9, "capture": self.cap_info()}
+
+    def _wait(self, name, mask, timeout=1.0, want=0):
+        t0 = time.time()
+        while True:
+            v = self.rd(name)
+            if (v & mask) == want:
+                return v
+            if time.time() - t0 > timeout:
+                raise TimeoutError("%s: 0x%08X still has 0x%X" % (name, v, mask))
+            time.sleep(0.0005)
+
+    # ---- the control pins (CTRL) ----
+    CTRL_BITS = {"tx_dis": 0, "loop_hold": 1, "loop_sel": 2, "tr_a": 3, "id_enable": 6, "txq1_hiz": 8}
+
+    def ctrl(self, **kw):
+        """ctrl(tx_dis=0, loop_hold=0, ...): change the named CTRL bits, keep the others"""
+        v = self.rd("CTRL")
+        for k, on in kw.items():
+            b = self.CTRL_BITS[k]
+            v = (v | (1 << b)) if on else (v & ~(1 << b))
+        self.wr("CTRL", v & ~0x80)
+        return v
+
+    def id_now(self):
+        self.wr("CTRL", (self.rd("CTRL") | 0x80))
+
+    def status(self):
+        s = self.rd("STATUS")
+        return {"mux_tx": s & 1, "mux_rx": s >> 1 & 1, "spi_busy": s >> 2 & 1, "i2c_busy": s >> 3 & 1,
+                "id_active": s >> 4 & 1, "key_down": s >> 5 & 1}
+
+    def cmp_state(self):
+        v = self.rd("CMP_STATE")
+        names = ("CMP_I", "CMP_QP", "CMP_QN", "CMP_I_S", "CMP_QP_S", "CMP_QN_S", "TRIG_IN", "MUX_TX", "MUX_RX",
+                 "CMP_IP", "CMP_IN")
+        return {n: v >> k & 1 for k, n in enumerate(names)}
+
+    # ---- the triggers TRIG A / TRIG B (TRIG_CFG) ----
+    def triggers(self, width=10, a="tx_event", b="rx_decision", b_rising_only=False):
+        """TRIG A: 'symbol' (TX_MODE 0's changes) or 'tx_event'; TRIG B: 'cmp_i' (its edges), 'rx_event',
+        'rx_decision' or 'rx_valid'.  The marks of BRINGUP stage 3.4 and 4.2."""
+        asrc = {"symbol": 0, "tx_event": 1}[a]
+        bsrc = {"cmp_i": 0, "rx_event": 1, "rx_decision": 2, "rx_valid": 3}[b]
+        v = (width & 0xFF) | (1 << 8) | (1 << 9) | (int(b_rising_only) << 10) | (asrc << 11) | (bsrc << 13)
+        self.wr("TRIG_CFG", v)
+
+    # ---- SPI: the synthesizers and the DSA ----
+    def spi(self, slave, word):
+        """slave 0 TX PLL, 1 RX PLL, 2 DSA (8 bits, LSB first, D7 = 0)"""
+        self._wait("SPI_CTRL", 0x3)
+        self.wr("SPI_DATA", word)
+        self.wr("SPI_CTRL", slave & 3)
+        self._wait("SPI_CTRL", 0x3)
+
+    def pll_init(self, timeout=1.0):
+        """both synthesizers' power-up sequence (the words compiled in from max2871_regs.py)"""
+        self.wr("PLL_INIT", 1)
+        self._wait("PLL_INIT", 0x1, timeout)
+        return bool(self.rd("PLL_INIT") & 2)
+
+    def pll_tune(self, which, f_mhz):
+        """retune one synthesizer (0 TX, 1 RX) to f_mhz: the six words, register 5 first (a 25 MHz step:
+        integer-N from the 25 MHz reference)"""
+        import max2871_regs
+        for w in max2871_regs.regs(f_mhz):
+            self.spi(which, w)
+
+    def dsa(self, db):
+        """the PE43711: 0-31.75 dB in 0.25 dB steps"""
+        code = max(0, min(127, int(round(db / 0.25))))
+        self.spi(2, code)
+        return code * 0.25
+
+    # ---- I2C ----
+    def i2c(self, addr, wbytes=b"", nread=0, timeout=0.1):
+        """one transaction: up to 9 bytes written, then (repeated start) up to 2 read; returns the bytes
+        read, or raises on a NACK.  No bytes either way is a probe."""
+        wbytes = bytes(wbytes)
+        assert len(wbytes) <= 9 and 0 <= nread <= 2
+        buf = wbytes + bytes(9 - len(wbytes))
+        self._wait("I2C_CTRL", 1 << 16, timeout)
+        self.wr("I2C_WDATA0", int.from_bytes(buf[0:4], "big"))
+        self.wr("I2C_WDATA1", int.from_bytes(buf[4:8], "big"))
+        self.wr("I2C_WDATA2", buf[8] << 24)
+        self.wr("I2C_CTRL", (addr & 0x7F) | (len(wbytes) << 8) | (nread << 12))
+        v = self._wait("I2C_CTRL", 1 << 16, timeout)
+        if v >> 17 & 1:
+            raise IOError("I2C 0x%02X: no acknowledge" % addr)
+        r = self.rd("I2C_RDATA") & 0xFFFF
+        return bytes([r >> 8, r & 0xFF]) if nread == 2 else bytes([r & 0xFF]) if nread == 1 else b""
+
+    def i2c_probe(self, addr):
+        try:
+            self.i2c(addr)
+            return True
+        except IOError:
+            return False
+
+    def i2c_scan(self, addrs=range(0x08, 0x78)):
+        """BRINGUP stage 1.5: expect 0x0C (AD5696R), 0x48 (ADS1115), 0x60 and 0x61 (the MCP4728s)"""
+        return [a for a in addrs if self.i2c_probe(a)]
+
+    # the window thresholds: AD5696R, write-and-update (command 3) one channel
+    def threshold(self, which, volts=None, code=None):
+        """which: 'QP', 'QN', 'IP', 'IN'; volts (0-2.5 V; the arms' centre is 1.65 V) or a 16-bit code"""
+        if code is None:
+            code = int(round(volts / AD5696R_VREF * 65536))
+        code = max(0, min(65535, int(code)))
+        ch = AD5696R_CH[which]
+        self.i2c(AD5696R, bytes([0x30 | (1 << ch), code >> 8, code & 0xFF]))
+        return code
+
+    def threshold_at(self, which, frac_a, a_volts):
+        """a threshold frac_a of the arm's full step a (volts at the comparator) out from the centre, on
+        the comparator's own side (QP, IP above V_MID; QN, IN: their arm leg is the inverted one, so also
+        above V_MID: CMP_IN fires when I_N > V_TIN, i.e. I < -2 (V_TIN - V_MID))"""
+        return self.threshold(which, V_MID + frac_a * a_volts / 2.0)
+
+    # the MCP4728s: the fast write of all four channels (DAC_AB, DAC_CD, DAC_GO); a shadow of each
+    def dac(self, which=DAC1, **channels):
+        """dac(DAC1, VR_I=0.21, VC_OFF=1.65) in volts, or codes with code_ prefix (code_VR_I=260)"""
+        names = DAC1_CH if which == DAC1 else DAC2_CH
+        sh = self._dac[which]
+        for k, v in channels.items():
+            if k.startswith("code_"):
+                sh[names[k[5:]]] = max(0, min(4095, int(v)))
+            else:
+                sh[names[k]] = max(0, min(4095, int(round(v / MCP4728_VDD * 4096))))
+        self._wait("DAC_GO", 1)
+        self.wr("DAC_AB", sh[0] << 16 | sh[1])
+        self.wr("DAC_CD", sh[2] << 16 | sh[3])
+        self.wr("DAC_GO", 1 if which == DAC2 else 0)
+        self._wait("DAC_GO", 1)
+        return list(sh)
+
+    def dac_eeprom(self, which=DAC1, codes=(2048, 2048, 2048, 2048)):
+        """BRINGUP stage 0.4 / 1.5: the power-up defaults (EEPROM) of all four channels: the sequential
+        write from channel A (0b01010 00 0), VREF = VDD, gain 1, normal power, 9 bytes; the EEPROM takes
+        up to 50 ms"""
+        b = [0x50]
+        for c in codes:
+            c = max(0, min(4095, int(c)))
+            b += [c >> 8 & 0x0F, c & 0xFF]
+        self.i2c(which, bytes(b))
+        time.sleep(0.06)
+        self._dac[which] = [int(c) for c in codes]
+
+    def adc(self, ch, settle=0.003):
+        """the ADS1115, single shot at 860 SPS: ch 'I', 'Q', 'VC', 'ERR' (or 0-3) -> volts"""
+        c = ADC_CH.get(ch, ch)
+        self._wait("I2C_CTRL", 1 << 16)
+        self.wr("ADC_CFG", c)
+        self._wait("I2C_CTRL", 1 << 16)
+        time.sleep(settle)
+        self.wr("ADC_READ", 1)
+        self._wait("I2C_CTRL", 1 << 16)
+        v = self.rd("ADC_READ")
+        if not v >> 16 & 1:
+            raise IOError("ADC: no valid conversion")
+        raw = v & 0xFFFF
+        if raw & 0x8000:
+            raw -= 0x10000
+        return raw * ADC_LSB_V
+
+    def adc_all(self):
+        return {k: self.adc(k) for k in ADC_CH}
+
+    # ---- the first firmware's counters ----
+    def counters(self):
+        names = ("EDGE_CNT0", "EDGE_CNT1", "EDGE_CNT2", "EDGE_CNT3", "EDGE_CNT4", "EDGE_CNT5", "EDGE_CNT6", "EDGE_CNT7")
+        labels = ("CMP_I", "CMP_QP", "CMP_QN", "CMP_I_S", "CMP_QP_S", "CMP_QN_S", "CMP_IP", "CMP_IN")
+        return {lab: self.rd(n) for lab, n in zip(labels, names)}
+
+    def counters_clear(self):
+        self.wr("CNT_CTRL", 1)
+
+    # ---- the transmitter (tx_engine.v) ----
+    MODES = {"txsym": 0, "events": 1, "trig_in": 2, "prbs": 3, "rotate": 4, "hold": 5}
+    SOURCES = {"fixed": 0, "count": 1, "prbs": 2}
+    POLYS = {7: 0, 9: 1, 15: 2, 23: 3, 31: 4}
+
+    def tx_mode(self, mode, n=None, source="count", backwards=False, gated=False):
+        n = n or 1
+        assert 1 <= n <= 8
+        v = self.MODES[mode] | self.SOURCES[source] << 4 | (n - 1) << 8 | int(backwards) << 11 | int(gated) << 12
+        self.wr("TX_MODE", v)
+
+    def tx_points(self, idle, points):
+        """idle and the message points as ladder codes {Q1 Q0 I1 I0} (point_code(i, q))"""
+        self.wr("TX_IDLE", idle & 0xF)
+        w = 0
+        for k, p in enumerate(points):
+            w |= (p & 0xF) << (4 * k)
+        self.wr("TX_POINTS", w)
+
+    def tx_timing(self, period=None, width=None, count=None):
+        if period is not None:
+            self.wr("TX_PERIOD", max(1, int(period)))
+        if width is not None:
+            self.wr("TX_WIDTH", max(1, int(width)))
+        if count is not None:
+            self.wr("TX_COUNT", int(count))
+
+    def tx_prbs(self, poly=15, reseed=True):
+        self.wr("TX_PRBS", self.POLYS[poly] | int(reseed) << 8)
+
+    def tx_msg(self, k):
+        self.wr("TX_MSG", k & 7)
+
+    def tx_go(self):
+        self.wr("TX_GO", 1)
+
+    def tx_stop(self):
+        self.wr("TX_GO", 2)
+
+    def tx_one(self):
+        self.wr("TX_GO", 4)
+
+    def tx_stat(self):
+        g, s = self.rd("TX_GO"), self.rd("TX_STAT")
+        return {"running": g & 1, "in_event": g >> 1 & 1, "last_msg": s & 7, "sent": s >> 8,
+                "evt_ts": self.rd("TX_EVT_TS")}
+
+    def hold_point(self, i, q):
+        """TX_MODE 5: one ladder point held (the arms' offsets, the carrier null with (0, 0), the scope)"""
+        self.tx_points(point_code(1, 0), [point_code(i, q)])
+        self.tx_msg(0)
+        self.tx_mode("hold")
+
+    # ---- the receiver (rx_engine.v) ----
+    def rx_config(self, idle, mask, lut, slow_exp=0, delay=4, quiet=4, confirm=6, window=100, first_edge=False,
+                  ref="tx", single=False, row="tx", enable=True):
+        """the decoder: idle vector and event mask (5 bits each, CMP_I ... CMP_IN), the 32-entry table,
+        the slow comparators' expectations, the decision delay (samples after the event), the quiet clocks
+        before re-arming, the confirm delay (clocks after the decision), the reference window (clocks)"""
+        self.wr("RX_IDLE", (idle & 0x1F) | (mask & 0x1F) << 8)
+        w = 0
+        for v, e in enumerate(lut):
+            w |= (e & 0xF) << (4 * v)
+        for k in range(4):
+            self.wr("RX_LUT%d" % k, w >> (32 * k) & 0xFFFFFFFF)
+        self.wr("RX_SLOW_EXP", slow_exp)
+        self.wr("RX_TIMING", (delay & 0xFF) | (quiet & 0xFF) << 8 | (confirm & 0xFF) << 16)
+        self.wr("RX_WINDOW", int(window))
+        self._rx_ctrl = (int(enable) | int(first_edge) << 2 | int(ref == "trig_in") << 3 | int(single) << 4
+                         | ((row & 7) << 16 if row != "tx" else 1 << 19))
+        self.wr("RX_CTRL", self._rx_ctrl)
+
+    def rx_clear(self, wait=True):
+        """the counters, the confusion matrix and the histogram (the clear walks 1024 bins: 10 us)"""
+        ctrl = getattr(self, "_rx_ctrl", self.rd("RX_CTRL") & ~2)
+        self.wr("RX_CTRL", ctrl | 2)
+        if wait:
+            self.wait_s(1100 * self.t_clk)
+
+    def rx_enable(self, on=True):
+        ctrl = getattr(self, "_rx_ctrl", self.rd("RX_CTRL") & ~2)
+        self._rx_ctrl = (ctrl | 1) if on else (ctrl & ~1)
+        self.wr("RX_CTRL", self._rx_ctrl)
+
+    def rx_stats(self):
+        s = {k.lower(): self.rd("RX_" + k) for k in ("EVENTS", "DECIDED", "CONFIRM", "VETO", "FALSE", "MISSED", "REFS")}
+        n = self.rd("RX_LAT_N")
+        s["lat_n"] = n
+        s["lat_min"] = self.rd("RX_LAT_MIN") & 0xFFFF
+        s["lat_max"] = self.rd("RX_LAT_MAX") & 0xFFFF
+        s["lat_mean"] = self.rd("RX_LAT_SUM") / n if n else None
+        s["sample_ns"] = self.t_sample * 1e9
+        return s
+
+    def rx_last(self):
+        v, lat = self.rd("RX_LAST"), self.rd("RX_LAST_LAT")
+        return {"msg": v & 7, "valid": v >> 3 & 1, "vector": v >> 4 & 0x1F, "fired": v >> 9 & 0x1F,
+                "confirmed": v >> 14 & 1, "vetoed": v >> 15 & 1, "had_ref": v >> 16 & 1,
+                "ref_to_event": lat & 0xFFFF, "ref_to_decision": lat >> 16, "evt_ts": self.rd("RX_EVT_TS")}
+
+    def confusion(self):
+        """8 x 8: [sent][decoded]"""
+        self.wr("RX_CM_ADDR", 0)
+        cells = [self.rd("RX_CM_DATA") for _ in range(64)]
+        return [cells[8 * r:8 * r + 8] for r in range(8)]
+
+    def hist_config(self, what="ref_to_decision", shift=0):
+        """what: 'ref_to_event', 'ref_to_decision' or 'event_to_event'; a bin is 2^shift samples"""
+        self.wr("RX_HIST_CFG", {"ref_to_event": 0, "ref_to_decision": 1, "event_to_event": 2}[what] | (shift & 15) << 4)
+
+    def histogram(self, bins=1024):
+        self.wr("RX_HIST_ADDR", 0)
+        return [self.rd("RX_HIST_DATA") for _ in range(bins)]
+
+    def ber_config(self, poly=15, phase=None, invert=False, enable=True):
+        """the PRBS check on CMP_I, sampled `phase` samples into each symbol (TX_PERIOD clocks long).
+        Enabling starts a new count; disabling keeps it, so stop the check before reading a snapshot."""
+        if phase is None:
+            phase = self.ser // 2
+        self.wr("RX_BER_CFG", int(enable) | int(invert) << 1 | self.POLYS[poly] << 4 | (phase & 0xFFFF) << 8)
+
+    def ber(self):
+        """the count so far (read BITS after ERR: while the check runs, ERR never exceeds BITS)"""
+        e = self.rd("RX_BER_ERR")
+        b = self.rd("RX_BER_BITS")
+        return {"bits": b, "mismatches": e, "ber": (e / 3.0) / b if b else None}
+
+    def scheme(self, s, first_edge=False, delay=None, quiet=4, confirm=6, window=100, n_tx=None):
+        """the transmitter's points and the receiver's table for scheme s (a Scheme or a SCHEMES key)"""
+        if isinstance(s, str):
+            s = SCHEMES[s]
+        self.tx_points(s.tx_idle(), [point_code(i, q) for i, q in s.msgs])
+        if delay is None:
+            delay = 2 * self.ser                     # two clocks of samples into the rise: a start
+        self.rx_config(s.idle_vector(), s.mask, s.lut(first_edge), s.slow_exp(), delay=delay, quiet=quiet,
+                       confirm=confirm, window=window, first_edge=first_edge)
+        self._scheme = s
+        return s
+
+    def events(self, period=1000, width=20, count=0, source="count", n=None, gated=False, mode="events"):
+        """TX_MODE 1 (or 'trig_in'): an event every `period` clocks (or on TRIG_IN), `width` clocks long"""
+        n = n or getattr(getattr(self, "_scheme", None), "n", 1)
+        self.tx_timing(period, width, count)
+        self.tx_mode(mode, n=n, source=source, gated=gated)
+
+    # ---- the sequencer and the counting gate (seq_gate.v) ----
+    SEQ_BITS = {"tr_a": 0, "loop_hold": 1, "tx_dis": 2, "tx_gate": 3}
+
+    def seq_program(self, steps, loop=False, enable=True):
+        """steps: up to 8 of (clocks, {'tr_a': 1, 'loop_hold': 0, 'tx_dis': 1, 'tx_gate': 0}); missing bits
+        are 1 (receive, held, muted: the safe state) except the TX gate"""
+        assert 1 <= len(steps) <= 8
+        for k, (clocks, outs) in enumerate(steps):
+            v = 0
+            for name, b in self.SEQ_BITS.items():
+                if outs.get(name, 0 if name == "tx_gate" else 1):
+                    v |= 1 << b
+            self.wr("SEQ_SEL", k)
+            self.wr("SEQ_OUT", v)
+            self.wr("SEQ_DUR", max(1, int(clocks)))
+        self._seq = (len(steps) - 1) << 8 | int(loop) << 1 | int(enable) << 11
+        self.wr("SEQ_CTRL", self._seq)
+
+    def seq_run(self):
+        self.wr("SEQ_CTRL", getattr(self, "_seq", 1 << 11) | 1)
+
+    def seq_stop(self):
+        self.wr("SEQ_CTRL", getattr(self, "_seq", 1 << 11) | 4)
+
+    def seq_state(self):
+        v = self.rd("SEQ_CTRL")
+        return {"running": v & 1, "step": v >> 8 & 7, "enable": v >> 11 & 1}
+
+    def gate(self, clocks=None, seconds=None, inputs=GATE_INPUTS, timeout=None):
+        """open the gate for `clocks` (or `seconds`) and return, per input, its edges and its high samples
+        (fast inputs SER a clock), and the RX events: the counts every threshold is set by (stage 3.7)"""
+        if clocks is None:
+            clocks = int(round((seconds or 0.1) / self.t_clk))
+        self.wr("GATE_LEN", int(clocks))
+        self.wr("GATE_CTRL", 1)
+        dt = clocks * self.t_clk
+        self.wait_s(dt)
+        self._wait("GATE_CTRL", 0x1, timeout or (dt + 1.0))
+        out = {"clocks": clocks, "seconds": dt, "rx_events": self.rd("GATE_EVENTS")}
+        for name in inputs:
+            k = GATE_INPUTS.index(name)
+            self.wr("GATE_SEL", k)
+            per_clock = self.ser if k < 6 else 1
+            e, h = self.rd("GATE_EDGES"), self.rd("GATE_HIGH")
+            out[name] = {"edges": e, "high": h, "duty": h / float(clocks * per_clock), "rate_hz": e / dt}
+        return out
+
+    # ---- the capture buffer (capture.v) ----
+    TRIGGERS = {"none": 0, "tx_event": 1, "rx_event": 2, "trig_in": 3, "any_change": 4, "rx_decision": 5,
+                "seq_step": 6}
+
+    def cap_info(self):
+        v = self.rd("CAP_INFO")
+        return {"ser": v & 0xFF, "width": v >> 8 & 0xFF, "depth": 1 << (v >> 16 & 0xFF)}
+
+    def cap_arm(self, trigger="tx_event", post=None):
+        info = self.cap_info()
+        if post is None:
+            post = info["depth"] // 4
+        self.wr("CAP_POST", int(post))
+        self.wr("CAP_CTRL", self.TRIGGERS[trigger] << 4 | 1)
+
+    def cap_force(self):
+        self.wr("CAP_CTRL", (self.rd("CAP_CTRL") & 0x70) | 2)
+
+    def cap_state(self):
+        v = self.rd("CAP_CTRL")
+        return {"armed": v & 1, "triggered": v >> 1 & 1, "done": v >> 2 & 1, "filled": v >> 3 & 1}
+
+    def cap_read(self, timeout=1.0):
+        """the buffer, oldest word first, once the capture is done: per fast input a list of samples (one
+        per sample, SER per word), per context bit a list (one per word), where the trigger fell, and the
+        first word this capture wrote (`valid_from`: the ones before it are older, stale)"""
+        self._wait("CAP_CTRL", 0x4, timeout, want=0x4)
+        info = self.cap_info()
+        ser, width, depth = info["ser"], info["width"], info["depth"]
+        chunks = 2 if width > 32 else 1
+        self.wr("CAP_ADDR", 0)
+        words = []
+        for _ in range(depth):
+            w = self.rd("CAP_DATA")
+            if chunks == 2:
+                w |= self.rd("CAP_DATA") << 32
+            words.append(w)
+        t = self.rd("CAP_TRIG")
+        trig, nvalid = t & 0xFFFF, t >> 16
+        out = {"trigger_word": trig, "trigger_sample": trig * ser, "sample_ns": self.t_sample * 1e9,
+               "filled": self.cap_state()["filled"], "valid_from": max(0, depth - nvalid), "words": words}
+        for k, name in enumerate(FAST_INPUTS):
+            out[name] = [w >> (6 * s + k) & 1 for w in words for s in range(ser)]
+        for k, name in enumerate(CTX_BITS):
+            out[name] = [w >> (6 * ser + k) & 1 for w in words]
+        return out
+
+    def capture(self, trigger="tx_event", post=None, start=None, timeout=1.0):
+        """arm, run start() (a callable that makes the trigger happen, e.g. self.tx_one), read"""
+        self.cap_arm(trigger, post)
+        if start is not None:
+            start()
+        return self.cap_read(timeout)
+
+    # -----------------------------------------------------------------------------------------------------
+    # experiments (BRINGUP.md)
+    # -----------------------------------------------------------------------------------------------------
+    def safe(self):
+        """the power-up state: TX muted, loop held, receive, the engines stopped"""
+        self.tx_stop()
+        self.seq_stop()
+        self.tx_mode("txsym")
+        self.ctrl(tx_dis=1, loop_hold=1, tr_a=1, txq1_hiz=0)
+
+    def bringup_stage1(self, eeprom=False):
+        """stage 1.5: the I2C scan, the DAC defaults at mid-scale (EEPROM if asked), the ADC's four channels"""
+        found = self.i2c_scan()
+        want = [AD5696R, ADS1115, DAC1, DAC2]
+        if eeprom:
+            for d in (DAC1, DAC2):
+                self.dac_eeprom(d)
+        for d in (DAC1, DAC2):
+            self.dac(d, **{k: V_MID for k in (DAC1_CH if d == DAC1 else DAC2_CH)})
+        return {"found": ["0x%02X" % a for a in found], "missing": ["0x%02X" % a for a in want if a not in found],
+                "adc": self.adc_all()}
+
+    def threshold_scan(self, which, volts, seconds=0.1, mask_input=None):
+        """stage 3.7: step one window threshold across the idle and count its comparator's edges (the gate):
+        returns [(volts, rate_hz, duty)].  ln(rate) against the threshold is Rice's downward parabola."""
+        name = mask_input or {"QP": "CMP_QP", "QN": "CMP_QN", "IP": "CMP_IP", "IN": "CMP_IN"}[which]
+        out = []
+        for v in volts:
+            self.threshold(which, v)
+            g = self.gate(seconds=seconds, inputs=(name,))
+            out.append((v, g[name]["rate_hz"], g[name]["duty"]))
+        return out
+
+    @staticmethod
+    def rice_fit(points):
+        """fit ln(rate) = ln(nu0) - (v - v0)^2 / (2 sigma^2) to [(volts, rate), ...] (rates > 0): returns
+        (v0, sigma, nu0).  v0 is the comparator's offset (with the idle's level), sigma its noise."""
+        pts = [(v, math.log(r)) for v, r, *_ in points if r > 0]
+        if len(pts) < 3:
+            raise ValueError("need three thresholds with edges")
+        # least squares for y = a + b v + c v^2
+        n = len(pts)
+        sx = [sum(v ** k for v, _ in pts) for k in range(5)]
+        sy = [sum(y * v ** k for v, y in pts) for k in range(3)]
+        m = [[sx[0], sx[1], sx[2]], [sx[1], sx[2], sx[3]], [sx[2], sx[3], sx[4]]]
+
+        def det(a):
+            return (a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0])
+                    + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]))
+        d = det(m)
+        coef = []
+        for k in range(3):
+            mk = [row[:] for row in m]
+            for r in range(3):
+                mk[r][k] = sy[r]
+            coef.append(det(mk) / d)
+        a, b, c = coef
+        if c >= 0:
+            raise ValueError("no downward parabola: the scan did not cross the noise")
+        v0 = -b / (2 * c)
+        sigma = math.sqrt(-1 / (2 * c))
+        nu0 = math.exp(a - b * b / (4 * c))
+        _ = n
+        return v0, sigma, nu0
+
+    def threshold_servo(self, which, rate_hz=1.0 / 60, start_v=None, side=+1, seconds=None, steps=40,
+                        lsb_per_step=64):
+        """PLAN.md section 18's false-event servo: move one window threshold until its comparator's edge
+        rate (the link idle) is the target (one a minute by default).  side +1 walks away from the idle
+        while the rate is too high.  Returns (volts, rate)."""
+        code = int(round((start_v if start_v is not None else V_MID + 0.1) / AD5696R_VREF * 65536))
+        name = {"QP": "CMP_QP", "QN": "CMP_QN", "IP": "CMP_IP", "IN": "CMP_IN"}[which]
+        if seconds is None:
+            seconds = max(0.1, min(60.0, 3.0 / rate_hz))
+        step = lsb_per_step
+        rate = None
+        for _ in range(steps):
+            self.threshold(which, code=code)
+            rate = self.gate(seconds=seconds, inputs=(name,))[name]["rate_hz"]
+            if rate > rate_hz * 1.5:
+                code += side * step
+            elif rate < rate_hz / 1.5:
+                code -= side * max(1, step // 2)
+                step = max(1, step // 2)
+            else:
+                break
+        return code / 65536.0 * AD5696R_VREF, rate
+
+    def null_slow_offsets(self, seconds=0.05, steps=12):
+        """stage 3.2: with no carrier (TX_DIS high, the loop held), move I_OFF / Q_OFF until CMP_I_S and
+        CMP_QP_S are high half the time (a bisection on the DAC 2 codes)"""
+        res = {}
+        for dac_ch, inp in (("I_OFF", "CMP_I_S"), ("Q_OFF", "CMP_QP_S")):
+            lo, hi = 0, 4095
+            for _ in range(steps):
+                mid = (lo + hi) // 2
+                self.dac(DAC2, **{"code_" + dac_ch: mid})
+                duty = self.gate(seconds=seconds, inputs=(inp,))[inp]["duty"]
+                # a higher offset code raises the arm: the comparator is high more often
+                if duty > 0.5:
+                    hi = mid
+                else:
+                    lo = mid
+            res[dac_ch] = (lo + hi) // 2
+        return res
+
+    def loopback_latency(self, scheme="A1", period=2000, count=1000, first_edge=False, **kw):
+        """stage 3.4-3.5: events through the loop, every reference this board's TX event; the latency
+        statistics (samples) and the confusion matrix"""
+        self.scheme(scheme, first_edge=first_edge, **kw)
+        self.hist_config("ref_to_decision", 0)
+        self.events(period=period, count=count)
+        self.rx_clear()
+        self.tx_go()
+        self.wait_s((period * count + 200) * self.t_clk)
+        st = self.rx_stats()
+        st["confusion"] = self.confusion()
+        return st
+
+    def ber_run(self, seconds=1.0, poly=15, period=1, phase=None, n=2, invert=False):
+        """stage 4.3: PRBS symbols (BPSK: N = 2; message 0 is the bit 0) every `period` clocks and the
+        self-synchronising check on CMP_I; returns the bit count and the error rate.  `invert` when the
+        message-0 point reads CMP_I high (the plan's BPSK: message 0 at +I)."""
+        self.tx_timing(period=period)
+        self.tx_prbs(poly)
+        self.tx_mode("prbs", n=n)
+        self.tx_go()
+        self.wait_s(64 * period * self.t_clk)
+        self.ber_config(poly, phase, invert=invert, enable=True)
+        self.wait_s(seconds)
+        self.ber_config(poly, phase, invert=invert, enable=False)
+        r = self.ber()
+        self.tx_stop()
+        return r
+
+    def hold_test(self, hold_ms=(1, 10, 100), settle_ms=50):
+        """stage 3.8: the sequencer holds the loop (LOOP_HOLD high) for each time, the receiver otherwise
+        locked; capture the comparators around the release (the capture's context has LOOP_HOLD)"""
+        out = []
+        for ms in hold_ms:
+            clocks = int(ms * 1e-3 / self.t_clk)
+            settle = int(settle_ms * 1e-3 / self.t_clk)
+            self.seq_program([(settle, {"loop_hold": 0, "tx_dis": 0, "tr_a": 1}),
+                              (clocks, {"loop_hold": 1, "tx_dis": 0, "tr_a": 1}),
+                              (settle, {"loop_hold": 0, "tx_dis": 0, "tr_a": 1})])
+            self.seq_run()
+            self.wait_s((2 * settle + clocks) * self.t_clk + 0.01)
+            out.append((ms, self.adc_all()))
+        return out
+
+    def time_division(self, rx_clocks, tx_clocks, guard_clocks=3, loop=True):
+        """stage 4.4: receive (TR_A high, the loop closed), then hold the loop and transmit (TR_A low,
+        LOOP_HOLD high, TX_DIS low, the TX gate open), with the switch's 30 ns as guards"""
+        self.seq_program([
+            (rx_clocks, {"tr_a": 1, "loop_hold": 0, "tx_dis": 1, "tx_gate": 0}),
+            (guard_clocks, {"tr_a": 1, "loop_hold": 1, "tx_dis": 1, "tx_gate": 0}),
+            (guard_clocks, {"tr_a": 0, "loop_hold": 1, "tx_dis": 1, "tx_gate": 0}),
+            (tx_clocks, {"tr_a": 0, "loop_hold": 1, "tx_dis": 0, "tx_gate": 1}),
+            (guard_clocks, {"tr_a": 0, "loop_hold": 1, "tx_dis": 1, "tx_gate": 0}),
+            (guard_clocks, {"tr_a": 1, "loop_hold": 1, "tx_dis": 1, "tx_gate": 0}),
+        ], loop=loop)
+        self.seq_run()
+
+
+def to_ns(samples, cl):
+    return samples * cl.t_sample * 1e9

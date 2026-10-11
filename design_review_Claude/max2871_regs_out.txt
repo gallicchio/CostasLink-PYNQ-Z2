@@ -1,0 +1,3 @@
+5800.0 MHz (N = 232): 61400005 618F426C 010007D3 18004F42 0000FFF9 80740000
+power-up sequence: 61400005 618F424C 010007D3 18004F42 0000FFF9 80740000 61400005 618F426C
+  = 5, wait 20 ms, 4 (outputs off), 3, 2, 1, 0, 5, 4 (outputs on); LE after each word; MUX = lock detect

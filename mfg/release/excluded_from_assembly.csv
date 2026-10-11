@@ -1,0 +1,34 @@
+Designator,Value,Footprint,Why JLCPCB does not place it
+CP101,-20 dB,Coupler_20dB_5.8GHz_CPWG,"COUPLER: coupled-line coupler drawn in copper (sim/rf_lines.py: a quarter wave at 5.8 GHz); a net tie, not a part"
+CP201,-20 dB,Coupler_20dB_5.8GHz_CPWG,"COUPLER: coupled-line coupler drawn in copper (sim/rf_lines.py: a quarter wave at 5.8 GHz); a net tie, not a part"
+H301,M3,MountingHole_3.2mm_M3_DIN965,HOLE: mounting hole: not a part
+H302,M3,MountingHole_3.2mm_M3_DIN965,HOLE: mounting hole: not a part
+H303,M3,MountingHole_3.2mm_M3_DIN965,HOLE: mounting hole: not a part
+H304,M3 slot,MountingHole_Slot_3.2x5.2mm_M3,HOLE_SLOT: the slot onto the PYNQ-Z2's own standoff: not a part
+J302,PYNQ-Z2 RPi header,RPi_Socket_2x20_P2.54mm_Underside,"hand-soldered at home: the PYNQ-Z2 socket on the back, alone there: JLCPCB fitting it made the order two-sided (a second setup and stencil, its feeder and 40 joints a board: about $38 before duty, $51 with it).  Solder it from the back, square to the board, after JLCPCB's top side (as the GPSDO's J4001)"
+R104,DNP 1.5k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
+R210,DNP,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
+R211,DNP,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
+R214,DNP,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
+R226,DNP 0R,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
+R312,DNP 4.7k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
+R313,DNP 4.7k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
+R601,DNP 150k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
+R602,DNP 0R,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
+R605,DNP 150k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
+R606,DNP 0R,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
+R609,DNP 150k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
+R610,DNP 0R,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
+R613,DNP 150k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
+R614,DNP 0R,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
+TP101,LD U115,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
+TP201,LD U203,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
+TP301,+5V_IN,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
+TP302,+5V_RF,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
+TP303,+3V3_PLL_TX,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
+TP304,+3V3_PLL_RX,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
+TP305,+3V3_ANA,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
+TP306,+3V3_DIG,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
+TP307,+3V3_OSC,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
+TP308,GND,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
+TP401,TR A,TestPoint_Pad_D1.5mm,TP: a test pad: not a part

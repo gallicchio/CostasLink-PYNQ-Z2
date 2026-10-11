@@ -1,0 +1,32 @@
+# CostasLink-PYNQ-Z2 rev A: the consigned parts
+
+Written by `mfg/make_release.py` on 2026-10-10 for 2 assembled boards.  Three parts are not deep enough at JLCPCB to order from their stock (PLAN.md section 4), so they are bought at Digi-Key and sent to JLCPCB, who fit them like any other part.  In `BOM_JLCPCB.csv` each sits under the LCSC code JLCPCB's consigned-parts process files it by, with CONSIGNED in its Note column.
+
+## What to buy
+
+| part | MPN | Digi-Key | Mouser | refs | a board | **send** | unit | line | stock seen |
+|---|---|---|---|---|--:|--:|--:|--:|---|
+| BALUN | 5400BL15B0050001E | 712-1363-1-ND | 609-5400BL15B0050001E | T101 | 1 | **4** | $0.33 | $1.32 | Digi-Key, under the new number 5400BL15B0050001E |
+| ADL5375 | ADL5375-05ACPZ-R7 | ADL5375-05ACPZ-R7CT-ND | 584-ADL5375-05ACPZR7 | U201 | 1 | **4** | $14.12 | $56.48 | Digi-Key 2,262 at $14.12, aggregator snapshot 2026-10-09 |
+| ADL5380 | ADL5380ACPZ-R7 | ADL5380ACPZ-R7CT-ND | 584-ADL5380ACPZ-R7 | U104 | 1 | **4** | $17.96 | $71.84 | Digi-Key 4,527 at $17.96 (1-9), Jason 2026-10-09 |
+
+The quantity to send is the placements on the 2 assembled boards plus 2 spares a line: JLCPCB asks for attrition on consigned parts, and a loose spare serves the bench.  Parts $129.64, plus 9.5 % sales tax and $8.00 shipping: about $149.96 (mfg/cost_estimate.py's Digi-Key bucket).
+
+## How JLCPCB takes them
+
+1. Before the order, on jlcpcb.com under **Parts Manager > Consigned Parts** (their name for parts the customer supplies), register each part by its LCSC code below so the BOM line matches it:
+
+   - **C2837312** = 5400BL15B0050001E (JLCPCB's model 5400BL15B050E; the maker's new number is 5400BL15B0050001E): 4 pieces for T101
+   - **C579150** = ADL5375-05ACPZ-R7 (JLCPCB's model ADL5375-05ACPZ-R7): 4 pieces for U201
+   - **C579152** = ADL5380ACPZ-R7 (JLCPCB's model ADL5380ACPZ-R7): 4 pieces for U104
+
+2. JLCPCB gives the consignment a shipping label and the address of its consignment warehouse in Shenzhen (the Consigned Parts page shows both); send the three reels' cut tape in one padded envelope, each bag labelled with its LCSC code and the order number (USPS Priority Mail International or FedEx: $35.00-$60.00, the estimate's range).
+3. In the order's BOM matching step, each of these lines must show the consigned stock as its source, not JLCPCB's shelf stock (JLCPCB had 0 of C2837312, 4 of C579150, 18 of C579152 on 2026-10-09: too few, or none, for a repeat order).
+4. Assembly starts when the parts have arrived and been counted; allow a week for the post.
+
+The parts, and why (gen/parts.py):
+
+- **BALUN** (T101): 1:1 balun 4.9-5.9 GHz at the ADL5380's RF input (the datasheet's 5.8 GHz circuit). CONSIGNED: bought at Digi-Key/Mouser, shipped to JLCPCB (PLAN.md section 4)
+- **ADL5375** (U201): IQ modulator 0.4-6 GHz, 0.5 V baseband bias: the transmitter. CONSIGNED: bought at Digi-Key/Mouser, shipped to JLCPCB (PLAN.md section 4)
+- **ADL5380** (U104): IQ demodulator 0.4-6 GHz, 390 MHz baseband, DC-coupled outputs: the Costas loop's phase detector. CONSIGNED: bought at Digi-Key/Mouser, shipped to JLCPCB (PLAN.md section 4)
+

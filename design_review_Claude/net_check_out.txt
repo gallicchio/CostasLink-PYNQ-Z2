@@ -1,0 +1,23 @@
+power nets:
+   +3V3_ANA        41 pins
+   +3V3_DIG        37 pins
+   +3V3_OSC         8 pins
+   +3V3_PLL_RX     23 pins
+   +3V3_PLL_TX     23 pins
+   +5V_HDR          3 pins
+   +5V_IN          21 pins
+   +5V_RF          29 pins
+   GND            279 pins
+   RX RF chain      ok: Net-(J101-In)..Net-(U101-RF_IN) > U101(3->4) > Net-(U101-RF_OUT)..Net-(U102-RF1) > U102(5->14) > Net-(U102-RF2)..Net-(U103-RFIN) > U103(1->3) > Net-(U103-RFOUT)..Net-(CP101-IN) > CP101(1->2) > Net-(CP
+   RX I arm         ok: Net-(U104-IHI)..Net-(U105-IN+) > U105(2->10) > /Receiver and Costas loop/I_P > U107(3->1)
+   RX Q arm         ok: Net-(U104-QHI)..Net-(U106-IN+) > U106(2->10) > /Receiver and Costas loop/Q_P > U108(3->1)
+   slow I path      ok: /Receiver and Costas loop/I_P..Net-(U501-IN+) > U501(2->10) > /Slow path: confirm or veto/Is_P..Net-(U503-IN+) > U503(3->1)
+   slow Q path      ok: /Receiver and Costas loop/Q_P..Net-(U502-IN+) > U502(2->10) > /Slow path: confirm or veto/Qs_P..Net-(U504-IN+) > U504(3->1)
+   RX RF chain 2    ok: Net-(U103-RFOUT)..Net-(U117-RFIN) > U117(1->3) > Net-(U117-RFOUT)..Net-(CP101-IN)
+   Costas loop      ok: /Receiver and Costas loop/Q_P > JP101(1->2) > Net-(JP101-Pin_2) > U110(3->4) > /Receiver and Costas loop/ERR > U111(4->3) > Net-(U111-NC)..Net-(U112A--) > U112(2->1) > U112(1->6) > U112(6->7) > /Recei
+   RX LO            ok: Net-(Y101-OUT)..Net-(U115-REF_IN) > U115(29->12) > Net-(U115-RFOUTA_P)..Net-(U104-LOIP)
+   TX baseband I    ok: /Power and FPGA header/TX_I1../Transmitter and triggers/TX_I
+   TX RF chain      ok: Net-(U201-RFOUT)..Net-(U202-RFIN) > U202(1->3) > Net-(U202-RFOUT)..Net-(CP201-IN) > CP201(1->2) > Net-(CP201-OUT)
+   TX LO            ok: Net-(JP201-Pin_1) > JP201(1->2) > Net-(JP201-Pin_2)..Net-(U203-REF_IN) > U203(29->12) > Net-(U203-RFOUTA_P)..Net-(U201-LOIP)
+   5 V              ok: /Power and FPGA header/VBUS > F301(1->2) > Net-(Q301-D) > Q301(3->2) > +5V_IN > FB301(1->2) > +5V_RF
+net check: 340 parts, 247 nets, 0 problems
