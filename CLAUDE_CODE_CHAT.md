@@ -2539,3 +2539,48 @@ now says so at its first use, and expands LNA, GBW, SNR, kTF and CFAR the same w
   tracked build outputs, because the document cites it.
 
 From now on each finished step is committed (memory: commit-each-step).
+
+## Prompt 20 (2026-10-12 01:11 PDT)
+
+If we used an Icepi Zero or redesigned the board to use a SYZYGY connector on a Brain-1 or added an ECP5 directly on the board like in the ECP5_2ADC_2DAC PCB, what could or should change about the architecture and chosen ICs? Or would the only change to the estimates in TRAJECTORIES.md be the lack of safety resistors and the faster TX and RX there?
+
+## Response 20 (2026-10-12 01:11 - 01:25)
+
+**For the Icepi Zero with this board, almost only the resistors change, but only if its gateware
+samples at 656 Ms/s.  At today's 200 Ms/s the 5 ns grid gives all the gain back.  With a SYZYGY port or
+an ECP5 on the board, more should change: LVDS comparators and a time-to-digital converter.  The radio
+itself and its ~94 MHz arm stay.**  [`docs/HOSTS.md`](docs/HOSTS.md) has it in full (`sim/hosts.py`: the
+trajectory model with each host's terms swapped in).  Below, the event times run from TX register to RX
+register, at the bench and at 3 km.
+
+| host | bench | 3 km |
+|---|---|---|
+| PYNQ-Z2 (rev A) | 10.9 ± 0.38 ns | 14.0 ns |
+| Icepi, today's gateware | 10.7 ± 1.44 | 12.7 |
+| Icepi, GDDRX2 (same board) | 8.9 ± 0.44 | 10.9 |
+| SYZYGY with TLV3604 LVDS comparators (0.8 ns) | 7.0 | 9.0 |
+| the same with a carry-chain TDC | 6.4 ± 0.07 | 8.4 |
+
+- **Widening the arm buys 0.1 ns at the bench and loses range.**  The CFAR window moves out with the
+  noise bandwidth, so the ~94 MHz arm stays right.
+- **The floor is about 6 ns:** the FPGA's own buffers 2.5, the RF chips 1.6, the radio's rise 1.4, the
+  comparator 0.8.
+- **SYZYGY rev B.**  The 28 header signals exactly fill one Standard port as single-ended pins; five LVDS
+  pairs need five more.
+  - The pin plan keeps everything fast on one port and moves the I2C devices and three slow lines off it.
+  - VIO stays 3.3 V, with 100 Ω terminations on the board (the SYZYGY radio board's conclusion).
+  - The pod needs a DNA.  Keep the USB-C power: 1.34 A may exceed the port's budget.
+  - The GTP transceivers are not for comparators.  PLAN.md's 6.25 Gb/s is corrected to 3.75 Gb/s on the
+    XC7Z012S-1.
+- **An ECP5 on the board** adds room for:
+  - ADCs (an unlocked RSSI, a digital AGC, a digital confirm path; the AD9238's 7-clock pipeline keeps
+    the analog slow path for latency);
+  - a DAC for shaped waveforms (slower to a step than the ladder, which stays);
+  - SPI threshold DACs;
+  - the radio's reference as the sample clock.
+
+  It is a new board, from the ECP5-2ADC-2DAC pipeline.
+- **The cheapest win is gateware on any host, the PYNQ included:** a TDC (REVA_CHANGES 22-24).
+
+CLAUDE_PCB.md section 13 has the lesson: add up every term host by host, sampling included, before
+choosing a host.

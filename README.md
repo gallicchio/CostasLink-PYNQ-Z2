@@ -43,6 +43,8 @@ read off JLCPCB's preview, and the three consigned parts.  Nothing ordered.
   fixed, documented or answered, and how useful each reviewer was.
 * [`docs/TRAJECTORIES.md`](docs/TRAJECTORIES.md): from the idle to each QPSK corner at the receiver, in
   time and on the I/Q plane, with the comparators, the slow path and the noise (`sim/trajectories.py`).
+* [`docs/HOSTS.md`](docs/HOSTS.md): what the Icepi Zero, a SYZYGY port (Brain-1) or an ECP5 on the board
+  would change, in nanoseconds and in chips (`sim/hosts.py`).
 * `sim/constellations.py`: idle plus N messages decided by comparators: false events by Rice's
   formula, the bits' time into the arm's rise, a search for the best layout (PLAN.md §18).
 * `sim/budget.py`: every number the plan quotes, computed from the datasheets and asserted;

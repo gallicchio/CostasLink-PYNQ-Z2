@@ -162,8 +162,9 @@ limit nothing else here; the GPSDO-PYNQ-Z2 board's measured header geometry, soc
 scheme are reused. The Brain-1 (Opal Kelly, XC7Z012S, three standard SYZYGY ports and one
 transceiver port) is the better *final* platform: a SYZYGY standard port has 28 I/O at a chosen
 VIO with 8 LVDS pairs and no series resistors, and three ports are exactly the three links of a
-central station. This board's 24 signals fit a SYZYGY standard port, so a rev B or an adapter is a
-connector change, not a redesign. It is not used now because the Brain-1 is the Syzygy board's
+central station. This board's 28 signals fill a SYZYGY standard port exactly as single-ended pins; with the five fast
+comparators made LVDS, docs/HOSTS.md section 3 has the pin plan (a rev B, or an adapter that gets only
+the Icepi's gain). It is not used now because the Brain-1 is the Syzygy board's
 host and because the GPSDO pipeline for the PYNQ exists.
 
 **Brain-1 against Icepi Zero on latency (Prompt 3).** Neither has series resistors (the SYZYGY
@@ -174,8 +175,10 @@ Between them (corrected in Prompt 4): the 1.25 Gb/s ISERDES figure for the XC7Z0
 regular HR-bank I/O *with an LVDS input*; a 3.3 V LVCMOS single-ended pin is limited by its buffer
 to roughly half that (DS187's "maximum physical interface rate" table has the exact figure per
 standard), i.e. the same class as the LFE5U-25F-6's GDDRX2 at 655.8 Mb/s. The transceivers (GTP,
-6.25 Gb/s, on the Brain-1's single TXR port) are serial lanes with clock recovery, AC-coupled: not a
-way to read a comparator's edge. **On 3.3 V single-ended pins the Brain-1 and the Icepi are
+3.75 Gb/s on the XC7Z012S-1, on the Brain-1's single TXR port; 6.25 was the faster grades' figure) are
+serial lanes with clock recovery, AC-coupled: not a way to read a comparator's edge.  docs/HOSTS.md
+(Prompt 20) puts numbers on every host: the Icepi with GDDRX2, a SYZYGY rev B with LVDS comparators,
+an ECP5 on the board, and a carry-chain TDC on any of them. **On 3.3 V single-ended pins the Brain-1 and the Icepi are
 equals, both about 9 ns ahead of the PYNQ-Z2**; the arm filter's 3.5 ns rise is the real floor. The Brain-1's larger win is what its
 SYZYGY VIO allows: at 2.5 V its banks take true LVDS, so a rev B could use an LVDS comparator
 (TI TLV3604, 0.8 ns, or ADI ADCMP604, 1.5 ns) in place of the TLV3601 (2.5 ns) and an LVDS pair per
