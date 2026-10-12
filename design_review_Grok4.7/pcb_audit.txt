@@ -1,0 +1,227 @@
+board hardware/CostasLink-PYNQ-Z2.kicad_pcb
+footprints 382
+tracks 5194
+zones 10
+ layer 0 F.Cu
+ layer 1 F.Mask
+ layer 2 B.Cu
+ layer 3 B.Mask
+
+== nets on RF parts ==
+  /Power and FPGA header/SPI_SCLK: [('U102', '17', (50.5, 49.9375)), ('U203', '1', (83.4375, 81.75)), ('U115', '1', (52.2875, 102.75))]
+  /Power and FPGA header/SPI_SDATA: [('U102', '18', (51.0, 49.9375)), ('U203', '2', (83.4375, 81.25)), ('U115', '2', (52.2875, 102.25))]
+  /Transmitter and triggers/VN_0V5: [('U201', '9', (82.9375, 63.25)), ('U201', '22', (79.0625, 63.25))]
+  Net-(CP201-OUT): [('J202', '1', (81.0, 32.0)), ('CP201', '2', (81.0, 36.85))]
+  Net-(CP101-OUT): [('CP101', '2', (49.0, 78.25)), ('T101', '1', (49.0, 79.95))]
+  Net-(T101-BAL-): [('U104', '21', (50.1, 83.0625)), ('T101', '4', (50.2, 81.25))]
+  Net-(T101-BAL+): [('U104', '22', (49.6, 83.0625)), ('T101', '3', (49.0, 81.25))]
+  Net-(J403-In): [('J403', '1', (133.0, 32.0))]
+  /Transmitter and triggers/TX_DIS: [('U201', '1', (79.75, 64.9375))]
+  Net-(U201-LOIP): [('U201', '3', (80.75, 64.9375))]
+  Net-(U201-LOIN): [('U201', '4', (81.25, 64.9375))]
+  unconnected-(U201-NC-Pad6): [('U201', '6', (82.25, 64.9375))]
+  unconnected-(U201-NC-Pad7): [('U201', '7', (82.9375, 64.25))]
+  /Transmitter and triggers/TX_Q: [('U201', '10', (82.9375, 62.75))]
+  unconnected-(U201-NC-Pad13): [('U201', '13', (82.25, 61.0625))]
+  unconnected-(U201-NC-Pad15): [('U201', '15', (81.25, 61.0625))]
+  Net-(U201-RFOUT): [('U201', '16', (80.75, 61.0625))]
+  /Transmitter and triggers/TX_I: [('U201', '21', (79.0625, 62.75))]
+  Net-(U101-V_ENABLE): [('U101', '1', (50.0, 39.296))]
+  Net-(U101-RF_IN): [('U101', '3', (49.0, 39.296))]
+  Net-(U101-RF_OUT): [('U101', '4', (49.0, 40.704))]
+  Net-(U101-VCC): [('U101', '6', (50.0, 40.704))]
+  Net-(J401-In): [('J401', '1', (117.0, 32.0))]
+  Net-(U103-RFIN): [('U103', '1', (49.0, 55.5))]
+  Net-(U103-RFOUT): [('U103', '3', (49.0, 58.5))]
+  Net-(U202-RFIN): [('U202', '1', (81.0, 55.5))]
+  Net-(U202-RFOUT): [('U202', '3', (81.0, 52.5))]
+  Net-(J402-In): [('J402', '1', (101.0, 32.0))]
+  Net-(U117-RFIN): [('U117', '1', (49.0, 63.5))]
+  Net-(U117-RFOUT): [('U117', '3', (49.0, 66.5))]
+  Net-(CP201-IN): [('CP201', '1', (81.0, 44.15))]
+  Net-(CP201-CPL): [('CP201', '3', (80.46, 44.15))]
+  Net-(CP201-ISO): [('CP201', '4', (80.46, 36.85))]
+  Net-(CP101-IN): [('CP101', '1', (49.0, 70.95))]
+  Net-(CP101-CPL): [('CP101', '3', (49.54, 70.95))]
+  Net-(CP101-ISO): [('CP101', '4', (49.54, 78.25))]
+  Net-(U401-A): [('U401', '1', (117.975, 40.8375))]
+  Net-(U401-B): [('U401', '2', (117.325, 40.8375))]
+  Net-(U401-RFC): [('U401', '3', (116.675, 40.8375))]
+  unconnected-(U401-NC-Pad4): [('U401', '4', (116.025, 40.8375))]
+  Net-(U401-RF1): [('U401', '5', (116.025, 45.1625))]
+  Net-(U401-RF2): [('U401', '8', (117.975, 45.1625))]
+  Net-(J101-In): [('J101', '1', (49.0, 32.0))]
+  Net-(U102-P{slash}S): [('U102', '3', (50.0, 46.0625))]
+  Net-(U102-RF1): [('U102', '5', (49.0, 46.0625))]
+  Net-(U102-RF2): [('U102', '14', (49.0, 49.9375))]
+  /Power and FPGA header/LE_DSA: [('U102', '16', (50.0, 49.9375))]
+  /Power and FPGA header/LE_PLL_TX: [('U203', '3', (83.4375, 80.75))]
+  Net-(U203-CE): [('U203', '4', (83.4375, 80.25))]
+  unconnected-(U203-SW-Pad5): [('U203', '5', (83.4375, 79.75))]
+  Net-(U203-CP_OUT): [('U203', '7', (83.4375, 78.75))]
+  Net-(U203-RFOUTA_P): [('U203', '12', (81.25, 77.5625))]
+  Net-(U203-RFOUTA_N): [('U203', '13', (80.75, 77.5625))]
+  Net-(U203-RFOUTB_P): [('U203', '14', (80.25, 77.5625))]
+  Net-(U203-RFOUTB_N): [('U203', '15', (79.75, 77.5625))]
+  Net-(U203-NOISE_FILT): [('U203', '19', (78.5625, 79.25))]
+  Net-(U203-TUNE): [('U203', '20', (78.5625, 79.75))]
+  Net-(U203-RSET): [('U203', '22', (78.5625, 80.75))]
+  Net-(U203-BIAS_FILT): [('U203', '23', (78.5625, 81.25))]
+  Net-(U203-REG): [('U203', '24', (78.5625, 81.75))]
+  Net-(U203-LD): [('U203', '25', (79.25, 82.4375))]
+  Net-(U203-RFOUT_EN): [('U203', '26', (79.75, 82.4375))]
+  Net-(U203-REF_IN): [('U203', '29', (81.25, 82.4375))]
+  /Power and FPGA header/MUX_TX: [('U203', '30', (81.75, 82.4375))]
+  /Power and FPGA header/LE_PLL_RX: [('U115', '3', (52.2875, 101.75))]
+  Net-(U115-CE): [('U115', '4', (52.2875, 101.25))]
+  unconnected-(U115-SW-Pad5): [('U115', '5', (52.2875, 100.75))]
+  Net-(U115-CP_OUT): [('U115', '7', (52.2875, 99.75))]
+  Net-(U115-RFOUTA_P): [('U115', '12', (50.1, 98.5625))]
+  Net-(U115-RFOUTA_N): [('U115', '13', (49.6, 98.5625))]
+  Net-(U115-RFOUTB_P): [('U115', '14', (49.1, 98.5625))]
+  Net-(U115-RFOUTB_N): [('U115', '15', (48.6, 98.5625))]
+  Net-(U115-NOISE_FILT): [('U115', '19', (47.4125, 100.25))]
+  Net-(U115-TUNE): [('U115', '20', (47.4125, 100.75))]
+  Net-(U115-RSET): [('U115', '22', (47.4125, 101.75))]
+  Net-(U115-BIAS_FILT): [('U115', '23', (47.4125, 102.25))]
+  Net-(U115-REG): [('U115', '24', (47.4125, 102.75))]
+  Net-(U115-LD): [('U115', '25', (48.1, 103.4375))]
+  Net-(U115-RFOUT_EN): [('U115', '26', (48.6, 103.4375))]
+  Net-(U115-REF_IN): [('U115', '29', (50.1, 103.4375))]
+  /Power and FPGA header/MUX_RX: [('U115', '30', (50.6, 103.4375))]
+  Net-(U104-IHI): [('U104', '3', (47.9125, 84.75))]
+  Net-(U104-ILO): [('U104', '4', (47.9125, 85.25))]
+  Net-(U104-LOIP): [('U104', '9', (49.6, 86.9375))]
+  Net-(U104-LOIN): [('U104', '10', (50.1, 86.9375))]
+  unconnected-(U104-NC-Pad12): [('U104', '12', (51.1, 86.9375))]
+  Net-(U104-QLO): [('U104', '15', (51.7875, 85.25))]
+  Net-(U104-QHI): [('U104', '16', (51.7875, 84.75))]
+  Net-(U104-ADJ): [('U104', '19', (51.1, 83.0625))]
+  unconnected-(T101-NC-Pad6): [('T101', '6', (50.2, 79.95))]
+
+== track widths on those nets ==
+  Net-(J403-In): widths {0.29: 1} layers {'F.Cu': 1} len 5.0 mm
+  /Transmitter and triggers/TX_DIS: widths {0.15: 12} layers {'F.Cu': 6, 'via': 2, 'B.Cu': 6} len 21.7 mm
+  Net-(U201-LOIP): widths {0.2: 2} layers {'F.Cu': 2} len 2.2 mm
+  Net-(U201-LOIN): widths {0.2: 15} layers {'F.Cu': 15} len 43.5 mm
+  /Transmitter and triggers/VN_0V5: widths {0.15: 15} layers {'F.Cu': 9, 'via': 2, 'B.Cu': 6} len 15.4 mm
+  /Transmitter and triggers/TX_Q: widths {0.15: 32} layers {'F.Cu': 20, 'via': 4, 'B.Cu': 12} len 72.2 mm
+  Net-(U201-RFOUT): widths {0.25: 1, 0.29: 1} layers {'F.Cu': 2} len 2.3 mm
+  /Transmitter and triggers/TX_I: widths {0.15: 38} layers {'F.Cu': 17, 'via': 12, 'B.Cu': 17, 'In2.Cu': 4} len 98.5 mm
+  Net-(U101-V_ENABLE): widths {0.2: 2} layers {'F.Cu': 2} len 1.3 mm
+  Net-(U101-RF_IN): widths {0.29: 1, 0.2: 1, 0.25: 1} layers {'F.Cu': 3} len 3.6 mm
+  Net-(U101-RF_OUT): widths {0.25: 1, 0.29: 1} layers {'F.Cu': 2} len 2.2 mm
+  Net-(U101-VCC): widths {0.2: 8} layers {'F.Cu': 8} len 27.9 mm
+  Net-(J401-In): widths {0.29: 1} layers {'F.Cu': 1} len 4.3 mm
+  Net-(CP201-OUT): widths {0.29: 1, 0.25: 1} layers {'F.Cu': 2} len 4.8 mm
+  Net-(U103-RFIN): widths {0.29: 1} layers {'F.Cu': 1} len 2.3 mm
+  Net-(U103-RFOUT): widths {0.29: 1, 0.15: 1} layers {'F.Cu': 2} len 3.3 mm
+  Net-(U202-RFIN): widths {0.29: 1} layers {'F.Cu': 1} len 2.3 mm
+  Net-(U202-RFOUT): widths {0.29: 1, 0.15: 1} layers {'F.Cu': 2} len 5.0 mm
+  Net-(J402-In): widths {0.29: 1} layers {'F.Cu': 1} len 5.0 mm
+  Net-(U117-RFIN): widths {0.29: 1} layers {'F.Cu': 1} len 2.0 mm
+  Net-(U117-RFOUT): widths {0.29: 1, 0.15: 1} layers {'F.Cu': 2} len 3.3 mm
+  Net-(CP201-IN): widths {0.15: 1, 0.29: 1, 0.25: 1} layers {'F.Cu': 3} len 4.5 mm
+  Net-(CP201-CPL): widths {0.2: 4} layers {'F.Cu': 4} len 10.2 mm
+  Net-(CP201-ISO): widths {0.2: 3} layers {'F.Cu': 3} len 4.8 mm
+  Net-(CP101-IN): widths {0.25: 1, 0.29: 1} layers {'F.Cu': 2} len 1.5 mm
+  Net-(CP101-OUT): widths {0.25: 2, 0.29: 1} layers {'F.Cu': 3} len 1.7 mm
+  Net-(CP101-CPL): widths {0.2: 4} layers {'F.Cu': 4} len 12.9 mm
+  Net-(CP101-ISO): widths {0.15: 4} layers {'F.Cu': 2, 'via': 2, 'B.Cu': 2} len 8.2 mm
+  Net-(U401-A): widths {0.2: 2} layers {'F.Cu': 2} len 4.0 mm
+  Net-(U401-B): widths {0.15: 7} layers {'F.Cu': 7} len 8.5 mm
+  Net-(U401-RFC): widths {0.29: 1, 0.25: 1} layers {'F.Cu': 2} len 3.6 mm
+  Net-(U401-RF1): widths {0.29: 1, 0.25: 1} layers {'F.Cu': 2} len 17.5 mm
+  Net-(U401-RF2): widths {0.29: 1, 0.25: 1} layers {'F.Cu': 2} len 17.5 mm
+  Net-(J101-In): widths {0.29: 1} layers {'F.Cu': 1} len 3.9 mm
+  Net-(U102-P{slash}S): widths {0.15: 2, 0.2: 8} layers {'F.Cu': 10} len 5.7 mm
+  Net-(U102-RF1): widths {0.29: 1, 0.25: 1} layers {'F.Cu': 2} len 2.2 mm
+  Net-(U102-RF2): widths {0.29: 1, 0.25: 1} layers {'F.Cu': 2} len 2.3 mm
+  /Power and FPGA header/LE_DSA: widths {0.15: 23} layers {'F.Cu': 9, 'via': 7, 'B.Cu': 14} len 84.8 mm
+  /Power and FPGA header/SPI_SCLK: widths {0.15: 73} layers {'F.Cu': 21, 'via': 20, 'B.Cu': 48, 'In2.Cu': 4} len 154.5 mm
+  /Power and FPGA header/SPI_SDATA: widths {0.15: 68} layers {'F.Cu': 17, 'via': 11, 'B.Cu': 51} len 133.2 mm
+  /Power and FPGA header/LE_PLL_TX: widths {0.15: 38} layers {'F.Cu': 14, 'via': 9, 'B.Cu': 22, 'In2.Cu': 2} len 123.2 mm
+  Net-(U203-CE): widths {0.2: 3, 0.15: 5} layers {'F.Cu': 6, 'via': 2, 'B.Cu': 2} len 4.7 mm
+  Net-(U203-CP_OUT): widths {0.15: 25} layers {'F.Cu': 19, 'via': 4, 'B.Cu': 6} len 28.2 mm
+  Net-(U203-RFOUTA_P): widths {0.15: 2, 0.2: 7} layers {'F.Cu': 8, 'via': 2, 'B.Cu': 1} len 8.5 mm
+  Net-(U203-RFOUTA_N): widths {0.2: 4} layers {'F.Cu': 3, 'via': 2, 'B.Cu': 1} len 8.6 mm
+  Net-(U203-RFOUTB_P): widths {0.15: 14} layers {'F.Cu': 6, 'via': 4, 'B.Cu': 8} len 20.2 mm
+  Net-(U203-RFOUTB_N): widths {0.15: 12} layers {'F.Cu': 4, 'via': 3, 'B.Cu': 8} len 19.2 mm
+  Net-(U203-NOISE_FILT): widths {0.2: 2, 0.15: 3} layers {'F.Cu': 3, 'via': 2, 'B.Cu': 2} len 3.7 mm
+  Net-(U203-TUNE): widths {0.15: 11} layers {'F.Cu': 7, 'via': 2, 'B.Cu': 4} len 14.0 mm
+  Net-(U203-RSET): widths {0.15: 3, 0.2: 2} layers {'F.Cu': 3, 'via': 2, 'B.Cu': 2} len 3.3 mm
+  Net-(U203-BIAS_FILT): widths {0.15: 7} layers {'F.Cu': 3, 'via': 2, 'B.Cu': 4} len 9.7 mm
+  Net-(U203-REG): widths {0.15: 6} layers {'F.Cu': 3, 'via': 2, 'B.Cu': 3} len 14.6 mm
+  Net-(U203-LD): widths {0.15: 7} layers {'F.Cu': 2, 'via': 2, 'B.Cu': 5} len 15.6 mm
+  Net-(U203-RFOUT_EN): widths {0.15: 3, 0.2: 2} layers {'F.Cu': 3, 'via': 2, 'B.Cu': 2} len 3.3 mm
+  Net-(U203-REF_IN): widths {0.15: 14} layers {'F.Cu': 4, 'via': 2, 'B.Cu': 10} len 9.7 mm
+  /Power and FPGA header/MUX_TX: widths {0.15: 32} layers {'F.Cu': 6, 'via': 6, 'B.Cu': 24, 'In2.Cu': 2} len 60.8 mm
+  /Power and FPGA header/LE_PLL_RX: widths {0.15: 19} layers {'F.Cu': 6, 'via': 6, 'B.Cu': 13} len 68.1 mm
+  Net-(U115-CE): widths {0.15: 13} layers {'F.Cu': 3, 'via': 2, 'B.Cu': 10} len 24.4 mm
+  Net-(U115-CP_OUT): widths {0.15: 25} layers {'F.Cu': 13, 'via': 6, 'B.Cu': 12} len 43.4 mm
+  Net-(U115-RFOUTA_P): widths {0.2: 5} layers {'F.Cu': 4, 'via': 2, 'B.Cu': 1} len 8.0 mm
+  Net-(U115-RFOUTA_N): widths {0.2: 7} layers {'F.Cu': 4, 'via': 2, 'B.Cu': 3} len 14.4 mm
+  Net-(U115-RFOUTB_P): widths {0.15: 24} layers {'F.Cu': 11, 'via': 3, 'B.Cu': 13} len 30.4 mm
+  Net-(U115-RFOUTB_N): widths {0.15: 24} layers {'F.Cu': 18, 'via': 6, 'B.Cu': 6} len 24.2 mm
+  Net-(U115-NOISE_FILT): widths {0.15: 3, 0.2: 2} layers {'F.Cu': 3, 'via': 2, 'B.Cu': 2} len 3.7 mm
+  Net-(U115-TUNE): widths {0.15: 10} layers {'F.Cu': 8, 'via': 2, 'B.Cu': 2} len 9.9 mm
+  Net-(U115-RSET): widths {0.15: 3, 0.2: 2} layers {'F.Cu': 3, 'via': 2, 'B.Cu': 2} len 3.3 mm
+  Net-(U115-BIAS_FILT): widths {0.15: 3, 0.2: 2} layers {'F.Cu': 3, 'via': 2, 'B.Cu': 2} len 5.9 mm
+  Net-(U115-REG): widths {0.15: 3, 0.2: 2} layers {'F.Cu': 3, 'via': 2, 'B.Cu': 2} len 3.5 mm
+  Net-(U115-LD): widths {0.15: 13} layers {'F.Cu': 3, 'via': 4, 'B.Cu': 10} len 22.0 mm
+  Net-(U115-RFOUT_EN): widths {0.2: 2, 0.15: 3} layers {'F.Cu': 3, 'via': 2, 'B.Cu': 2} len 3.4 mm
+  Net-(U115-REF_IN): widths {0.15: 7} layers {'F.Cu': 3, 'via': 2, 'B.Cu': 4} len 7.4 mm
+  /Power and FPGA header/MUX_RX: widths {0.15: 16} layers {'F.Cu': 3, 'via': 3, 'B.Cu': 13} len 23.0 mm
+  Net-(U104-IHI): widths {0.2: 2, 0.15: 2} layers {'F.Cu': 4} len 3.0 mm
+  Net-(U104-ILO): widths {0.2: 3, 0.15: 2} layers {'F.Cu': 5} len 3.2 mm
+  Net-(U104-LOIP): widths {0.2: 2} layers {'F.Cu': 2} len 2.1 mm
+  Net-(U104-LOIN): widths {0.2: 16} layers {'F.Cu': 16} len 42.0 mm
+  Net-(U104-QLO): widths {0.2: 2} layers {'F.Cu': 2} len 3.2 mm
+  Net-(U104-QHI): widths {0.2: 2} layers {'F.Cu': 2} len 3.0 mm
+  Net-(U104-ADJ): widths {0.2: 3, 0.15: 2} layers {'F.Cu': 5} len 3.5 mm
+  Net-(T101-BAL-): widths {0.2: 2} layers {'F.Cu': 2} len 1.7 mm
+  Net-(T101-BAL+): widths {0.2: 3} layers {'F.Cu': 3} len 1.9 mm
+
+== coupler footprints ==
+CP201 at (81.0, 40.5) rot 90.0 fp Coupler_20dB_5.8GHz_CPWG
+  pad 1 net Net-(CP201-IN) at (81.0, 44.15) size (0.29, 0.29)
+  pad 2 net Net-(CP201-OUT) at (81.0, 36.85) size (0.29, 0.29)
+  pad 3 net Net-(CP201-CPL) at (80.46, 44.15) size (0.29, 0.29)
+  pad 4 net Net-(CP201-ISO) at (80.46, 36.85) size (0.29, 0.29)
+  graphic PCB_SHAPE layer F.Cu width 0.29
+     (80.46, 44.15) -> (80.46, 36.85)
+  graphic PCB_SHAPE layer F.Cu width 0.29
+     (81.0, 44.15) -> (81.0, 36.85)
+CP101 at (49.0, 74.6) rot -90.0 fp Coupler_20dB_5.8GHz_CPWG
+  pad 1 net Net-(CP101-IN) at (49.0, 70.95) size (0.29, 0.29)
+  pad 2 net Net-(CP101-OUT) at (49.0, 78.25) size (0.29, 0.29)
+  pad 3 net Net-(CP101-CPL) at (49.54, 70.95) size (0.29, 0.29)
+  pad 4 net Net-(CP101-ISO) at (49.54, 78.25) size (0.29, 0.29)
+  graphic PCB_SHAPE layer F.Cu width 0.29
+     (49.0, 70.95) -> (49.0, 78.25)
+  graphic PCB_SHAPE layer F.Cu width 0.29
+     (49.54, 70.95) -> (49.54, 78.25)
+
+== zone names ==
+  0: layer F.Cu net GND filled True priority 0 clearance 0.2
+  1: layer B.Cu net GND filled True priority 0 clearance 0.2
+  2: layer In1.Cu net GND filled True priority 0 clearance 0.2
+  3: layer In2.Cu net +3V3_PLL_RX filled True priority 2 clearance 0.2
+  4: layer In2.Cu net +3V3_DIG filled True priority 1 clearance 0.2
+  5: layer In2.Cu net +5V_RF filled True priority 1 clearance 0.2
+  6: layer In2.Cu net GND filled True priority 0 clearance 0.2
+  7: layer In2.Cu net +3V3_ANA filled True priority 1 clearance 0.2
+  8: layer In2.Cu net +3V3_PLL_TX filled True priority 2 clearance 0.2
+  9: layer In2.Cu net +5V_IN filled True priority 1 clearance 0.2
+edge sample 25.0 145.0 25.0 125.0
+
+== L2 / L1 coverage samples along RF tracks (every 2 mm) ==
+In1 4 In2 6 F 0 B 2
+Traceback (most recent call last):
+  File "design_review_Grok4.7/pcb_audit.py", line 142, in <module>
+    g = in_zone(pcbnew.In1_Cu, x, y)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "design_review_Grok4.7/pcb_audit.py", line 101, in in_zone
+    if z.HitTestFilledArea(pt):
+       ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: ZONE.HitTestFilledArea() missing 1 required positional argument: 'aRefPos'

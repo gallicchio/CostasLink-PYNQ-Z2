@@ -1,0 +1,22 @@
+  note moved 46,-18: 'THS4541, the FAST arm: gain 4 (Rf 4.02k '
+  note moved -5,-15: 'I and Q, differential pairs | 44 mV rms '
+  note moved -36,-5: 'THS4541, the FAST arm: gain 4 (Rf 4.02k '
+  note moved 25,8: 'I_P / I_N, the FAST arm: gain 4, 100 MHz'
+  note moved -3,-18: "I MON: the fast I arm's + output through"
+  note moved 18,0: 'ERR MON: the loop error sign(I) x Q thro'
+  note moved -13,-25: 'PI loop filter (sim/budget.py section 6)'
+  note moved 3,23: 'OPA2388: zero drift, 5 uV offset, rail-t'
+  note moved 20,0: "LO RX MON: the synthesizer's second outp"
+  note moved -8,13: 'RX synthesizer: MAX2871, 5.8 GHz integer'
+  note moved -15,0: 'MCP4728 (I2C 0x60): A = VR_I, B = VR_Q ('
+  note moved 15,3: 'TX_EN (header 24) high transmits.  U206 '
+  note moved 20,0: "LO TX MON: the synthesizer's second outp"
+  note moved 0,15: 'TRIG IN: a 3.3 V logic pulse (1k series;'
+  note moved 13,-3: "Q SLOW MON: the slow Q stage's + output "
+hardware/CostasLink-PYNQ-Z2.kicad_sch   0 accidental touches,   0 net problems,   0 overlaps
+hardware/pwr.kicad_sch         0 accidental touches,   0 net problems,   0 overlaps
+hardware/rx.kicad_sch          0 accidental touches,   0 net problems,   0 overlaps
+hardware/tx.kicad_sch          0 accidental touches,   0 net problems,   0 overlaps
+hardware/ant.kicad_sch         0 accidental touches,   0 net problems,   0 overlaps
+hardware/slow.kicad_sch        0 accidental touches,   0 net problems,   0 overlaps
+hardware/win.kicad_sch         0 accidental touches,   0 net problems,   0 overlaps

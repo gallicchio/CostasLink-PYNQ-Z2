@@ -1,0 +1,111 @@
+Agent is idle (waiting for messages). agent_id: b3a2a53a-64c1-4981-a87a-1d9736dc7c45, agent_type: explore, status: idle, description: Audit gateware RTL, elapsed: 868s, total_turns: 1
+
+[Turn 0]
+## Findings
+
+### Would-block-bringup
+
+- **MCP4728 fast-write format is incorrect — `gateware/costaslink_regs.v:218-229`, `gateware/driver/costaslink.py:430-449`.**  
+  RTL sends 8 bytes containing four packed 12-bit values. MCP4728 fast-write requires **3 bytes per channel**—command/control bits plus the 12-bit code—so updating all four channels requires 12 bytes (or a valid device-specific sequential format). The master supports only 9 write bytes (`i2c_master.v:1,15`), and the driver’s EEPROM path sends 9 bytes using a different format. Normal `dac()` writes will not program the intended channels. **Severity: would-block-bringup / wrong-results.**
+
+- **PYNQ clock/reset CDC is unsafe — `gateware/costaslink_pynq.v:90-96,106-108`.**  
+  `rst` is generated synchronously in the 100-MHz domain but is connected directly to `ISERDESE2.RST`, whose sampling clock is 400 MHz. The 400-MHz domain has no reset synchronizer. Comparator inputs also enter the ISERDES directly, which is expected for sampling, but reset release can violate the ISERDES clock domain. **Severity: would-block-bringup / intermittent wrong-results.**
+
+- **The generated PYNQ constraints do not visibly constrain the comparator-to-ISERDES timing sufficiently — `gateware/pynq/costaslink_pynq.xdc:1-…`, `gateware/fast_sampler_7series.v:20-32`.**  
+  The RTL assumes a phase-aligned 100/400-MHz pair and a fixed ISERDES word boundary, but the source constraints need explicit input-delay/timing treatment for asynchronous comparator paths. Without it, implementation timing does not establish the claimed 1.25-ns timestamp accuracy. **Severity: wrong-results.**
+
+### Wrong-results
+
+- **MCP4728 normal DAC writes are not merely undocumented; they are structurally incompatible with the device protocol — `costaslink_regs.v:218-229`.**  
+  The comment says “fast write … 12 bits × 4,” but the constructed buffer is only 8 bytes:
+  ```verilog
+  {4'b0000,dac_a, 4'b0000,dac_b, 4'b0000,dac_c, 4'b0000,dac_d,8'd0}
+  ```
+  This omits the required per-channel command/control byte.
+
+- **Latency counter is not “to-the-sample” and is referenced only to `TRIG_IN` — `gateware/cmp_monitor.v:81-105`.**  
+  It timestamps `TRIG_IN` rising and the next `CMP_I` edge only. It is clock-resolution at the 100-MHz fabric rate, not sampler-resolution. The reported `lat_cnt` is also off by one relative to the edge timing: it is cleared on the trigger cycle, incremented on subsequent cycles, and captured before the increment when `counted[0]` arrives. The RX engine has a separate sampler-resolution timestamp path (`rx_engine.v:89,169-190`), but that does not make the legacy `LATENCY` register sample-accurate. **Severity: wrong-results.**
+
+- **Legacy latency wraps/declares timeout after 65,536 fabric clocks — `cmp_monitor.v:44,96-103`.**  
+  At 100 MHz this is about 655 µs, not an unbounded timestamp. The 32-bit `FREE_CNT` itself wraps naturally, and the latency register only retains 16 timing bits.
+
+- **Slow confirmation is implemented in fabric clocks, not nanoseconds — `rx_engine.v:13-18,342-343`.**  
+  `RX_TIMING[23:16]` is used as a clock count. At the documented 100 MHz clock, 37–80 ns corresponds to approximately 4–8 clocks, plus the two-clock synchronizer in `costaslink_core.v:101-104`. This is correct only if software programs the register for the actual 100-MHz clock; there is no automatic conversion or enforcement. **Severity: wrong-results if configured as raw nanoseconds.**
+
+- **The ISERDES ordering assumption is implementation/model-dependent and has no runtime bitslip — `gateware/fast_sampler_7series.v:5-9,25-42`.**  
+  The code assumes `Q8` is earliest and reverses `Q1..Q8`. The repository does include a dedicated sampler testbench (`tb_sampler_7series.v`) and Vivado simulation script, which is good, but the production design has `.BITSLIP(1'b0)` and no hardware word-boundary calibration. Any phase/word-boundary difference changes every timestamp by a fixed but undocumented amount. **Severity: wrong-results / board-dependent.**
+
+- **ECP5 sampler documentation and RTL are internally consistent, but the ordering is not simulated — `gateware/fast_sampler_ecp5.v:1-17`.**  
+  It assumes IDDRX1F `Q0` is the rising-edge/earlier sample and `Q1` the falling-edge/later sample. The file explicitly admits this is black-box-only and deferred to board bring-up. **Severity: wrong-results if the primitive ordering assumption is wrong.**
+
+- **SPI DSA code/data agreement is questionable — `gateware/spi_master.v:7,30-31`, `costaslink_regs.v:105-111`, `driver/costaslink.py:397-403`.**  
+  The DSA is sent as 8 bits LSB-first, while the driver permits codes through 127 (`0–31.75 dB`) despite the RTL comment requiring `D7=0`. PE43711 control codes normally use a 7-bit attenuation code with the MSB reserved/control-dependent; allowing code 127 should be checked against the exact part variant. Timing is otherwise conservative: at 50 MHz, the default half-period is 4 cycles, giving 6.25 MHz and 80-ns latch pulses, within the comments’ 10-MHz/30-ns requirements. **Severity: wrong-results for upper attenuation codes.**
+
+- **SPI MAX2871 transaction framing is otherwise good — `spi_master.v:52-112`.**  
+  PLL words are 32 bits, MSB-first, and LE is pulsed after the final clock. The `costaslink_regs.v:98-106` selection correctly chooses 32 bits for PLLs and 8 bits LSB-first for the DSA. **Good.**
+
+### Cosmetic / robustness
+
+- **UART parser intentionally drops input during replies — `gateware/uart_cmd.v:1-15`.**  
+  This is documented and acceptable for the one-command-at-a-time protocol, but there is no framing checksum, timeout, or flow control. A lost byte causes the parser to swallow input until newline. **Severity: cosmetic / robustness.**
+
+- **UART address/data parsing silently truncates excess hex digits — `uart_cmd.v:85-118`.**  
+  It shifts into fixed-width registers without rejecting overlong fields. Valid driver commands are unaffected. **Severity: cosmetic.**
+
+## Event decoder assessment
+
+- **Documented event behavior is implemented:** first masked departure from idle, optional first-fired decoding, delayed settled-vector decoding, 32-entry LUT, re-arm quiet period, and slow confirm/veto (`rx_engine.v:1-20,106-153,252-343`).
+- **Sample ordering in the event scan is correct:** the descending loop overwrites the result until the lowest sample index, selecting the earliest event (`rx_engine.v:119-130`).
+- **Settled-vector race is avoided:** the fast vector/time are registered first (`rx_engine.v:135-153`), then the decision delay is applied. The event timestamp is carried independently of downstream pipeline latency.
+- **Slow path is synchronized twice** in `costaslink_core.v:101-104`; the configured delay must account for that.
+
+## AXI/register-map assessment
+
+- **AXI bridge and register-map structure look sound:** the core uses an 8-bit register address (`costaslink_core.v:229-260`), and the PYNQ wrapper supplies a 10-bit AXI address to `axil_bridge.v`. The driver’s named registers correspond to `regmap.py`/`regmap.vh`.
+- **Read latency is handled by the UART parser:** `bus_re` is asserted, then `bus_rdata` is sampled one cycle later (`uart_cmd.v:122-130`). The AXI path is separately tested by `tb_axil.v`.
+- **Potential stale-read hazard:** register values with side effects or multi-cycle status are sampled directly through the shared bus; callers must obey the driver’s polling convention.
+
+## T/R polarity and reset
+
+- **Polarity is correct:** `tx_en = ~tx_dis_core` in both board wrappers (`costaslink_pynq.v:101-103`, `top_icepi.v:86-88`).
+- **Reset is safe:** `ctrl_tx_dis <= 1'b1` in `costaslink_regs.v:137-139`, so transmit is disabled after reset. The sequencer/keyer override is gated by `seq_active`/`id_active` in `costaslink_core.v:193-198`; Morse is disabled by default (`ctrl_id_enable <= 1'b0`). **Good.**
+
+## I2C assessment
+
+- **ADS1115 path is substantially correct:** config write is pointer `0x01` plus two bytes, conversion read uses pointer `0x00`, repeated start, and two-byte read (`costaslink_regs.v:221-238`, `driver/costaslink.py:475-501`).
+- **AD5696R write shape is correct:** three bytes, command plus 16-bit code (`driver/costaslink.py:424-428`), assuming the board uses the documented `0x0C` address.
+- **I2C master supports address probes, clock stretching, repeated start, and up to two read bytes** (`i2c_master.v:1-12,101-221`). **Good.**
+- **MCP4728 EEPROM sequence is plausible**, but normal fast-write operation is not.
+
+## Logic analyser / capture
+
+- The capture path is instantiated and exposes trigger sources and context (`costaslink_core.v:218-226`). The context is 16 bits (`costaslink_core.v:219-220`), and the PYNQ/Icepi widths are parameterized through `CAP_AW`.
+- Capture trigger and readout are covered by `tb_costaslink.v`/`driver/test_sim.py`, but the tests do not validate physical sampler ordering or true BRAM timing.
+
+## Test coverage
+
+The Makefile provides useful coverage (`gateware/Makefile:1-18,51-76`):
+
+- `sim`: integrated UART/core, PLL initialization, TX/RX, I2C model, Morse, latency and capture.
+- `sim-engines`: engine-level loopback.
+- `sim-axil`: AXI-Lite bridge.
+- `sim-driver`: Python driver against the RTL pipe.
+- Dedicated sampler simulation exists for ISERDESE2 ordering (`tb_sampler_7series.v`, `pynq/sim_sampler.tcl`).
+
+Untested or insufficiently tested:
+
+- Actual MCP4728 fast-write electrical/protocol behavior.
+- Hardware ISERDES/IDDR word alignment and asynchronous reset release.
+- PYNQ MMCM timing/constraints at 400 MHz.
+- PE43711 upper attenuation codes and exact latch timing.
+- Real comparator metastability and input-delay timing.
+- Icepi UART framing errors/noise.
+
+## Overall good items
+
+- TX disable polarity and reset mute behavior.
+- PLL SPI word width, MSB order, and LE sequencing.
+- I2C open-drain implementation, clock stretching, repeated-start reads.
+- RX event pipeline architecture: first-fired versus settled decoding, LUT, timestamps, re-arm, confirm/veto.
+- Dedicated AXI, integrated, engine, driver, and sampler test targets.
+- PYNQ clock wizard configuration explicitly derives 100 MHz fabric and 400 MHz ISERDES clocks from FCLK0 (`gateware/pynq/build.tcl:18-20,83-92`); the board preset configures FCLK0 for 100 MHz (`board_files/pynq-z2/A.0/preset.xml:183-190`).

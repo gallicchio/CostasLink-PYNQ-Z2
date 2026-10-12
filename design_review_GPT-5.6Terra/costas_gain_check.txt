@@ -1,0 +1,6 @@
+differential fast-arm peak = 0.246638 V
+budget Kd = 0.246638 V/rad; U110 single-ended Kd = 0.123319 V/rad
+implemented R1 = 20.0 kohm, R2 = 750 ohm, C = 100 nF
+implemented fn = 2053.3 Hz, zeta = 0.484
+for fn = 3.000 kHz and zeta = 0.707: R1 = 9.369 kohm, R2 = 750.2 ohm
+nearest common values: R1 9.53 k (E96) or 10 k (E24); R2 750 ohm.
