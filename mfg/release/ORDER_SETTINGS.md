@@ -62,7 +62,7 @@ Written by `mfg/make_release.py` on 2026-10-12.  On jlcpcb.com, **Order now**, u
 | Assembly Side | Top Side | Top Side | every part on one side |
 | >> PCBA Qty | **2** | 5 | of the 5 boards; the other 3 are bare spares |
 | Edge Rails/Fiducials | Added by JLCPCB | Added by JLCPCB | the board carries no rails of its own; its 3 fiducials (1 mm copper in 2 mm mask openings, at (11.0, 11.0), (115.5, 15.0), (116.5, 87.5) mm from the top-left corner) sit inside the outline; JLCPCB adds two rails with its fiducials, and Depanel below takes them off.  Parts hang over the edge (J101, J202, J401, J402, J403 4.6 mm past the top edge; J203, J301 1.7/4.6 mm past the right edge; J205, J206, J207 4.6 mm past the left edge): the Assembly remark below says so |
-| >> Confirm Parts Placement | **Yes** | No | free: the placement preview, read against PLACEMENT_CHECKS.txt (31 part numbers have predicted, unseen rotations) |
+| >> Confirm Parts Placement | **Yes** | No | free: the placement preview, read against PLACEMENT_CHECKS.txt (33 part numbers have predicted, unseen rotations) |
 | Stencil Storage | No | No |  |
 | Fixture Storage | No | No |  |
 | Parts Selection | By Customer (Self-Service) | By Customer (Self-Service) | the BOM carries every LCSC code; the 3 consigned lines are matched to the consigned stock registered beforehand (CONSIGNMENT.md) |
@@ -103,10 +103,10 @@ Then upload `BOM_JLCPCB.csv` and `CostasLink-PYNQ-Z2_cpl_jlcpcb_upload.csv` (not
 
 ## Numbers behind the choices
 
-- Board 120.0 x 100.0 mm, 4 copper layers, 1.6 mm; smallest track 0.150 mm; 1036 vias, all 0.45/0.25 mm.
-- Assembly: 350 placements a board on 73 BOM lines (45 Extended, 3 consigned), 1012 SMD pads and 93 through-hole joints a board, on top.
+- Board 120.0 x 100.0 mm, 4 copper layers, 1.6 mm; smallest track 0.150 mm; 1088 vias, all 0.45/0.25 mm.
+- Assembly: 381 placements a board on 79 BOM lines (48 Extended, 3 consigned), 1094 SMD pads and 93 through-hole joints a board, on top.
 - Mounting holes: H301 3.2 mm at (5.0, 5.0), H302 3.2 mm at (115.0, 5.0), H303 3.2 mm at (115.0, 94.0), H304 3.2 mm at (61.3, 93.3).
-- Estimate: $560.23 of goods before duty and shipping, JLCPCB $781.31-$796.31 all in, Digi-Key $149.96 (COST_ESTIMATE.md).
-- Checks passed: DRC 0 violations, 0 unconnected, 0 parity; the connectors' labels 37 connectors, 21 rows, 0 violations; 2 limit(s) left off on record; 198 filled zone polygons; every netlist part on the board; every code matched (gen/parts.py's words, the value, the package, the MPN) and in stock; no ordered part wants a hole; every part of three or more pads has a read or predicted rotation; the CPL agrees with KiCad's position export, and JLCPCB's drawings placed by it land on our pads (51 parts, top side).
+- Estimate: $597.02 of goods before duty and shipping, JLCPCB $830.98-$845.98 all in, Digi-Key $149.96 (COST_ESTIMATE.md).
+- Checks passed: DRC 0 violations, 0 unconnected, 0 parity; the connectors' labels 38 connectors, 22 rows, 0 violations; 2 limit(s) left off on record; 213 filled zone polygons; every netlist part on the board; every code matched (gen/parts.py's words, the value, the package, the MPN) and in stock; no ordered part wants a hole; every part of three or more pads has a read or predicted rotation; the CPL agrees with KiCad's position export, and JLCPCB's drawings placed by it land on our pads (54 parts, top side).
 
 Sources: the ECP5-2ADC-2DAC order of 2026-10-09 (the form's fields and defaults, its cart's fees), jlcpcb.com/help/article/pcb-assembly-price, /capabilities/pcb-assembly-capabilities, /help/article/How-to-mark-on-PCB (2026-05-22), /help/article/us-tariff-policy-faq (2026-09-09).  The form changes; when a screenshot shows it has, update the lists in mfg/make_release.py and this date.

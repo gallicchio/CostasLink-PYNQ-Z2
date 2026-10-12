@@ -40,10 +40,10 @@ nobody has yet seen right is listed with its prediction: check its pin 1 or pola
 (JLCPCB's dot) against the board, write down any that is wrong and by how much, and it goes
 into mfg/jlc_rotation.py.  Never turn or nudge a part in JLCPCB's viewer: the next upload loses it.
 
-Placed as the CPL says, JLCPCB's own drawing lands pin for pin on our pads for 51 parts
+Placed as the CPL says, JLCPCB's own drawing lands pin for pin on our pads for 54 parts
 (make_release.py's simulation of their placement, both sides).
 
-NOT YET SEEN RIGHT in a preview (31 part numbers, 74 placements):
+NOT YET SEEN RIGHT in a preview (33 part numbers, 78 placements):
   C10425     74LVC1G17                  SOT-353_SC-70-5
       top:    U116 U205
       correction 180, predicted: JLCPCB's drawing turned 180 to lie on ours (top side, 5 pads by number, worst 0.32 mm)
@@ -68,7 +68,7 @@ NOT YET SEEN RIGHT in a preview (31 part numbers, 74 placements):
       correction 270, predicted: JLCPCB's drawing turned 90 to lie on ours (top side, 17 pads by number, worst 0.04 mm)
       look for: pin 1 by the silk dot (the THS4541s)
   C2059281   OPA2388                    VSSOP-8_3x3mm_P0.65mm
-      top:    U112
+      top:    U112 U508
       correction 270, predicted: JLCPCB's drawing turned 90 to lie on ours (top side, 8 pads by number, worst 0.09 mm)
       look for: pin 1 by the silk mark (the OPA2187)
   C208262    ADL5611                    SOT-89-3
@@ -96,13 +96,16 @@ NOT YET SEEN RIGHT in a preview (31 part numbers, 74 placements):
       correction 180, predicted: JLCPCB's drawing turned 180 to lie on ours (top side, 5 pads by number, worst 0.31 mm)
       look for: pin 1 by the silk mark: three pins one side, two the other
   C37593     ADS1115                    TSSOP-10_3x3mm_P0.5mm
-      top:    U114
+      top:    U114 U510
       correction 270, predicted: JLCPCB's drawing turned 90 to lie on ours (top side, 10 pads by number, worst 0.04 mm)
       look for: pin 1 by the silk mark (the ADS1115)
   C38663     74LVC1G3157                SOT-363_SC-70-6
       top:    U110
       correction 180, predicted: JLCPCB's drawing turned 180 to lie on ours (top side, 6 pads by number, worst 0.11 mm)
       look for: pin 1 by the silk mark
+  C42711     AD8310                     MSOP-8_3x3mm_P0.65mm
+      top:    U507
+      correction 270, predicted: JLCPCB's drawing turned 90 to lie on ours (top side, 8 pads by number, worst 0.19 mm)
   C46388     TS5A3159                   SOT-363_SC-70-6
       top:    U111
       correction 270, predicted: JLCPCB's drawing turned 90 to lie on ours (top side, 6 pads by number, worst 0.11 mm)
@@ -157,6 +160,9 @@ NOT YET SEEN RIGHT in a preview (31 part numbers, 74 placements):
       top:    U115 U203
       correction 0, predicted: JLCPCB's drawing turned 0 to lie on ours (top side, 33 pads by number, worst 0.06 mm)
       look for: pin 1 by the silk dot; JLCPCB's dot on it (the MAX2871s)
+  C81598     1N4148W                    D_SOD-123
+      top:    D501
+      correction 0, NOT PREDICTED (two pads: polarity is a mark, not a pin number): look at it hardest
   C8207      74LVC1G04                  SOT-353_SC-70-5
       top:    U206 U402
       correction 180, predicted: JLCPCB's drawing turned 180 to lie on ours (top side, 5 pads by number, worst 0.01 mm)
@@ -173,7 +179,7 @@ READ RIGHT in an earlier preview (the same part number, this footprint or its tw
   C2862740   SOT-23-5                                 correction 180 (sure); JLCPCB's drawing agrees: U301 U302 U303 U304
   C8545      SOT-23                                   correction 180 (read); JLCPCB's drawing agrees: Q303
 
-No orientation to get wrong (two pads, no polarity): C_0402_1005Metric, C_0603_1608Metric, C_0805_2012Metric, C_1206_3216Metric, Fuse_1812_4532Metric, L_0402_1005Metric, L_0603_1608Metric, L_0805_2012Metric, R_0402_1005Metric, R_1206_3216Metric
+No orientation to get wrong (two pads, no polarity): C_0402_1005Metric, C_0603_1608Metric, C_0805_2012Metric, C_1206_3216Metric, Fuse_1812_4532Metric, L_0402_1005Metric, L_0603_1608Metric, L_0805_2012Metric, R_0402_1005Metric, R_0603_1608Metric, R_1206_3216Metric
 
 THROUGH-HOLE parts JLCPCB fits by hand (they go in one way by their pins, but look):
   J101   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the top edge (ECP5 build 33's preview showed them along the edge at +0)

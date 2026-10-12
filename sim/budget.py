@@ -478,8 +478,11 @@ print("  in-band phase noise floor about %.0f dBc/Hz (normalised -230 dBc/Hz); %
 
 # ---------------------------------------------------------------------------
 section("9. Power and regulator dissipation")
-I5 = dict(ADL5380=P["dem_I_mA"], ADL5375=P["mod_I_mA"], ADL5611_x3=3 * P["gb_I_mA"])
-I33 = dict(PLL_TX=P["pll_I_mA"], PLL_RX=P["pll_I_mA"], OSC=P["vcxo_I_mA"] + 5, DIG=6 * P["cmp_I_mA"] + 10 + 5 + 2, ANA=4 * P["fda_I_mA"] + P["lna_I_mA"] + 5)
+# the interference detectors (Prompt 28): the AD8310 8 mA and the 20 k monitor divider on +5V_RF,
+# the peak hold's OPA2388 ~2 mA on +3V3_ANA, the second ADS1115 and the NTC's divider ~0.4 mA on +3V3_DIG
+I5 = dict(ADL5380=P["dem_I_mA"], ADL5375=P["mod_I_mA"], ADL5611_x3=3 * P["gb_I_mA"], detectors=8.0 + 0.25)
+I33 = dict(PLL_TX=P["pll_I_mA"], PLL_RX=P["pll_I_mA"], OSC=P["vcxo_I_mA"] + 5, DIG=6 * P["cmp_I_mA"] + 10 + 5 + 2 + 0.4,
+           ANA=4 * P["fda_I_mA"] + P["lna_I_mA"] + 5 + 2.0)
 tot = sum(I5.values()) + sum(I33.values())
 R["I_total_mA"] = tot
 R["rails_mA"] = dict(I33, RF=sum(I5.values()))

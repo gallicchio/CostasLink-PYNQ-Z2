@@ -30,6 +30,7 @@ def build(S):
     s2 = j.pin("2"); W(s2, (s2[0], s2[1] + G)); gnd(s2[0], s2[1] + G)
     sig(10, y + 14, "RX ANT, 50 ohm SMA: " + LV.txt("RX_ANT"), cols=30)
     e = B.dcblock(jx, y, jx + 12.7)
+    B.esd_shunt(jx + 1.27, y)                     # Prompt 28: the antenna side of the DC block, DNP
     lna = U.part_at_pin("SKY65404", "U101", "3", e[0] + 7.62, y)
     rin = lna.pin("3")
     xm = e[0]

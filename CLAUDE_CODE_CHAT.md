@@ -3285,3 +3285,64 @@ arrestor, fibre Ethernet, no 2.4 GHz radio inside the box.
 
 **Before the order:** rev A as it is.  Optionally an RF ESD/DC shunt at the antenna jacks, or the same
 outside the board; channel-filter footprints only for a 5 cm-band deployment.
+
+## Prompt 28 (2026-10-12 05:02 PDT)
+
+If we added an RMS or log detector, how would that information get to the FPGA? Do we need more pins? If it's just $25–35 per board, add it. If we have plenty of spare slow-ish ADC channels, add RMS, but maybe also add a more slowly-decaying peak detector as another channel to look for WiFi bursty activity in addition to a more "true" sample of current RMS levels.
+
+### Interjection (05:12)
+
+Assume an experimental licence will unlock 4.9–6 GHz. If you can add an ESD/DC path at the antenna jacks that works over this whole band, I'll consider it. Without any modification, what center frequency range can the current revA board be operated over now?
+
+## Response 28 (2026-10-12 05:02 - 08:10)
+
+**How it reaches the FPGA: no new pins.**  A second ADS1115 at 0x49 (ADDR to VDD) sits on the I2C bus
+the DACs and the first ADC already use.  The driver reads it (`detectors()`, `det_adc()`;
+`TestDetectors`, with all of the driver's tests passing).
+
+**Added to rev A (sheet 6, now A2), placed in the free field above the Q arm:**
+- **AIN0 LOG_Q:** an AD8310 log amp on the fast Q arm (the link's whole ±94 MHz band, 95 dB,
+  24 mV/dB), averaged by the ADC's conversion.  This is the floor, the number that sets the CFAR
+  window and so the latency.
+- **AIN1 PEAK_Q:** LOG_Q peak-held.  OPA2388 A charges 10 nF through a 1N4148W inside its loop, B
+  buffers it, and 4.7 M lets it decay in 47 ms.  These are the WiFi bursts.  The link's own events
+  lift it too, so read it in a pause.
+- **AIN2 V5_MON:** +5V_RF / 2.  The ADL53xx want 4.75-5.25 V.
+- **AIN3 TEMP:** a 10 k NTC under 10 k, for the re-trims.
+- **The LOG Q test pad** shows the frames on a scope.
+- **The true RMS (an LTC1968 on the slow Q arm) was drawn and then left off.**  It took the block
+  from ≈ $32 to ≈ $59 a board, over the $25-35.  And in the arms' corner every placement of it left
+  the router a net it could not finish.  `survey()` measures that band from the slow comparator's
+  statistics, and the converter stays a rev B option.
+- **Cost:** JLCPCB $826-841 against $777-792, **+$50 an order, $25 a board**.  The BOM is 79 lines
+  and 48 Extended codes.
+
+**The ESD / DC path at the antenna jacks, unfitted:**
+- L101 (RX ANT), L202 (TX ANT) and L401 (ANT) are an LQW15AN6N8, 6.8 nH wirewound, self-resonant at
+  6.0 GHz or above.
+- Across 4.9-6 GHz that is 400 Ω to more than 1.5 kΩ, about 0.05 dB as a shunt.
+- Each sits on the jack side of its DC block, as near the line as the placer allows (a 1-1.6 mm
+  stub).
+- Fit them when the antennas are not DC-grounded: +$3 feeder and $0.07 each.
+- The multilayer LQG15HS parts resonate at 3.4-4.5 GHz and would be capacitive in the band.
+
+**The band rev A covers unmodified: 4.9-5.9 GHz.**
+- The SKY65404 LNA and the 5400BL15B050 balun are both rated 4.9-5.9 GHz.  Every other RF part runs
+  to 6 GHz.
+- Carriers of 5.0-5.8 GHz keep the ±94 MHz receive band in spec.
+- 5.9-6.0 GHz is out of the LNA's and the balun's rating: measure it before relying on it.
+
+**The board:** ERC 0, net check 0, placement 0, DRC 0, labels 0; the release regenerated.  The way
+there:
+- the first placement left the RMS converter's inputs unroutable, then the I-window monitor's line,
+  then the ground pours round U305, R125 and C317;
+- route seeds were tried side by side;
+- a new post-fill ground-rescue step gives an islanded ground pad its own via, in its own process
+  pass;
+- the 1 k inputs moved out of J105's label column;
+- the MON taps' limit is shortened to "1.65V +-249mV 1k";
+- seed 0 is the default again.
+
+**Docs and lessons:** PLAN.md (section 4's table, section 17's cost, section 19's detectors, band and
+ESD), REVA_CHANGES 25-26, BRINGUP 4.5, and two CLAUDE_PCB.md lessons (the inductive shunt, and that a
+late block can break the board elsewhere).

@@ -6,13 +6,13 @@
  },
  "place": {
   "C101": [
-   24.0,
-   11.398,
+   22.398630058791458,
+   13.58027120620556,
    270.0,
    "F"
   ],
   "C102": [
-   22.5,
+   20.75,
    12.49,
    90.0,
    "F"
@@ -30,8 +30,8 @@
    "F"
   ],
   "C105": [
-   28.0,
-   14.689999999999998,
+   28.5,
+   17.189999999999998,
    90.0,
    "F"
   ],
@@ -791,6 +791,90 @@
    270.0,
    "F"
   ],
+  "C515": [
+   34.542500000000004,
+   45.73125,
+   90.0,
+   "F"
+  ],
+  "C516": [
+   32.975,
+   31.659999999999997,
+   270.0,
+   "F"
+  ],
+  "C517": [
+   30.025,
+   43.59,
+   270.0,
+   "F"
+  ],
+  "C518": [
+   36.075,
+   43.59,
+   270.0,
+   "F"
+  ],
+  "C519": [
+   29.425,
+   34.41,
+   90.0,
+   "F"
+  ],
+  "C520": [
+   31.675,
+   43.59,
+   270.0,
+   "F"
+  ],
+  "C521": [
+   35.41,
+   31.175,
+   180.0,
+   "F"
+  ],
+  "C522": [
+   47.09,
+   30.975,
+   0.0,
+   "F"
+  ],
+  "C523": [
+   47.09,
+   29.025,
+   0.0,
+   "F"
+  ],
+  "C524": [
+   31.025,
+   34.41,
+   90.0,
+   "F"
+  ],
+  "C525": [
+   44.59,
+   29.325,
+   0.0,
+   "F"
+  ],
+  "C526": [
+   41.900000000000006,
+   20.5,
+   0.0,
+   "F"
+  ],
+  "C527": [
+   28.41,
+   52.4,
+   180.0,
+   "F"
+  ],
+  "C528": [
+   30.46,
+   18.5,
+   180.0,
+   "F"
+  ],
   "C601": [
    60.86,
    82.85,
@@ -854,6 +938,12 @@
   "D303": [
    106.0,
    86.0,
+   0.0,
+   "F"
+  ],
+  "D501": [
+   33.97,
+   27.525,
    0.0,
    "F"
   ],
@@ -1110,42 +1200,48 @@
    "F"
   ],
   "L101": [
+   25.53,
+   11.9,
+   270.0,
+   "F"
+  ],
+  "L102": [
    22.5,
    17.53,
    90.0,
    "F"
   ],
-  "L102": [
+  "L103": [
    21.119999999999997,
    33.5,
    0.0,
    "F"
   ],
-  "L103": [
+  "L104": [
    21.119999999999997,
    41.5,
    0.0,
    "F"
   ],
-  "L104": [
+  "L105": [
    26.890000000000004,
    70.995,
    180.0,
    "F"
   ],
-  "L105": [
+  "L106": [
    22.81,
    70.995,
    0.0,
    "F"
   ],
-  "L106": [
+  "L107": [
    22.1,
    66.17589838486225,
    270.0,
    "F"
   ],
-  "L107": [
+  "L108": [
    32.26025403784438,
    64.64,
    270.0,
@@ -1158,26 +1254,38 @@
    "F"
   ],
   "L202": [
+   57.79,
+   11.4,
+   0.0,
+   "F"
+  ],
+  "L203": [
    58.04,
    49.995,
    180.0,
    "F"
   ],
-  "L203": [
+  "L204": [
    53.96,
    49.995,
    0.0,
    "F"
   ],
-  "L204": [
+  "L205": [
    60.0,
    48.64,
    270.0,
    "F"
   ],
-  "L205": [
+  "L206": [
    50.25,
    44.14,
+   270.0,
+   "F"
+  ],
+  "L401": [
+   93.51,
+   11.86,
    270.0,
    "F"
   ],
@@ -1200,14 +1308,14 @@
    "F"
   ],
   "R101": [
-   25.5,
-   12.47,
+   27.0,
+   14.3,
    270.0,
    "F"
   ],
   "R102": [
    28.5,
-   17.169999999999998,
+   13.669999999999998,
    270.0,
    "F"
   ],
@@ -1218,8 +1326,8 @@
    "F"
   ],
   "R104": [
-   26.85,
-   54.17,
+   22.6,
+   50.67,
    270.0,
    "F"
   ],
@@ -1332,8 +1440,8 @@
    "F"
   ],
   "R123": [
-   40.232556372004886,
-   54.387122174545084,
+   39.93206200920538,
+   54.20083439199959,
    90.0,
    "F"
   ],
@@ -1830,8 +1938,8 @@
    "F"
   ],
   "R513": [
-   30.5,
-   53.39000000000001,
+   38.75,
+   50.64000000000001,
    90.0,
    "F"
   ],
@@ -1887,6 +1995,78 @@
    19.2,
    57.9,
    180.0,
+   "F"
+  ],
+  "R523": [
+   35.6,
+   50.35,
+   0.0,
+   "F"
+  ],
+  "R524": [
+   35.6,
+   48.8,
+   0.0,
+   "F"
+  ],
+  "R525": [
+   33.19,
+   29.675,
+   0.0,
+   "F"
+  ],
+  "R526": [
+   44.61,
+   32.475,
+   180.0,
+   "F"
+  ],
+  "R527": [
+   44.61,
+   30.975,
+   0.0,
+   "F"
+  ],
+  "R528": [
+   37.06000000000001,
+   23.0,
+   0.0,
+   "F"
+  ],
+  "R529": [
+   39.56000000000001,
+   20.5,
+   180.0,
+   "F"
+  ],
+  "R530": [
+   30.44,
+   22.75,
+   0.0,
+   "F"
+  ],
+  "R531": [
+   28.240000000000002,
+   27.95,
+   0.0,
+   "F"
+  ],
+  "R532": [
+   39.56,
+   22.0,
+   180.0,
+   "F"
+  ],
+  "R533": [
+   39.56,
+   19.0,
+   180.0,
+   "F"
+  ],
+  "R534": [
+   30.89,
+   52.4,
+   0.0,
    "F"
   ],
   "R601": [
@@ -1991,6 +2171,12 @@
    90.0,
    "F"
   ],
+  "TH501": [
+   33.8,
+   52.4,
+   0.0,
+   "F"
+  ],
   "TP101": [
    31.0,
    77.0,
@@ -2054,6 +2240,12 @@
   "TP401": [
    104.0,
    22.0,
+   0.0,
+   "F"
+  ],
+  "TP501": [
+   35.735,
+   34.41,
    0.0,
    "F"
   ],
@@ -2259,6 +2451,24 @@
    9.0,
    83.0,
    90.0,
+   "F"
+  ],
+  "U507": [
+   32.0,
+   39.0,
+   270.0,
+   "F"
+  ],
+  "U508": [
+   40.0,
+   30.0,
+   0.0,
+   "F"
+  ],
+  "U510": [
+   35.0,
+   19.5,
+   0.0,
    "F"
   ],
   "U601": [
@@ -2533,6 +2743,15 @@
    ]
   ],
   [
+   "J105",
+   [
+    40.55,
+    51.01,
+    41.75,
+    54.99
+   ]
+  ],
+  [
    "JP101",
    [
     40.712,
@@ -2725,6 +2944,9 @@
   "J601": "WINDOW MONITORS",
   "J602": "WINDOW MONITORS",
   "U605": "COSTAS LOOP: sign(I) x Q, HOLD, PI filter; DACs, ADC",
+  "U507": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "U508": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "U510": "INTERFERENCE: log, peak, 5V, temp (0x49)",
   "J103": "FAST COMPARATORS: CMP_I and the I and Q windows",
   "U203": "TX LO: MAX2871 on the TCXO or REF IN",
   "Y201": "TX LO: MAX2871 on the TCXO or REF IN",
@@ -2793,16 +3015,16 @@
   "TP201": "TX LO: MAX2871 on the TCXO or REF IN",
   "C149": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
   "C119": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
-  "L104": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
+  "L105": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
   "C150": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
   "C120": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
-  "L105": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
+  "L106": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
   "C229": "TX LO: MAX2871 on the TCXO or REF IN",
   "C204": "TRANSMITTER: ADL5375, gain block, pad, coupler",
-  "L202": "TX LO: MAX2871 on the TCXO or REF IN",
+  "L203": "TX LO: MAX2871 on the TCXO or REF IN",
   "C230": "TX LO: MAX2871 on the TCXO or REF IN",
   "C205": "TRANSMITTER: ADL5375, gain block, pad, coupler",
-  "L203": "TX LO: MAX2871 on the TCXO or REF IN",
+  "L204": "TX LO: MAX2871 on the TCXO or REF IN",
   "C103": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "C105": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "C107": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
@@ -2879,6 +3101,10 @@
   "C512": "SLOW PATH: x20, 4.8 MHz, confirm or veto",
   "C513": "SLOW PATH: x20, 4.8 MHz, confirm or veto",
   "C514": "SLOW PATH: x20, 4.8 MHz, confirm or veto",
+  "C517": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "C518": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "C523": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "C528": "INTERFERENCE: log, peak, 5V, temp (0x49)",
   "C601": "FAST COMPARATORS: CMP_I and the I and Q windows",
   "C603": "FAST COMPARATORS: CMP_I and the I and Q windows",
   "C604": "FAST COMPARATORS: CMP_I and the I and Q windows",
@@ -2924,17 +3150,25 @@
   "C506": "SLOW PATH: x20, 4.8 MHz, confirm or veto",
   "C509": "SLOW PATH: x20, 4.8 MHz, confirm or veto",
   "C510": "SLOW PATH: x20, 4.8 MHz, confirm or veto",
+  "C515": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "C516": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "C519": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "C520": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "C521": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "C522": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "C524": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "C525": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "D501": "INTERFERENCE: log, peak, 5V, temp (0x49)",
   "F301": "POWER: 5 V in, five 3.3 V rails",
-  "L101": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "L102": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "L103": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
-  "L106": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
+  "L104": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "L107": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
+  "L108": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
   "L201": "TRANSMITTER: ADL5375, gain block, pad, coupler",
-  "L204": "TX LO: MAX2871 on the TCXO or REF IN",
   "L205": "TX LO: MAX2871 on the TCXO or REF IN",
+  "L206": "TX LO: MAX2871 on the TCXO or REF IN",
   "Q303": "POWER: 5 V in, five 3.3 V rails",
-  "R101": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "R102": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "R103": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "R104": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
@@ -3018,6 +3252,13 @@
   "R518": "SLOW PATH: x20, 4.8 MHz, confirm or veto",
   "R520": "SLOW PATH: x20, 4.8 MHz, confirm or veto",
   "R521": "SLOW PATH: x20, 4.8 MHz, confirm or veto",
+  "R525": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "R526": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "R527": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "R530": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "R531": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "R532": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "R533": "INTERFERENCE: log, peak, 5V, temp (0x49)",
   "R601": "FAST COMPARATORS: CMP_I and the I and Q windows",
   "R602": "FAST COMPARATORS: CMP_I and the I and Q windows",
   "R603": "FAST COMPARATORS: CMP_I and the I and Q windows",
@@ -3031,13 +3272,18 @@
   "R614": "FAST COMPARATORS: CMP_I and the I and Q windows",
   "R615": "FAST COMPARATORS: CMP_I and the I and Q windows",
   "R616": "FAST COMPARATORS: CMP_I and the I and Q windows",
+  "TP501": "INTERFERENCE: log, peak, 5V, temp (0x49)",
   "C144": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
-  "C224": "TX LO: MAX2871 on the TCXO or REF IN"
+  "C224": "TX LO: MAX2871 on the TCXO or REF IN",
+  "C526": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "R528": "INTERFERENCE: log, peak, 5V, temp (0x49)",
+  "R529": "INTERFERENCE: log, peak, 5V, temp (0x49)"
  },
  "blocks": [
   "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
   "SLOW PATH: x20, 4.8 MHz, confirm or veto",
+  "INTERFERENCE: log, peak, 5V, temp (0x49)",
   "FAST COMPARATORS: CMP_I and the I and Q windows",
   "WINDOW MONITORS",
   "TRANSMITTER: ADL5375, gain block, pad, coupler",

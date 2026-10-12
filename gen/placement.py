@@ -160,6 +160,24 @@ ANCHORS = {
     # a millimetre up from 74.6 (Response 15): the row's names go under it, clear of JP301
     "J603": at(69.9, 73.6, 90), "J604": at(75.4, 73.6, 90), "J601": at(80.9, 73.6, 90), "J602": at(86.4, 73.6, 90),
     "U605": at(95.5, 70.0, 0),               # the window thresholds' DAC (AD5696R, 0x0C), where DAC 2 stood
+    # the interference detectors (Prompt 28), in the free field above the Q arm, between the RX chain
+    # (x 24) and the TX modulator (x 50): the log amp nearest the fast Q arm with both inputs (pins 1, 8)
+    # facing it, the peak hold above it, the ADC above them (the I2C bus comes to it), the NTC beside the
+    # arm amplifiers
+    "U507": at(32.0, 39.0, 270),             # AD8310: west of the column where J105's and J204's labels stand
+    "U508": at(40.0, 30.0, 0),               # OPA2388: the peak hold
+    "U510": at(35.0, 19.5, 0),               # ADS1115 0x49
+    "TH501": at(33.8, 52.4, 0),              # NTC
+    "R523": at(35.6, 50.35, 0),              # the log amp's 1 k inputs, west of the column where J105's labels stand
+    "R524": at(35.6, 48.8, 0),
+    # the antenna jacks' DNP ESD / DC shunts (Prompt 28), ON their lines: the rules had stood them 4 mm off,
+    # a stub that would detune 5.8 GHz when fitted.  Each as near its line as the placer's rules allow (0.5 mm
+    # between courtyards, 0.2 mm round the SMA's legs): a 1-1.6 mm stub, 0.05 of a wavelength.  RX and ANT:
+    # upright beside the DC block, off its jack-side pad; TX: lying beside the line under the jack's leg
+    "L101": at(25.53, 11.9, 270),
+    "R101": at(27.0, 14.3, 270),             # the LNA's enable pull-up, out of L101's spot beside the DC block
+    "L202": at(57.79, 11.4, 0),
+    "L401": at(93.51, 11.86, 270),
     "J103": at(47.0, 78.6, 0),               # CMP I MON (under the SIGN jumper, right of the slow Q comparators)
     "R121": at(37.7, 82.5, 0),               # its 1 k, between U107 and REF OUT: in build 18's reshuffle the rules put it
                                              # under REF OUT's name, and J108's limit had nowhere to go
@@ -252,6 +270,7 @@ BLOCKS = {
         ["J101", "U101", "U102", "U103", "U117", "CP101", "J102", "T101", "U104", "U105", "U106", "J104", "J105"],
     "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)": ["U115", "J109", "Y101", "U116", "J108", "TP101"],
     "SLOW PATH: x20, 4.8 MHz, confirm or veto": ["U501", "U502", "J501", "J502", "U503", "U504", "U505", "U506"],
+    "INTERFERENCE: log, peak, 5V, temp (0x49)": ["U507", "U508", "U510"],
     "FAST COMPARATORS: CMP_I and the I and Q windows": ["U107", "U601", "U602", "U603", "U604", "J103"],
     "WINDOW MONITORS": ["J601", "J602", "J603", "J604"],
     "TRANSMITTER: ADL5375, gain block, pad, coupler": ["U201", "U202", "CP201", "J201", "R211", "R210", "R213", "U206"],
@@ -281,6 +300,7 @@ LABEL_ROWS = (
     (("TP301", "TP302", "TP303", "TP304", "TP305", "TP306", "TP307", "TP308"), "N", 90),   # a column above each pad
     (("J208",), "S", 0, "name"),                            # TRIG IN MON: under it, above U205 (its limit where it fits)
     (("J502",), "W", 90, "name"),                           # Q SLOW MON: a column left of it, between it and U502
+    (("J105",), "W", 90),                                   # Q MON: a column left of it (Prompt 28: the detectors had taken the space)
 )
 # The headers' pin labels (gen/silk_jacks.py): a selector's two choices beyond its outer pins, level with them, and
 # what it does at its middle pin on `mid`'s side; "pins" puts every pin's name above itself, turned along the pins;

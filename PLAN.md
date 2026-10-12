@@ -224,6 +224,11 @@ MAX2871's outputs are differential and drive them directly.
 | **OPA2388IDGKR** (was OPA2187: Response 9's review found it needs 4.5 V and its inputs stop 2 V below the rail) | the loop filter (PI) and the VC summing/scaling stage | C2059281, 2020, $2.29 | zero-drift, 1 µV offset: no static phase error from the op amp; 550 kHz is plenty for a 3 kHz loop | OPA2227 (bipolar, fine too); TL072 (drift) |
 | **MCP4728T-E/UN** + **MCP4728A1T-E/UN** (C627342, 50, $2.55: the same part at the preset address 0x61) | two 4-channel 12-bit I2C DACs: Vr_I, Vr_Q (TX ladder references and carrier null), the fast Q arm's offset trim (Vth until Response 14, now on sheet 7's 16-bit DAC), VC offset; and the slow path's Vth2, I_OFF, Q_OFF (offset trims), one spare | C478093, 20908, $2.24 | rail-to-rail buffered outputs, EEPROM defaults, one I2C part | AD5621 (the Syzygy board's single DAC, SPI); 4 trimmers (no software) |
 | **ADS1115IDGSR** | 4-channel 16-bit I2C ADC: I, Q (averaged), VC, loop error | C37593, 10239, $1.06 | lock detection and loop diagnostics in software at 860 SPS; the PYNQ's XADC is on its Arduino header, not the RPi one | nothing (then the FPGA cannot tell "locked" from "no signal") |
+| **AD8310ARMZ** (Prompt 28) | log amp on the fast Q arm: the link band's level (LOG_Q) and, peak-held, its bursts (PEAK_Q) | C42711, 2625, $10.23 | DC-440 MHz (the arm is ±94 MHz), 95 dB, 24 mV/dB, 15 ns: a WiFi frame's envelope; inputs biased inside, so two 10 nF and two 1 k; OFLT 1 nF moves its offset loop's corner from 2 MHz to ~65 kHz, BFIN 390 pF its video bandwidth to ~135 kHz | AD8307 ($22 at JLCPCB, 59 in stock, 500 ns); an RF detector at the input (AD8318: no channel selection) |
+| *LTC1968IMS8* (Prompt 28: drawn, then left off rev A) | a true RMS of the slow Q arm, the survey's power meter | C107779, 20, $12.23 | 15 MHz true RMS, 5-250 mV rms for noise.  **Not on rev A:** with duty and its feeder it took the block from ≈ $32 to ≈ $59 a board, over Jason's $25-35; and in the arms' corner, every placement left the router a net it could not finish (its own input, then the I-window monitor's line).  survey() measures the same band by the slow comparator's statistics; a rev B option | LTC1967 (4 MHz) |
+| **ADS1115IDGSR** at 0x49 (Prompt 28) | the four detector channels: LOG_Q, PEAK_Q, V5_MON (+5V_RF / 2), TEMP | C37593 (on the order already) | ADDR to VDD; the existing I2C bus, so no FPGA pin (rev A's header has none free) | the PYNQ's XADC (on its Arduino header, a lead to the board) |
+| **NCP18XH103F03RB**, **1N4148W**, OPA2388 (Prompt 28) | the board's temperature (a 10 k NTC under 10 k), the peak hold's diode and op amp | C13564 $0.05; C81598 Basic; C2059281 | the re-trims between sessions want the temperature; the diode sits inside the op amp's loop, so its drop does not count | the MAX2871's own sensor (±3 °C, needs an SPI readback the gateware lacks) |
+| **LQW15AN6N8G00D** ×3, DNP (Prompt 28) | the antenna jacks' ESD / DC path: RX ANT, TX ANT, ANT | C82919, 23999, $0.07 | a 6.8 nH wirewound self-resonant at 6.0 GHz or above: 400 Ω to 1.5 kΩ across 4.9-6 GHz, ~0.05 dB as a shunt; each on its line (beside the DC block, or against the TX line) | multilayer LQG15HS (self-resonant at 3.4-4.5 GHz: capacitive in the band); a 0.2 pF RF TVS (fast ESD, no DC path) |
 | **TPS7A2033PDBVR** ×4 | 3.3 V LDOs: PLL TX, PLL RX, analog, digital | C2862740, 198360, $0.22 | 300 mA, 10 µV rms, 65 dB PSRR at 100 kHz, SOT-23-5; the PLL ones sit behind 2.2 Ω to share the heat (0.25 W each) | ADM7150 ($8-21, 1 µV: the Syzygy choice, overkill at 232× multiplication where the MAX2871's own floor dominates); LP5907 for everything (250 mA: not enough for a MAX2871 at full output) |
 | **LP5907MFX-3.3** | 3.3 V LDO for the two oscillators | C23380874, 3403, $0.14 | 6.5 µV rms; an oscillator's supply noise is FM, so it gets its own quiet rail | sharing the analog rail |
 | **SN74LVC2G34DCKR** | buffers for TRIG A/B outputs to U.FL (latency measurement) | C14461, 22998, $0.16 | one package, 2.2 ns, 24 mA into 50 Ω through 33 Ω | — |
@@ -251,7 +256,8 @@ MAX2871's outputs are differential and drive them directly.
 
 Not on the board, deliberately: a 5.8 GHz bandpass filter at the RX input (none stocked at JLCPCB;
 an SMA filter can go in the cable; a footprint would need a bridge when unfitted), a log power
-detector (AD8318, $13: I²+Q² from the ADC gives the power once locked), a limiter ahead of the LNA
+detector at RF (AD8318, $13: it sees everything the LNA passes, no channel selection; Prompt 28 put a
+baseband log amp and an RMS converter on sheet 6 instead), a limiter ahead of the LNA
 (Mini-Circuits VLM-63-2W-S+ in the cable when a PA is used with the switch), and a bench 5 V
 barrel jack. The TX/RX switch is on the board but as its own block with three SMAs (section 14), so
 it can be cabled in or left out of the RF path.
@@ -934,17 +940,20 @@ ECP5 cart of 2026-10-09 for the fees (`build/COST_ESTIMATE.md` has every line):
 | where | what | cost |
 |---|---|--:|
 | JLCPCB | 5 boards 120 × 100 mm, 4 layers, ENIG (a model: $35-60) | $47 |
-| | assembly on the top only, Standard PCBA (the SMAs and headers are through-hole): setup, stencil, fixture, 45 Extended codes' feeders, 1012 SMT pads and 93 through-hole joints a board; the 2x20 socket on the back soldered at home (Response 15) | $186 |
-| | their parts: 70 BOM lines (73 with the three consigned), with attrition | $324 |
-| | US duty at 35 % under DDP | $195 |
+| | assembly on the top only, Standard PCBA (the SMAs and headers are through-hole): setup, stencil, fixture, 48 Extended codes' feeders, 1066 SMT pads and 93 through-hole joints a board; the 2x20 socket on the back soldered at home (Response 15) | $194 |
+| | their parts: 76 BOM lines (79 with the three consigned), with attrition | $353 |
+| | US duty at 35 % under DDP | $208 |
 | | shipping | $25-40 |
-| | **JLCPCB total** | **$777-792** |
+| | **JLCPCB total** | **$826-841** |
 | Digi-Key | the three consigned lines, 4 + 4 + 4 pieces, with tax and shipping | **$150** |
 | | shipping the consignment to JLCPCB | $35-60 |
 | other | attenuators, pigtails, MMCX leads, whips, leads, two PD power banks, standoffs, a heatsink; a second PA and LNA module when the far end needs them | **$139-267** |
-| | **everything** | **$1,101-1,269** |
+| | **everything** | **$1,150-1,318** |
 
-The duty is a third of JLCPCB's line and nothing lowers it truthfully. The 45 Extended parts are
+Prompt 28's interference detectors (the AD8310, its peak hold, the second ADS1115, the NTC, the +5V_RF
+monitor) added $50 to the order, $25 a board: three Extended codes' feeders, 53 more pads, $28 of parts,
+and their duty.  The three antenna shunts are DNP and cost nothing until fitted.
+The duty is a third of JLCPCB's line and nothing lowers it truthfully. The 48 Extended parts are
 what they are (every chip is Extended). Buying the ADL5380 and ADL5375-05 from JLCPCB's own stock
 (8 and 6 on 2026-10-09) instead of consigning would cost $15 more in parts and save the chips'
 consignment handling, but the balun (0 everywhere at JLCPCB) must be consigned anyway, so the
@@ -1208,7 +1217,7 @@ model of docs/TRAJECTORIES.md and the host terms of docs/HOSTS.md.
 - **The sources:**
   - Jason's Digi-Key prices of 2026-10-12, 1-9 pieces, are exact: the Brain-1 $450, the ADCMP572
     $30.18, the HMC6300 and HMC6301 $25.91, the evaluation PCBs $1,587.52, the EK1HMC6350 $6,385.19.
-  - Rev A's boards are section 17's $962-1,002: JLCPCB $777-792, the consigned chips $150, shipping
+  - Rev A's boards are section 17's $962-1,002 before Prompt 28's detectors (+$50): JLCPCB $777-792, the consigned chips $150, shipping
     them $35-60.
   - The rest are estimates (≈); `build/latency_roadmap.json` lists every line.
 
@@ -1417,7 +1426,8 @@ have signal strength information without a lock."  Right: Response 25 named the 
   - A splitter can share RX MON with a WiFi card in monitor mode, transmitter off, to identify what
     is on air.
 - **More hardware, in order of value (rev B):**
-  1. **A baseband power detector on the slow I and Q:** an RMS-to-DC converter (LTC1968-class,
+  1. **A baseband power detector on the slow I and Q** (Prompt 28 put a log amp on the fast arm and its
+     peak hold on rev A; the true RMS stays a rev B option: "The detectors on rev A" below): an RMS-to-DC converter (LTC1968-class,
      15 MHz) or a log amp (AD8307-class), ≈ $10-15 each, into a second ADS1115 (≈ $2, its own address;
      the first one's four inputs are taken).
      - It gives the power on the operating channel continuously, during operation, without borrowing
@@ -1434,6 +1444,68 @@ have signal strength information without a lock."  Right: Response 25 named the 
   4. **Not an RF detector at the input** (the AD8318 of section 4).  It sees everything the LNA
      passes, from DC to 8 GHz, with no channel selection.  It is good only for overload and total
      power.
+
+### The detectors on rev A, the antenna jacks, and the band rev A covers (Prompt 28)
+
+Jason: how would an RMS or log detector reach the FPGA, and does it need pins?  "If it's just $25-35
+per board, add it."  And with spare slow ADC channels: RMS, plus a slowly decaying peak detector, for
+WiFi's bursts beside a truer level.
+
+**It needs no FPGA pin.**  A second ADS1115 at 0x49 (ADDR to VDD) shares the I2C bus the DACs and
+the first ADC use.  **It costs $25 a board** (JLCPCB's order $826-841 against $777-792: section 17).  The driver reads it with `detectors()`.  Sheet 6, placed in the free field above
+the Q arm (the RMS converter beside the slow Q stage it reads):
+
+| channel | what | band | range | why |
+|---|---|---|---|---|
+| AIN0 LOG_Q | an AD8310 log amp on the fast Q arm, through 1 k + 10 nF a leg (it sees a third of the arm) | the link's whole band, ±94 MHz round the carrier | 95 dB: from the receiver's own noise (29 dB over the log amp's floor) to the arm's clipping | the floor: the ADC's conversion averages the log (1.2 ms at 860 SPS, 125 ms at 8 SPS), so bursts barely move it.  For noise add ~2.5 dB (a log amp reads noise under a sine of the same rms) |
+| AIN1 PEAK_Q | LOG_Q held: OPA2388 A charges 10 nF through a 1N4148W inside its loop, B buffers it, 4.7 M lets it fall in 47 ms | the same | the same | the bursts: a 20 µs WiFi frame still reads a few conversions later.  The link's own events lift it too, so read it in a pause |
+| AIN2 V5_MON | +5V_RF through 10 k / 10 k | — | 0-4.1 V on the ADC: the rail at 2 mV | the ADL5380, ADL5375 and gain blocks want 4.75-5.25 V; on a roof's long supply lead this says so before the link does |
+| AIN3 TEMP | a 10 k NTC under 10 k from 3.3 V | — | −40 to +85 °C | the re-trims between sessions |
+
+- **Two numbers, two meanings.**  The log average is the floor, which sets the CFAR window and so the
+  latency.  The peak is the bursts, which cost rounds.  Together they tell a quiet channel, a busy one
+  and a bursty one apart.
+- **The true RMS** (an LTC1968 on the slow Q arm) was drawn and then left off rev A, for two reasons:
+  - Cost: it took the block from ≈ $32 to ≈ $59 a board, over Jason's $25-35.
+  - Routing: in the arms' corner, every placement left the router a net it could not finish.
+
+  The slow band's power is `survey()`'s, from the slow comparator's statistics.  The RMS converter is a
+  rev B option, with room.
+- **The log amp's band is the link's band.**  The AD8310 runs DC-440 MHz; the arm is ±94 MHz.
+  - Its offset loop's corner (2 MHz inside) is moved to ~65 kHz by 1 nF on OFLT.
+  - Its video bandwidth is cut to ~135 kHz by 390 pF on BFIN: a frame's envelope, not every flicker of
+    the noise.
+- **The LOG Q test pad** shows WiFi's frames on a scope directly.
+
+**The antenna jacks' ESD / DC path (unfitted).**  L101 (RX ANT), L202 (TX ANT) and L401 (ANT) are a
+6.8 nH wirewound, LQW15AN6N8, from the line to ground on the jack's side of each DC block.
+- Its self-resonance is at 6.0 GHz or above, so it stays inductive and high across the band: 400 Ω at
+  4.9 GHz, more than 1 kΩ near 6 GHz, about 0.05 dB as a shunt.
+- The multilayer LQG15HS parts resonate at 3.4-4.5 GHz and would be capacitive in the band.
+- It drains static from a cable or an antenna that is not DC-grounded.
+- Fit them when the antennas are not DC-grounded: +$3 for JLCPCB's feeder and $0.07 each.
+- Each sits as near its line as the placer's rules allow, a 1-1.6 mm stub (0.05 of a wavelength).
+
+**The band rev A covers as it is: 4.9-5.9 GHz, set by two parts.**
+
+| part | rated |
+|---|---|
+| **SKY65404-31 LNA** | **4.9-5.9 GHz** |
+| **Johanson 5400BL15B050 balun** (the ADL5380's input) | **4.9-5.9 GHz** (≤ 1 dB loss, ≥ 9.5 dB return loss) |
+| MAX2871 synthesizers | 3-6 GHz on the fundamental VCO |
+| ADL5380, ADL5375-05 | 0.4-6 GHz |
+| ADL5611 gain blocks | 30 MHz-6 GHz |
+| PE43711 DSA | to 6 GHz (1 dB monotonic above 5 GHz) |
+| HMC536 switch | DC-6 GHz |
+| the 1.5 pF DC blocks | series-resonant at 6.1 GHz: ~8 Ω at 4.9 GHz |
+| the −20 dB couplers | a quarter wave at 5.8 GHz: within 0.3 dB of −20 dB across 4.9-6 GHz |
+
+- **The carrier:** 4.9-5.9 GHz in spec, on the 25 MHz integer-N grid (5 MHz with R = 5).
+- **The receive band (±94 MHz) inside the spec:** carriers of 5.0-5.8 GHz.
+- **5.9-6.0 GHz:** the LNA and the balun run out of their rated band.  Expect some dB of gain and a
+  worse I/Q balance there; measure before relying on it.
+- **Wider would need different parts:** a wider LNA and balun (for an experimental licence beyond
+  4.9-6 GHz, or below 4.9 GHz), and the MAX2871's output divider (below 3 GHz).
 
 ### E-band (71-76 and 81-86 GHz)
 

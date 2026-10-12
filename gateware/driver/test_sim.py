@@ -144,6 +144,46 @@ class TestSurvey(unittest.TestCase):
         self.assertEqual(state["vt2"] is not None, True)
 
 
+class TestDetectors(unittest.TestCase):
+    """the detector channels (Prompt 28) against the circuit's arithmetic: a known level in, the same level out"""
+
+    def test_levels_and_temperature(self):
+        import costaslink as CLM
+
+        class Bus:
+            def read(self, reg):
+                return 0
+            def write(self, reg, value):
+                pass
+        cl = CostasLink(Bus(), check=False)
+        cl.wait_s = lambda s_: None
+        cl.dsa(0.0)
+        p_fast, v5, temp = -70.0, 4.93, 40.0
+        v_arm = lambda p, g=1.0: CLM.A_REG_V * 10 ** ((p + CLM.RX_GAIN_DB - CLM.DEM_REG_DBM) / 20.0) / math.sqrt(2.0) * g
+        dbv = 20 * math.log10(v_arm(p_fast) / 3.0) - CLM.LOG_NOISE_DB     # a log amp under-reads noise
+        r_ntc = CLM.NTC_R25 * math.exp(CLM.NTC_B * (1.0 / (temp + 273.15) - 1.0 / 298.15))
+        volts = {0: (dbv - CLM.AD8310_INTERCEPT_DBV) * CLM.AD8310_SLOPE_V_DB,
+                 1: (dbv + CLM.LOG_NOISE_DB + 20.0 - CLM.AD8310_INTERCEPT_DBV) * CLM.AD8310_SLOPE_V_DB,   # a burst 20 dB up
+                 2: v5 / 2.0,
+                 3: CLM.NTC_VDD * r_ntc / (CLM.NTC_RTOP + r_ntc)}
+        state = {}
+
+        def i2c(addr, wbytes=b"", nread=0, timeout=0.1):
+            self.assertEqual(addr, CLM.ADS1115_DET)
+            if len(wbytes) == 3:
+                state["ch"] = ((int.from_bytes(wbytes[1:], "big") >> 12) & 0x7) - 4      # MUX 1xx: AINx against GND
+                return b""
+            raw = int(round(volts[state["ch"]] / CLM.ADC_LSB_V))
+            return raw.to_bytes(2, "big")
+        cl.i2c = i2c
+        d = cl.detectors()
+        self.assertAlmostEqual(d["log_dbm"], p_fast, delta=0.05)
+        self.assertAlmostEqual(d["peak_dbm"], p_fast + 20.0, delta=0.05)
+        self.assertAlmostEqual(d["v5_rf"], v5, delta=0.002)
+        self.assertAlmostEqual(d["temp_c"], temp, delta=0.1)
+        self.assertAlmostEqual(d["log_inr_db"], p_fast - cl.thermal_dbm("fast"), delta=0.05)
+
+
 class TestOnRtl(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

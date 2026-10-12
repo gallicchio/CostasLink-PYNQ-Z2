@@ -47,7 +47,7 @@ SHEETS = [
     ("Receiver and Costas loop", "rx.kicad_sch", "A2", sch_rx.build, RX_PINS, (182.88, 38.1), "l"),
     ("Transmitter and triggers", "tx.kicad_sch", "A2", sch_tx.build, TX_PINS, (182.88, 139.7), "l"),
     ("Antenna switch: one antenna by T/R", "ant.kicad_sch", "A3", sch_ant.build, ANT_PINS, (182.88, 203.2), "l"),
-    ("Slow path: confirm or veto", "slow.kicad_sch", "A3", sch_slow.build, SLOW_PINS, (322.58, 38.1), "l"),
+    ("Slow path: confirm or veto; interference detectors", "slow.kicad_sch", "A2", sch_slow.build, SLOW_PINS, (322.58, 38.1), "l"),
     ("Window comparators: I and Q", "win.kicad_sch", "A3", sch_win.build, WIN_PINS, (322.58, 101.6), "l"),
 ]
 SLOW_X, CORRIDOR_Y = 322.58, 236.22          # the slow sheet's left edge; the corridor below the switch sheet

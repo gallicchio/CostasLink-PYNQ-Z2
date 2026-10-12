@@ -149,6 +149,7 @@ def build(S):
     cout = B.coupler_mon(xcp, yr, "TX MON", "CP201", level=LV.txt("TX_MON"))
     j = part("SMA", "J202", cout[0] + 12.7, yr, rot=180, value="TX ANT", text="hide")
     W(cout, j.pin("1"))
+    B.esd_shunt(cout[0] + 2.54, yr)                # Prompt 28: DNP
     s2 = j.pin("2"); W(s2, (s2[0], s2[1] + G)); gnd(s2[0], s2[1] + G)
     sig(xcp + 38, yr - 18, "TX ANT, 50 ohm SMA: " + LV.txt("TX_ANT"), cols=22)
 

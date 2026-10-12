@@ -75,6 +75,15 @@ G_SLOW = 20.0               # the slow stage after the fast arm
 NF_CHAIN_DB = 1.96          # the receiver's noise figure at RX ANT
 SURVEY_ENBW_HZ = {"slow": 7.5e6, "fast": 119.4e6}
 SURVEY_LADDER_V = (0.0,) + tuple(0.0005 * 1.35 ** k for k in range(24))     # above V_MID: 0.5 mV to 0.5 V
+# the interference detectors (Prompt 28, sheet 6): a second ADS1115 at 0x49 reads an AD8310 log amp on the fast
+# Q arm (LOG_Q, and its peak hold PEAK_Q), +5V_RF through 10 k / 10 k (V5_MON) and an NTC (TEMP)
+ADS1115_DET = 0x49
+DET_CH = {"LOG_Q": 0, "PEAK_Q": 1, "V5_MON": 2, "TEMP": 3}
+AD8310_SLOPE_V_DB = 0.024            # its datasheet: 24 mV/dB, intercept -108 dBV (sine), at 10-200 MHz
+AD8310_INTERCEPT_DBV = -108.0
+LOG_TAP_DB = 20 * math.log10(3.0)    # 1 k + 1 k into its 1 k input: it sees a third of the arm
+LOG_NOISE_DB = 2.5                   # a log amp reads Gaussian noise ~2.5 dB under a sine of the same rms (est: calibrate)
+NTC_B, NTC_R25, NTC_RTOP, NTC_VDD = 3380.0, 10e3, 10e3, 3.3
 
 # the transmitter's ladders: a level per axis -> its two bits (tx_symbol.v: 00 = -a, 01 / 10 = 0, 11 = +a)
 LEVEL_CODE = {1: 0b11, 0: 0b01, -1: 0b00}
@@ -915,6 +924,59 @@ class CostasLink:
                     lo = mid
             res[dac_ch] = (lo + hi) // 2
         return res
+
+    # ---- the interference detectors (Prompt 28): no lock needed, nothing borrowed from the link ----
+    def det_adc(self, ch, sps=860):
+        """the second ADS1115 (0x49), single shot, +-4.096 V: ch 'LOG_Q', 'PEAK_Q', 'V5_MON', 'TEMP' (or 0-3)
+        -> volts.  sps 8-860: its conversion averages over 1/sps, so a slow rate is a long average"""
+        c = DET_CH.get(ch, ch)
+        dr = {8: 0, 16: 1, 32: 2, 64: 3, 128: 4, 250: 5, 475: 6, 860: 7}[sps]
+        cfg = (1 << 15) | ((4 + c) << 12) | (1 << 9) | (1 << 8) | (dr << 5) | 0b11
+        self.i2c(ADS1115_DET, bytes([0x01, cfg >> 8, cfg & 0xFF]))
+        self.wait_s(1.0 / sps + 0.0005)
+        r = self.i2c(ADS1115_DET, b"\x00", 2)
+        raw = int.from_bytes(r, "big")
+        if raw & 0x8000:
+            raw -= 0x10000
+        return raw * ADC_LSB_V
+
+    def _arm_dbm(self, v_rms_diff, gain=1.0):
+        """a Q arm's differential rms (volts, before `gain`) -> dBm at RX ANT: noise splits evenly between I and Q,
+        and A_REG_V is the arm's peak for the demodulator at DEM_REG_DBM (as sigma_to_dbm())"""
+        if v_rms_diff <= 0:
+            return None
+        p_dem = DEM_REG_DBM + 20 * math.log10(math.sqrt(2.0) * (v_rms_diff / gain) / A_REG_V)
+        return p_dem - RX_GAIN_DB + self._dsa_db
+
+    def detectors(self, sps=860, cal_db=0.0):
+        """Read the four detector channels and say what they mean (PLAN.md section 19, Prompt 28):
+          log_dbm   the link band's (+-94 MHz) power at RX ANT from LOG_Q, the ADC's average of the log: the
+                    floor, which bursts barely move (+ LOG_NOISE_DB for noise, est)
+          peak_dbm  the same scale from PEAK_Q, held for ~47 ms: the strongest burst lately (our own events
+                    lift it too: read it in a pause)
+          *_inr_db  each over the receiver's own noise in the link band (thermal_dbm("fast"))
+          v5_rf     +5V_RF (the ADL53xx and gain blocks want 4.75-5.25 V)
+          temp_c    the board, from the NTC
+        cal_db adds to the two levels (calibrate once against a known carrier).  The slow band's power is
+        survey()'s, from the slow window comparator's statistics."""
+        v = {k: self.det_adc(k, sps) for k in DET_CH}
+        out = dict(volts=v)
+        for k, name in (("LOG_Q", "log"), ("PEAK_Q", "peak")):
+            dbv_in = v[k] / AD8310_SLOPE_V_DB + AD8310_INTERCEPT_DBV
+            v_arm = 10 ** ((dbv_in + LOG_TAP_DB) / 20.0)
+            d = self._arm_dbm(v_arm)
+            out[name + "_dbm"] = None if d is None else d + cal_db + (LOG_NOISE_DB if name == "log" else 0.0)
+        out["v5_rf"] = 2.0 * v["V5_MON"]
+        for name, band in (("log", "fast"), ("peak", "fast")):
+            x = out[name + "_dbm"]
+            out[name + "_inr_db"] = None if x is None else x - self.thermal_dbm(band)
+        vt = v["TEMP"]
+        if 0.0 < vt < NTC_VDD:
+            r = NTC_RTOP * vt / (NTC_VDD - vt)
+            out["temp_c"] = 1.0 / (1.0 / 298.15 + math.log(r / NTC_R25) / NTC_B) - 273.15
+        else:
+            out["temp_c"] = None
+        return out
 
     # ---- the interference survey (PLAN.md section 19, Prompt 26): no carrier, no lock ----
     def noise_scan(self, path="slow", volts=None, seconds=0.005):

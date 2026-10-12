@@ -153,6 +153,19 @@ PARTS = {
               ["LQW18AN43NG00D"], "ADL5611 bias choke (datasheet Table 6, 500 MHz-6 GHz)"),
     "L0N6": P("L", "L_0402_1005Metric", STOCK + "Inductor_SMD", "C95042", "MLG1005S0N6CT000", "0.6nH",
               ["MLG1005S0N6CT000"], "SKY65404 supply inductor (Skyworks' circuit)"),
+    "L6N8": P("L", "L_0402_1005Metric", STOCK + "Inductor_SMD", "C82919", "LQW15AN6N8G00D", "6.8nH",
+              ["LQW15AN6N8G00D"], "antenna jacks' ESD / DC path (DNP; Prompt 28): a wirewound 6.8 nH whose self-resonance is at "
+              "6.0 GHz or above, so it stays inductive and 400 ohm to 1.5 k across 4.9-6 GHz (about 0.05 dB as a shunt)"),
+    # --- the interference detectors (sheet 6, Prompt 28) -----------------------------------------
+    "AD8310": P("AD8310", "MSOP-8_3x3mm_P0.65mm", STOCK + "Package_SO", "C42711", "AD8310ARMZ-REEL7", "AD8310",
+                ["AD8310ARMZ"], "log amp on the fast Q arm: the link band's power over 95 dB, 24 mV/dB, 15 ns; its output "
+                "averaged by the ADC and peak-held for WiFi's bursts"),
+    "LTC1968": P("LTC1968", "MSOP-8_3x3mm_P0.65mm", STOCK + "Package_SO", "C107779", "LTC1968IMS8#PBF", "LTC1968",
+                 ["LTC1968IMS8"], "true RMS to DC (15 MHz) on the slow Q arm: the 10 MHz-wide survey's power, 5-250 mV rms"),
+    "NTC10K": P("Thermistor_NTC", "R_0603_1608Metric", STOCK + "Resistor_SMD", "C13564", "NCP18XH103F03RB", "NTC 10k",
+                ["NCP18XH103F03RB"], "the board's temperature for the re-trims (B 3380 K)"),
+    "1N4148W": P("D", "D_SOD-123", STOCK + "Diode_SMD", "C81598", "1N4148W", "1N4148W",
+                 ["1N4148W"], "the peak detector's diode, inside the op amp's loop (Basic)"),
 }
 
 # Passives: value -> (LCSC code, MPN, package, match words).  0402 unless the value says otherwise.
@@ -204,6 +217,7 @@ RES = {
     "20k": ("C25765", "0402WGF2002TCE", ["20kΩ", "0402"]),
     "100k": ("C25741", "0402WGF1003TCE", ["100kΩ", "0402"]),
     "150k": ("C25755", "0402WGF1503TCE", ["150kΩ", "0402"]),     # TLV3603 LE/HYS to VEE: 30 mV of hysteresis (DNP)
+    "4.7M": ("C474132", "0402WGF4704TCE", ["4.7MΩ", "0402"]),     # the peak detector's bleed: 10 nF x 4.7 M = 47 ms
 }
 
 for _v, (_code, _mpn, _fp, _match, _note) in CAPS.items():

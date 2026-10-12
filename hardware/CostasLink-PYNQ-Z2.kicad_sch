@@ -1617,7 +1617,7 @@
 			(color 0 0 0 0)
 		)
 		(uuid "6bbffa5f-5c82-d12f-8669-7f065bd8149d")
-		(property "Sheetname" "Slow path: confirm or veto"
+		(property "Sheetname" "Slow path: confirm or veto; interference detectors"
 			(at 322.58 36.83 0)
 			(show_name no)
 			(do_not_autoplace no)

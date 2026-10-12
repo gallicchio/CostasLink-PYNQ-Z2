@@ -3801,6 +3801,179 @@
 		)
 		(embedded_fonts no)
 	)
+	(symbol "D"
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 1.016)
+			(hide yes)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "D"
+			(at 0 2.54 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "D"
+			(at 0 -2.54 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Diode"
+			(at 0 0 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sim.Device" "D"
+			(at 0 0 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sim.Pins" "1=K 2=A"
+			(at 0 0 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "diode"
+			(at 0 0 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "TO-???* *_Diode_* *SingleDiode* D_*"
+			(at 0 0 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "D_0_1"
+			(polyline
+				(pts
+					(xy -1.27 1.27)
+					(xy -1.27 -1.27)
+				)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 1.27 1.27)
+					(xy 1.27 -1.27)
+					(xy -1.27 0)
+					(xy 1.27 1.27)
+				)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 1.27 0)
+					(xy -1.27 0)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "D_1_1"
+			(pin passive line
+				(at -3.81 0 0)
+				(length 2.54)
+				(name "K"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 3.81 0 180)
+				(length 2.54)
+				(name "A"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
 	(symbol "D_TVS"
 		(pin_numbers
 			(hide yes)
@@ -5911,6 +6084,276 @@
 		)
 		(embedded_fonts no)
 	)
+	(symbol "Thermistor_NTC"
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "TH"
+			(at -4.445 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "Thermistor_NTC"
+			(at 3.175 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 1.27 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 1.27 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Temperature dependent resistor, negative temperature coefficient"
+			(at 0 0 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "thermistor NTC resistor sensor RTD"
+			(at 0 0 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "R_* RV_*"
+			(at 0 0 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "Thermistor_NTC_0_1"
+			(arc
+				(start -3.175 2.413)
+				(mid -3.0506 2.3165)
+				(end -3.048 2.159)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start -3.048 2.794)
+				(mid -2.9736 2.9736)
+				(end -2.794 3.048)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start -2.794 3.048)
+				(mid -2.6144 2.9736)
+				(end -2.54 2.794)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start -2.794 2.54)
+				(mid -2.9736 2.6144)
+				(end -3.048 2.794)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start -2.794 1.905)
+				(mid -2.9736 1.9794)
+				(end -3.048 2.159)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start -2.54 2.159)
+				(mid -2.6144 1.9794)
+				(end -2.794 1.905)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start -2.159 2.794)
+				(mid -2.434 2.5608)
+				(end -2.794 2.54)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -2.54 2.159)
+					(xy -2.54 2.794)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -2.54 -3.683)
+					(xy -2.54 -1.397)
+					(xy -2.794 -2.159)
+					(xy -2.286 -2.159)
+					(xy -2.54 -1.397)
+					(xy -2.54 -1.651)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type outline)
+				)
+			)
+			(polyline
+				(pts
+					(xy -1.778 2.54)
+					(xy -1.778 1.524)
+					(xy 1.778 -1.524)
+					(xy 1.778 -2.54)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -1.778 -1.397)
+					(xy -1.778 -3.683)
+					(xy -2.032 -2.921)
+					(xy -1.524 -2.921)
+					(xy -1.778 -3.683)
+					(xy -1.778 -3.429)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type outline)
+				)
+			)
+			(rectangle
+				(start -1.016 2.54)
+				(end 1.016 -2.54)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "Thermistor_NTC_1_1"
+			(pin passive line
+				(at 0 3.81 270)
+				(length 1.27)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -3.81 90)
+				(length 1.27)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
 	(symbol "USB_C_Receptacle_USB2.0_16P"
 		(pin_names
 			(offset 1.016)
@@ -6963,6 +7406,217 @@
 					)
 				)
 				(number "14"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+	(symbol "AD8310"
+		(pin_names
+			(offset 0.762)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "U"
+			(at 0 13.97 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "AD8310"
+			(at 0 -13.97 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "ADI AD8310 DC-440 MHz 95 dB log amp, 24 mV/dB, 15 ns, MSOP-8"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "AD8310_0_1"
+			(rectangle
+				(start -10.16 7.62)
+				(end 10.16 -7.62)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type background)
+				)
+			)
+		)
+		(symbol "AD8310_1_1"
+			(pin input line
+				(at -15.24 5.08 0)
+				(length 5.08)
+				(name "INHI"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "8"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -15.24 -5.08 0)
+				(length 5.08)
+				(name "INLO"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+			(pin output line
+				(at 15.24 -0.00 180)
+				(length 5.08)
+				(name "VOUT"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "4"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at -2.54 12.70 270)
+				(length 5.08)
+				(name "VPOS"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "5"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at 2.54 12.70 270)
+				(length 5.08)
+				(name "ENBL"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "7"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at -5.08 -12.70 90)
+				(length 5.08)
+				(name "COMM"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 0.00 -12.70 90)
+				(length 5.08)
+				(name "OFLT"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "3"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 5.08 -12.70 90)
+				(length 5.08)
+				(name "BFIN"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "6"
 					(effects
 						(font
 							(size 1.02 1.02)
@@ -8689,6 +9343,217 @@
 					)
 				)
 				(number "9"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+	(symbol "LTC1968"
+		(pin_names
+			(offset 0.762)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "U"
+			(at 0 12.70 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "LTC1968"
+			(at 0 -12.70 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "ADI LTC1968 precision wide-bandwidth (15 MHz) RMS-to-DC converter, MS8"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "LTC1968_0_1"
+			(rectangle
+				(start -10.16 6.35)
+				(end 10.16 -6.35)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type background)
+				)
+			)
+		)
+		(symbol "LTC1968_1_1"
+			(pin input line
+				(at -15.24 3.81 0)
+				(length 5.08)
+				(name "IN1"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -15.24 -3.81 0)
+				(length 5.08)
+				(name "IN2"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "3"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+			(pin output line
+				(at 15.24 3.81 180)
+				(length 5.08)
+				(name "VOUT"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "5"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at 15.24 -3.81 180)
+				(length 5.08)
+				(name "OUTRTN"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "6"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at 0.00 11.43 270)
+				(length 5.08)
+				(name "V+"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "7"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at -5.08 -11.43 90)
+				(length 5.08)
+				(name "GND"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at 0.00 -11.43 90)
+				(length 5.08)
+				(name "~{EN}"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "8"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+			(pin no_connect line
+				(at 5.08 -11.43 90)
+				(length 5.08)
+				(name "NC"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "4"
 					(effects
 						(font
 							(size 1.02 1.02)

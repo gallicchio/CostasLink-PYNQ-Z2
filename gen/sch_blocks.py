@@ -132,6 +132,19 @@ def dcblock(x0, y, x1, key="C 1.5pF", above=True):
     return (x1, y)
 
 
+def esd_shunt(x, y):
+    """Prompt 28: an antenna jack's ESD and DC path, DNP: a 6.8 nH wirewound (LQW15AN6N8, self-resonant at
+    6.0 GHz or above) from the line to ground, on the jack's side of its DC block.  Across 4.9-6 GHz it is
+    400 ohm to 1.5 k (about 0.05 dB); it carries static off a cable or an antenna that is not DC-grounded."""
+    from sch_util import nref
+    ref = nref("L")
+    J(x, y)
+    t, b = vpart("L6N8", ref, x, y + G + 3.81, dnp=True, value="DNP 6.8nH", text="left", fsize=1.0)
+    W((x, y), t)
+    gnd(*b)
+    return ref
+
+
 # Which jack each named port gets (Response 10, Jason: the five field ports to MMCX "or even SMA if
 # there is room", the others to MMCX where there is room, the tight ones as they were).  The field
 # ports are SMAs on the board's edges (REF OUT an MMCX: the edge near the VCXO is taken); three baseband monitors with room round them are vertical

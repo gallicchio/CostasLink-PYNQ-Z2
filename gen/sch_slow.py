@@ -11,7 +11,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "tools"))
 sys.path.insert(0, HERE)
 import sch_util as U
-from sch_util import (G, part, gnd, flag, W, J, label, note, title, nref, down, up, series, tp, sig)
+from sch_util import (G, part, gnd, flag, W, J, label, note, title, nref, down, up, series, tp, sig, diode, vpart)
 import sch_blocks as B
 from sch_blocks import stub, L
 import levels as LV
@@ -92,4 +92,110 @@ def build(S):
     note(xd - 40, yd + 20, "MCP4728A1: the same DAC as sheet 3's at the factory-preset address 0x61 (no address programming).  V_T2 sets this path's "
          "Q window; I_OFF / Q_OFF reach the slow stages' summing nodes through 100 k; D = I_OFF_F does the same for the FAST I arm "
          "on sheet 3 through the 100 k here (its summing node I_SUM comes from that sheet).  Write all four EEPROM defaults to mid-scale (1.65 V) once, so power-up injects no offset.", cols=36)
+    detectors(S)
     return S
+
+
+def detectors(S):
+    """The interference detectors (Prompt 28): a log amp on the fast Q arm (the link's whole band),
+    its output averaged by an ADC and peak-held for WiFi's bursts; +5V_RF's level; the board's
+    temperature; a second ADS1115 (0x49) reads all four on the I2C bus the board already has, so no
+    FPGA pin is needed.  Drawn in the A2 sheet's lower band."""
+    X0, Y0 = 50.8, 304.8
+    title(X0, Y0 - 12.7, "Interference detectors: the link band's level and its bursts, +5V_RF, the temperature (Prompt 28)", size=1.6)
+    # ---- the log amp: Q_P / Q_N through 1 k and 10 nF into the AD8310 (inputs biased inside) ----
+    la = part("AD8310", "U507", X0 + 66.04, Y0 + 30.48)
+    for pin, name, above in ((la.pin("8"), "Q_P", True), (la.pin("1"), "Q_N", False)):
+        ca, cb = series("C 10nF", pin[0] - 10.16, pin[1], above=above)
+        W(cb, pin)
+        ra, rb = series("R 1k", pin[0] - 25.4, pin[1], above=above)
+        W(rb, ca)
+        W(ra, (ra[0] - 7.62, pin[1]))
+        S.hlabel(ra[0] - 7.62, pin[1], name, shape="input", rot=180)
+    B.supply_bar(la, ["5", "7"], "+5V_RF", dy=10.16)
+    # COMM to ground; OFLT's 1 nF (the offset loop's corner, 2 MHz -> ~65 kHz); BFIN's 390 pF out to the
+    # right (the video bandwidth, 25 MHz -> ~135 kHz: a burst's power, not the noise's every flicker)
+    B.bottom_gnd(la, ["2"])
+    down("C 1nF", la.pin("3")[0], la.pin("3")[1], drop=5.08, text="right")
+    bf = stub(la, "6", dy=G)
+    W(bf, (bf[0] + 12.7, bf[1])); down("C 390pF", bf[0] + 12.7, bf[1], text="right")
+    vo = la.pin("4")
+    # ---- the peak hold: OPA2388 A charges 10 nF through the diode inside its loop, B buffers it; 4.7 M bleeds it ----
+    oa = part("OPA2388", "U508", X0 + 132.08, Y0 + 30.48 + 2.54, unit=1)
+    inp, inn, out = oa.pin("3"), oa.pin("2"), oa.pin("1")
+    W(vo, (inp[0] - 25.4, vo[1]), (inp[0] - 25.4, inp[1]), inp)
+    label(vo[0] + 2.54, vo[1], "LOG_Q", size=1.0)
+    xt = inp[0] - 15.24
+    J(xt, inp[1]); W((xt, inp[1]), (xt, inp[1] - 10.16)); tp(xt, inp[1] - 10.16, "LOG Q")
+    ra2, rb2 = series("R 10k", inn[0] - 12.7, inn[1], above=False)
+    W(rb2, inn)
+    W(ra2, (ra2[0] - 5.08, inn[1])); label(ra2[0] - 5.08, inn[1], "PEAK_Q", size=1.0)
+    xn = inn[0] - 2.54
+    J(xn, inn[1])
+    yc = inn[1] + 10.16
+    cl, cr = series("C 100pF", (xn + out[0] + 2.54) / 2.0, yc, above=False)
+    W((xn, inn[1]), (xn, yc), cl)
+    W(cr, (out[0] + 2.54, yc), (out[0] + 2.54, out[1]))
+    J(out[0] + 2.54, out[1])
+    an, ca_ = diode("1N4148W", "D501", out[0] + 10.16, out[1])
+    W(out, an)
+    ra, rb = series("R 100R", ca_[0] + 7.62, out[1])
+    W(ca_, ra)
+    xh = rb[0] + 5.08
+    W(rb, (xh + 10.16, out[1]))
+    J(xh, out[1]); down("C 10nF", xh, out[1], text="left")
+    J(xh + 10.16, out[1]); down("R 4.7M", xh + 10.16, out[1], text="right")
+    W((xh + 10.16, out[1]), (xh + 20.32, out[1]))
+    label(xh + 20.32, out[1], "PEAK_HOLD", size=1.0)
+    ob = part("OPA2388", "U508", X0 + 236.22, Y0 + 30.48 + 2.54, unit=2)
+    e = stub(ob, "5", dx=-10.16); label(e[0], e[1], "PEAK_HOLD", size=1.0)
+    bo, bn = ob.pin("7"), ob.pin("6")
+    yf = bn[1] + 7.62
+    W(bo, (bo[0] + 2.54, bo[1])); J(bo[0] + 2.54, bo[1])
+    W((bo[0] + 2.54, bo[1]), (bo[0] + 2.54, yf), (bn[0] - 2.54, yf), (bn[0] - 2.54, bn[1]), bn)
+    W((bo[0] + 2.54, bo[1]), (bo[0] + 12.7, bo[1])); label(bo[0] + 12.7, bo[1], "PEAK_Q", size=1.0)
+    pw = part("OPA2388", "U508", X0 + 274.32, Y0 + 33.02, unit=3, text="right")
+    B.supply_bar(pw, ["8"], "+3V3_ANA", dy=7.62, caps_side="left")
+    B.bottom_gnd(pw, ["4"])
+    note(X0 + 4, Y0 + 52, "AD8310 on the fast Q arm: the link's whole band (+-94 MHz round the carrier), 95 dB, 24 mV/dB; LOG_Q is "
+         "a burst's envelope (BFIN ~135 kHz).  1 k + 1 k against its 1 k input: a third of the arm (its thermal noise ~0.8 mV, "
+         "-62 dBV, 29 dB over the log amp's floor).  A scope on the LOG Q pad shows WiFi's frames.", cols=48)
+    note(X0 + 112, Y0 + 52, "Peak hold of LOG_Q (Jason: a slowly decaying peak for WiFi's bursts beside a truer level).  A charges "
+         "10 nF through the diode inside its loop (no diode drop), B reads it, 4.7 M lets it fall in 47 ms, so a 20 us frame "
+         "still reads at the ADC a few conversions later.  The link's own events lift it too: read it in a pause.", cols=48)
+
+    # ---- +5V_RF through 10 k / 10 k: the rail the ADL5380, ADL5375 and gain blocks need at 4.75-5.25 V (Prompt 28:
+    # the LTC1968 true-RMS converter this channel was drawn for left rev A: over Jason's $25-35 a board, and the
+    # router could not finish its lines in the arms' corner; the comparator survey measures the slow band) ----
+    xv, yv = X0 + 337.82, Y0 + 30.48
+    up("R 10k", xv, yv, "+5V_RF", text="right")
+    down("R 10k", xv, yv, text="right")
+    W((xv, yv), (xv - 10.16, yv)); label(xv - 10.16, yv, "V5_MON", size=1.0, justify="right bottom")
+    note(X0 + 300, Y0 + 56, "AIN2: +5V_RF / 2.  The ADL53xx and the ADL5611s want 4.75-5.25 V; on a roof's long supply "
+         "lead this says so before the link does.  (The LTC1968 true-RMS converter drawn here first is a rev B option: "
+         "PLAN.md section 19.)", cols=40)
+
+    # ---- the second ADC (0x49: ADDR to VDD): LOG_Q, PEAK_Q, V5_MON, TEMP ----
+    adc = part("ADS1115", "U510", X0 + 472.44, Y0 + 30.48)
+    for n, name in (("10", "I2C_SCL"), ("9", "I2C_SDA")):
+        e = stub(adc, n, dx=12.7); S.hlabel(e[0], e[1], name, shape="bidirectional", rot=0)
+    e = stub(adc, "1", dx=5.08); W(e, (e[0], e[1] + 5.08)); flag("+3V3_DIG", e[0], e[1] + 5.08, rot=180)
+    S.nc(*adc.pin("2"))
+    for k, (n, name) in enumerate((("4", "LOG_Q"), ("5", "PEAK_Q"), ("6", "V5_MON"), ("7", "TEMP"))):
+        px, py = adc.pin(n)
+        ra, rb = series("R 10k", px - 10.16 - 10.16 * (3 - k), py); W(rb, (px, py))
+        x0 = px - 55.88 + 10.16 * k
+        W((x0, py), ra)
+        label(x0, py, name, size=1.0)
+        J(x0 + 2.54, py); down("C 100nF", x0 + 2.54, py, text="right")
+    B.supply_bar(adc, ["8"], "+3V3_DIG", dy=10.16)
+    B.bottom_gnd(adc, ["3"])
+    # the board's temperature: 10 k from 3.3 V over a 10 k NTC (B 3380): 1.65 V at 25 C, 0.76 V at 60 C
+    xt, yt = X0 + 500.38, Y0 + 50.8
+    up("R 10k", xt, yt, "+3V3_DIG", text="right")
+    t, b = vpart("NTC10K", "TH501", xt, yt + G + 3.81, text="right", ref_at=(xt + 4.2, yt + G + 3.5), val_at=(xt + 4.2, yt + G + 4.1))
+    W((xt, yt), t); gnd(*b)
+    W((xt, yt), (xt - 10.16, yt)); label(xt - 10.16, yt, "TEMP", size=1.0, justify="right bottom")
+    note(X0 + 412, Y0 + 56, "ADS1115 (I2C 0x49, ADDR to VDD): AIN0 LOG_Q (its conversion averages the log: 1.2 ms at 860 SPS, "
+         "125 ms at 8 SPS), AIN1 PEAK_Q, AIN2 V5_MON (+5V_RF / 2), AIN3 TEMP (a 10 k NTC under 10 k from 3.3 V).  The driver's detectors() "
+         "reads them; nothing new on the FPGA's header.", cols=40)

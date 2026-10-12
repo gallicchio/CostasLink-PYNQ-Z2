@@ -212,6 +212,28 @@ def ad5696r():
                       keywords="ADI AD5696R 16-bit quad voltage-output DAC, I2C, 2.5 V internal reference, TSSOP-16")
 
 
+# AD8310 (Pin Configuration, MSOP-8 RM-8; docs/datasheets/txt/ad8310.txt lines 219-245): 1 INLO, 2 COMM,
+# 3 OFLT, 4 VOUT, 5 VPOS, 6 BFIN, 7 ENBL, 8 INHI.  Inputs biased at VPOS / 2 inside: couple them.
+def ad8310():
+    left = [("8", "INHI", I), None, None, None, ("1", "INLO", I)]
+    right = [None, None, ("4", "VOUT", O), None, None]
+    top = [("5", "VPOS", PI), ("7", "ENBL", I)]
+    bottom = [("2", "COMM", PI), ("3", "OFLT", PA), ("6", "BFIN", PA)]
+    return box_symbol("AD8310", "U", left, right, top, bottom, 20.32, top_pitch=5.08, bottom_pitch=5.08,
+                      keywords="ADI AD8310 DC-440 MHz 95 dB log amp, 24 mV/dB, 15 ns, MSOP-8")
+
+
+# LTC1968 (Pin Configuration, MS8; docs/datasheets/txt/1968f.txt lines 84-90): 1 GND, 2 IN1, 3 IN2, 4 NC,
+# 5 VOUT, 6 OUT RTN, 7 V+, 8 ENABLE (low enables).
+def ltc1968():
+    left = [("2", "IN1", I), None, None, ("3", "IN2", I)]
+    right = [("5", "VOUT", O), None, None, ("6", "OUTRTN", PI)]
+    top = [("7", "V+", PI)]
+    bottom = [("1", "GND", PI), ("8", "~{EN}", I), ("4", "NC", NC)]
+    return box_symbol("LTC1968", "U", left, right, top, bottom, 20.32, bottom_pitch=5.08,
+                      keywords="ADI LTC1968 precision wide-bandwidth (15 MHz) RMS-to-DC converter, MS8")
+
+
 # SN74LVC1G3157 (Table 4-1, SC-70-6 DCK): 1 B2, 2 GND, 3 B1, 4 A, 5 VCC, 6 S.  S high: A = B1.
 def lvc1g3157():
     name = "SN74LVC1G3157"
@@ -340,12 +362,12 @@ def coupler():
 CUSTOM = {"MAX2871": max2871, "Coupler_20dB": coupler, "ADL5380": adl5380, "ADL5375": adl5375, "PE43711": pe43711, "ADL5611": adl5611,
           "SKY65404-31": sky65404, "THS4541": ths4541, "TLV3601": tlv3601, "TLV3603": tlv3603, "AD5696R": ad5696r, "SN74LVC1G3157": lvc1g3157,
           "TS5A3159DCK": ts5a3159, "VCXO_3225": vcxo, "TCXO_3225": tcxo, "Balun_5400": balun_5400, "HMC536MS8G": hmc536,
-          "RPi_Header_40": rpi_header}
+          "RPi_Header_40": rpi_header, "AD8310": ad8310, "LTC1968": ltc1968}
 
 # KiCad's own symbols, by our name (gen/library.py vendors them, flattened)
 STOCK = {
     "R": "Device:R", "C": "Device:C", "C_Polarized": "Device:C_Polarized", "L": "Device:L", "LED": "Device:LED", "D_TVS": "Device:D_TVS",
-    "Polyfuse": "Device:Polyfuse", "Ferrite_Bead": "Device:FerriteBead",
+    "Polyfuse": "Device:Polyfuse", "Ferrite_Bead": "Device:FerriteBead", "D": "Device:D", "Thermistor_NTC": "Device:Thermistor_NTC",
     "USB_C_Receptacle_USB2.0_16P": "Connector:USB_C_Receptacle_USB2.0_16P",
     "Conn_Coaxial": "Connector:Conn_Coaxial", "Conn_02x20_Odd_Even": "Connector_Generic:Conn_02x20_Odd_Even",
     "Conn_01x02": "Connector_Generic:Conn_01x02", "Conn_01x03": "Connector_Generic:Conn_01x03",

@@ -161,8 +161,8 @@ LIMITS = {
     "TX MON": ("%+.0f dBm, 50R" % (B["tx_out_dBm"] - 20), "TX MON: -20 dB of the transmitter's output: %s; 50 ohm." % lvl(B["tx_out_dBm"] - 20)),
     "LO RX MON": ("0 dBm, 50R", "LO RX MON: the RX synthesizer's second output (RFOUTB), about 0 dBm at 5.8 GHz when enabled in software; 50 ohm."),
     "LO TX MON": ("0 dBm, 50R", "LO TX MON: the TX synthesizer's second output (RFOUTB), about 0 dBm at 5.8 GHz when enabled in software; 50 ohm."),
-    "I MON": ("1.65 V +-%.0f mV, 1k" % (vpk * 1e3), "I MON: the fast I arm's + output through 1k: 1.65 V +-%s peak at the regulated level, %.0f MHz.  A high-impedance probe; a 50 ohm input reads it /21." % (mv(vpk), B["B_MHz"])),
-    "Q MON": ("1.65 V +-%.0f mV, 1k" % (vpk * 1e3), "Q MON: the fast Q arm's + output through 1k: 1.65 V, 0 at lock, +-%s off lock or during a QPSK symbol." % mv(vpk)),
+    "I MON": ("1.65V +-%.0fmV 1k" % (vpk * 1e3), "I MON: the fast I arm's + output through 1k: 1.65 V +-%s peak at the regulated level, %.0f MHz.  A high-impedance probe; a 50 ohm input reads it /21." % (mv(vpk), B["B_MHz"])),
+    "Q MON": ("1.65V +-%.0fmV 1k" % (vpk * 1e3), "Q MON: the fast Q arm's + output through 1k: 1.65 V, 0 at lock, +-%s off lock or during a QPSK symbol." % mv(vpk)),
     "I SLOW MON": ("0-3.3 V, 1k", "I SLOW MON: the slow I stage's + output, ahead of its %.1f MHz pole, through 1k: 1.65 V +-1.65 V (x%.0f, saturates), "
                    "the stage's own %.0f MHz.  A 50 ohm scope here does not move the comparator." % (B["slow_fpole_MHz"], B["G_slow"], B["slow_bw_MHz"])),
     "Q SLOW MON": ("0-3.3 V, 1k", "Q SLOW MON: the slow Q stage's + output, ahead of its pole, through 1k: 1.65 V, 0 at lock, saturated during a QPSK symbol."),

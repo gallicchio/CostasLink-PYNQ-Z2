@@ -189,6 +189,9 @@ the switch block cabled in and time division (stage 4.4).
    verifier's carrier (the verifier's loop holds through the exchange and is still locked after).
 5. Interference: a 5 GHz WiFi scan at the bench (the laptop); the loop's 3 kHz bandwidth should not
    notice a -40 dBm WiFi channel, the fast comparators will (false flags vetoed by the slow path).
+   The detectors (Prompt 28): `cl.detectors()` with the far end off reads the floor (log_dbm), the bursts
+   (peak_dbm), +5V_RF (v5_rf) and the board's temperature; a scope on the LOG Q pad
+   shows the frames.  Calibrate cal_db against a known carrier (a generator at RX ANT, the loop held).
    Then the board's own survey with both far transmitters off (PLAN.md section 19, Prompt 26):
    `cl.survey(range(5650, 5926, 5))`, the slow window's noise fit at 5 MHz steps, beside the laptop's
    scan and an SDR on RX MON.  Calibrate its `cal_db` against a known carrier (`received_dBm()` locked,

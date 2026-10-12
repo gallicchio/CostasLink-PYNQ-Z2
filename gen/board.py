@@ -311,6 +311,9 @@ def label_check():
     sys.stdout.write(r.stdout)
 
 
+RESCUED = os.path.join(ROOT, "build", "ground_rescue.done")      # refill_by_project's passes: the rescue's is done
+
+
 def refill_by_project():
     """Refill the pours with the project's rules loaded: the board is built on an empty board that
     has none, so the RF and LO lines' CPWG gap (gen/project.py's zone-clearance rule on their net
@@ -320,10 +323,14 @@ def refill_by_project():
     Returns the board as saved."""
     import subprocess, kienv
     import project
-    for _ in range(4):
+    if os.path.exists(RESCUED):
+        os.remove(RESCUED)
+    for _ in range(6):
         r = subprocess.run(kienv.python() + [os.path.abspath(__file__), "--inside", "--refill"], cwd=ROOT)
         if r.returncode != 3:
             break
+    if os.path.exists(RESCUED):
+        os.remove(RESCUED)
     if r.returncode:
         raise SystemExit("board: the refill failed")
     project.write(HW)                         # whatever KiCad wrote over it
@@ -339,6 +346,12 @@ def refill_only():
         print("refill: tidy joined %d, removed %d; filled again" % (j, r))
         pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     board.Save(PCB)
+    if not os.path.exists(RESCUED):          # the first pass: a ground pad the fill left on an island gets a via
+        open(RESCUED, "w").close()           # of its own; the dangling check follows in a fresh process (one
+        if ground_rescue(board):             # connectivity pass a process: KiCad's SWIG loses types on a second)
+            pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+            board.Save(PCB)
+        return 3
     n = drop_dangling_by_drc(board)          # then whatever KiCad's own DRC still calls dangling: one pass a
     if n:                                    # process (KiCad's SWIG loses the connectivity's type on a second)
         pcbnew.ZONE_FILLER(board).Fill(board.Zones())
@@ -346,6 +359,77 @@ def refill_only():
         return 3                             # look again, in a fresh process
     print("refill: the pours filled by %s's rules" % os.path.basename(BI.NAME + ".kicad_pro"))
     return 0
+
+
+def ground_rescue(board, island=60, reach=3.0, clear=0.2):
+    """A ground pad on an island of the top pour (Prompt 28: adding the detectors moved the router's
+    power tracks beside U305, R125 and C317, and their pads' pour lost every via): a via of its own beside
+    it, joined by a short top track, where the via and the track keep `clear` from every other net's
+    copper.  An island is a pad joined to fewer than `island` items (the board's ground is ~1700).
+    Returns the number of vias added."""
+    board.BuildConnectivity()
+    conn = board.GetConnectivity()
+    gnd = board.GetNetcodeFromNetname("GND")
+    ref_via = next((t for t in board.GetTracks() if t.Type() == pcbnew.PCB_VIA_T and t.GetNetCode() == gnd), None)
+    if ref_via is None:
+        return 0
+    vw, vd = ref_via.GetWidth(pcbnew.F_Cu), ref_via.GetDrillValue()
+    tw = pcbnew.FromMM(0.25)
+    cl = pcbnew.FromMM(clear)
+    copper_layers = [pcbnew.F_Cu, pcbnew.In1_Cu, pcbnew.In2_Cu, pcbnew.B_Cu]
+    others = []                                # (layer, shape) of every other net's pad, track and via
+    for fp in board.GetFootprints():
+        for p in fp.Pads():
+            if p.GetNetCode() != gnd:
+                for L in copper_layers:
+                    if p.IsOnLayer(L):
+                        others.append((L, p.GetEffectiveShape(L)))
+    for t in board.GetTracks():
+        if t.GetNetCode() == gnd:
+            continue
+        if t.Type() == pcbnew.PCB_VIA_T:
+            for L in copper_layers:
+                others.append((L, t.GetEffectiveShape(L)))
+        else:
+            others.append((t.GetLayer(), t.GetEffectiveShape(t.GetLayer())))
+    edge = board.GetBoardEdgesBoundingBox()
+    added = 0
+    for fp in board.GetFootprints():
+        for p in fp.Pads():
+            if p.GetNetCode() != gnd or not p.IsOnLayer(pcbnew.F_Cu) or p.GetAttribute() != pcbnew.PAD_ATTRIB_SMD:
+                continue
+            if len(conn.GetConnectedItems(p)) >= island:
+                continue
+            c = p.GetPosition()
+            done = False
+            for r in [0.8 + 0.15 * k for k in range(int((reach - 0.8) / 0.15) + 1)]:
+                for a in range(0, 360, 15):
+                    v = pcbnew.VECTOR2I(c.x + pcbnew.FromMM(r * math.cos(math.radians(a))), c.y + pcbnew.FromMM(r * math.sin(math.radians(a))))
+                    if not edge.Contains(v) or min(v.x - edge.GetX(), edge.GetRight() - v.x, v.y - edge.GetY(), edge.GetBottom() - v.y) < pcbnew.FromMM(1.0):
+                        continue
+                    via = pcbnew.SHAPE_CIRCLE(v, vw // 2)
+                    seg = pcbnew.SHAPE_SEGMENT(c, v, tw)
+                    if any(sh.Collide(via, cl) for L, sh in others):
+                        continue
+                    if any(L == pcbnew.F_Cu and sh.Collide(seg, cl) for L, sh in others):
+                        continue
+                    nv = pcbnew.PCB_VIA(board)
+                    nv.SetPosition(v); nv.SetWidth(vw); nv.SetDrill(vd); nv.SetNetCode(gnd)
+                    nv.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
+                    board.Add(nv)
+                    nt = pcbnew.PCB_TRACK(board)
+                    nt.SetStart(c); nt.SetEnd(v); nt.SetWidth(tw); nt.SetLayer(pcbnew.F_Cu); nt.SetNetCode(gnd)
+                    board.Add(nt)
+                    print("refill: ground rescue: a via for %s.%s at %.1f mm (%.2f, %.2f)"
+                          % (fp.GetReference(), p.GetNumber(), r, pcbnew.ToMM(v.x) - BI.ORIGIN[0], pcbnew.ToMM(v.y) - BI.ORIGIN[1]))
+                    added += 1
+                    done = True
+                    break
+                if done:
+                    break
+            if not done:
+                print("refill: ground rescue: no room for a via beside %s.%s" % (fp.GetReference(), p.GetNumber()))
+    return added
 
 
 def drop_dangling_by_drc(board):

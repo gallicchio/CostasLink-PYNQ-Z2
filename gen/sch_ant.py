@@ -39,6 +39,7 @@ def build(S):
     jx, jy = j.pin("1")
     s2 = j.pin("2"); W(s2, (s2[0], s2[1] + G)); gnd(s2[0], s2[1] + G)
     B.dcblock(jx, y, rfc[0])
+    B.esd_shunt(jx + 2.54, y)                      # Prompt 28: DNP
     sig(jx - 12, y - 28, "ANT, the antenna: " + LV.txt("ANT"), cols=26)
     # RF1 (SW TX) up and right, RF2 (SW RX) down and right, each through a DC block to its jack
     for p, dy, ref, name, txt in ((rf1, -20.32, "J402", "SW TX", LV.txt("SW_TX")), (rf2, 20.32, "J403", "SW RX", LV.txt("SW_RX"))):
