@@ -107,7 +107,8 @@ class Canvas:
 
     def save(self, name):
         os.makedirs(OUT, exist_ok=True)
-        for ext, kw in (("svg", {}), ("png", dict(dpi=55))):
+        plt.rcParams["svg.hashsalt"] = name                 # the same file from the same numbers: no new clip ids, no date
+        for ext, kw in (("svg", dict(metadata={"Date": None})), ("png", dict(dpi=55, metadata={"Software": None}))):
             self.fig.savefig(os.path.join(OUT, name + "." + ext), **kw)
         plt.close(self.fig)
         print("wrote docs/images/%s.svg and .png" % name)
@@ -277,7 +278,7 @@ def block_rx():
     fpga = nb("FPGA", "PYNQ-Z2 (Zynq) or\nIcepi Zero (ECP5)\nfast flag on 18, 10, 8\nslow confirm on 33, 40, 37", w=96)
     # arrows and their boxes
     arrows = [
-        (ant, lna, C_RF, "5.8 GHz carrier, %s\nband 5.15-5.875 GHz (parts 4.9-6 GHz)\nbandwidth: a CW line, flips add ±%.0f MHz skirts\nDC: none (1.5 pF block)" % (fmt_level(pr), B["B_MHz"]), lambda a: t_noisy_carrier(a, 25), "what the antenna delivers"),
+        (ant, lna, C_RF, "5.8 GHz carrier, %s\nband %g-%g GHz in spec (the LNA and the balun)\nbandwidth: a CW line, flips add ±%.0f MHz skirts\nDC: none (1.5 pF block)" % (fmt_level(pr), P["band_GHz"][0], P["band_GHz"][1], B["B_MHz"]), lambda a: t_noisy_carrier(a, 25), "what the antenna delivers"),
         (lna, dsa, C_RF, "%s\nnoise floor in %.0f MHz: %.1f dBm at the jack\nSNR %.0f dB" % (fmt_level(lna_o), B["B_MHz"], B["noise_floor_dBm"], pr - B["noise_floor_dBm"]), lambda a: t_noisy_carrier(a, 35), "amplified, noise set here"),
         (dsa, gb, C_RF, "%s\nthe DSA puts the demodulator at ~-20 dBm\n(strong signals: more attenuation)" % fmt_level(dsa_o), lambda a: t_noisy_carrier(a, 35), "levelled"),
         (gb, dem, C_RF, "%s\n(IP1dB +%.1f dBm: %.0f dB headroom; the DSA holds this\nat -20 dBm from 3 m to about 300 m)" % (fmt_level(dem_i), P["dem_ip1db_dBm"], P["dem_ip1db_dBm"] - dem_i), lambda a: t_carrier_flip(a), "a BPSK flip on the carrier"),
@@ -316,7 +317,7 @@ def block_rx():
     ly = 180
     mul = c.block(cmp_["x"] - 20, ly, 110, 56, "sign(I) × Q", "74LVC1G3157 analogue switch:\nCMP_I selects +Q or -Q\n(a BPSK flip inverts both: product unchanged)")
     hold = c.block(mul["x"] - 150, ly, 96, 56, "HOLD", "TS5A3159 switch\nLOOP_HOLD opens the\nintegrator's input")
-    pi = c.block(hold["x"] - 160, ly, 116, 56, "PI loop filter", "OPA2388: R1 %.0f k, R2 %.0f Ω, C %.0f nF\nf_n %.0f Hz, ζ 0.7\n+ VC_OFF summing (DAC)" % (B["loop_R1"] / 1e3, B["loop_R2"], B["loop_C"] * 1e9, 3000))
+    pi = c.block(hold["x"] - 160, ly, 116, 56, "PI loop filter", "OPA2388: R1 %.0f k, R2 %.0f Ω, C %.0f nF\nf_n %.0f Hz, ζ %.2f\n+ VC_OFF summing (DAC)" % (B["loop_R1_fit"] / 1e3, B["loop_R2_fit"], B["loop_C_fit"] * 1e9, B["loop_fn_fit_Hz"], B["loop_zeta_fit"]))
     c.wire([(cmp_["b"][0], cmp_["b"][1]), (cmp_["b"][0], mul["t"][1])], color=C_LOGIC)
     c.wire([(fda["b"][0] + 30, fda["b"][1]), (fda["b"][0] + 30, mul["t"][1] + 50), (mul["x"] + 100, mul["t"][1] + 50), (mul["x"] + 100, mul["t"][1])], color=C_BB)
     c.label(fda["b"][0] + 46, mul["t"][1] + 54, "Q (the phase error, ±%.0f mV peak)" % (B["vcmp_rms"] * 1.414e3), fs=7, ha="left")
@@ -328,7 +329,8 @@ def block_rx():
     c.note((hold["l"][0] + pi["r"][0]) / 2, ly + 62, "same signal, gated: HOLD high\nfreezes VC (own TX, or a lost carrier)", ha="center", fs=7)
     c.thumb((hold["l"][0] + pi["r"][0]) / 2 - 14, ly - 24, 28, 18, t_error, caption="error settling after a step")
     c.wire([pi["l"], (vcxo["t"][0], pi["l"][1]), vcxo["t"]], color=C_CTL)
-    c.note(vcxo["t"][0] + 8, ly + 10, "VC: 0.3-3.0 V, 1.65 V centred, slow (3 kHz loop)\nVC MON U.FL and the ADC watch it\nVC_OFF (DAC) centres it; LOOP_SEL = FPGA makes a plain PLL on Q", fs=7)
+    c.note(vcxo["t"][0] + 8, ly + 10, "VC: %.1f-%.1f V, 1.65 V centred, slow (%.1f kHz loop)\nVC MON and the ADC watch it\nVC_OFF (DAC) centres it; LOOP_SEL = FPGA makes a plain PLL on Q"
+           % (P["vcxo_vc_V"][0], P["vcxo_vc_V"][1], B["loop_fn_fit_Hz"] / 1e3), fs=7)
     c.thumb(vcxo["t"][0] + 12, ly - 24, 28, 18, t_vc, caption="VC pulling in")
     # how-to-read box and the numbers table
     c.note(20, 70, "Follow the red arrows left to right: 5.8 GHz comes in, gets amplified and levelled, and the demodulator multiplies it by the LO twice (once with the LO shifted 90°), giving I and Q at DC.\n"
@@ -372,7 +374,8 @@ def block_tx():
     tcxo = c.block(200, 220, 100, 56, "TCXO", "25 MHz ±%.1f ppm\n(or REF IN / REF OUT\nby jumper JP201)" % P["tcxo_ppm"])
     synth = c.block(mod["x"] + 15, 220, 100, 56, "Synthesizer", "MAX2871 x232\nloop %.0f kHz\nMUX: lock detect" % (B["pll_fc"] / 1e3))
     c.arrow(tcxo["r"], synth["l"], color=C_LO)
-    c.note((tcxo["r"][0] + synth["l"][0]) / 2, 282, "25 MHz CMOS square\n±2.5 ppm = ±14.5 kHz at 5.8 GHz:\ntwo boards differ by < 29 kHz, inside the\nfar loop's ±580 kHz pull", ha="center", fs=7)
+    c.note((tcxo["r"][0] + synth["l"][0]) / 2, 282, "25 MHz CMOS square\n±%.1f ppm = ±%.1f kHz at 5.8 GHz:\ntwo boards differ by < %.0f kHz, inside the\nfar loop's ±%.0f kHz pull"
+           % (P["tcxo_ppm"], B["tcxo_offset_kHz"] / 2, B["tcxo_offset_kHz"], B["loop_pull_kHz"]), ha="center", fs=7)
     c.thumb((tcxo["r"][0] + synth["l"][0]) / 2 - 14, 196, 28, 18, lambda a: t_square(a, 4), caption="reference")
     c.arrow(synth["t"], (synth["t"][0], mod["b"][1]), color=C_LO)
     c.note(synth["t"][0] + 6, 300, "LO 5.8 GHz, 0 dBm differential\nthe modulator's carrier", fs=7)
@@ -384,8 +387,8 @@ def block_tx():
            fs=7.5, title="The constellation")
     c.note(20, 60, "Follow the arrows: two FPGA pins per axis drive a 3-resistor ladder whose node is one of three DC voltages; the modulator's input is DC-coupled and biased at 0.5 V, so the\n"
            "DC level IS the baseband signal (there is no 'symbol clock': the carrier moves the moment a pin moves).  The modulator multiplies I by the LO and Q by the LO shifted 90° and adds\n"
-           "them: the carrier's phase is atan2(Q, I) and its amplitude sqrt(I²+Q²).  The gain block brings it to +9.8 dBm; the coupler siphons 1 % to a monitor jack.  The TX synthesizer\n"
-           "runs on the TCXO: the two boards' carriers differ by at most 29 kHz, which the receiving Costas loop removes.  Triggers (TRIG A/B out, TRIG IN) are on the same sheet for time-stamping.",
+           "them: the carrier's phase is atan2(Q, I) and its amplitude sqrt(I²+Q²).  The gain block brings it to +9.8 dBm; the coupler siphons 1 %% to a monitor jack.  The TX synthesizer\n"
+           "runs on the TCXO: the two boards' carriers differ by at most %.0f kHz, which the receiving Costas loop removes.  Triggers (TRIG A/B out, TRIG IN) are on the same sheet for time-stamping." % B["tcxo_offset_kHz"],
            fs=8.5, title="How to read this", fc="#eef7ee", ec="#7a7")
     c.save("block_tx")
 
@@ -393,27 +396,30 @@ def block_tx():
 def block_loop():
     W, H = 900, 620
     c = Canvas(W, H, "The Costas loop as a control system",
-               "A phase-locked loop whose phase detector ignores 180° flips.  Numbers from sim/budget.py section 6; the plots are the textbook second-order loop with these numbers.")
-    N = B["loop_N"]; Ko = B["loop_Ko"]; Kd = B["loop_Kd"]; R1 = B["loop_R1"]; R2 = B["loop_R2"]; Cc = B["loop_C"]
+               "A phase-locked loop whose phase detector ignores 180° flips.  Numbers from sim/budget.py sections 6 and 8c (the parts fitted); the plots are the second-order loop with its PI zero.")
+    N = B["loop_N"]; Ko = B["loop_Ko"]; Kd = B["loop_Kd"]; R1 = B["loop_R1_fit"]; R2 = B["loop_R2_fit"]; Cc = B["loop_C_fit"]   # as fitted (section 8c)
     y = 440
     pd = c.block(60, y - 30, 150, 60, "Phase detector", "ADL5380 + sign(I)·Q\nK_d = %.2f V/rad\n(at the comparator level)" % Kd)
-    lf = c.block(300, y - 30, 160, 60, "Loop filter F(s)", "PI: (1 + s R2 C) / (s R1 C)\nR1 %.1f k, R2 %.0f Ω, C %.0f nF\nOPA2187 integrator + HOLD" % (R1 / 1e3, R2, Cc * 1e9))
-    vco = c.block(550, y - 30, 160, 60, "VCO", "VCXO x %d (MAX2871)\nK_o = 2π·%d·%.0f Hz/V\n= %.2e rad/s/V" % (N, N, P["vcxo_pull_ppm"] * 25, Ko))
+    lf = c.block(300, y - 30, 160, 60, "Loop filter F(s)", "PI: (1 + s R2 C) / (s R1 C)\nR1 %.1f k, R2 %.0f Ω, C %.0f nF\nOPA2388 integrator + HOLD" % (R1 / 1e3, R2, Cc * 1e9))
+    vco = c.block(550, y - 30, 160, 60, "VCO", "VCXO x %d (MAX2871)\nK_o = 2π·%d·%.0f Hz/V\n= %.2e rad/s/V" % (N, N, 2 * P["vcxo_pull_ppm"] * P["vcxo_MHz"] / (P["vcxo_vc_V"][1] - P["vcxo_vc_V"][0]), Ko))
     c.arrow(pd["r"], lf["l"], color=C_CTL); c.arrow(lf["r"], vco["l"], color=C_CTL)
     c.wire([vco["r"], (vco["r"][0] + 40, vco["r"][1]), (vco["r"][0] + 40, y - 90), (pd["b"][0], y - 90), pd["b"]], color=C_LO)
     c.label(pd["b"][0] + 6, y - 86, "LO phase θ_o back to the demodulator (the 'minus' input: error = θ_i - θ_o)", fs=8, ha="left")
     c.arrow((pd["l"][0] - 50, pd["l"][1]), pd["l"], color=C_RF)
     c.label(pd["l"][0] - 52, pd["l"][1] + 6, "carrier phase θ_i", fs=8, ha="left")
     c.note(255, y + 36, "error voltage: K_d·sin(θ_i - θ_o)·sign(cos(θ_i - θ_o))\nzero at 0 AND at 180°: a BPSK flip is invisible", ha="center", fs=7)
-    c.note(505, y + 36, "VC: 0.3-3.0 V, 1.65 V at centre\nslews at most ±580 kHz of LO", ha="center", fs=7)
-    wn = 2 * math.pi * 3000.0; zeta = 0.7
-    c.note(60, 330, "Open loop:  G(s) = K_d · F(s) · K_o / s\nwith F(s) = (1 + s τ2) / (s τ1),  τ1 = R1 C = %.0f µs,  τ2 = R2 C = %.0f µs\n\nClosed loop (second order):  ω_n = sqrt(K_d K_o / τ1) = 2π · %.0f Hz,   ζ = ω_n τ2 / 2 = %.2f\n\nWhat the numbers mean:\n• 3 kHz: the loop corrects phase in ~100 µs, follows oscillator drift and the TCXO offset (29 kHz, inside the ±580 kHz pull),\n  and is 30,000 times slower than a 10 ns symbol, so the symbols do not move it.\n• ζ = 0.7: settles without ringing; 2 %% overshoot.\n• Hold range ±580 kHz (the VCXO's pull); pull-in from anywhere inside it, in ~ (Δf)² / ω_n³ … a few ms at worst.\n• Phase noise of the LO inside 3 kHz is cleaned up by the loop (it follows the far carrier); outside, it is the MAX2871's own (-109 dBc/Hz in-band, 80 kHz PLL).\n• Lock is 0° or 180°: both are stable; the data appears inverted in one of them.  The gateware defines 'idle' = the level it sees after lock, and an event is a change."
-           % (R1 * Cc * 1e6, R2 * Cc * 1e6, wn / 2 / math.pi, zeta), fs=8.5, va="top", title="The transfer function")
+    c.note(505, y + 36, "VC: %.1f-%.1f V, 1.65 V at centre\nslews at most ±%.0f kHz of LO" % (P["vcxo_vc_V"][0], P["vcxo_vc_V"][1], B["loop_pull_kHz"]), ha="center", fs=7)
+    wn = 2 * math.pi * B["loop_fn_fit_Hz"]; zeta = B["loop_zeta_fit"]
+    fn_k = B["loop_fn_fit_Hz"] / 1e3
+    c.note(60, 330, "Open loop:  G(s) = K_d · F(s) · K_o / s\nwith F(s) = (1 + s τ2) / (s τ1),  τ1 = R1 C = %.0f µs,  τ2 = R2 C = %.0f µs  (the parts fitted)\n\nClosed loop (second order):  ω_n = sqrt(K_d K_o / τ1) = 2π · %.0f Hz,   ζ = ω_n τ2 / 2 = %.2f\n\nWhat the numbers mean:\n• %.1f kHz: the loop corrects phase in ~%.0f µs, follows oscillator drift and the TCXO offset (%.0f kHz, inside the ±%.0f kHz pull),\n  and is %s times slower than a 10 ns symbol, so the symbols do not move it.\n• ζ = %.2f: settles in about one cycle; a phase step overshoots %.0f %% (the PI's zero).\n• Hold range ±%.0f kHz (the VCXO's pull); pull-in from anywhere inside it, in ~ (Δf)² / (2ζ ω_n³): %.1f ms from 30 kHz off, %.2f s from 300 kHz.\n• Phase noise of the LO inside %.1f kHz is cleaned up by the loop (it follows the far carrier); outside, it is the MAX2871's own (%.0f dBc/Hz in-band, %.0f kHz PLL).\n• Lock is 0° or 180°: both are stable; the data appears inverted in one of them.  The gateware defines 'idle' = the level it sees after lock, and an event is a change."
+           % (R1 * Cc * 1e6, R2 * Cc * 1e6, wn / 2 / math.pi, zeta, fn_k, 1e6 / (zeta * wn), B["tcxo_offset_kHz"], B["loop_pull_kHz"],
+              "{:,}".format(int(round(1 / B["loop_fn_fit_Hz"] / 10e-9, -3))), zeta, B["loop_overshoot_fit"] * 100, B["loop_pull_kHz"],
+              B["loop_pullin_fit_ms"]["30"], B["loop_pullin_fit_ms"]["300"] / 1e3, fn_k, B["pll_pn_inband_dBc"], B["pll_fc_fit"] / 1e3), fs=8.5, va="top", title="The transfer function")
     # plots: S-curve, step response, closed-loop Bode
     def step(a):
         t = np.linspace(0, 2e-3, 800)
         wd = wn * math.sqrt(1 - zeta ** 2)
-        y = 1 - np.exp(-zeta * wn * t) * (np.cos(wd * t) + zeta / math.sqrt(1 - zeta ** 2) * np.sin(wd * t))
+        y = 1 - np.exp(-zeta * wn * t) * (np.cos(wd * t) - zeta / math.sqrt(1 - zeta ** 2) * np.sin(wd * t))   # H(s), the zero included
         a.plot(t * 1e3, y, color=C_CTL, lw=1.2)
         a.axhline(1, color="#999", lw=0.5, ls=":")
         a.set_xlabel("ms", fontsize=6); a.set_ylabel("phase (of a step)", fontsize=6)
@@ -423,15 +429,15 @@ def block_loop():
         s = 1j * 2 * np.pi * f
         Hc = (2 * zeta * wn * s + wn ** 2) / (s ** 2 + 2 * zeta * wn * s + wn ** 2)
         a.semilogx(f, 20 * np.log10(np.abs(Hc)), color=C_CTL, lw=1.2)
-        a.axvline(3000, color="#999", lw=0.5, ls=":")
+        a.axvline(B["loop_fn_fit_Hz"], color="#999", lw=0.5, ls=":")
         a.axvline(1e8, color=C_RF, lw=0.8, ls="--")
         a.set_xlabel("Hz", fontsize=6); a.set_ylabel("dB", fontsize=6)
         a.set_ylim(-60, 10); a.tick_params(labelsize=6)
-        a.text(3500, -50, "3 kHz loop", fontsize=6); a.text(1.2e8 / 20, -35, "a 10 ns symbol\nlives at 100 MHz", fontsize=6, color=C_RF, ha="right")
+        a.text(B["loop_fn_fit_Hz"] * 1.17, -50, "%.1f kHz loop" % (B["loop_fn_fit_Hz"] / 1e3), fontsize=6); a.text(1.2e8 / 20, -35, "a 10 ns symbol\nlives at 100 MHz", fontsize=6, color=C_RF, ha="right")
     def scurve(a):
         t_scurve(a)
         a.set_xlabel("phase error, rad", fontsize=6); a.set_ylabel("error / K_d", fontsize=6); a.tick_params(labelsize=6)
-    for k, (fn, cap) in enumerate(((scurve, "the detector's S-curve: stable at 0 and ±π"), (step, "closed-loop step response (f_n 3 kHz, ζ 0.7)"), (bode, "closed-loop |H(f)|: what the loop follows"))):
+    for k, (fn, cap) in enumerate(((scurve, "the detector's S-curve: stable at 0 and ±π"), (step, "closed-loop step response (f_n %.1f kHz, ζ %.2f)" % (B["loop_fn_fit_Hz"] / 1e3, B["loop_zeta_fit"])), (bode, "closed-loop |H(f)|: what the loop follows"))):
         a = c.fig.add_axes([(480 + k * 135) / W, 235 / H, 115 / W, 80 / H])
         a.set_facecolor("#fafafa")
         fn(a)
@@ -439,8 +445,8 @@ def block_loop():
     c.note(60, 60, "Why a Costas loop and not a plain PLL: a PLL on a BPSK signal sees the carrier flip 180° at every bit and loses lock.  The Costas detector multiplies the Q arm by the SIGN of the I arm:\n"
            "flipping the carrier flips both, so the product does not change.  Here the multiplication is an analogue switch (74LVC1G3157) selecting +Q or -Q under the comparator's sign(I): a 'hard-limited'\n"
            "Costas loop, the cheapest and the one whose S-curve is drawn above.  The loop filter is a PI (proportional + integral): the integral term drives the steady-state phase error to zero even with\n"
-           "a frequency offset (the TCXO's 29 kHz).  The HOLD switch opens the integrator's input when the FPGA knows the carrier is absent (our own TX in T/R mode): VC stays where it was and the LO\n"
-           "coasts on the VCXO's stability (1e-9 over a microsecond = 6 Hz: nothing).  LOOP_SEL = FPGA turns the detector into a plain Q-only PLL, for comparison in the lab.",
+           "a frequency offset (the TCXO's %.0f kHz).  The HOLD switch opens the integrator's input when the FPGA knows the carrier is absent (our own TX in T/R mode): VC stays where it was and the LO\n"
+           "coasts on the VCXO's stability (1e-9 over a microsecond = 6 Hz: nothing).  LOOP_SEL = FPGA turns the detector into a plain Q-only PLL, for comparison in the lab." % B["tcxo_offset_kHz"],
            fs=8.5, title="For the students", fc="#eef7ee", ec="#7a7")
     c.save("block_loop")
 
@@ -533,9 +539,9 @@ def block_system():
         c.arrow((b["l"][0], b["l"][1] - 14), (a["r"][0], a["r"][1] - 14), color=col)
     c.arrow((v_ant["r"][0], y + 8), (p_ant["l"][0], y + 8), color=C_RF)
     c.arrow((p_ant["l"][0], y - 8), (v_ant["r"][0], y - 8), color=C_RF)
-    c.note(550, y + 44, "over the air: 5.8 GHz (5.15-5.875 GHz usable), each direction its own frequency (two antennas) or the same one in turns (one antenna + switch)\n"
+    c.note(550, y + 44, "over the air: 5.8 GHz (%g-%g GHz in spec), each direction its own frequency (two antennas) or the same one in turns (one antenna + switch)\n"
            "path loss: %.0f dB at 10 m, %.0f dB at 300 m, %.0f dB at 20 km (free space)\nflight time 3.34 ns per metre: 33 ns across the lab, 1 µs across campus, 67 µs to a mountain 20 km away\n"
-           "with 24 dBi panels both ends and no amplifier: %.0f dBm at 20 km (SNR %.0f dB in %.0f MHz; the slow path confirms from 20 dB further)" % (B["link_rows"][1][2], B["link_rows"][3][2], B["link_rows"][6][2], B["link_rows"][6][3], B["link_rows"][6][4], B["B_MHz"]), ha="center", fs=7.5)
+           "with 24 dBi panels both ends and no amplifier: %.0f dBm at 20 km (SNR %.0f dB in %.0f MHz; the slow path confirms from 20 dB further)" % (P["band_GHz"][0], P["band_GHz"][1], B["link_rows"][1][2], B["link_rows"][3][2], B["link_rows"][6][2], B["link_rows"][6][3], B["link_rows"][6][4], B["B_MHz"]), ha="center", fs=7.5)
     c.thumb(535, y - 70, 30, 18, lambda a: t_spectrum(a, "line"), caption="each carrier: a line")
     c.note(265, y + 44, "FPGA ↔ board: 3.3 V CMOS on the 40-pin header\nTX: 4 ladder bits; RX: 3 comparator lines\n+ SPI, I2C, HOLD, SEL, TRIG, T/R", ha="center", fs=7.5)
     c.note(835, y + 44, "the same signals mirrored\nCMP_I on pin 18 and TRIG_IN on 26 are\nclock-capable on both FPGA boards", ha="center", fs=7.5)

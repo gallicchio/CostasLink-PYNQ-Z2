@@ -16,7 +16,7 @@ reads and the table it decides with.  The model, from the FPGA's TX register to 
   receiver     the ADL5380's 390 MHz baseband and the THS4541 at gain 4, noise gain 9: 850 MHz / 9
                = 94 MHz, two first-order poles.  The noise enters here (the LNA's), white, filtered
                by these two poles only
-  comparators  TLV3601: 2.5 ns, 3 mV of hysteresis.  The fast path's five: CMP_I = sign(I), the
+  comparators  TLV3601: 2.5 ns, 3 mV of hysteresis (typical; budget.json parts.cmp_hyst_typ_mV).  The fast path's five: CMP_I = sign(I), the
                windows CMP_QP / CMP_QN = Q above +t a / below -t a, CMP_IP / CMP_IN the same for I
   slow path    the fast arm's differential x20 in a second THS4541 (850 / 21 = 40 MHz), its legs
                clipped at 0.2 and 3.1 V (its output swing on 3.3 V), then 1 k / 33 pF on each leg
@@ -55,7 +55,7 @@ TAU_RX = [1 / (2 * math.pi * P["dem_bw_MHz"] * 1e6),   # the ADL5380's baseband
           1 / (2 * math.pi * B["fda_bw_MHz"] * 1e6)]   # the THS4541 at noise gain 9
 T_FIXED = (1.5 + 0.5 + 1.1) * 1e-9               # FPGA output buffer; TX gain block and lines; RX front end
 CMP_TPD = P["cmp_tpd_ns"] * 1e-9
-CMP_HYS = 3e-3                                   # TLV3601: 3 mV (1.5-5) at its input
+CMP_HYS = P["cmp_hyst_typ_mV"] / 1e3            # TLV3601: 3 mV typ (1.5-5) at its input (sim/budget.py)
 G_SLOW = B["G_slow"]
 TAU_SLOW_FDA = 1 / (2 * math.pi * B["slow_bw_MHz"] * 1e6)
 TAU_SLOW_RC = B["slow_Rrc"] * B["slow_Crc"]

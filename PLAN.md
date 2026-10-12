@@ -1,20 +1,21 @@
 # CostasLink-PYNQ-Z2: the plan
 
 A 5.8 GHz bidirectional link for quantum position verification that carries a bit (or two) from
-one FPGA to another in the speed-of-light time plus about 25 ns of electronics, testing three
+one FPGA to another in the speed-of-light time plus about 23.5 ns of electronics, testing three
 modulations with one receiver: BPSK with a hardware Costas loop, FSK, and QPSK. It plugs onto a
 PYNQ-Z2's Raspberry Pi header like `GPSDO-PYNQ-Z2`. Two of them talk to each other. Every number
 below is computed by `sim/budget.py` from the datasheets; change a part there and the numbers follow.
 
-Status 2026-10-09 (Response 8): architecture and parts decided, stock checked, datasheets fetched; the
+Status 2026-10-12 (Prompt 30): architecture and parts decided, stock checked, datasheets fetched; the
 schematic generated on seven sheets (ERC clean, paths walked, every footprint pad with a net), with every
 wire's frequency, level, bandwidth and DC offset in a blue box beside it; constraints for the PYNQ-Z2
 **and the Icepi Zero**; the annotated block diagrams in `docs/images/block_*.svg`; the range model in
 `sim/link_rates.py` for the **two decision paths** (section 15) with the two USB-C amplifier modules
-Jason has (section 2c of the budget); the pin audit of every generated symbol done (section 10, item
-12); the bring-up plan in `BRINGUP.md`; **the board placed** (`gen/placement.py`, `gen/board.py`:
-section 7) and routing under way (section 16); the cost of the first order (section 17). Not yet: a
-DRC-clean routed board, the release, the gateware. Nothing ordered. See `CLAUDE_CODE_CHAT.md`.
+Jason has (section 2c of the budget); the bring-up plan in `BRINGUP.md`; **the board placed and routed**,
+DRC 0 violations, 0 unconnected, 0 parity (sections 7 and 16); the release in `mfg/release/`; the gateware
+core and its Python driver (`gateware/`); the cost of the first order (section 17). Nothing ordered. Every
+value is set once (`sim/budget.py`, `gen/parts.py`, `gen/pins.py`) and `tools/doc_check.py` checks the
+numbers quoted here against the build. See `CLAUDE_CODE_CHAT.md`.
 
 ## 1. The idea in one paragraph
 
@@ -26,7 +27,7 @@ disagreeing by at most 29 kHz, with the FPGA stepping the synthesizer's fraction
 larger. When the loop is locked, the demodulator's **I output is the data and its Q output is the
 phase error**. Both go through a differential amplifier to fast comparators and straight into the
 FPGA: the data path has no loop, no filter narrower than 100 MHz and no software in it, so a phase
-flip at the transmitter is a comparator edge at the receiver about 14 ns later (plus the air). The
+flip at the transmitter is a comparator edge at the receiver about 15 ns later (plus the air). The
 transmitter is a quadrature modulator (ADL5375) whose I and Q baseband inputs are driven by 2-bit
 resistor DACs from four FPGA pins, so the FPGA sets the constellation point in a couple of
 nanoseconds. The same analog receiver serves all three modulations; they differ only in what the
@@ -62,7 +63,7 @@ stream with a recovered clock, runs on the same hardware (the FPGA simply drives
 100 Mbaud): section 13 compares the two, and the board lets you measure the difference. Since
 Response 6 the receiver decides twice: a **fast path** (the arms at gain 4, 100 MHz) flags the bit
 in nanoseconds and a **slow path** (another ×20 and a 4.8 MHz pole, its own comparators) confirms
-or vetoes the flag 37 ns later from 14 dB further away (section 15).
+or vetoes the flag 37 ns later from 11 dB further away (section 15).
 
 ## 2. Block diagram
 
@@ -108,18 +109,18 @@ and the receiver now has two ADL5611 gain blocks.
 | TX output at the SMA | **+9.8 dBm** | ADL5375 at 5.8 GHz with 0.7 V p-p differential drive (−3.1 dB from full scale) = −4.5 dBm, ADL5611 +14.3 dB at 5.8 GHz |
 | carrier feedthrough | −15 dBc | ADL5375 at 5.8 GHz is poor here (−19.5 dBm); irrelevant for a carrier that is on all the time, nulled by the Vr DAC channels for OOK tests |
 | antennas | 2 dBi whips (a quarter-wave stick on each SMA) on the bench; four **24 dBi 40 × 30 cm panels** with 10 m cables (N at the panel, SMA at the board); **30 dBi 60 cm dual-polarised dishes** as the big option | Jason, Prompt 2; a 10 m cable is 5 dB of LMR-200 at 5.8 GHz (12 dB of RG-58), so the amplifier belongs at the panel |
-| across the room, 10 m, 2 dBi whips | RX −54 dBm, SNR 39 dB in 100 MHz | Friis; NF 1.5 dB; 30 m: SNR 29 dB |
+| across the room, 10 m, 2 dBi whips | RX −54 dBm, SNR 38 dB in 100 MHz | Friis; NF 2.0 dB; 30 m: SNR 29 dB |
 | across campus, 300 m, panels, 10 m cables, no amplifier | −49 dBm, SNR 43 dB | 3 km: SNR 23 dB (33 dB with the amplifiers at the panel) |
-| 20 km, panels, amplifiers at the panel, no PA | −76 dBm, SNR 17 dB | the board alone reaches a mountain; dishes: 29 dB; section 13 has the error rates against PA price |
-| level at the demodulator at 10 m | −29 dBm with the DSA at 0 dB (IP1dB +11.6) | the DSA has 31.75 dB of range for closer or stronger |
-| baseband at the fast comparators | ±249 mV peak at the DSA's regulated level (−20 dBm at the demodulator, held from 3 m to about 300 m) | ADL5380 ×1.95, THS4541 ×4 (R_f 4.00 k / R_g 1 k: 100 MHz, 3.5 ns rise); gain 2 would be 180 MHz and 1.7 ns sooner but 20 dB less deaf to the own transmitter 600 MHz away (section 15), so no |
-| the comparator floor | a TLV3601 needs about 20 mV peak (2 × offset + hysteresis) to decide: **fast path -81 dBm** at the antenna (noise-quiet -84: balanced), **slow path -107 dBm** (noise-limited at -95) | the second ADL5611 (Response 6) is what brings the fast floor to its noise; the slow stage's ×20 takes the slow path well past it |
-| electronics latency, FPGA pin to FPGA register | **22.7 ns** on the PYNQ-Z2 (TX 8.5 + RX 14.2), **13.9 ns on the Icepi Zero**; the slow path's confirmation **+37 ns** | the two passes through the PYNQ's 200 Ω header resistors are 8.8 ns of it; the Icepi has none (section 12). Response 7 found the earlier 24.1 ns counted the arm amplifier and "the arm filter" separately: they are the same part |
+| 20 km, panels, amplifiers at the panel, no PA | −76 dBm, SNR 16 dB | the board alone reaches a mountain; dishes: 28 dB; section 13 has the error rates against PA price |
+| level at the demodulator at 10 m | −15 dBm with the DSA at 0 dB, −20 dBm at its 5.25 dB setting (IP1dB +11.6) | the DSA has 31.75 dB of range for closer or stronger |
+| baseband at the fast comparators | ±249 mV peak at the DSA's regulated level (−20 dBm at the demodulator, held from 3 m to about 300 m) | ADL5380 ×1.95, THS4541 ×4 (R_f 4.00 k computed, 4.02 k fitted / R_g 1 k: 94 MHz, 3.5 ns rise); gain 2 would be 170 MHz and about 0.6 ns sooner (sim/hosts.py) but 9 dB less deaf to the own transmitter 600 MHz away (section 15), so no |
+| the comparator floor | a TLV3601 needs about 20 mV peak (2 × offset + hysteresis) to decide: **fast path -81 dBm** at the antenna (noise-quiet -81: balanced), **slow path -107 dBm** (noise-limited at -92) | the second ADL5611 (Response 6) is what brings the fast floor to its noise; the slow stage's ×20 takes the slow path well past it |
+| electronics latency, FPGA pin to FPGA register | **23.5 ns** on the PYNQ-Z2 (TX 8.5 + RX 15.0), **14.7 ns on the Icepi Zero**; the slow path's confirmation **+37 ns** | the two passes through the PYNQ's 200 Ω header resistors are 8.8 ns of it; the Icepi has none (section 12). Response 7 found the earlier 24.1 ns counted the arm amplifier and "the arm filter" separately: they are the same part |
 | the antenna switch (section 14) | HMC536: 15 ns rise, 30 ns on/off, 27 dB isolation and +27 dBm P0.1dB (both the 5-6 GHz minimum); SW TX takes +25 dBm without a limiter | own TX leaks −17 dBm into the RX jack while transmitting (0 dBm with a +27 dBm PA: then a limiter) |
-| Costas loop | fn 3 kHz, ζ 0.7, R1 9.4 k (10 k fitted: fn 2.9 kHz, ζ 0.68), R2 750 Ω, C 100 nF C0G | Kd 0.12 V/rad at the DSA's regulated level: U110 passes ONE leg of the Q pair against V_MID, half the differential swing (build 17 used the whole swing and fitted 20 k: fn 2.05 kHz, ζ 0.48; the design review), Ko 2.7 Mrad/s/V (VCXO ±100 ppm over 2.7 V, ×232) |
+| Costas loop | fn 3 kHz, ζ 0.7, R1 9.4 k (10 k fitted: fn 2.9 kHz, ζ 0.69), R2 750 Ω, C 100 nF C0G | Kd 0.12 V/rad at the DSA's regulated level: U110 passes ONE leg of the Q pair against V_MID, half the differential swing (build 17 used the whole swing and fitted 20 k: fn 2.05 kHz, ζ 0.48; the design review), Ko 2.7 Mrad/s/V (VCXO ±100 ppm over 2.7 V, ×232) |
 | pull-in | 3.8 ms from 30 kHz off; 0.38 s from 300 kHz | the VCXO's guaranteed absolute pull (APR) is ±50 ppm = ±290 kHz at 5.8 GHz, against 29 kHz between two TCXO-referenced transmitters.  Beyond it the driver steps the RX synthesizer in whole 25 MHz integer-N channels (gateware/max2871_regs.py); a fractional-N re-centre (about 6 kHz steps) is not written yet (the design review) |
 | MAX2871 loop filter | 80 kHz, 50°: C1 390 p, C2 6.8 n, R2 820, R3 2 k, C3 160 p (C0G) | Icp 2.56 mA (RSET 5.1 k, CP 7), Kvco 60 MHz/V, N 232; in-band floor ≈ −109 dBc/Hz |
-| power | 1.34 A from 5 V (6.7 W) | ADL5380 245, ADL5375 203, 3 × ADL5611 372, 2 × MAX2871 ≤ 400, the rest 122 mA |
+| power | 1.37 A from 5 V (6.8 W) | ADL5380 245, ADL5375 203, 3 × ADL5611 372, 2 × MAX2871 ≤ 400, the rest 145 mA |
 | hottest regulator | PLL LDOs, 0.25 W each after a 2.2 Ω series resistor: +47 °C in SOT-23-5 | the ECP5 board's trick |
 
 ### One antenna or two? (section 4 of the script)
@@ -131,10 +132,10 @@ TX-to-RX offset of Δf by only 10·2·log10(1+(Δf/100 MHz)²) dB:
 
 | TX/RX spacing | arm filter rejection | isolation needed at the antenna port (10 m, +10 dBm TX) |
 |---|---|---|
-| 25 MHz | 0.5 dB | 65 dB |
-| 100 MHz | 6 dB | 60 dB |
-| 200 MHz | 14 dB | 52 dB |
-| 600 MHz (5.2 GHz UNII vs 5.8 GHz ISM) | 31 dB | 34 dB |
+| 25 MHz | 0.5 dB | 73 dB |
+| 100 MHz | 6 dB | 68 dB |
+| 200 MHz | 14 dB | 60 dB |
+| 600 MHz (5.2 GHz UNII vs 5.8 GHz ISM) | 31 dB | 42 dB |
 
 A Wilkinson splitter gives 3 dB, a circulator about 20 dB (and only until the antenna's own
 reflection, S11 ≈ −10 dB, is counted), two patches side by side 30-40 dB. **So frequency-division
@@ -198,9 +199,9 @@ are the two parts to confirm in a browser before ordering.
 
 | part | role | JLCPCB | elsewhere | why this one | rejected |
 |---|---|---|---|---|---|
-| **ADL5380ACPZ-R7** | IQ demodulator, 400 MHz-6 GHz | C579152: **8** in stock, $23.6 | **Digi-Key 4,527 at $17.96** (1-9; Jason, 2026-10-09); Newark 1746 ($7.6-12.4), ADI direct 2522, Rochester 1257, Richardson 450 ($10.9) | the only integrated IQ demodulator with 390 MHz baseband bandwidth that reaches 5.8 GHz at this price; its outputs are DC-coupled buffered emitter followers (25 Ω each), exactly what a Costas loop needs | LTC5586 ($31-40, 3 at JLCPCB, 430 mA, has a DSA and VGA we do not need); LTC5594 ($48); HMC8193 passive IQ mixer ($75-125, needs baseband amplifiers); two mixers plus a PCB hybrid (cheaper in parts, worse in balance, more layout risk) |
-| **ADL5375-05ACPZ-R7** | IQ modulator, 400 MHz-6 GHz | C579150: **6**, $16.0 | Digi-Key 2262 ($14.12), Mouser 726 ($14.31), Newark 1828, ADI 7169 | 750 MHz baseband bandwidth, high-impedance baseband inputs biased at 0.5 V that a resistor ladder from 3.3 V logic can drive directly; the -05 (0.5 V bias) version keeps the ladder inside 0-1 V | HMC495LP3E (3.5-7 GHz, not stocked); LTC5588-1 (not stocked, $16); a bi-phase mixer modulator (BPSK only: no QPSK, no FSK); ADL5375-15 (1.5 V bias needs a level shifter) |
-| **Johanson 5400BL15B0050001E** (legacy 5400BL15B050E) | 1:1 balun, 4.9-5.9 GHz, at the ADL5380 RF input | C2837312: 0, $0.33 | Avnet 4000 of the K variant; Digi-Key under the new number | the ADL5380's 5.8 GHz data are taken with this balun; single-ended drive is possible but unbalanced at 5.8 GHz | TCW4-582+ (not stocked, $4.30); no balun (RFIN AC-grounded: the datasheet's low-band option) |
+| **ADL5380ACPZ-R7** | IQ demodulator, 400 MHz-6 GHz | C579152: **8** in stock, $23.6 | **Digi-Key 4,512 at $17.96** (1-9; 505-ADL5380ACPZ-R7CT-ND, 2026-10-12); Newark 1746 ($7.6-12.4), ADI direct 2522, Rochester 1257, Richardson 450 ($10.9) | the only integrated IQ demodulator with 390 MHz baseband bandwidth that reaches 5.8 GHz at this price; its outputs are DC-coupled buffered emitter followers (25 Ω each), exactly what a Costas loop needs | LTC5586 ($31-40, 3 at JLCPCB, 430 mA, has a DSA and VGA we do not need); LTC5594 ($48); HMC8193 passive IQ mixer ($75-125, needs baseband amplifiers); two mixers plus a PCB hybrid (cheaper in parts, worse in balance, more layout risk) |
+| **ADL5375-05ACPZ-R7** | IQ modulator, 400 MHz-6 GHz | C579150: **6**, $16.0 | **Digi-Key 5,829 at $17.26** (1-9; 505-ADL5375-05ACPZ-R7CT-ND, 2026-10-12; an aggregator had said $14.12), Mouser 726 ($14.31), Newark 1828, ADI 7169 | 750 MHz baseband bandwidth, high-impedance baseband inputs biased at 0.5 V that a resistor ladder from 3.3 V logic can drive directly; the -05 (0.5 V bias) version keeps the ladder inside 0-1 V | HMC495LP3E (3.5-7 GHz, not stocked); LTC5588-1 (not stocked, $16); a bi-phase mixer modulator (BPSK only: no QPSK, no FSK); ADL5375-15 (1.5 V bias needs a level shifter) |
+| **Johanson 5400BL15B0050001E** (legacy 5400BL15B050E) | 1:1 balun, 4.9-5.875 GHz, at the ADL5380 RF input | C2837312: 0, $0.33 | **Digi-Key 6,874 at $0.69** (712-5400BL15B0050001ECT-ND, 2026-10-12); Avnet 4000 of the K variant | the ADL5380's 5.8 GHz data are taken with this balun; single-ended drive is possible but unbalanced at 5.8 GHz | TCW4-582+ (not stocked, $4.30); no balun (RFIN AC-grounded: the datasheet's low-band option) |
 
 Three consigned lines, about $30 a board. The LO inputs of both IQ chips need no balun: the
 MAX2871's outputs are differential and drive them directly.
@@ -215,7 +216,7 @@ MAX2871's outputs are differential and drive them directly.
 | **SKY65404-31** | RX LNA, 4.9-5.9 GHz | C210262, 1126, $0.73 | 1.0 dB NF, 13 dB gain, four external parts (0.5 pF, 0.6 nH, 100 Ω, 100 nF), 10 mA, 1.5×1.5 mm | QPL9547 (none), BGA2869 (none), SBB5089Z (3), HMC8410 ($30); absolute maximum input is only +1 dBm, so never cable TX into RX |
 | **PE43711B-Z** | RX digital step attenuator, 0-31.75 dB in 0.25 dB | C470929, 1981, $3.44 | 9 kHz-6 GHz, serial interface shares the PLLs' SPI, glitch-less; it keeps the demodulator in its linear range and the Costas gain constant from 3 m to 3 km | HMC624A ($10-11, 145); PE4312 (4 GHz); fixed pads only (changing them means soldering) |
 | **ADL5611ARKZ-R7** ×3 | gain blocks: two in the RX chain before the demodulator (the second, Response 6, lifts the comparator floor to the noise), one in the TX after the modulator | C208262, 3023, $5.21 | 14.3 dB at 5.8 GHz (its headline 22 dB is at 1 GHz), 50 Ω in and out, SOT-89 with a 43 nH bias choke; one part number for both | SBB5089Z (3 in stock), BGA2869 (none), a second SKY65404 as TX gain (+1 dBm abs max input); the TOKMAS ADL5611 clone ($1.26, 196: a copy of unknown provenance) |
-| **THS4541IRGTT** ×4 | fully differential amplifiers: I and Q fast arms at gain 4 (100 MHz); the slow stages at gain 20 behind them (sheet 6) | C2058382, 427, $6.34 | 850 MHz GBW gives 100 MHz at the noise gain used; accepts the demodulator's 3.2 V common mode through a 1.2 kΩ shunt at the summing nodes; drives the comparators, the Costas switch and the monitor taps on a 3.3 V supply so no node can exceed the comparators' 3.6 V | THS4522 (dual, 95 MHz: too slow); LMH6552 (17 in stock); ADA4932 ($17.5); ADA4927-2 ($33); no amplifier (the comparators would see ±28 mV at 10 m: workable but no margin for thresholds) |
+| **THS4541IRGTT** ×4 | fully differential amplifiers: I and Q fast arms at gain 4 (100 MHz); the slow stages at gain 20 behind them (sheet 6) | C2058382, 427, $6.34 | 850 MHz GBW gives 100 MHz at the noise gain used; accepts the demodulator's 3.2-3.95 V common mode through a 1 kΩ shunt at the summing nodes; drives the comparators, the Costas switch and the monitor taps on a 3.3 V supply so no node can exceed the comparators' 3.6 V | THS4522 (dual, 95 MHz: too slow); LMH6552 (17 in stock); ADA4932 ($17.5); ADA4927-2 ($33); no amplifier (the comparators would see ±28 mV at 10 m: workable but no margin for thresholds) |
 | **TLV3601DCKR** ×4 | comparators: sign(I) on the fast arm, and sign(I), Q > +Vth, Q < −Vth on the slow path | C2974371, 23776, $2.42 | 2.5 ns, 325 MHz toggle, rail-to-rail inputs, push-pull CMOS output that drives the 3.3 V FPGA pin through the header's 200 Ω with no translator; SC-70-5 | ADCMP604 (LVDS: an LVDS receiver adds 1.7 ns, and the Zynq's 3.3 V banks take no LVDS); ADCMP601 ($7.3, 3.5 ns); LMH7220 (LVDS); TLV3603 (adjustable hysteresis, 16 in stock) |
 | **TLV3603DCKR** ×4 | the window comparators (sheet 7, Response 14): Q > +Vth, Q < −Vth, I > +Vth, I < −Vth, each against its own threshold | C5213955, 16 on 2026-10-10 (consign from Digi-Key if short), $4.02 | the TLV3601 with LE/HYS: high 0 mV, floating 3 mV, 150 k to VEE 30 mV, 56 k 60 mV, low latches; two DNP footprints per comparator make hysteresis an experiment | TLV3601 (fixed 3 mV) |
 | **AD5696RARUZ** | the four window thresholds (sheet 7) | C650158, 7, $22.24 | 16 bits on its own 2.5 V reference: 0.038 mV a step, so the false-event servo moves the rate 10 % a step in the lab (12 bits: ×7.6); A grade, since the servo absorbs INL and drift | DAC7578 (12 bits), a third MCP4728 (no address variant stocked) |
@@ -224,7 +225,7 @@ MAX2871's outputs are differential and drive them directly.
 | **OPA2388IDGKR** (was OPA2187: Response 9's review found it needs 4.5 V and its inputs stop 2 V below the rail) | the loop filter (PI) and the VC summing/scaling stage | C2059281, 2020, $2.29 | zero-drift, 1 µV offset: no static phase error from the op amp; 550 kHz is plenty for a 3 kHz loop | OPA2227 (bipolar, fine too); TL072 (drift) |
 | **MCP4728T-E/UN** + **MCP4728A1T-E/UN** (C627342, 50, $2.55: the same part at the preset address 0x61) | two 4-channel 12-bit I2C DACs: Vr_I, Vr_Q (TX ladder references and carrier null), the fast Q arm's offset trim (Vth until Response 14, now on sheet 7's 16-bit DAC), VC offset; and the slow path's Vth2, I_OFF, Q_OFF (offset trims), one spare | C478093, 20908, $2.24 | rail-to-rail buffered outputs, EEPROM defaults, one I2C part | AD5621 (the Syzygy board's single DAC, SPI); 4 trimmers (no software) |
 | **ADS1115IDGSR** | 4-channel 16-bit I2C ADC: I, Q (averaged), VC, loop error | C37593, 10239, $1.06 | lock detection and loop diagnostics in software at 860 SPS; the PYNQ's XADC is on its Arduino header, not the RPi one | nothing (then the FPGA cannot tell "locked" from "no signal") |
-| **AD8310ARMZ** (Prompt 28) | log amp on the fast Q arm: the link band's level (LOG_Q) and, peak-held, its bursts (PEAK_Q) | C42711, 2625, $10.23 | DC-440 MHz (the arm is ±94 MHz), 95 dB, 24 mV/dB, 15 ns: a WiFi frame's envelope; inputs biased inside, so two 10 nF and two 1 k; OFLT 1 nF moves its offset loop's corner from 2 MHz to ~65 kHz, BFIN 390 pF its video bandwidth to ~135 kHz | AD8307 ($22 at JLCPCB, 59 in stock, 500 ns); an RF detector at the input (AD8318: no channel selection) |
+| **AD8310ARMZ** (Prompt 28) | log amp on the fast Q arm: the link band's level (LOG_Q) and, peak-held, its bursts (PEAK_Q) | C42711, 2625, $10.23 | DC-440 MHz (the arm is ±94 MHz), 95 dB, 24 mV/dB, 15 ns: a WiFi frame's envelope; inputs biased inside, so two 10 nF and two 1 k; OFLT 1 nF moves its offset loop's corner from 2 MHz to 59 kHz, BFIN 390 pF its video bandwidth to 135 kHz | AD8307 ($22 at JLCPCB, 59 in stock, 500 ns); an RF detector at the input (AD8318: no channel selection) |
 | *LTC1968IMS8* (Prompt 28: drawn, then left off rev A) | a true RMS of the slow Q arm, the survey's power meter | C107779, 20, $12.23 | 15 MHz true RMS, 5-250 mV rms for noise.  **Not on rev A:** with duty and its feeder it would take the block from the $25 measured to ≈ $52 a board, over Jason's $25-35; and in the arms' corner, every placement left the router a net it could not finish (its own input, then the I-window monitor's line).  survey() measures the same band by the slow comparator's statistics; a rev B option | LTC1967 (4 MHz) |
 | **ADS1115IDGSR** at 0x49 (Prompt 28) | the four detector channels: LOG_Q, PEAK_Q, V5_MON (+5V_RF / 2), TEMP | C37593 (on the order already) | ADDR to VDD; the existing I2C bus, so no FPGA pin (rev A's header has none free) | the PYNQ's XADC (on its Arduino header, a lead to the board) |
 | **NCP18XH103F03RB**, **1N4148W**, OPA2388 (Prompt 28) | the board's temperature (a 10 k NTC under 10 k), the peak hold's diode and op amp | C13564 $0.05; C81598 Basic; C2059281 | the re-trims between sessions want the temperature; the diode sits inside the op amp's loop, so its drop does not count | the MAX2871's own sensor (±3 °C, needs an SPI readback the gateware lacks) |
@@ -233,31 +234,31 @@ MAX2871's outputs are differential and drive them directly.
 | **LP5907MFX-3.3** | 3.3 V LDO for the two oscillators | C23380874, 3403, $0.14 | 6.5 µV rms; an oscillator's supply noise is FM, so it gets its own quiet rail | sharing the analog rail |
 | **SN74LVC2G34DCKR** | buffers for TRIG A/B outputs to U.FL (latency measurement) | C14461, 22998, $0.16 | one package, 2.2 ns, 24 mA into 50 Ω through 33 Ω | — |
 | **SN74LVC1G17** ×2 | Schmitt buffer for TRIG IN (a detector pulse); the REF OUT buffer on the VCXO | C10425, 83000, $0.07 | 1 kΩ series protection then a Schmitt input, 50 Ω termination jumper; REF OUT is the VCXO's 25 MHz through 33 Ω for the TX synthesizer's REF IN (coherent transponder) | straight to the FPGA pin (1 kΩ × 10 pF = 10 ns) |
-| **SN74LVC1G04DCKR** | TR_B = not TR_A on the board (Response 14), freeing header pin 28 | C8207, 76408, $0.08 | the switch rests in receive on both hosts (A's pull-ups hold A high) | the FPGA driving B (one header pin) |
+| **SN74LVC1G04DCKR** ×2 | TR_B = not TR_A on the board (Response 14), freeing header pin 28; TX_EN's inverter U206 (Response 15) | C8207, 76408, $0.08 | the switch rests in receive on both hosts (A's pull-ups hold A high) | the FPGA driving B (one header pin) |
 | **HMC536MS8G** | the antenna switch (T/R), section 14 | C17271830, **5**, $9.91 (Digi-Key 0 until 2027-01) | DC-6 GHz GaAs, 15 ns rise, 30 ns on/off, 27 dB isolation, +27 dBm at 0.1 dB (minimum; +29 typical), 0/3.3 V control straight from the FPGA, no supply pin, MSOP-8 with a paddle (hand-solderable: Jason's limit is 0603) | HMC427A (10 ns, 40-45 dB, $62-75 at Digi-Key, 389 in stock; +5 V complementary logic needs two translators; QFN 3×3); HMC8038 (150 ns, 60 dB, +36 dBm, $8.6, 282 at JLCPCB: the right switch for campus distances with a PA, useless in the lab); HMC849A (150 ns, $9, none at JLCPCB); ADRF5019 (150 ns, needs −2.5 V); ADRF5020 (10 ns, $41-75, needs −2.5 V, none); PE42423 (500 ns), PE42422 (2 µs), SKY13453 (1 µs), SKY13350 (45 ns, discontinued), HMC545A/UPG2179 (3 GHz) |
-| **AO3401A** ×2 | P-FET ideal diodes on the two 5 V inputs (USB-C, header) | C15127 Basic, 756184, $0.10 | 60 mΩ at 4.5 V: 50 mV at 1.3 A against a Schottky's 350 mV, which the ADL53xx's 4.75 V minimum cannot spare; each input blocked from the other (CLAUDE_PCB.md §4) | Schottky OR-ing |
+| **AO3401A** ×2 | P-FET ideal diodes on the two 5 V inputs (USB-C, header) | C15127 Basic, 756184, $0.10 | 60 mΩ at 4.5 V (maximum): 82 mV at 1.37 A against a Schottky's 350 mV, which the ADL53xx's 4.75 V minimum cannot spare; each input blocked from the other (CLAUDE_PCB.md §4) | Schottky OR-ing |
 | **MF-MSMF200-2** ×2 | 2 A PTC fuses on both inputs | C210837, 16439, $0.07 | — | — |
 | **SMAJ5.0A** | TVS on the 5 V rail | C113952, 575476, $0.04 | — | — |
 | **TYPE-C-31-M-12** | USB-C 5 V input (CC pull-downs 5.1 k) | C165948, 409808, $0.19 | the HRO part built on three boards; its CPL datum is known | barrel jack (someone plugs in 12 V) |
 | **BWSMA-KWE-Z001** ×9 | SMA, right angle through-hole: the five RF ports and four field ports (TRIG A, TRIG B, TRIG IN, REF IN) | C496551, 148391, $0.41 | the ECP5 board's part, +90 CPL correction known | edge-launch |
 | **BWMMCX-KE** ×5 | MMCX, vertical through-hole, 500 matings: REF OUT and four baseband monitors | C5137198, 12841, $0.58 | the taps with room round them (Response 10) | BWMMCX-KEF (edge-mount: its footprint carries Edge.Cuts) |
-| **U.FL-R-SMT-1(80)** ×8 | the 5.8 GHz taps and the boxed-in ones | C88374, 31378, $0.11 | SMT launch on the line; 30 matings | MMCX (no room; a through-hole pin on a 5.8 GHz line) |
-| **2.54-2*20** (C2977589) | 2x20 socket, 8.5 mm, underside | C2977589, 33575, $0.32 | the GPSDO board's part; through-hole carries the mechanical load; fitted by JLCPCB now | the SMD HC-PM254 |
+| **U.FL-R-SMT-1(80)** ×12 | the 5.8 GHz taps and the boxed-in ones | C88374, 31378, $0.11 | SMT launch on the line; 30 matings | MMCX (no room; a through-hole pin on a 5.8 GHz line) |
+| **2.54-2*20** (C2977589) | 2x20 socket, 8.5 mm, underside | C2977589, 33575, $0.32 | the GPSDO board's part; through-hole carries the mechanical load; soldered at home (hand_solder_bom.csv, Response 15) | the SMD HC-PM254 |
 | PZ254V-11-02P / -03P | jumpers (loop source, LNA enable, TRIG IN 50 Ω, header 5 V) | C492401 / C2937625 | exact lengths, not strips (CLAUDE_PCB.md §8) | — |
 | LQW15AN27NG80D ×8 | 27 nH chokes on the MAX2871 outputs | C882469, 19686, $0.09 | the datasheet's value | — |
-| LQW15AN43N (0603 43 nH) ×2 | ADL5611 bias chokes | (code at build) | Table 6 of its datasheet | — |
+| LQW18AN43NG00D (0603 43 nH) ×3 | ADL5611 bias chokes | C113126 | Table 6 of its datasheet | — |
 | MLG1005S0N6CT000 | 0.6 nH at the LNA supply | C95042, 18970 | Skyworks' circuit | — |
-| 0402 C0G 1.5 pF (C1552, Preferred), 0.5 pF (C285052), 10 pF (C32949 Basic), 100 pF (C1546 Basic), 33 pF (C1562 Basic), 68 pF (C14441) | RF blocks, matches and bypasses | all > 70 000 in stock | a 1.5 pF 0402 is series-resonant at 6.1 GHz with its 0.45 nH, so it is the best 5.8 GHz DC block (the Syzygy review's finding, re-done for 0402) | 100 pF blocks (inductive, +j20 Ω at 5.8 GHz) |
+| 0402 C0G 1.5 pF (C1552, Preferred), 0.5 pF (C285052), 100 pF (C1546 Basic), 33 pF (C1562 Basic), 68 pF (C14441) | RF blocks, matches and bypasses | all > 70 000 in stock | a 1.5 pF 0402 is series-resonant at 6.1 GHz with its 0.45 nH, so it is the best 5.8 GHz DC block (the Syzygy review's finding, re-done for 0402) | 100 pF blocks (inductive, +j20 Ω at 5.8 GHz) |
 | 1206 C0G 100 nF (C170182) | Costas integrator | 175420, $0.16 | a class 1 dielectric where the value sets a time constant (CLAUDE_PCB.md §12) | X7R |
-| 0603 C0G 1.5 nF / 6.8 nF, 0402 C0G 160/390 pF | synthesizer loop filters | — | — | — |
+| 0603 C0G 6.8 nF, 0402 C0G 160/390 pF | synthesizer loop filters | — | — | — |
 | X5R/X7R 100 nF 0402 (C1525 Basic), 1 µF 0402 (C52923 Basic), 10 µF 0805 (C15850 Basic), 22 µF 0805 (C45783 Basic) | decoupling | Basic | — | — |
-| 0402/0603 thick film 1 % (UNI-ROYAL, Basic) | everything else | Basic | — | — |
+| 0402/0603 thick film 1 % (UNI-ROYAL, mostly Basic) | everything else | Basic, except six Extended values (4.02 k, 453 Ω, 820 Ω, 750 Ω, 4.7 M, 2.2 Ω 1206) | — | — |
 | KT-0603R (C2286 Basic) ×2 | rail LEDs | Basic | — | — |
 
 Not on the board, deliberately: a 5.8 GHz bandpass filter at the RX input (none stocked at JLCPCB;
 an SMA filter can go in the cable; a footprint would need a bridge when unfitted), a log power
 detector at RF (AD8318, $13: it sees everything the LNA passes, no channel selection; Prompt 28 put a
-baseband log amp and an RMS converter on sheet 6 instead), a limiter ahead of the LNA
+baseband log amp on sheet 6 instead; the RMS converter is a rev B option), a limiter ahead of the LNA
 (Mini-Circuits VLM-63-2W-S+ in the cable when a PA is used with the switch), and a bench 5 V
 barrel jack. The TX/RX switch is on the board but as its own block with three SMAs (section 14), so
 it can be cabled in or left out of the RF path.
@@ -279,7 +280,7 @@ Since Response 10 the interchangeable pins (since Response 14 seventeen: 12, 16,
 bound from the placed board by `gen/pin_swap.py`: each signal's destination is the mean x of the chip
 pins it reaches (through any series part), and the signals take the header's interchangeable pins in
 the same right-to-left order, so no two header lines cross on the way down.  Fixed: the I2C pair
-(the PYNQ's pull-ups on 3/5), TR_A/TR_B (27/28, its pull-ups), 18 and 26 (clock-capable on both), the
+(the PYNQ's pull-ups on 3/5), TR_A (27, its pull-up; TR_B is made on the board), 18 and 26 (clock-capable on both), the
 fast comparators and the TX ladders (7, 8, 10, 11, 13, 15, chosen for their banks and sitting
 beside their parts), and the rails.  TR_B left the header in Response 14 (an inverter on the board makes it
 from TR_A), and the spare went to the I window: every signal pin is used.  The table below is printed from `gen/pins.py`.
@@ -309,18 +310,18 @@ from TR_A), and the spare went to the I window: every signal pin is used.  The t
 
 28 signals used, no spare (since Response 14); J303 (1x3, on the antenna sheet) carries TR_A, TR_B (made on the
 board from TR_A) and ground, for an external switch module. `ECP5` = ball (dual function). Both boards are
-Pi-standard on 1/17 (3.3 V) and 2/4 (5 V = USB VBUS); this board draws 1.3 A, so on the Icepi it takes 5 V
+Pi-standard on 1/17 (3.3 V) and 2/4 (5 V = USB VBUS); this board draws 1.37 A, so on the Icepi it takes 5 V
 from its own USB-C.
 
 ## 6. Power
 
 | rail | from | load | notes |
 |---|---|---|---|
-| +5V_IN | USB-C (CC 5.1 k) or header pins 2/4, each: PTC 2 A → AO3401A ideal diode | 1.34 A | both inputs blocked from each other; TVS; USB-C is the default, header 5 V only with the PYNQ on its barrel supply (its USB input cannot give 1.2 A) |
+| +5V_IN | USB-C (CC 5.1 k) or header pins 2/4, each: PTC 2 A → AO3401A ideal diode | 1.37 A | both inputs blocked from each other; TVS; USB-C is the default, header 5 V only with the PYNQ on its barrel supply (its USB input cannot give 1.2 A) |
 | +5V_RF | +5V_IN through a ferrite | ADL5380, ADL5375, 3 × ADL5611 | the PTC, FET and bead at their MAXIMUM resistances drop 0.21 V (sim/budget.py section 9), so 5.10 V at the plug leaves ≥ 4.89 V (the ADL53xx and ADL5611 want 4.75 V): a bench supply at 5.1-5.25 V; a USB port must hold 5.01 V, which a laptop port or a thin cable may not (the design review) |
 | +3V3_PLL_TX, +3V3_PLL_RX | 2.2 Ω + TPS7A2033 each | 200 mA each | 0.25 W per LDO, +47 °C |
-| +3V3_ANA | TPS7A2033 | four FDAs, op amp, LNA, DSA, TX ladder reference | 60 mA |
-| +3V3_DIG | TPS7A2033 | six comparators, switch, mux, two DACs, ADC, buffers | 46 mA |
+| +3V3_ANA | TPS7A2033 | four FDAs, two op amps, LNA, DSA, TX ladder reference | 62 mA |
+| +3V3_DIG | TPS7A2033 | eight comparators, switch, mux, three DACs, two ADCs, buffers | 60 mA |
 | +3V3_OSC | LP5907 | VCXO, TCXO | 15 mA |
 
 ## 7. The board
@@ -339,7 +340,7 @@ block's SW TX (76), ANT (92), SW RX (108). The receive chain runs straight down 
 (LNA, DSA, two gain blocks, the coupler with RX MON beside it, the balun, the ADL5380 with its RF
 pins up, I pair left into the I arm, Q pair right into the Q arm, LO up from the RX synthesizer below
 it, the VCXO under that); the slow I stage and the three slow comparators sit at the bottom-left over
-header pins 33/37/40, the fast comparators at the bottom-middle over pins 8/10/18. The transmit chain
+header pins 28/32/40, the fast comparators at the bottom-middle over pins 8/10/18. The transmit chain
 runs straight up to TX ANT at x = 56 (the TX synthesizer with its TCXO and REF IN to its right, the
 ADL5375 with RFOUT up and a ladder either side, the gain block, the pi pad, the coupler with TX MON
 beside it). The Costas loop (mux, sign jumpers, HOLD, PI filter, SEL) sits under the TX synthesizer,
@@ -353,7 +354,7 @@ TX output and one after the RX gain blocks for the TX MON and RX MON taps. Jacks
 SMAs (Response 10 and 14): SMA for the field ports TRIG A, TRIG B, TRIG IN and REF IN on the board's
 edges; MMCX, vertical, for REF OUT, VC MON, ERR MON (the switch output), I SLOW MON and TRIG IN MON (the
 trigger buffer's output, ÷10); U.FL for the 5.8 GHz and the boxed-in taps: TX MON, RX MON, LO TX MON,
-LO RX MON, I MON, Q MON, Q SLOW MON and CMP I MON (÷10). Every passive is placed by rule from the netlist (a shunt perpendicular at
+LO RX MON, I MON, Q MON, Q SLOW MON, CMP I MON (÷10) and the four window monitors IP, IN, QP, QN MON (÷10). Every passive is placed by rule from the netlist (a shunt perpendicular at
 its pin, a series part on the line between its two pads, decoupling at the chip the schematic drew
 it beside) and pushed apart until no courtyards overlap; the plan's model of pcbnew's rotations and
 flip is checked against pcbnew's own pads before copper is laid (the socket against the PYNQ's
@@ -371,7 +372,7 @@ GHz), an I2C master for the DAC and ADC, the TX symbol encoder (idle / BPSK flip
 FSK rotation at a programmable Δf), the RX event decoder sampling the three comparators at 400 MHz
 (edge → bit, QPSK window → two bits, FSK rotation direction), and a latency counter between
 TRIG_IN and the decoded event; the **confirm-or-veto logic**: the fast comparators' edge is acted on
-at once (the measurement fires, the trigger goes out) and the slow comparators' state 37-80 ns later
+at once (the measurement fires, the trigger goes out) and the slow comparators' state 37-73 ns later
 either confirms the trial or marks it discarded, with counters for both; the slow path alone as the
 data path when the signal is below the fast floor; the **offset nulling** of the slow stages (set
 I_OFF/Q_OFF until each slow comparator toggles 50/50 with no carrier); the T/R sequencer (TR_A/TR_B
@@ -460,15 +461,15 @@ number in a table.
    side by side give about 40; closer, or with a PA, the demodulator compresses and the fast
    comparators chatter. Guards: the DSA; the switch block (time division) instead; the slow path
    vetoes the chatter but cannot restore a compressed demodulator.
-7. **Heat.** 1.34 A from 5 V is 6.7 W on a 120 × 100 mm board: ADL5380 1.2 W, ADL5375 1 W, three
+7. **Heat.** 1.37 A from 5 V is 6.8 W on a 120 × 100 mm board: ADL5380 1.2 W, ADL5375 1 W, three
    ADL5611 1.9 W, two MAX2871 1.3 W, the LDOs. Exposed pads need their vias; JLCPCB's 1 oz copper.
    Guards: the PLL LDOs' series 2.2 Ω; the DSOP pin and the DSA to idle parts; a measurement in
    bring-up before any enclosure.
 8. **The slow path's offsets are not nulled, or its saturation confuses the Q window.** Two
-   THS4541s in cascade ×20 sit up to 30 mV off; at the bench level the slow stage is at its rails.
+   THS4541s in cascade ×20 sit up to 50 mV off; at the bench level the slow stage is at its rails.
    Guards: DAC2's I_OFF/Q_OFF (±0.33 V of reach) and the nulling procedure; V_T2 set above ×20 the
    loop's static error; the slow path is an experiment, the fast one works without it.
-9. **The single-ended ladder drive distorts the constellation.** IBBN/QBBN are held at 0.54 V while
+9. **The single-ended ladder drive distorts the constellation.** IBBN/QBBN are held at 0.51 V while
    IBBP/QBBP swing ±0.33 V, so the modulator sees a common-mode wobble of ±0.17 V with the data;
    the ADL5375's gain and phase move slightly with common mode, and the carrier feedthrough
    (−15 dBc) adds a fixed vector. Guards: VR_I/VR_Q null the feedthrough and centre the ladders;
@@ -479,7 +480,7 @@ number in a table.
     Guards: PLACEMENT_CHECKS.txt and the preview; order the consigned parts the day the PCB is
     ordered; a second source for the switch is the HMC427A at $62.
 11. **The Icepi Zero.** No I2C pull-ups on its header (now DNP 4.7 k on this board), 5 V from its own
-    USB-C, a gateware that does not exist yet, and three slow-path lines on its bank 0.
+    USB-C, and MUX_RX and TRIG_A (no fast input) on its bank 0.
 12. **The generated symbols.** Audited pin by pin against the datasheet texts (Response 8,
     `build/scratch/pin_audit.md`): every drawn pin's number and name was right and every schematic
     use matched its function, but two symbols were *incomplete* and left footprint pads with no net
@@ -508,7 +509,7 @@ and ISM both allowed on campus; the antennas (section 3). Still open:
    offset + hysteresis and fine; doubling the gain would halve the arm bandwidth. Nothing to choose,
    nothing changes on the board.
 1b. The fast arms' gain is 4 (100 MHz, floor −81 dBm, 31 dB of rejection of the own transmitter
-   600 MHz away). R_f 2 k makes them gain 2 (180 MHz, 1.7 ns sooner, floor −75 dBm, 11 dB of
+   600 MHz away). R_f 2 k makes them gain 2 (170 MHz, about 0.6 ns sooner, floor −75 dBm, 23 dB of
    rejection): two 0402 resistors, not recommended (section 15).
 2. The HMC536 switch: JLCPCB has 5 (the only source until 2027-01). Fit it on both assembled
    boards ($20), or leave the block unfitted and keep the 5 for later?
@@ -547,17 +548,17 @@ Yes, the board works on the Icepi Zero with the changes made in Response 2 (noth
   clock-capable header pins 16, 18, 19, 21, 22, 26, 32 (PCLKT/C6_x, PCLKT/C7_1, GR_PCLK7_x); the
   PYNQ-Z2's are 10, 11, 13, 18, 26, 31, 35, 40 (MRCC/SRCC). Only 18 and 26 are clock-capable on
   both, so CMP_I (the data) stays on 18 and TRIG_IN moved from 16 to 26 (LE_PLL_RX took 16). Every
-  signal is LVCMOS33 on banks 6/7 except pins 35/37 (bank 0, top), which have no GDDRX2 and are
+  signal is LVCMOS33 on banks 6/7 except pins 35/37 (bank 0, top), which have no GDDRX2 and carry MUX_RX and TRIG_A, neither a fast input; they are
   spare. `gateware/icepi_zero.lpf` is generated beside the XDC.
 * **Speed.** The ECP5-25 in grade -6 samples a 3.3 V input at 655.8 Mb/s (GDDRX2, left/right banks
   only: ours), toggles LVCMOS33 outputs at 150 MHz and inputs at 200 MHz; the ladder pins move once
   per event and the comparator lines carry edges, so this is plenty. Fabric at 100-150 MHz runs the
   decoders. It is not the Zynq's 1.25 Gb/s ISERDES, but the arm filter's 3.5 ns rise is what sets
   the timing resolution, not the sampler.
-* **Series resistors.** None on the Icepi: 8.8 ns less latency (15.3 ns against 24.1), and the
+* **Series resistors.** None on the Icepi: 8.8 ns less latency (14.7 ns against 23.5), and the
   ladders' levels shift by 9 % (2.2 k against 2.4 k): 0.167/0.521/0.874 V instead of
   0.17/0.50/0.83, which Vr (a DAC channel) re-centres. The three comparator outputs now leave
-  through 33 Ω (source termination for the unterminated line to the FPGA, 0.3 ns), which the
+  through 33 Ω (source termination for the unterminated line to the FPGA, 0.7 ns), which the
   PYNQ's 200 Ω does not mind.
 * **Power and fit.** Pi-standard header on both; the Icepi's header 5 V is USB VBUS, so this board
   runs from its own USB-C (JP301 open). The Icepi has no header fitted: Jason solders a male
@@ -689,7 +690,7 @@ which `sim/link_rates.py` writes; the 5 % block is there too):
 | mountain: 30 dBi dishes, PA and LNA at the dish | 10 W amplifier (+40) ($300+) | fast | >100 km | >100 km | >100 km | >100 km | >100 km |
 | mountain: 30 dBi dishes, PA and LNA at the dish | 10 W amplifier (+40) ($300+) | slow | >100 km | >100 km | >100 km | >100 km | >100 km |
 
-(Board alone is +9.8 dBm. Through walls at 30 m with whips the slow path has 19 dB to spare: a floor
+(Board alone is +9.8 dBm. Through walls at 30 m with whips the slow path has 18 dB to spare: a floor
 or two brick walls.) **Power is not the limit of this link; line of sight and interference are.**
 
 **Advantages and disadvantages, scheme by scheme.**
@@ -730,7 +731,7 @@ from the transitions, integrates each symbol and descrambles. Compared:
 * *The "arm filter" and its knob (Prompt 5):* "arm" is the I arm or the Q arm, the baseband path
   from one of the ADL5380's differential outputs through its THS4541 to its comparator(s). There is
   no filter part in it: the 100 MHz is the THS4541's closed-loop bandwidth (850 MHz GBW over the
-  noise gain of 8.3; `sim/budget.py` section 7), behind the demodulator's 390 MHz, modelled as two
+  noise gain of 9.0; `sim/budget.py` section 7), behind the demodulator's 390 MHz, modelled as two
   poles at 100 MHz. To make it 50 MHz: a capacitor across each feedback resistor (0.8 pF across
   4.02 k, four 0402 positions, DNP by default). The ways to make it *adjustable*, by cost:
   (a) **in the gateware, free, today**: require a flip to persist N samples before it counts (the
@@ -739,7 +740,7 @@ from the transitions, integrates each symbol and descrambles. Compared:
   fixed by soldering, changes both arms and the loop's Q path at once, no cost until fitted;
   (c) **two paths at once**: a second trio of comparators fed from the same arm outputs through an
   RC (fast path unchanged: 3.5 ns; slow path 50 MHz or less: +3.5 ns and 3 dB more sensitive) on
-  three spare header pins (now 40, 32 and 24, by Response 10's late assignment): three more
+  three spare header pins (now 40, 32 and 28, by the late assignment): three more
   TLV3601 ($7), six RC parts, three pins, and a gateware that reports the fast flag and lets the slow
   decision confirm or veto it 10 ns later, which turns a false alarm into a discarded trial instead
   of a wrong bit. (a) and (b) are in; (c) became sheet 6, the slow path (Response 7).
@@ -759,7 +760,7 @@ from the transitions, integrates each symbol and descrambles. Compared:
   Robustness against the university's 5 GHz comes from the arm bandwidth (narrower = quieter =
   slower; section 19 prices it: ~17 ns for a real 80 MHz channel), the panels' directivity (20-30 dB off-axis), the channel (scan first; UNII-2C 5.47-5.725
   GHz is nearly empty indoors), and power. The Costas loop itself is untroubled: in its 3 kHz
-  bandwidth a 20 MHz WiFi signal at −40 dBm is −118 dBm.
+  bandwidth a 20 MHz WiFi signal at −40 dBm is −78 dBm.
 * *Where the stream wins:* when the receiver is a conventional slotted detector that needs a clock
   (an SDR, a BERT), and for a continuous link-quality estimate. **It is an experiment on this
   hardware, not a design decision**: the FPGA drives the ladders either way.
@@ -782,7 +783,7 @@ at Digi-Key until 2027-01). Its 27 dB isolation is fine for time division (the r
 listening while we transmit; −17 dBm leaks in bare, 0 dBm with a +27 dBm PA: then a limiter ahead
 of the LNA) and useless for frequency division (section 3). So the fourth sheet is a self-contained
 block: ANT, SW TX and SW RX jacks, the HMC536, DC blocks, 100 Ω in each control line, a pull-up on
-A and a pull-down on B (rests in receive), TR_A/TR_B from header pins 27/28 (also on J303 for an
+A and a pull-down on B (rests in receive), TR_A from header pin 27 and TR_B made from it on the board (both also on J303 for an
 external module). 30 ns is 4 m of round trip: in the lab it is a fixed, calibrated 30 ns on the
 prover's answer; the verifier's switch is back in receive long before the reply (67 ns at 10 m).
 
@@ -817,15 +818,15 @@ it. A **second ADL5611** in the receive chain (+14.3 dB, 0.3 ns, $5.21) moves ev
 | | fast path (sheet 3) | slow path (sheet 6) |
 |---|---|---|
 | amplifier | THS4541 at gain 4 (R_f 4.02 k / R_g 1 k with the 1 k shunts): 94 MHz, 3.7 ns rise (docs/TRAJECTORIES.md: 6.6 ns end to end with the PYNQ's header RC) | the fast arm's output through a second THS4541 at gain 20 (R_f 20 k / R_g 1 k, no shunts), then 1 k / 33 pF: a 4.8 MHz pole, 73 ns rise |
-| noise bandwidth | 100 MHz: noise floor -92.5 dBm, quiet from -84.1 dBm | 7.5 MHz: noise floor -103.7 dBm, quiet from -95.3 dBm |
-| comparator floor | -81 dBm (balanced with the noise) | -107 dBm (12 dB below its noise: noise-limited) |
-| decides | when its arm crosses: 14.2 ns from the jack to the FPGA register on the PYNQ, 9.8 ns on the Icepi | 37 ns after the fast one |
-| comparators | 3 × TLV3601 on header pins 18, 10, 8 (CMP_I, CMP_QP, CMP_QN) | 3 × TLV3601 on pins 33, 40, 37 (CMP_I_S, CMP_QP_S, CMP_QN_S) |
+| noise bandwidth | 100 MHz: noise floor -92.0 dBm, quiet from -80.6 dBm | 7.5 MHz: noise floor -103.3 dBm, quiet from -91.9 dBm |
+| comparator floor | -81 dBm (balanced with the noise) | -107 dBm (15 dB below its quiet level: noise-limited) |
+| decides | when its arm crosses: 15.0 ns from the jack to the FPGA register on the PYNQ, 10.6 ns on the Icepi | 37 ns after the fast one |
+| comparators | a TLV3601 on header pin 18 (CMP_I) and four TLV3603 windows on 10, 8, 22, 16 (CMP_QP, CMP_QN, CMP_IP, CMP_IN) | 3 × TLV3601 on pins 40, 32, 28 (CMP_I_S, CMP_QP_S, CMP_QN_S) |
 | thresholds | V_T from DAC 1 | V_T2 from DAC 2 (MCP4728A1, address 0x61) |
 | offsets | 0.5 mV × 4: nothing | two stages in cascade ×20: up to 50 mV at the comparators, trimmed through 100 k by DAC 2's I_OFF / Q_OFF (±0.33 V of reach); the gateware nulls them with no carrier by watching the comparators' duty cycle |
 | at the bench level | ±249 mV: a clean decision | saturated (±1.65 V): the sign survives, the Q window needs V_T2 above ×20 the loop's static error |
-| reach, lab, whips, no amplifier (BPSK quiet) | 72 m | 375 m |
-| reach, campus, panels, amplifiers at the panel | 18.1 km | 88.9 km |
+| reach, lab, whips, no amplifier (BPSK quiet) | 69 m | 251 m |
+| reach, campus, panels, amplifiers at the panel | 17.2 km | 62.9 km |
 
 **Confirm or veto.** The gateware acts on the fast flag at once (that is the latency the experiment
 is about) and, 37 ns later, reads the slow comparators: if they agree the trial stands; if not it is
@@ -836,19 +837,19 @@ symbol at least 73 ns so the slow path sees it; for BPSK the flipped phase simpl
 
 **Is 100 MHz (10 ns) the right rate, faster or slower?** With two paths the question splits: the slow
 path should be as slow as the protocol allows, because every halving of bandwidth is 3 dB of reach,
-so it went to **4.8 MHz** (14 dB of reach over the fast path, 28 dB over the old single path's real
+so it went to **4.8 MHz** (11 dB of reach over the fast path, 25 dB over the old single path's real
 floor, 37 ns later; 100 pF instead of 33 pF makes it 1.6 MHz for another 5 dB and 110 ns). The fast
 path looked like it should go faster too, and Response 6 took it to gain 2 / 180 MHz for 1.7 ns.
 Response 7's audit took that back: the fast arm's roll-off is also the receiver's only frequency
-selectivity, and at 180 MHz it rejects the own transmitter 600 MHz away by 11 dB instead of 31, so the
-two-antenna full-duplex arrangement would have needed 62 dB of antenna isolation instead of 42
+selectivity, and at 170 MHz it rejects the own transmitter 600 MHz away by 23 dB instead of 31, so the
+two-antenna full-duplex arrangement would have needed 51 dB of antenna isolation instead of 42
 (section 3). **The fast path stays at gain 4 / 100 MHz**, where its comparator floor (−81 dBm) and its
-noise (−84) are also balanced; R_f 2 k is the 1.7 ns option if a test ever wants it. Both knobs are
+noise (−81) are also balanced; R_f 2 k is the ~0.6 ns option if a test ever wants it. Both knobs are
 0402 parts JLCPCB solders.
 
 ## 16. The board: where the routing stands (Response 9)
 
-`gen/placement.py` plans every part (100 by hand, 240 by rule: a shunt stands at its pin with its
+`gen/placement.py` plans every part (149 by hand, 269 by rule: a shunt stands at its pin with its
 signal pad nearer the chip, a series part lies on the line between its pads or, when that line is
 not along the chip pin's axis, straight out of the pin, the second of two at adjacent pins 2.2 mm
 further out and stepped aside, a 1.8 mm band round every fine-pitch chip and the two RF chains'
@@ -859,7 +860,7 @@ every LO pin; the LO pairs, the I/Q pairs, the slow pairs, the couplers' monitor
 and every tap as straight planned lines (an L where the straight line is not clear, each segment
 checked with exact geometry); a via grid in every paddle (0.8 mm pitch: 3 × 3 in a 2.6 mm paddle), vias
 in the smaller paddles and the SOT-89 tabs too, and a tie into it from every ground pin; a
-planned fan-out for every one of the 33 chips with five pads or more (each signal and supply pin a
+planned fan-out for every one of the 39 chips with five pads or more (each signal and supply pin a
 stub, a line and a via of its own, the vias of a side evenly spaced, OWLternating Current's planner),
 then each chip's short local nets; a via beside every remaining ground and rail pad; then the router
 (`gen/router.py`, GPiBridge's A* grid with OWLternating Current's flat-array search): the RF leftovers
@@ -917,7 +918,7 @@ preview (Jason's call).
 **Response 15, the rev-A changes the gateware found (20:00).**  Header pin 24 became TX_EN (high
 transmits) through U206, a 74LVC1G04 beside the modulator at (66.5, 42), with R227 1 k holding it low and R209 now
 pulling DSOP up; R314-R318 hold the synthesizers' and the DSA's latch enables and the trigger buffer's inputs low
-(REVA_CHANGES.md 2-3).  383 parts (C320, the input's polymer, since Response 18).  The placer hung LE_PLL_RX's pull-down 12 mm off U115's crowded side and the
+(REVA_CHANGES.md 2-3).  383 parts then (418 since Prompt 29; C320, the input's polymer, since Response 18).  The placer hung LE_PLL_RX's pull-down 12 mm off U115's crowded side and the
 net would not route: R315 is pinned above header pin 33.  A new cleanup step joins a pad that KiCad's
 connectivity finds isolated to its net's nearest track (the router had run TX_EN past R227's pad 0.05 mm
 clear of it).  3784 tracks, 1054 vias; DRC 0 items (0 violations, 0 unconnected, 0 parity), the labels' check
@@ -939,25 +940,25 @@ ECP5 cart of 2026-10-09 for the fees (`build/COST_ESTIMATE.md` has every line):
 
 | where | what | cost |
 |---|---|--:|
-| JLCPCB | 5 boards 120 × 100 mm, 4 layers, ENIG (a model: $35-60) | $47 |
-| | assembly on the top only, Standard PCBA (the SMAs and headers are through-hole): setup, stencil, fixture, 49 Extended codes' feeders, 1072 SMT pads and 93 through-hole joints a board; the 2x20 socket on the back soldered at home (Response 15) | $197 |
+| JLCPCB | 5 boards 120 × 100 mm, 4 layers, ENIG (a model: $28-65) | $47 |
+| | assembly on the top only, Standard PCBA (the SMAs and headers are through-hole): setup, stencil, fixture, 49 Extended codes' feeders, 1100 SMT pads and 93 through-hole joints a board; the 2x20 socket on the back soldered at home (Response 15); depanelled | $200 |
 | | their parts: 77 BOM lines (80 with the three consigned), with attrition | $353 |
-| | US duty at 35 % under DDP | $209 |
+| | US duty at 35 % under DDP | $210 |
 | | shipping | $25-40 |
-| | **JLCPCB total** | **$831-846** |
-| Digi-Key | the three consigned lines, 4 + 4 + 4 pieces, with tax and shipping | **$150** |
+| | **JLCPCB total** | **$835-850** |
+| Digi-Key | the three consigned lines, 4 + 4 + 4 pieces, with tax and shipping (CONSIGNMENT.md) | **$165** |
 | | shipping the consignment to JLCPCB | $35-60 |
-| other | attenuators, pigtails, MMCX leads, whips, leads, two PD power banks, standoffs, a heatsink; a second PA and LNA module when the far end needs them | **$139-267** |
-| | **everything** | **$1,155-1,323** |
+| other | attenuators, pigtails, MMCX leads, whips, leads, two PD power banks, standoffs, a heatsink; a second PA and LNA module when the far end needs them | **$142-271** |
+| | **everything** | **$1,177-1,346** |
 
 Prompt 28's interference detectors (the AD8310, its peak hold, the second ADS1115, the NTC, the +5V_RF
 monitor) added $50 to the order, $25 a board: three Extended codes' feeders, 53 more pads, $28 of parts,
 and their duty.  The three antenna shunts (Prompt 29) add $4.66 more.
 The duty is a third of JLCPCB's line and nothing lowers it truthfully. The 49 Extended parts are
 what they are (every chip is Extended). Buying the ADL5380 and ADL5375-05 from JLCPCB's own stock
-(8 and 6 on 2026-10-09) instead of consigning would cost $15 more in parts and save the chips'
+(8 and 6 on 2026-10-09, at $23.60 and $16.00) instead of consigning would cost $9 more in parts and save the chips'
 consignment handling, but the balun (0 everywhere at JLCPCB) must be consigned anyway, so the
-shipment to Shenzhen happens either way. The HMC536 is the thin line: 5 in stock, 2 needed; the TLV3603 next: 16 in stock, 8 needed (consign from Digi-Key if it drops). Response 14's measurement package (sheet 7, the hold rewiring, the trims, the bypass) added about $109 to JLCPCB's line, about 10 % of the whole order.  Response 15 took the 2x20 socket J302 off JLCPCB's order (Jason: "if it costs more than a few dollars to have JLCPCB solder the raspberry pi connectors, I'll do that myself"): it was the only part on the back, so fitting it cost a second setup and stencil, its feeder and its joints, $38 before duty and $52 with it; it comes loose (LCSC C2977589) with the jumper shunts (`mfg/release/hand_solder_bom.csv`).  The same response's TX_EN inverter and six pull-downs (REVA_CHANGES.md 2-3) are Basic parts but one, the 74LVC1G04, already on the order.
+shipment to Shenzhen happens either way. The HMC536 is the thin line: 5 in stock, 2 needed, and Digi-Key has none until 500 arrive on 2026-12-24; every other line has at least three times the order in stock (2026-10-12). Response 14's measurement package (sheet 7, the hold rewiring, the trims, the bypass) added about $109 to JLCPCB's line, about 10 % of the whole order.  Response 15 took the 2x20 socket J302 off JLCPCB's order (Jason: "if it costs more than a few dollars to have JLCPCB solder the raspberry pi connectors, I'll do that myself"): it was the only part on the back, so fitting it cost a second setup and stencil, its feeder and its joints, $38 before duty and $52 with it; it comes loose (LCSC C2977589) with the jumper shunts (`mfg/release/hand_solder_bom.csv`).  The same response's TX_EN inverter and six pull-downs (REVA_CHANGES.md 2-3) are Basic parts but one, the 74LVC1G04, already on the order.
 
 ## 18. Idle plus N messages: the constellation from first principles (Response 10)
 
@@ -984,7 +985,7 @@ comparators, and when does a flash ADC win? Five facts decide it.
    to the message in a straight line, so every comparator's margin grows linearly along the rise.
    A threshold set from the idle point, or a line through it, is crossed at a fraction that falls
    as the SNR rises. A line through the origin (sign(I), a phase comparator) is crossed at a fixed
-   fraction whatever the SNR: half the rise for a 180° flip, 2.4 ns into the 94 MHz arm's rise.
+   fraction whatever the SNR: half the rise for a 180° flip, 2.5 ns into the 94 MHz arm's rise.
 3. **What limits the transmitter decides the shape.** Under an envelope limit (an amplifier at
    its P1dB) the best layouts for N ≤ 5 keep the idle at full amplitude and put the messages
    across the circle. For N = 4 that is messages near ±90° and at 180° ± 27°: Jason's "+" with
@@ -998,7 +999,7 @@ comparators, and when does a flash ADC win? Five facts decide it.
    arms AC-coupled (the idle is the DC) or a threshold that follows the received amplitude.
 5. **The bandwidth should follow the SNR.** A sequential test (CUSUM) is the optimum detector
    and a low-pass matched to the SNR comes close. In the lab a 400 MHz arm would decide at
-   0.3 ns instead of 0.8 ns. At 3 km, 246 MHz would decide at 1.9 ns instead of 2.7. That is less
+   0.3 ns instead of 0.9 ns. At 3 km, 221 MHz would decide at 2.1 ns instead of 2.8. That is less
    than a nanosecond against the 22.7 ns of fixed delay, so the arm stays as it is.
 
 **The schemes, scored.** The SNR is the axis point's in 100 MHz, for one false event an hour and
@@ -1034,16 +1035,16 @@ receiver's loop as a plain PLL on Q (JP103 to FPGA, LOOP_SEL fixed). An idle poi
 needs no Costas loop and has no 180° ambiguity. The loop turns the pilot onto +I, and with it the
 corners onto +I, −I, +Q and −Q at the corners' full amplitude. Add an I window pair (IP, IN) wired
 like the Q pair; all four can share V_T. Each message then moves its own comparator and no
-other, so the event and both bits arrive on one edge, 0.83 ns into the rise in the lab. That is
-2.6 dB less SNR than A3 and 1.7 ns sooner. The loop gain falls with the pilot (Kd is proportional
-to its amplitude): R1 from 18 k to about 3.6 k keeps fn at 3 kHz with a −14 dBc pilot. The DSA's AGC regulates the pilot
+other, so the event and both bits arrive on one edge, 0.86 ns into the rise in the lab. That is
+2.6 dB less SNR than A3 and 1.6 ns sooner. The loop gain falls with the pilot (Kd is proportional
+to its amplitude): R1 from 10 k to about 1.9 k keeps fn at 3 kHz with a −14 dBc pilot. The DSA's AGC regulates the pilot
 to its known fraction. Rev A has the I window pair and the Q-arm trim since Response 14; the R1 value
-is a rework (18 k to 3.6 k) when the pilot experiment wants the full loop bandwidth.
+is a rework (10 k to 1.9 k) when the pilot experiment wants the full loop bandwidth.
 
 **What the scores took into account, and what they did not.** The scores include the noise at the
 comparators in the arm's real bandwidth (94 MHz, two poles) and the false-event rate it gives;
 thresholds set from the idle by counting, which absorbs each comparator's offset (5 mV max) and
-hysteresis (3 mV); the comparators rev A really has (sign(I) fixed at zero, QP and QN sharing one V_T,
+hysteresis (3 mV); the comparators rev A really has (sign(I) fixed at zero, QP and QN each against its own threshold,
 the fast I arm's trim range); the arm's step response; the ladders' three levels per axis; and the
 ADL5611's compression at the corners. They leave out the angle between the pilot and the messages,
 which section 9 of the script then checks. Its three sources are the modulator's quadrature error
@@ -1051,7 +1052,7 @@ which section 9 of the script then checks. Its three sources are the modulator's
 vector added to the pilot turns it), and the loop's static phase error (a DC offset in the Q arm over
 the pilot's slope; the ADL5380's ±10 mV is ±20 mV at one arm output). Decoding the *first* edge (the
 gateware time-stamps every edge) tolerates 19° whatever the SNR; decoding the settled states
-tolerates only 1.8° in the lab, where a corner is 120 σ from the pilot.
+tolerates only 1.9° in the lab, where a corner is 120 σ from the pilot.
 
 | pilot | slope at the arm | static phase error, 20 mV offset | feedthrough nulled below | cost on one corner |
 |---|---|---|---|---|
@@ -1064,7 +1065,7 @@ tolerates only 1.8° in the lab, where a corner is 120 σ from the pilot.
 So a weak pilot is fragile on this hardware unless the Q arm's offset is trimmed: B2 wants the pilot
 at about −14 dBc, the carrier feedthrough nulled to −35 dBc (the VR_I / VR_Q trims), first-edge
 decoding, and on rev B a DAC trim on the fast Q arm like the I arm's. Then it needs about 20.6 dB
-against A3's 21.9 dB and still delivers both bits on one edge, 1.7 ns sooner. On rev A, the plan's
+against A3's 21.9 dB and still delivers both bits on one edge, 1.6 ns sooner. On rev A, the plan's
 full idle (A3) is the robust choice. What the script still leaves out: the comparator's longer delay
 at small overdrive, AM-PM in the compressed gain block, and interference. The bench measures them
 (BRINGUP.md stage 4).
@@ -1072,9 +1073,9 @@ at small overdrive, AM-PM in the compressed gain block, and interference. The be
 **The false-event count (gateware, works on rev A).** A counter per comparator counts edges while
 the link is known to be idle; the gateware's EDGE_CNT registers already do (`gateware/README.md`).
 A servo, a few lines of Python on the PYNQ, moves V_T over I2C until the count meets its target. One a minute is
-measurable in a minute and puts the threshold at 6.8 σ; Rice's law extrapolates from there to
+measurable in a minute and puts the threshold at 6.7 σ; Rice's law extrapolates from there to
 one an hour. Counting at two thresholds fits σ and the offset together. The TLV3601's offset
-(5 mV max) is 1.7 σ in the lab and 0.3 σ at 3 km, and the same count calibrates it out.
+(5 mV max) is 1.6 σ in the lab and 0.3 σ at 3 km, and the same count calibrates it out.
 
 **How the circuit changes with N.** The loop is the same for every N: it sees only the idle,
 because events are 10⁴ times shorter than its time constant. Only the decision bank grows. Up
@@ -1098,7 +1099,7 @@ first edge after an idle point; the design here comes from the five facts.
 
 **DAC trims: where they help.** They help where a threshold is not zero or must follow the noise
 (V_T, V_T2 and rev B's I window, all set by the false-event count). They help where the
-comparator's offset is a sizeable fraction of σ (1.7 σ in the lab). They help in the transmitter:
+comparator's offset is a sizeable fraction of σ (1.6 σ in the lab). They help in the transmitter:
 the pilot, the carrier null, and the I and Q amplitudes that make the corners square. They do
 not help per symbol: an MCP4728 write over I2C takes about 0.1 ms. And they do not matter where
 the offset is small against σ, as for the sign comparators at range.
@@ -1125,10 +1126,10 @@ is a rev B idea, worth it only if holds longer than a few ms matter.
 
 | | lab, whips | campus, panels | campus, panels, 2 W |
 |---|---|---|---|
-| A1 BPSK flip (an event) | 37 m | 1.7 km | 16.5 km |
-| A4 one bit, pilot at 45° | 31 m | 1.4 km | 10.9 km |
-| A3 two bits, the plan's corners | 22 m | 968 m | 7.7 km |
-| B2 two bits, pilot at 45° + corners | 29 m | 1.3 km | 10.4 km |
+| A1 BPSK flip (an event) | 35 m | 1.6 km | 15.7 km |
+| A4 one bit, pilot at 45° | 29 m | 1.3 km | 10.3 km |
+| A3 two bits, the plan's corners | 21 m | 919 m | 7.3 km |
+| B2 two bits, pilot at 45° + corners | 28 m | 1.2 km | 9.9 km |
 
 ## 19. Far future: how low the latency could go, and what it costs (Prompt 21)
 
@@ -1168,13 +1169,13 @@ model of docs/TRAJECTORIES.md and the host terms of docs/HOSTS.md.
 
 ### The knobs, in the order they pay
 
-- **Passives on the rev A chips: about 0.5 ns of ~11.**
-  - The ladder's node at 100 Ω instead of 240 Ω: 0.33 ns.  It is the lowest the FPGA pins can drive
-    (~10 mA each); 50 Ω would save 0.47 ns but needs ~22 mA a pin.
-  - The arm at gain 2 (189 MHz): 0.09 ns at the bench, 0.04 ns worse at 3 km.  The CFAR window moves
+- **Passives on the rev A chips: about 0.4 ns of ~11 at the bench** (`sim/hosts.py`, build/hosts_knobs.json).
+  - The ladder's node at 100 Ω instead of 240 Ω: 0.28 ns (0.46 ns at 3 km).  It is the lowest the FPGA
+    pins can drive (~10 mA each); 50 Ω would save 0.41 ns but needs ~22 mA a pin.
+  - The arm at gain 2 (170 MHz): 0.14 ns at the bench, 0.33 ns worse at 3 km.  The CFAR window moves
     out with the noise.
-  - The arm at gain 1: 0.14 ns.
-  - No arm at all: 0.35 ns at the bench, and no fit at 3 km.
+  - The arm at gain 1: 0.23 ns at the bench, 1.6 ns worse at 3 km.
+  - No arm at all: 0.31 ns at the bench, and no fit at 3 km.
 
   **The current chips are not the limit; the FPGA path and the comparator are.**
 - **The first bottleneck is gateware:** a combinational fast path (the comparator pins through one
@@ -1217,20 +1218,20 @@ model of docs/TRAJECTORIES.md and the host terms of docs/HOSTS.md.
 - **The sources:**
   - Jason's Digi-Key prices of 2026-10-12, 1-9 pieces, are exact: the Brain-1 $450, the ADCMP572
     $30.18, the HMC6300 and HMC6301 $25.91, the evaluation PCBs $1,587.52, the EK1HMC6350 $6,385.19.
-  - Rev A's boards are section 17's $962-1,002 before Prompt 28's detectors (+$50): JLCPCB $777-792, the consigned chips $150, shipping
+  - Rev A's boards are section 17's $1,035-1,075: JLCPCB $835-850, the consigned chips $165, shipping
     them $35-60.
   - The rest are estimates (≈); `build/latency_roadmap.json` lists every line.
 
 | # | turnaround, bench | at 3 km (with the PA) | what changes | Δ$ (two nodes) | total $ |
 |---|---|---|---|---|---|
-| 0 | **~71 ns** | ~71 ns | rev A as built: PYNQ-Z2, header RCs, TLV3601, A3 through the registered decoder at 100 MHz (estimated: rev A has no RX-to-TX path) | — | $1,220-1,260 |
-| 1 | **13.6 ns** | 13.4 ns | gateware: B2's first edge through a combinational LUT path, pin to pin; a TDC time-stamps alongside | $0 | $1,220-1,260 |
-| 2 | **10.8 ns** | 10.7 ns | a bare-pin host (Icepi Zero, ≈ $69-129, or any host without the 200 Ω) | ≈ −$120 to $0 | ≈ $1,100-1,260 |
-| 3 | **9.1 ns** | 8.9 ns | rev B: TLV3604 LVDS comparators over LVDS pairs into an ECP5 on the board (≈ $150-300 for two); or on SYZYGY, two Brain-1 at $450, for $1,900-2,000 in all | ≈ +$30-90 | ≈ $1,130-1,350 |
-| 4 | **2.4 ns** | 2.3 ns | the fast path leaves the FPGA: 8 ADCMP572 ($30.18), CML gates (≈ $15-60 each) driving the modulator's baseband, the DSA out of the fast path; the FPGA arms and time-stamps | ≈ +$430-960 | ≈ $1,560-2,300 |
-| 5 | **1.7 ns** | 1.7 ns | ~1 GHz baseband: passive I/Q mixers and GHz FDAs for the ADL5380 and ADL5375, LO amplifiers, 4.8-6.8 GHz antennas; ~2 GHz on the air (a shielded lab or an experimental licence); the PA at range | ≈ +$520-1,460 | ≈ $2,080-3,760 |
+| 0 | **~71 ns** | ~71 ns | rev A as built: PYNQ-Z2, header RCs, TLV3601, A3 through the registered decoder at 100 MHz (estimated: rev A has no RX-to-TX path) | — | $1,290-1,330 |
+| 1 | **13.6 ns** | 13.4 ns | gateware: B2's first edge through a combinational LUT path, pin to pin; a TDC time-stamps alongside | $0 | $1,290-1,330 |
+| 2 | **10.8 ns** | 10.7 ns | a bare-pin host (Icepi Zero, ≈ $69-129, or any host without the 200 Ω) | ≈ −$120 to $0 | ≈ $1,170-1,330 |
+| 3 | **9.1 ns** | 8.9 ns | rev B: TLV3604 LVDS comparators over LVDS pairs into an ECP5 on the board (≈ $150-300 for two); or on SYZYGY, two Brain-1 at $450, for $1,900-2,000 in all | ≈ +$30-90 | ≈ $1,200-1,420 |
+| 4 | **2.4 ns** | 2.3 ns | the fast path leaves the FPGA: 8 ADCMP572 ($30.18), CML gates (≈ $15-60 each) driving the modulator's baseband, the DSA out of the fast path; the FPGA arms and time-stamps | ≈ +$430-960 | ≈ $1,640-2,380 |
+| 5 | **1.7 ns** | 1.7 ns | ~1 GHz baseband: passive I/Q mixers and GHz FDAs for the ADL5380 and ADL5375, LO amplifiers, 4.8-6.8 GHz antennas; ~2 GHz on the air (a shielded lab or an experimental licence); the PA at range | ≈ +$520-1,460 | ≈ $2,160-3,840 |
 | 6 | **1.3 ns** | (hundreds of metres only) | 60 GHz: 2 HMC6300 + 2 HMC6301 ($25.91 each), a Rogers board (≈ $2k) or ADI's four evaluation PCBs ($6,350), WR-15 horns (≈ $1.2-2.4k), InP comparators (HMC674-class) | ≈ +$3-10k | ≈ $5-14k |
-| 6E | **1.24 ns** | **1.25 ns** (1.38 ns in ~5 dB/km of rain; fails in heavy rain) | instead of row 6, E-band: ADMV7310 / ADMV7410 (71-76 GHz, I/Q to 2 GHz, no public price; ≈ $300-900 each), LO synthesizers, a board with waveguide back plates (≈ $1.5-4k; ADI's evaluation boards are $2,606.81 and $2,053.22, $9,320 for two nodes), 43 dBi dishes (≈ $1.2-6k for four), the FCC's light licence | ≈ +$3.7-16k from row 5 | ≈ $5.7-20k |
+| 6E | **1.24 ns** | **1.25 ns** (1.38 ns in ~5 dB/km of rain; fails in heavy rain) | instead of row 6, E-band: ADMV7310 / ADMV7410 (71-76 GHz, I/Q to 2 GHz, no public price; ≈ $300-900 each), LO synthesizers, a board with waveguide back plates (≈ $1.5-4k; ADI's evaluation boards are $2,606.81 and $2,053.22, $9,320 for two nodes), 43 dBi dishes (≈ $1.2-6k for four), the FCC's light licence | ≈ +$3.7-16k from row 5 | ≈ $5.8-20k |
 | 7 | | | below ~1 ns: free-space optics, its own table below | | |
 
 ![latency against cost](docs/images/latency_vs_cost.png)
@@ -1249,7 +1250,7 @@ and runs the decision model.
 | filter at both ends | row 3 (TLV3604 + FPGA), bench | row 4 (CML), bench | 3 km, no PA (row 3 / 4) | rejects the next channel (RX / TX) | the one after |
 |---|---|---|---|---|---|
 | today: one pole at 94.4 MHz, none on TX | 9.1 ns | 2.4 ns | 11.6 / 5.0 ns | 0.8 / 0.2 dB (40 MHz away) | 2.5 dB |
-| 150 MHz (the ISM band), Butterworth-2 at 75 MHz | 13.1 | 6.4 | 15.2 / 8.5 | 13 / 15 dB | 26 dB |
+| 150 MHz (the ISM band), Butterworth-2 at 75 MHz | 13.1 | 6.4 | 15.2 / 8.5 | 13 / 14 dB | 26 dB |
 | 80 MHz, one pole at 38 MHz | 12.4 | 5.6 | 14.8 / 7.9 | 7.5 / 8 dB | 13 dB |
 | **80 MHz, Butterworth-4 at 38 MHz** | **26.3** | **19.6** | 30.9 / 24.1 | **26 / 27 dB** | **51 dB** |
 | 40 MHz, one pole at 19 MHz | 15.4 | 8.6 | 17.9 / 11.1 | 7.4 / 7.5 dB | 13 dB |
@@ -1458,7 +1459,7 @@ the Q arm (the RMS converter beside the slow Q stage it reads):
 
 | channel | what | band | range | why |
 |---|---|---|---|---|
-| AIN0 LOG_Q | an AD8310 log amp on the fast Q arm, through 1 k + 10 nF a leg (it sees a third of the arm) | the link's whole band, ±94 MHz round the carrier | 95 dB: from the receiver's own noise (29 dB over the log amp's floor) to the arm's clipping | the floor: the ADC's conversion averages the log (1.2 ms at 860 SPS, 125 ms at 8 SPS), so bursts barely move it.  For noise add ~2.5 dB (a log amp reads noise under a sine of the same rms) |
+| AIN0 LOG_Q | an AD8310 log amp on the fast Q arm, through 1 k + 10 nF a leg (it sees a third of the arm) | the link's whole band, ±94 MHz round the carrier | 95 dB: from the receiver's own noise (38 dB over the log amp's floor) to the arm's clipping | the floor: the ADC's conversion averages the log (1.2 ms at 860 SPS, 125 ms at 8 SPS), so bursts barely move it.  For noise add ~2.5 dB (a log amp reads noise under a sine of the same rms) |
 | AIN1 PEAK_Q | LOG_Q held: OPA2388 A charges 10 nF through a 1N4148W inside its loop, B buffers it, 4.7 M lets it fall in 47 ms | the same | the same | the bursts: a 20 µs WiFi frame still reads a few conversions later.  The link's own events lift it too, so read it in a pause |
 | AIN2 V5_MON | +5V_RF through 10 k / 10 k | — | 0-4.1 V on the ADC: the rail at 2 mV | the ADL5380, ADL5375 and gain blocks want 4.75-5.25 V; on a roof's long supply lead this says so before the link does |
 | AIN3 TEMP | a 10 k NTC under 10 k from 3.3 V | — | −40 to +85 °C | the re-trims between sessions |
@@ -1473,8 +1474,8 @@ the Q arm (the RMS converter beside the slow Q stage it reads):
   The slow band's power is `survey()`'s, from the slow comparator's statistics.  The RMS converter is a
   rev B option, with room.
 - **The log amp's band is the link's band.**  The AD8310 runs DC-440 MHz; the arm is ±94 MHz.
-  - Its offset loop's corner (2 MHz inside) is moved to ~65 kHz by 1 nF on OFLT.
-  - Its video bandwidth is cut to ~135 kHz by 390 pF on BFIN: a frame's envelope, not every flicker of
+  - Its offset loop's corner (2 MHz inside) is moved to 59 kHz by 1 nF on OFLT.
+  - Its video bandwidth is cut to 135 kHz by 390 pF on BFIN: a frame's envelope, not every flicker of
     the noise.
 - **The LOG Q test pad** shows WiFi's frames on a scope directly.
 
@@ -1490,12 +1491,12 @@ the Q arm (the RMS converter beside the slow Q stage it reads):
 - Fitted (Prompt 29: "worth taking the very small hit"): $4.66 an order with the feeder and duty.
 - Each sits as near its line as the placer's rules allow, a 1-1.6 mm stub (0.05 of a wavelength).
 
-**The band rev A covers as it is: 4.9-5.9 GHz, set by two parts.**
+**The band rev A covers as it is: 4.9-5.875 GHz, set by two parts.**
 
 | part | rated |
 |---|---|
 | **SKY65404-31 LNA** | **4.9-5.9 GHz** |
-| **Johanson 5400BL15B050 balun** (the ADL5380's input) | **4.9-5.9 GHz** (≤ 1 dB loss, ≥ 9.5 dB return loss) |
+| **Johanson 5400BL15B0050001E balun** (the ADL5380's input) | **4.9-5.875 GHz** (≤ 1 dB loss, ≥ 9.5 dB return loss; the legacy 5400BL15B050's sheet said 5.9) |
 | MAX2871 synthesizers | 3-6 GHz on the fundamental VCO |
 | ADL5380, ADL5375-05 | 0.4-6 GHz |
 | ADL5611 gain blocks | 30 MHz-6 GHz |
@@ -1504,11 +1505,11 @@ the Q arm (the RMS converter beside the slow Q stage it reads):
 | the 1.5 pF DC blocks | series-resonant at 6.1 GHz: ~8 Ω at 4.9 GHz |
 | the −20 dB couplers | a quarter wave at 5.8 GHz: within 0.3 dB of −20 dB across 4.9-6 GHz |
 
-- **The carrier:** 4.9-5.9 GHz in spec, on the 25 MHz integer-N grid (5 MHz with R = 5).
-- **The receive band (±94 MHz) inside the spec:** carriers of 5.0-5.8 GHz.
-- **5.9-6.0 GHz:** the LNA and the balun run out of their rated band.  Expect some dB of gain and a
+- **The carrier:** 4.9-5.875 GHz in spec, on the 25 MHz integer-N grid (5 MHz with R = 5).
+- **The receive band (±94 MHz) inside the spec:** carriers of 5.0-5.78 GHz.
+- **5.875-6.0 GHz:** the balun, then the LNA, run out of their rated bands.  Expect some dB of gain and a
   worse I/Q balance there; measure before relying on it.
-- **Both edges are the LNA's and the balun's (Prompt 29).**  Each is rated 4.9-5.9 GHz.
+- **Both edges are the LNA's and the balun's (Prompt 29).**  Both start at 4.9 GHz; the balun stops at 5.875 (Prompt 30: the sheet of the number Digi-Key sells), the LNA at 5.9.
   - Their plots go a little wider: the SKY65404's S-parameters from 4.8 GHz, the balun's loss and return
     loss from 4.4 GHz.  So 4.8-4.9 GHz is in their data but out of their guarantee.
   - Below 4.8 GHz the board has no data at all.
@@ -1530,8 +1531,8 @@ the Q arm (the RMS converter beside the slow Q stage it reads):
   81-86 GHz pair is the ADMV7320 / ADMV7420.
 - **The link budget is generous in clear air.**  +20 dBm, two 43 dBi dishes, 3 km: −35 dBm at the
   receiver, 51.6 dB in 100 MHz.
-  - That is 15 dB more than the 5.8 GHz board gets with its 2 W PA.
-  - The energy bound is ~10 ps, and the turnaround 1.25 ns.
+  - That is 9 dB more than the 5.8 GHz board gets at 3 km with panels and its 2 W PA.
+  - The energy bound is ~5 ps, and the turnaround 1.25 ns.
 - **Rain is the limit.**  About 5 dB/km of rain (moderate) costs 15 dB at 3 km, and the turnaround
   becomes 1.38 ns.  About 10 dB/km (heavy rain, ~25 mm/h) leaves 21.6 dB in 100 MHz, and the window no
   longer fits in 2 GHz.
@@ -1567,11 +1568,11 @@ the prover, as an antenna's few millimetres are not.
     the angle of arrival) brings that to ±42 µrad.
 - **The field sets the detector's size (étendue).**  A detector or fibre core of diameter d, fed by a
   cone of numerical aperture NA, accepts θ = d·NA/D from an aperture D.
-  - At D = 90 mm, ±130 µrad needs d ≥ 47 µm at f/1.7 (NA 0.3).  At the refractors' own f/6, it
+  - At D = 90 mm, ±130 µrad needs d ≥ 39 µm at f/1.7 (NA 0.3).  At the refractors' own f/6, it
     needs 140 µm.
 - **The detector's size sets its bandwidth.**  A photodiode's capacitance grows with its area: about
   10 GHz × (40 µm / d)^1.6 (a fit to commercial InGaAs parts, est).
-  - 1 mm (the plastic fibre) is ~0.1 GHz, 105 µm 2 GHz, 50 µm 7 GHz, 20 µm 30 GHz.
+  - 1 mm (the plastic fibre) is ~0.06 GHz, 105 µm 2 GHz, 50 µm 7 GHz, 20 µm 30 GHz.
   - **So in free space, pointing is a latency knob:** a steadier beam allows a smaller, faster
     detector.
 - **The transmitted beam must be wide enough to cover the pointing error and the beam wander.**  It is
@@ -1609,7 +1610,7 @@ delays are not from their datasheet: Broadcom's AV02-4369EN would give them.
 **What the optical table says:**
 - **The first two steps are the same as in RF, and the plastic fibre is the reason for both.**  Gateware
   (91 → 56 ns, free), then a real optical link (56 → 12 ns, ≈ $4-9k).  The 50 MBd modules and their
-  patch cords are ~45 of the 56 ns, and their 1 mm core is why the link stops at ~100 m.
+  patch cords are ~47 of the 56 ns, and their 1 mm core is why the link stops at ~100 m.
 - **The coupling problem has a standard answer.**  A fibre port on an XY stage at a relayed f/2.3 focus,
   into a 105 µm, NA 0.22 fibre, accepts ±257 µrad from 90 mm, twice what the slow loop needs at 3 km.
   For the fast rows, the detector goes at the focus itself and no fibre at all.
@@ -1665,12 +1666,12 @@ resolution, not latency.  Both boards are the right tools for the verifiers.**
 
 ### What it says
 
-- **Rows 0-3 cost what rev A costs, about $1.1-1.35k, and take the turnaround from ~71 to ~9 ns.**
+- **Rows 0-3 cost what rev A costs, about $1.2-1.4k, and take the turnaround from ~71 to ~9 ns.**
   - Rows 0-2 are gateware and a host.
   - Row 3's ECP5 on the board costs about what the hosts it replaces cost.
   - The Brain-1 route to the same row costs $0.8k more for the same speed; it buys a ready-made board
     and a Zynq instead of an FPGA designed onto ours.
-- **Row 4 is the step with the best value:** 3.8× for ≈ $0.4-1k, less than doubling the total.  The
+- **Row 4 is the step with the best value:** 3.7× for ≈ $0.4-1k, less than doubling the total.  The
   comparator-to-modulator path in CML, outside the FPGA, is the architecture for a fast prover.
 - **Past row 4 the money balloons.**
   - Each further step costs several times the one before (≈ +$0.5-1.5k, then +$3-10k, then

@@ -93,8 +93,13 @@ STEPS[-1][3]["snr"] = {"bench": eband_snr(10, 24), "3 km": eband_snr(3000, 43)}
 # excluded, except antennas a row needs that rev A's cannot be).  Prices Jason gave from Digi-Key on
 # 2026-10-12 are exact (1-9 pieces); the rest are estimates, marked "est".  Each row's delta is its total
 # less the row before; walking the steps one by one also pays a board order (~$1k) at every re-spin.
-REV_A = ("two rev A boards, assembled: JLCPCB $777-792, the consigned chips $150, shipping them $35-60 (section 17)", 962, 1002)
-REV_B = ("two rev B boards: rev A's, the TLV3601 swapped for 8 TLV3604 (est +$2-4 each, with duty)", 962 + 20, 1002 + 45)
+# rev A's order from mfg/cost_estimate.py's last run (build/cost.json, PLAN.md section 17)
+_C = json.load(open(os.path.join(ROOT, "build", "cost.json")))
+_lo = _C["jlc"][0] + _C["digikey"] + _C["consign_ship"][0]
+_hi = _C["jlc"][1] + _C["digikey"] + _C["consign_ship"][1]
+REV_A = ("two rev A boards, assembled: JLCPCB $%.0f-%.0f, the consigned chips $%.0f, shipping them $%.0f-%.0f (section 17)"
+         % (_C["jlc"][0], _C["jlc"][1], _C["digikey"], _C["consign_ship"][0], _C["consign_ship"][1]), round(_lo), round(_hi))
+REV_B = ("two rev B boards: rev A's, the TLV3601 swapped for 8 TLV3604 (est +$2-4 each, with duty)", REV_A[1] + 20, REV_A[2] + 45)
 ECP5 = ("an ECP5 on each board: LFE5U-25F, flash, oscillator, USB-JTAG, regulators, their assembly lines and duty (est)", 150, 300)
 CML = [("8 ADCMP572 at $30.18 (Digi-Key) for the 8 TLV3604", 210, 225),
        ("CML logic: the answer gate and a fan-out to the FPGA's TDC, about 4 gates a board at $15-60 (est)", 120, 480),

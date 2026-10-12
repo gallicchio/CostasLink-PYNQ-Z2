@@ -11,19 +11,28 @@ The steps, each a script that exits non-zero when its gate fails:
 
     budget     sim/budget.py          the design arithmetic, asserted; build/budget.json
     rates      sim/link_rates.py      range against error rate for every scheme and amplifier; build/link_rates.json
+    analyses   sim/*.py               the studies the plan quotes: trajectories, constellations, hosts, the latency
+                                      and optics roadmaps, the WiFi channels, the system budget (build/*.json, docs/images)
     library    gen/library.py         hardware/lib: every symbol, footprint, 3D model
     project    gen/project.py         the KiCad project: design rules, net classes
-    schematic  gen/schematic.py       the root and the five sheets; its own touch/net/overlap checks
+    schematic  gen/schematic.py       the root and the six sheets; its own touch/net/overlap checks
     erc        tools/sch_check.py     KiCad 10's format, ERC at every severity, the netlist
     netcheck   tools/net_check.py     power nets, one-pin nets, the signal paths walked
-    gateware   gateware/gen_xdc.py    the PYNQ-Z2 and Icepi Zero constraints and the MAX2871 register words
+    gateware   gateware/*.py          the driver's board constants (gen_constants.py), the PYNQ-Z2 and Icepi Zero
+                                      constraints (gen_xdc.py), the MAX2871 words and the register map as Verilog
+                                      includes, then the driver's tests (driver/test_sim.py; RTL ones need iverilog)
     render     tools/render_sch.py    docs/images: the schematic as PDF and one PNG per sheet
     diagrams   docs/blockdiagram.py   docs/images/block_*.svg: the annotated block diagrams, numbers from the budget
     placement  gen/placement.py       where every part goes: build/placement.json, build/view/placement.png
     board      gen/board.py           the board: placement, the RF lines by plan, the router, the pours, the silkscreen
     drc        tools/pcb_check.py     KiCad's DRC at every severity, with schematic parity
     render_pcb tools/render_pcb.py    build/view/pcb_*.png: the copper layers as KiCad draws them
-    release    mfg/make_release.py    (follows the board)
+    docs       tools/doc_check.py     the hand-written documents' numbers against what the build computed
+
+Then, by hand, because they ask JLCPCB and EasyEDA over the network (answers cached):
+
+    python3 mfg/make_release.py      mfg/release/: the BOM, the CPL, the Gerbers, the order sheets
+    python3 mfg/cost_estimate.py     build/cost.json and the cost table PLAN.md section 17 quotes
 
 Needs KiCad 10 (tools/kienv.py finds it) and, for the release, network access to JLCPCB's parts
 API and EasyEDA (answers are cached).  Everything a reviewer needs (hardware/, docs/) is
@@ -49,24 +58,29 @@ def py(script, *args, ok=(0,)):
 STEPS = [
     ("budget", lambda: py("sim/budget.py", "--json", "build/budget.json")),
     ("rates", lambda: py("sim/link_rates.py", "--json", "build/link_rates.json")),
+    ("analyses", lambda: [py("sim/" + s) for s in ("wifi_channels.py", "hosts.py", "latency_roadmap.py", "system_budget.py",
+                                                    "trajectories.py", "constellations.py")]),
     ("library", lambda: py("gen/library.py")),
     ("project", lambda: py("gen/project.py")),
     ("schematic", lambda: py("gen/schematic.py", ok=(0, 1))),     # text overlaps are reported, not yet fatal
     ("erc", lambda: py("tools/sch_check.py")),
     ("netcheck", lambda: py("tools/net_check.py")),
-    ("gateware", lambda: (py("gateware/gen_xdc.py"), py("gateware/max2871_regs.py"))),
+    ("gateware", lambda: (py("gateware/gen_constants.py"), py("gateware/gen_xdc.py"), py("gateware/max2871_regs.py", "--verilog"),
+                          py("gateware/regmap.py", "--vh"), py("gateware/driver/test_sim.py"))),
     ("render", lambda: py("tools/render_sch.py", "docs/images")),
     ("diagrams", lambda: py("docs/blockdiagram.py")),
     ("placement", lambda: py("gen/placement.py")),
     ("board", lambda: py("gen/board.py")),
     ("drc", lambda: py("tools/pcb_check.py", ok=(0, 1))),         # reported; the release gate is the one that fails
     ("render_pcb", lambda: py("tools/render_pcb.py")),
+    ("docs", lambda: py("tools/doc_check.py")),
 ]
 GENERATED = ["build", "hardware/lib", "hardware/checks", "hardware/sym-lib-table", "hardware/fp-lib-table",
              "hardware/CostasLink-PYNQ-Z2.kicad_sch", "hardware/rx.kicad_sch", "hardware/tx.kicad_sch", "hardware/pwr.kicad_sch", "hardware/ant.kicad_sch", "hardware/slow.kicad_sch", "hardware/win.kicad_sch",
              "hardware/CostasLink-PYNQ-Z2.kicad_pro", "hardware/CostasLink-PYNQ-Z2.kicad_dru", "hardware/CostasLink-PYNQ-Z2.kicad_prl",
              "hardware/CostasLink-PYNQ-Z2.kicad_pcb",
-             "gateware/pynq_z2.xdc", "gateware/icepi_zero.lpf", "docs/images"]
+             "gateware/pynq_z2.xdc", "gateware/icepi_zero.lpf", "gateware/board_constants.py", "gateware/max2871_words.vh", "gateware/regmap.vh",
+             "docs/images"]
 
 
 def clean():

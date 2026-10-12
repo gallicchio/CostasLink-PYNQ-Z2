@@ -74,7 +74,7 @@ prover's time: 3.34 ns/m, so 334 ns at 100 m and 3.3 µs at 1 km.
 Rev A's job in this system is the 23-39 ns of configuration B, held reliably on a roof.  That is
 gateware and driver work, none of it hardware:
 - **Decide on the first edge, veto with the slow path, report "invalid".**  The fast decision drives
-  the basis at once.  The slow path (7.5 MHz, 16 dB more sensitive, ~37 ns later) confirms or vetoes
+  the basis at once.  The slow path (7.5 MHz, 11 dB more sensitive, ~37 ns later near its floor) confirms or vetoes
   it.  A veto turns the answer into "invalid", which the verifiers discard.  Reliability then costs no
   latency, only a few discarded rounds.
 - **Gate the receivers.**  Arm the windows only around a round's scheduled arrival.  The schedule
@@ -100,9 +100,10 @@ gateware and driver work, none of it hardware:
     is broadband from the LNA on.
   - A limiter when a PA shares the site.  RX ANT's absolute maximum is +1 dBm, the SKY65404's.
 - **A DC-grounded antenna and a quarter-wave-stub surge arrestor at the bulkhead.**  On the board,
-  RX ANT is a 1.5 pF DC block straight into the LNA, with no path to ground for static.
-  - An arrestor (or a DC-grounded panel) is the roof's protection, with no board change.
-  - A shunt inductor resonant near 5.8 GHz at the jack would be the on-board one (section 6).
+  RX ANT, TX ANT and ANT each have a 6.8 nH shunt to ground on the jack's side of the 1.5 pF DC block
+  (L101, L202, L401, fitted since Prompt 29): a DC path for static, ~0.05 dB.
+  - An arrestor (or a DC-grounded panel) is the roof's protection beyond that.
+  - The shunts are the on-board part of it (section 6, item 1).
 - **The control network:** Ethernet over fibre media converters for galvanic isolation (or PoE with
   surge protection).
   - Not a 2.4 GHz WiFi radio inside the box.  Its +20 dBm a few centimetres from the receive chain is
@@ -110,7 +111,7 @@ gateware and driver work, none of it hardware:
   - If WiFi is used, give it its own antenna a metre or more away, off the panels' axis.
 - **Shade and a vented box.**  The parts are rated −40 to +85 °C, and a dark box in the sun gets past
   60 °C.  Re-trim between sessions (section 2).
-- **Power:** PoE+ (25 W) into a 5 V converter.  The board draws 6.7 W, the PYNQ a few more.  The
+- **Power:** PoE+ (25 W) into a 5 V converter.  The board draws 6.8 W, the PYNQ a few more.  The
   board's own TVS and PTC stay.
 
 ## 4. The verifiers and their synchronization
@@ -178,7 +179,7 @@ gateware and driver work, none of it hardware:
     "Narrower instead"): **about 10 % of configuration B's chain, and it fits three prover links in the
     5 cm band**.  With a 150 ns chain, this is the one place where the radio's latency should yield to
     the channel plan.
-  - **A Part 5 experimental licence for 4.9-6 GHz,** which the parts cover.
+  - **A Part 5 experimental licence for 4.9-5.875 GHz,** which rev A's LNA and balun cover (6 GHz needs another balun).
 
 ## 5. Platforms
 
@@ -192,7 +193,7 @@ gateware and driver work, none of it hardware:
 
 - That is 10 radios and 4 Brain-1s ($1,800).
 - At JLCPCB a 10-12-board order costs ~$250-400 a radio (est).  The two-board order of section 17 is
-  ~$490 each.
+  ~$520-540 each.
 - One board, one gateware and one driver serve every role, and any spare fits any node.
 - A Brain-1 and three radios fit a roof box behind the antennas.
 
@@ -264,21 +265,21 @@ GPS, LVDS.  Rev A's TRIG IN already takes LVTTL in Hi-Z mode.  NIM and SNSPD pul
 external discriminator for rev A's tests.
 
 **Worth considering before the order, in order:**
-1. **An ESD and DC path at RX ANT (and TX ANT):** an 0402 shunt inductor at the jack, ahead of the
-   DC block, chosen to self-resonate near 5.8 GHz so that it is nearly invisible there.  Optionally a
-   ~0.2 pF RF ESD diode footprint, unfitted.
-   - The cost is cents and ~0.05 dB.  The risk is a re-placement beside the SMA.
+1. **An ESD and DC path at RX ANT (and TX ANT): done** (Prompts 28-29).  A 6.8 nH wirewound 0402
+   (LQW15AN6N8, self-resonant at 6.0 GHz or above, so inductive and 400 ohm to 1.5 k across the band) at
+   each antenna jack, ahead of the DC block.
+   - The cost is $4.66 an order and ~0.05 dB.
    - The same protection comes, with no board change, from a DC-grounded antenna and a bulkhead
      arrestor (section 3).  That is enough for rev A if the layout by the jack is tight.
 2. **Unfitted baseband channel-filter footprints.**  A series inductor (fitted as 0 Ω) and a shunt
    capacitor (unfitted) in each leg of the I/Q arms and after the TX ladders: 16 footprints.
    - They would let rev A measure the 80 MHz-channel option of section 4 on the bench.
    - Only worth it if the three-verifier deployment will be in the 5 cm band.  Otherwise rev B.
-3. **Nothing else.**  A dedicated reference-clock route to the header is not needed: the REF OUT →
+3. **Nothing else**, beyond the interference detectors Prompt 28 added to sheet 6.  A dedicated reference-clock route to the header is not needed: the REF OUT →
    TRIG IN lead does it, for the price of TRIG IN during that test.  A second detector input and the
    BME drive are rev B's.
 
-**My recommendation:** order rev A as it is, or with item 1 if the jack has room, and do sections 2-3
+**My recommendation:** order rev A as it is now (item 1 fitted), and do sections 2-3
 in gateware, the driver and the box.
 
 Sources: [BME PCD-dpp manual](../../SyzygyRadioDrivers/datasheets/) (in the SyzygyRadioDrivers project,

@@ -184,9 +184,27 @@ class TestDetectors(unittest.TestCase):
         self.assertAlmostEqual(d["log_inr_db"], p_fast - cl.thermal_dbm("fast"), delta=0.05)
 
 
+class TestBoardConstants(unittest.TestCase):
+    """board_constants.py is generated from build/budget.json (gateware/gen_constants.py): a hand edit, or a
+    budget changed and not rebuilt, shows here.  Skipped where build/ is absent (on the PYNQ)."""
+    def test_matches_the_build(self):
+        root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        if not os.path.exists(os.path.join(root, "build", "budget.json")):
+            self.skipTest("no build/budget.json")
+        sys.path.insert(0, os.path.join(root, "gateware"))
+        import gen_constants
+        import board_constants
+        want = {name: v[0] for name, v in gen_constants.C if v is not None}
+        have = {name: getattr(board_constants, name) for name in want}
+        self.assertEqual(have, want)
+
+
 class TestOnRtl(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        import shutil
+        if shutil.which("iverilog") is None:
+            raise unittest.SkipTest("no Icarus Verilog")
         cls.bus = PipeBus(ser=8)
         cls.cl = CostasLink(cls.bus)
 

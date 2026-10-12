@@ -12,9 +12,9 @@ section 10 is folded in: the table at the end says which stage retires which ris
 
 | thing | why | have / buy |
 |---|---|---|
-| bench supply, **5.1-5.25 V**, current limit 1.5 A, into a short USB-A-to-C cable (or a USB-C PD supply rated 3 A) | stage 1; the board draws 1.34 A with both synthesizers running; the PTC, the FET and the bead drop up to 0.21 V at their maximum resistances, and the ADL53xx and ADL5611 want 4.75 V: 5.10 V at the plug leaves 4.89 V.  A laptop's port or a thin cable is not enough (the design review; sim/budget.py section 9) | have |
+| bench supply, **5.1-5.25 V**, current limit 1.5 A, into a short USB-A-to-C cable (or a USB-C PD supply rated 3 A) | stage 1; the board draws 1.37 A with both synthesizers running; the PTC, the FET and the bead drop up to 0.21 V at their maximum resistances, and the ADL53xx and ADL5611 want 4.75 V: 5.10 V at the plug leaves 4.89 V.  A laptop's port or a thin cable is not enough (the design review; sim/budget.py section 9) | have |
 | the 6 GHz scope (or a spectrum analyser, or the B210 at 5.8 GHz) | the LO and TX monitors; the loop's analog nodes | have |
-| U.FL-to-SMA pigtails, 6 or more (Hirose U.FL-LP-088 leads, 100-200 mm) | every monitor is a U.FL; it is rated for 30 matings, so leave the leads on the taps you use most | buy, about $15 for 10 |
+| U.FL-to-SMA pigtails, 6 or more (Hirose U.FL-LP-088 leads, 100-200 mm) | twelve monitors are U.FL, rated for 30 matings, so leave the leads on the taps you use most; five are MMCX (REF OUT, ERR, VC, TRIG IN and I SLOW MON): 5 MMCX-to-SMA leads too | buy, about $15 for 10 |
 | SMA attenuators: **30 dB** (board-to-board loopback: the LNA's absolute maximum input is +1 dBm and the transmitter gives +9.8), **20 dB x 2** (in front of each PA module), 1 W rating is plenty | stages 3 and 5 | buy if not in the drawer, $10-20 each |
 | SMA male-male leads, 3 x 150 mm (the switch block's jumpers; loopback) and 2 x 1 m | stages 3 and 4 | have / buy |
 | 50 ohm SMA terminations x 2 | an unused SMA (RX ANT when the switch block is cabled) | have |
@@ -59,17 +59,19 @@ Nothing plugged into the header yet; the board alone on the bench supply through
    JP101 SIGN B1 on Q-, JP102 SIGN B2 on Q+, JP103 SEL on CMP, JP201 REF on TCXO; JP202 (50R) and JP301
    (HDR 5V) open.  The modulator is off until a gateware drives TX_EN high (Response 15).
 
-1. 5 V at 0.1 A limit first: the current should be under 20 mA with nothing programmed (the LDOs,
-   the oscillators and the comparators idle).  Raise the limit to 1.5 A.
+1. 5 V at a 0.1 A limit first, for a few seconds: the supply goes straight into its limit (the ADL5380 and the
+   three ADL5611 have no enable), so read its voltage: a short holds it near 0 V, a sound board settles at a volt
+   or two where its chips start to draw.  Then raise the limit to 1.5 A.
 2. Rails at the test pads (bottom-right strip): +5V_IN within 0.15 V of the supply, +5V_RF at least
-   4.85 V (measure it again at 1.34 A in stage 2; if it is lower, raise the supply toward 5.25 V),
+   4.85 V (measure it again at 1.37 A in stage 2; if it is lower, raise the supply toward 5.25 V),
    +3V3_PLL_TX / +3V3_PLL_RX / +3V3_ANA / +3V3_DIG / +3V3_OSC 3.30 +-0.05.  Both LEDs lit.
-3. Current: about 0.85 A with the synthesizers unprogrammed (the ADL5380 and the three ADL5611 run from
-   power-up; the ADL5375 idles at 126 mA instead of 194 with its output disabled, because TX_EN rests low
-   until a gateware drives it: Response 15), 1.34 A once both MAX2871 run at full output and the
-   gateware enables the transmitter (stage 2).
+3. Current: 0.89 A plus up to 0.4 A for the two MAX2871 before they are programmed (CE is pulled high and
+   their registers are undefined at power-up).  The ADL5380 and the three ADL5611 run from power-up; the
+   ADL5375 idles at 126 mA instead of 194 with its output disabled, because TX_EN rests low until a gateware
+   drives it (Response 15).  1.37 A once both MAX2871 run at full output and the gateware enables the
+   transmitter (stage 2).
 4. Heat: the IR camera on the ADL5380, ADL5375, the three ADL5611 and the two MAX2871 after ten
-   minutes.  Expect 50-70 C on the QFN tops at 1.34 A; the PLL regulators' 2.2 ohm resistors warm.
+   minutes.  Expect 50-70 C on the QFN tops at 1.37 A; the PLL regulators' 2.2 ohm resistors warm.
    Nothing above 85 C, or the pours and the exposed-pad vias are not doing their job.
    *Pass:* every rail in range, nothing hot, the current within 10 % of the budget.
 5. Plug onto the PYNQ-Z2 (the board rides 8 mm above it on the socket; the slot takes the shared
@@ -79,11 +81,12 @@ Nothing plugged into the header yet; the board alone on the bench supply through
    rest high from power-up until the gateware writes the AD5696R (its outputs start at 1.25 V, under
    the arms' 1.65 V).  For the same reason the window comparators' event counts mean nothing until
    that write: write all four (`CostasLink.threshold`) before `rx_config` enables the receiver (the
-   design review).  From a Jupyter cell: I2C scan finds 0x60 (DAC 1), 0x61 (DAC 2), 0x48 (ADC); write the
+   design review).  From a Jupyter cell: I2C scan finds 0x0C (the windows' AD5696R), 0x48 (ADC), 0x49 (the detectors' ADC),
+   0x60 (DAC 1), 0x61 (DAC 2); write the
    DAC EEPROM defaults to 1.65 V; read the ADC's four channels (I, Q, VC, ERR) with nothing on the air:
    I and Q near the demodulator's common mode as the arms shift it, VC at 1.65 V (V_MID with the loop
    open: LOOP_HOLD high).
-   *Pass:* three I2C acknowledges, sensible ADC readings.
+   *Pass:* five I2C acknowledges, sensible ADC readings (`detectors()`: V5_MON = +5V_RF / 2, TEMP near 1.65 V at 25 C).
    *Retires:* heat (DOA 7), the power path (DOA 10 in part), the I2C pull-ups on the Icepi (DOA 11).
 
 ## Stage 2: the synthesizers and the transmitter (one board)
@@ -112,7 +115,7 @@ TX ANT through a **30 dB attenuator** into RX ANT.  Never a bare cable: the LNA 
 
 1. RX MON: -20 dBm at the demodulator's input minus 20 dB of coupling = -40 dBm at the U.FL, with the
    DSA set so (the budget's regulated level).  Walk the DSA through its 0.25 dB steps and watch RX MON
-   follow.  That measures the chain's gain (LNA + 2 x ADL5611 - DSA) against the budget's 38 dB.
+   follow.  That measures the chain's gain (LNA + 2 x ADL5611 - DSA) against the budget's 39.2 dB (the DSA at 0 dB: subtract its setting).
 2. The arms with the loop open (HOLD high): I MON and Q MON show the beat between the two
    synthesizers (the TCXO against the VCXO, up to 29 kHz, as a slow sinusoid at +-250 mV); the ADC
    reads it too.  Measure the arms' DC offsets here: the mean of I and Q over a beat cycle, read by
@@ -125,7 +128,8 @@ TX ANT through a **30 dB attenuator** into RX ANT.  Never a bare cable: the LNA 
    +-120 mV steady, ERR MON to zero.  If VC runs to a rail instead, move BOTH sign jumpers to their
    other positions (the loop had positive feedback).  If it locks and unlocks, step the DSA (the
    loop gain follows the level) and look at ERR MON for oscillation at a few kHz (f_n 3 kHz).
-   Then: lift the carrier frequency by 100 kHz in the TX register and watch VC move by 0.17 V and the
+   Then: lift the carrier frequency by 100 kHz in the TX register and watch VC move by 0.23 V (430 kHz/V; a 100 kHz step needs the fractional-N mode, not written yet:
+   REVA_CHANGES.md 20) and the
    loop stay locked; pull-in from 300 kHz off takes 0.38 s (section 6 of the budget).  **Set the DSA
    first** (step 1): it powers up at 31.75 dB, and the loop gain follows the level, so a loop judged
    before the DSA is set runs at a fraction of its 3 kHz and is underdamped (the design review).
@@ -135,12 +139,12 @@ TX ANT through a **30 dB attenuator** into RX ANT.  Never a bare cable: the LNA 
    lands within a few mV of the printed Vr: the N inputs' divider now carries the ADL5375's own
    2 x 41 uA (sim/budget.py section 1).
 4. BPSK: the FPGA flips the I ladder; CMP I MON (the comparator's output, /10) on one scope channel
-   against TRIG A (the FPGA's mark of the flip) on the other: the edge comes **14 ns + the cable**
-   after the mark (the receive half of the 22.7 ns; the transmit half is in the mark's own path).
-   The slow path's CMP I S edge (header pin 40) 37 ns behind it, and a QPSK corner's CMP QP S about
+   against TRIG A (the FPGA's mark of the flip) on the other: the edge comes **15 ns + the cable**
+   after the mark (the receive half of the 23.5 ns; the transmit half is in the mark's own path).
+   The slow path's CMP I S edge (header pin 40) about 27 ns behind it, and a QPSK corner's CMP QP S about
    7 ns behind its CMP QP (docs/TRAJECTORIES.md: the clipped slow stage drives its RC with the full
    swing).  I SLOW MON now taps the stage's output ahead of its 1 k / 33 pF pole, so a 50 ohm scope
-   there does not move the comparator.  The FPGA's own counters then give the same numbers to 2.5 ns.
+   there does not move the comparator.  The FPGA's own counters then give the same numbers to the sample (1.25 ns on the PYNQ-Z2).
 5. QPSK: the four points; CMP QP / CMP QN fire with their thresholds (sheet 7's AD5696R, channels A and B)
    set at a/2 to begin with; V_T2 for the slow Q
    window above x20 the static error.  FSK: the ladders rotate; the edge order on CMP I / CMP QP gives
@@ -169,14 +173,14 @@ TX ANT through a **30 dB attenuator** into RX ANT.  Never a bare cable: the LNA 
 Two boards on two PYNQ-Z2s, whips on both SMAs of each.  Frequencies: board A transmits at 5.80 GHz and
 receives at 5.20 GHz, board B the other way round (two antennas each, both carriers on all the time: the
 600 MHz split the fast arm rejects by 31 dB).  The budget wants 42 dB of isolation between a board's own
-two whips 600 MHz apart; two whips on one board's SMAs 30 mm apart give about 20 dB, so **put each
+two whips 600 MHz apart; two whips on one board's SMAs 32 mm apart give about 15 dB (stage 5), so **put each
 board's transmit whip on a 1 m lead**, a metre from its receive whip, or run the first tests with
 the switch block cabled in and time division (stage 4.4).
 
 1. Lock at 3 m: each receiver locks on the other's carrier (VC MON steady on both).  The RX synthesizer
    is re-centred by the FPGA when VC nears an end of its range (the two TCXOs may differ by 29 kHz).
 2. Latency: TRIG A on board A (the mark of the flip) against TRIG B on board B (the mark of the decode),
-   both leads to one scope: 22.7 ns of electronics plus 3.34 ns per metre.  Repeat at 3, 10, 30 m: the
+   both leads to one scope: 23.5 ns of electronics plus 3.34 ns per metre.  Repeat at 3, 10, 30 m: the
    slope is the speed of light, the intercept the electronics.  This is the experiment's calibration.
 3. Error rates: continuous BPSK at 100 Mbaud for the BER; then the idle-carrier events at 1 MHz trial
    rate for the false-event rate (the "quiet" threshold: the slow path's veto rate says how quiet).
@@ -230,9 +234,9 @@ EIRP.  The identification keys the carrier off and on: the far end's loop coasts
 locked, `received_dBm(ext_db=...)` reads the carrier's level from the DSA's setting and the I arm's
 amplitude on the ADC: at RX ANT, or at the antenna when `ext_db` is the gain of what sits between
 them (+15 for the LNA module, −30 for a pad).  `agc()` steps the DSA until the demodulator is back at
-its regulated −20 dBm, which also restores the loop's gain.  Together they cover about −90 to
-−28 dBm at RX ANT: 31.75 dB of DSA, plus about 40 dB of the arm read by the ADC below the regulated
-level.  For setup:
+its regulated −20 dBm, which also restores the loop's gain.  Together they cover about −99 to
+−27 dBm at RX ANT: 31.75 dB of DSA, plus about 40 dB of the arm read by the ADC below the regulated
+level (ten ADC steps at the bottom; sim/budget.py section 3).  For setup:
 * The DSA pinned at 0 dB with the level still low says to add the LNA module.
 * The DSA pinned at 31.75 dB with the arm still high says to add a pad (or leave the PA out).
 * Calibrate once on the bench: `rssi_zero()` with the far end muted, then a known level from the
@@ -254,10 +258,10 @@ Before the first field day (the design review):
   near-field frame is the right one).
 * **A coax lightning and ESD arrestor** at the mast end of each 10 m cable, grounded to the mast.
 * **Heat:** in a closed box in the sun the input PTC holds only about 1.3 A at 85 C against the
-  board's 1.34 A: ventilate the box, or the PTC trips.
+  board's 1.37 A: ventilate the box, or the PTC trips.
 * **The second harmonic** (11.6 GHz) on TX MON, if a 12 GHz analyser can be borrowed, before the PA
   amplifies it; the PA module's own filter is not specified.  Choose the two frequencies after a scan with the B210 at both ends (UNII-2C 5.47-5.725 GHz is the
-quiet one for the 5.2 GHz direction if it is empty; 5.80 and 5.90 GHz keep both inside the amateur band).
+quiet one for the 5.2 GHz direction if it is empty; 5.70 and 5.80 GHz keep both inside the amateur band and the balun's 5.875 GHz rating).
 
 1. Board alone, panels on the 10 m cables at both ends, 300 m: the budget says -49 dBm at the receiver
    and 43 dB of SNR: lock, latency and error rates as in stage 4.  Reach (quiet, BPSK): 3.1 km on the
@@ -286,13 +290,13 @@ quiet one for the 5.2 GHz direction if it is empty; 5.80 and 5.90 GHz keep both 
 ## Stage 6: into the mountains (dishes, 20 to 70 km)
 
 1. Choose the two sites from a terrain profile: line of sight with the first Fresnel zone clear (at
-   5.8 GHz over 50 km the first zone is 25 m across at mid-path).
+   5.8 GHz over 50 km the first zone's radius is 25 m at mid-path).
 2. Each end: the dish on a tripod, the LNA module and the PA module at the dish's feed (short SMA leads),
    the 20 dB pad on the PA's input, the board on its PYNQ in a box with the PD banks, the laptop.
    Pointing: the far end transmits its idle carrier; the near end's ADC reads I^2+Q^2 while the dish
-   is swept; 30 dBi is a 3.5 degree beam.
+   is swept; 30 dBi is about a 5 degree beam.
 3. The experiment: lock; the latency line's last points (20 km is 66.7 us of flight: the electronics'
-   22.7 ns is the quantity the whole project is about, and it is measured against the flight time);
+   23.5 ns is the quantity the whole project is about, and it is measured against the flight time);
    error rates per scheme; the whitened stream against the idle carrier; the slow path's veto counts.
    The budget's reach for this arrangement is beyond 100 km on both paths; the margin at 50 km is
    what the weather and the pointing eat.
@@ -304,12 +308,12 @@ quiet one for the 5.2 GHz direction if it is empty; 5.80 and 5.90 GHz keep both 
 | # | risk (PLAN.md section 10) | guard on the board | stage that retires it | if it bites |
 |---|---|---|---|---|
 | 1 | the Costas loop does not lock, or runs away | JP101/JP102 flip the sign; LOOP_SEL = FPGA gives a plain PLL on Q; VC_OFF sweeps; VC / ERR / I / Q monitors; HOLD; the ADC | 3.3 | move both sign jumpers; lower the DSA; a plain PLL on Q first |
-| 2 | demodulator DC offsets eat the fast comparators' 20 mV | **I_OFF_F** (DAC 2 D) trims the fast I arm (new, Response 8); V_T adjustable; the ADC reads the offsets | 3.2 | the Q fast arm has no trim: a 100 k from a DAC 1 channel is a generator change if the Q window is biased |
-| 3 | the 3.2 V level shift into a 3.3 V FDA (0.37 V of margin) | the DNP 1.5 k on ADJ drops the common mode to 2.5 V; each arm's PD is separate | 3.2 | fit the 1.5 k (an 0402: JLCPCB's job, or a rework) |
+| 2 | demodulator DC offsets eat the fast comparators' 20 mV | **I_OFF_F** (DAC 2 D) and **Q_OFF_F** (DAC 1 C) trim the fast arms (Responses 8, 14); the window thresholds adjustable; the ADC reads the offsets | 3.2 | re-trim both arms, then the thresholds |
+| 3 | the 3.8 V level shift into a 3.3 V FDA (the summing nodes 128 mV under the guaranteed 2.0 V; 61 mV at the worst corner) | the DNP 1.5 k on ADJ drops the common mode to 2.5 V; each arm's PD is separate | 3.2 | fit the 1.5 k (an 0402: JLCPCB's job, or a rework) |
 | 4 | 5.8 GHz layout: 28 dB of cascaded gain, the balun, the LO pairs, the LNA match, the couplers | CPWG with via fences, the vendors' layouts, the DSA between the stages, four RF monitors | 2.3, 3.1 | the DSA tames an oscillation; the TX pi pad; the couplers' real coupling is calibrated once |
 | 5 | the LO is wrong (registers, lock-detect polarity, Kvco, level) | MUX = lock detect; LO MON taps; every register is a write; REF IN | 2 | software; the loop filter values are 0402s |
 | 6 | own transmitter into own receiver | two antennas 600 MHz apart (31 dB from the arm), the DSA, the LNA module's filter, time division with the switch | 4.1, 5.3 | separate the whips; the switch block; the filter module |
-| 7 | heat: 6.7 W | the PLL regulators' 2.2 ohm; exposed-pad vias; +5V_RF pour | 1.4 | a fan; TX_DIS and the DSA idle parts |
+| 7 | heat: 6.8 W | the PLL regulators' 2.2 ohm; exposed-pad vias; +5V_RF pour | 1.4 | a fan; TX_DIS and the DSA idle parts |
 | 8 | the slow path's offsets or saturation | I_OFF / Q_OFF, V_T2; the nulling routine | 3.2 | the fast path works without it |
 | 9 | the single-ended ladder drive wobbles the modulator's common mode | VR_I / VR_Q trims; the receiver cares about sign | 2.3, 3.5 | accept the -15 dBc feedthrough as a fixed vector |
 | 10 | parts and the order: five HMC536 at JLCPCB, three consigned lines, two DACs by address, CPL rotations | PLACEMENT_CHECKS.txt, the preview, the HMC427A as a second-source switch | 0 | order the day the stock is checked |

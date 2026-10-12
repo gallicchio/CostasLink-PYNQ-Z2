@@ -101,10 +101,8 @@ LIBDIR = os.path.join(BI.HW, "lib", BI.LIB + ".pretty")
 # a place on one machine (CLAUDE_PCB.md section 2), spelt with character classes so that the
 # repository's own path audit (git grep before every commit) does not flag this line
 FORBIDDEN = re.compile(rb"/hom[e]/|/User[s]/|/tm[p]/|/mn[t]/|[A-Za-z]:\\{1,2}User[s]")
-# JLCPCB's cart on the ECP5-2ADC-2DAC order of 2026-10-09 (CLAUDE_PCB.md section 8): the one fee
-# mfg/cost_estimate.py does not carry, because its order kept the rails
-DEPANEL = 2.32
-SPARES_EACH = 2                     # consigned parts: spares per line for JLCPCB's attrition (Jason)
+DEPANEL = CE.FEES["depanel"]        # the ECP5-2ADC-2DAC cart of 2026-10-09 (CLAUDE_PCB.md section 8)
+SPARES_EACH = CE.CONSIGN_SPARES     # consigned parts: spares per line for JLCPCB's attrition and the bench (Jason)
 
 # A HOLE finding (FOOTPRINT_CHECK.txt: JLCPCB's drawing of a part wants a hole where the board
 # has no drill) stops the release.  Accept one here only after a person has put the maker's
@@ -130,6 +128,12 @@ LOOSE = [
      "(BRINGUP.md stage 3); JP202 (50R on TRIG IN) and JP301 (HDR 5V: the board powered from the PYNQ's header) "
      "only when wanted.  Order a few spare"),
 ]
+# the same parts at Digi-Key, so that they go into the consigned parts' cart (Digi-Key's pages, 2026-10-12): by
+# designator or LCSC code -> (MPN, Digi-Key number, unit price, why it is the same part)
+DIGIKEY_LOOSE = {
+    "J302": ("PPTC202LFBN-RC", "S6104-ND", 2.14, "Sullins 2x20 female, 2.54 mm, 8.51 mm insulator, through-hole: C2977589's height"),
+    "C5305": ("SPC02SYAN", "S9001-ND", 0.029, "Sullins 2.54 mm shunt"),
+}
 
 # the placement files (CLAUDE_PCB.md section 8): the name says which one goes to JLCPCB
 CPL_UPLOAD = NAME + "_cpl_jlcpcb_upload.csv"
@@ -369,11 +373,14 @@ def write_excluded(comps, extra, out):
             w.writerow([ref, value, fp, why])
     with open(os.path.join(out, "hand_solder_bom.csv"), "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["Designator", "Value", "Footprint", "LCSC (to order loose)", "MPN", "Qty", "Why"])
+        w.writerow(["Designator", "Value", "Footprint", "LCSC (to order loose)", "MPN", "Qty", "Digi-Key (the consignment's cart)",
+                    "Digi-Key MPN", "Why"])
         for c in sorted((c for c in comps if c["cls"] == "hand"), key=lambda c: refkey(c["ref"])):
-            w.writerow([c["ref"], c["value"], c["fp"], c["lcsc"], c["mpn"], "1 a board", HAND_SOLDER[c["ref"]]])
-        for row in LOOSE:
-            w.writerow(list(row))
+            dk = DIGIKEY_LOOSE.get(c["ref"], ("", "", 0, ""))
+            w.writerow([c["ref"], c["value"], c["fp"], c["lcsc"], c["mpn"], "1 a board", dk[1], dk[0], HAND_SOLDER[c["ref"]]])
+        for ref, value, fp, code, mpn, qty, why in LOOSE:
+            dk = DIGIKEY_LOOSE.get(code, ("", "", 0, ""))
+            w.writerow([ref, value, fp, code, mpn, qty, dk[1], dk[0], why])
 
 
 def consignment_lines(rows, assembled):
@@ -411,7 +418,14 @@ def write_consignment(lines, assembled, out):
           "shipping: about %s (mfg/cost_estimate.py's Digi-Key bucket)."
           % (assembled, SPARES_EACH, money(total), CE.DIGIKEY_TAX * 100, money(CE.DIGIKEY_SHIPPING),
              money(total * (1 + CE.DIGIKEY_TAX) + CE.DIGIKEY_SHIPPING)), ""]
-    L += ["## How JLCPCB takes them", "",
+    L += ["**For home, in the same cart** (hand_solder_bom.csv; these stay with you, they do not go to JLCPCB):", "",
+          "| part | MPN | Digi-Key | buy | unit | why |", "|---|---|---|--:|--:|---|"]
+    for key, n_board in (("J302", 1), ("C5305", 6)):
+        mpn, dk, unit, why = DIGIKEY_LOOSE[key]
+        buy = n_board * assembled + (1 if n_board == 1 else 8)
+        L.append("| %s | %s | %s | %d | %s | %s |" % ("J302, the PYNQ-Z2 socket" if key == "J302" else "jumper shunts",
+                                                       mpn, dk, buy, money(unit), why))
+    L += ["", "## How JLCPCB takes them", "",
           "1. Before the order, on jlcpcb.com under **Parts Manager > Consigned Parts** (their name for parts the "
           "customer supplies), register each part by its LCSC code below so the BOM line matches it:", ""]
     for c in lines:
@@ -423,7 +437,7 @@ def write_consignment(lines, assembled, out):
           "with its LCSC code and the order number (USPS Priority Mail International or FedEx: %s-%s, the estimate's range)."
           % (money(CE.CONSIGN_SHIP[0]), money(CE.CONSIGN_SHIP[1])),
           "3. In the order's BOM matching step, each of these lines must show the consigned stock as its source, not "
-          "JLCPCB's shelf stock (JLCPCB had %s on 2026-10-09: too few, or none, for a repeat order)."
+          "JLCPCB's shelf stock (JLCPCB had %s when this release was written: too few, or none, to rely on)."
           % ", ".join("%d of %s" % (c["jlc_stock"], c["code"]) for c in lines),
           "4. Assembly starts when the parts have arrived and been counted; allow a week for the post.", "",
           "The parts, and why (gen/parts.py):", ""]
@@ -657,12 +671,7 @@ def pos_export_check(pcb, cpl_native, scratch):
     return bad
 
 
-def tht_joints(fp):
-    """(SMD pads, through-hole joints) of a footprint.  A plated hole numbered like an SMD
-    pad is a via in that pad (an exposed pad's thermal vias), not a lead."""
-    smd = {p["number"] for p in fp["pads"] if p["type"] == "smd"}
-    return (sum(1 for p in fp["pads"] if p["type"] == "smd" and p["number"]),
-            sum(1 for p in fp["pads"] if p["type"] == "thru_hole" and p["number"] not in smd and p["number"]))
+tht_joints = CE.pad_counts             # (SMD pads, through-hole joints): one count for the estimate and the release
 
 
 def board_features(B, fps, box, parts=()):
@@ -992,11 +1001,12 @@ def cost_md(out, rows, fps, boards, assembled, dims, thin, cons_lines):
         r = next(r for r in rows if r["code"] == code)
         flags.append("**%s %s**: %d in stock against %d for this order: order soon, or it may run out"
                      % (code, r["model"], r["stock"], r["order"]))
-    flags.append("JLCPCB had %s on 2026-10-09: buying the two ADI chips there and consigning only the balun would cost "
-                 "about %s more on parts and save their consignment handling; the consignment shipment is needed either "
-                 "way for the balun (mfg/cost_estimate.py)"
+    extra = CE.shelf_extra(assembled)
+    flags.append("JLCPCB had %s: buying the two ADI chips there and consigning only the balun would cost "
+                 "about %s %s on parts and save their consignment handling; the consignment shipment is needed either "
+                 "way for the balun (gen/parts.py's consign prices)"
                  % (", ".join("%d of %s" % (c["jlc_stock"], c["code"]) for c in cons_lines if c["key"] != "BALUN"),
-                    money((23.60 - 17.96 + 16.00 - 14.12) * assembled)))
+                    money(abs(extra)), "more" if extra > 0 else "less"))
     flags.append("Not in the total: baking the moisture-sensitive parts (the QFNs are MSL 3; about $7.50 if ticked), "
                  "shipping, and duty beyond the 35 %")
     L += ["## What to look at", ""] + ["- " + f for f in flags] + [""]
@@ -1017,8 +1027,8 @@ def cost_md(out, rows, fps, boards, assembled, dims, thin, cons_lines):
         try:
             c = json.load(open(last))
             L += ["`mfg/cost_estimate.py`'s last run (build/COST_ESTIMATE.md) put the JLCPCB goods at %s (boards %s, assembly "
-                  "%s, parts %s); this release %s.  The two should agree within a few dollars: they share the fees and the "
-                  "prices, and differ by the depanel option and by how the joints are counted."
+                  "%s, parts %s); this release %s.  The two share the fees, the prices and the pad count, so they "
+                  "differ only when the prices were asked at different times."
                   % (money(c["pcb"][1] + c["assembly"] + c["parts"]), money(c["pcb"][1]), money(c["assembly"]),
                      money(c["parts"]), money(goods)), ""]
         except (KeyError, ValueError, TypeError):

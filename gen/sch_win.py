@@ -40,12 +40,12 @@ def window(S, name, inp, vt, out, ref, x, y):
     xo = o[0] + 15.24
     W(o, (xo, o[1]))
     J(xo, o[1])
-    ra, rb = series("R 33R", xo + 7.62, o[1])
+    ra, rb = series(LV.VAL["cmp_series"], xo + 7.62, o[1])
     W((xo, o[1]), ra)
     W(rb, (xo + 20.32, o[1]))
     S.hlabel(xo + 20.32, o[1], out, shape="output", rot=0)
     W((xo, o[1]), (xo, o[1] + 12.7))
-    B.tap(xo, o[1] + 12.7, name + " MON", rkey="R 453R")
+    B.tap(xo, o[1] + 12.7, name + " MON", rkey=LV.VAL["tap_R"])
     return c
 
 

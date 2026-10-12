@@ -28,6 +28,7 @@ FEES = dict(                                   # ECP5's cart, 2026-10-09 (CLAUDE
     parts_markup=1.0066, feeder_per_extended=2.70, smt_per_pad=0.0017, smt_per_board=1.50, tht_per_joint=0.0157,
     setup=51.50, stencil_both=16.54, fixture=16.54, hand_solder_labour=3.61, packaging=0.51, special=0.12,
     confirm_production=1.05, duty=0.35,
+    depanel=2.32,                              # "Depanel boards & edge rail before delivery": the release's form says Yes
 )
 # the bare boards: 4 layers, ENIG, green, JLC04161H-7628 (the default 4-layer stack, no stack-up
 # fee), no impedance requirement.  GPiBridge's cart (2026-10-06): $24.80 for 5 of 60 x 25.5 mm; the
@@ -37,17 +38,20 @@ SHIPPING = (25.0, 40.0)                        # UPS Express Saver DDP to Califo
 
 # the consigned parts: Digi-Key, prices as seen (PLAN.md section 4); the quantity is the placements on
 # the assembled boards plus one spare each for JLCPCB's attrition and one for the bench
-DIGIKEY = {
-    "ADL5380": dict(unit=17.96, seen="Digi-Key 4,527 at $17.96 (1-9), Jason 2026-10-09"),
-    "ADL5375": dict(unit=14.12, seen="Digi-Key 2,262 at $14.12, aggregator snapshot 2026-10-09"),
-    "BALUN": dict(unit=0.33, seen="Digi-Key, under the new number 5400BL15B0050001E"),
-}
+DIGIKEY = {k: dict(unit=p["consign"]["dk_unit"], seen=p["consign"]["seen"]) for k, p in consigned().items()}
+CONSIGN_SPARES = 2                             # per line: JLCPCB's attrition and one for the bench (Jason)
+
+
+def shelf_extra(assembled):
+    """What buying the consigned chips from JLCPCB's own shelf instead would add on parts (jlc_unit against dk_unit)."""
+    return sum((p["consign"]["jlc_unit"] - p["consign"]["dk_unit"]) * assembled
+               for p in consigned().values() if p["consign"].get("jlc_unit") is not None)
 DIGIKEY_SHIPPING, DIGIKEY_TAX, CONSIGN_SHIP = 8.0, 0.095, (35.0, 60.0)     # CA sales tax; USPS Priority International to FedEx
 
 OTHER = [
     ("SMA attenuators: 30 dB (loopback), 20 dB x 2 (in front of the PA modules)", 30.0, 50.0),
     ("U.FL-to-SMA pigtails, 10", 12.0, 18.0),
-    ("MMCX-to-SMA leads, 4 (REF OUT and the three MMCX monitors, Response 10)", 10.0, 16.0),
+    ("MMCX-to-SMA leads, 5 (REF OUT and the four MMCX monitors: ERR, VC, TRIG IN, I SLOW; Response 10)", 12.5, 20.0),
     ("5.8 GHz whips, SMA, x 4", 16.0, 24.0),
     ("SMA leads: 3 x 150 mm, 2 x 1 m; 50 ohm terminations x 2", 20.0, 35.0),
     ("USB-C PD power banks 5 V / 3 A x 2 (the amplifiers in the field)", 40.0, 60.0),
@@ -60,6 +64,16 @@ OTHER = [
 # soldered at home, not by JLCPCB (mfg/make_release.py HAND_SOLDER says why; Jason, Prompt 15: the Pi socket
 # when fitting it costs more than a few dollars).  J302 is the only part on the back, so the order is one-sided.
 HAND_SOLDER_REFS = ("J302",)
+
+
+def pad_counts(fp):
+    """(SMD pads, through-hole joints) of a footprint as the board has it (footprint_check.read_board_full):
+    each pad by its own type, so an edge SMA's SMD centre pad and its through-hole legs both count.  A plated
+    hole numbered like an SMD pad is a via in that pad (an exposed pad's thermal vias), not a lead.  The one
+    count for the estimate here and the release's (mfg/make_release.py)."""
+    smd = {p["number"] for p in fp["pads"] if p["type"] == "smd"}
+    return (sum(1 for p in fp["pads"] if p["type"] == "smd" and p["number"]),
+            sum(1 for p in fp["pads"] if p["type"] == "thru_hole" and p["number"] not in smd and p["number"]))
 
 
 def read_netlist():
@@ -124,22 +138,21 @@ def main(argv=None):
                          model=part.get("componentModelEn") or "", asked=asked or ""))
     parts_cost = sum(r["line"] for r in rows) * FEES["parts_markup"]
     ext = [r for r in rows if r["lib"] == "Extended"]
-    # joints
+    # joints, from the board's own footprints
+    import footprint_check as FC
+    on_board = {fp["ref"]: fp for fp in FC.read_board_full(BI.PCB)["fps"]}
     smt_pads = tht_joints = 0
-    for r, c in list(placed.items()) + list(cons.items()):
-        fp = fps.get(c["fp"])
-        if not fp:
-            continue
-        if fp["tht"]:
-            tht_joints += len(fp["pads"])
-        else:
-            smt_pads += len(fp["pads"])
+    for r in list(placed) + list(cons):
+        if r in on_board:
+            s_, t_ = pad_counts(on_board[r])
+            smt_pads += s_
+            tht_joints += t_
     F = FEES
     asm = dict(setup=F["setup"] / 2.0 * len(sides), stencil=F["stencil_both"] / 2.0 * len(sides), fixture=F["fixture"],
                feeder=F["feeder_per_extended"] * len(ext),
                smt=(F["smt_per_pad"] * smt_pads + F["smt_per_board"]) * a.assembled,
                tht=F["hand_solder_labour"] + F["tht_per_joint"] * tht_joints * a.assembled,
-               packaging=F["packaging"], special=F["special"], confirm=F["confirm_production"])
+               packaging=F["packaging"], special=F["special"], confirm=F["confirm_production"], depanel=F["depanel"])
     asm_total = sum(asm.values())
     # the bare boards
     W, H = PL.BOARD["w"], PL.BOARD["h"]
@@ -156,7 +169,7 @@ def main(argv=None):
     dk_lines = []
     for key, p in consigned().items():
         refs = [r for r, c in cons.items() if c["mpn"] == p["mpn"]]
-        qty = len(refs) * a.assembled + 2
+        qty = len(refs) * a.assembled + CONSIGN_SPARES
         unit = DIGIKEY[key]["unit"]
         dk_lines.append((key, p["mpn"], p["consign"].get("digikey", ""), len(refs), qty, unit, qty * unit, DIGIKEY[key]["seen"]))
     dk_parts = sum(l[6] for l in dk_lines)
@@ -172,7 +185,7 @@ def main(argv=None):
          "| where | what | cost |", "|---|---|--:|",
          "| **JLCPCB** | %d bare boards %.0f x %.0f mm, 4 layers, ENIG: model %s-%s | %s |" % (a.boards, W, H, money(pcb_lo), money(pcb_hi), money(pcb)),
          "| | assembly: setup %s, stencils %s, fixture %s, feeder loading %d Extended codes x %s = %s, SMT %d pads x %d boards, "
-         "through-hole %d joints x %d, packaging, confirmation | %s |"
+         "through-hole %d joints x %d, packaging, confirmation, depanel | %s |"
          % (money(asm["setup"]), money(asm["stencil"]), money(asm["fixture"]), len(ext), money(F["feeder_per_extended"]), money(asm["feeder"]),
             smt_pads, a.assembled, tht_joints, a.assembled, money(asm_total)),
          "| | their parts: %d BOM lines, %d placements a board, with attrition, x %.4f | %s |" % (len(rows), sum(r["n"] for r in rows), F["parts_markup"], money(parts_cost)),
@@ -187,10 +200,13 @@ def main(argv=None):
           "| key | MPN | Digi-Key number | a board | order | unit | line | seen |", "|---|---|---|--:|--:|--:|--:|---|"]
     for key, mpn, dk, n, qty, unit, line, seen in dk_lines:
         L.append("| %s | %s | %s | %d | %d | %s | %s | %s |" % (key, mpn, dk, n, qty, money(unit), money(line), seen))
-    L += ["", "The order is the placements on the assembled boards plus one spare each for JLCPCB's attrition and one for the bench.  "
-          "JLCPCB had 8 ADL5380 and 6 ADL5375-05 in stock on 2026-10-09 at $23.60 and $16.00: buying those two from their stock and consigning "
+    shelf = {k: p["consign"]["jlc_unit"] for k, p in consigned().items() if p["consign"].get("jlc_unit") is not None}
+    L += ["", "The order is the placements on the assembled boards plus %d spares a line: JLCPCB's attrition and one for the bench.  "
+          "JLCPCB had 8 ADL5380 and 6 ADL5375-05 in stock on 2026-10-09 at %s: buying those two from their stock and consigning "
           "only the balun (none in stock anywhere at JLCPCB: 5400BL15B050E, HHM1595A1, TCW4-582+ all 0) saves the chips' consignment handling but "
-          "costs $%.0f more on the parts; the consignment shipment is needed either way for the balun." % ((23.60 - 17.96 + 16.00 - 14.12) * a.assembled), ""]
+          "costs %s %s on the parts; the consignment shipment is needed either way for the balun."
+          % (CONSIGN_SPARES, " and ".join(money(v) for v in shelf.values()), money(abs(shelf_extra(a.assembled))),
+             "more" if shelf_extra(a.assembled) > 0 else "less"), ""]
     L += ["## Other: the bench and the field", "", "| item | low | high |", "|---|--:|--:|"]
     for what, lo, hi in OTHER:
         L.append("| %s | %s | %s |" % (what, money(lo), money(hi)))

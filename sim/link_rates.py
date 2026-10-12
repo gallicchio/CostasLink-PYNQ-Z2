@@ -11,7 +11,7 @@ The model (PLAN.md section 13 explains it in words):
 * Two receiver paths share the RF chain and the demodulator.  The FAST path is the arm
   amplifier at gain 4 (B_fast, about 100 MHz) into the first comparators: it flags a bit in a few
   nanoseconds.  The SLOW path takes the same arm outputs through a gain-20 stage and a 4.8 MHz
-  pole (noise bandwidth B_slow = 7.5 MHz) into three more comparators: 20 dB more sensitive, 37 ns
+  pole (noise bandwidth B_slow = 7.5 MHz) into three more comparators: 11 dB more sensitive, 37 ns
   later; the gateware uses it to confirm or veto the fast flag.
 * Each path has two limits.  NOISE: the comparator sees the carrier's I (or Q) plus Gaussian noise
   of power kT B F in its bandwidth; call that ratio "snr".  FLOOR: a TLV3601 needs about 20 mV

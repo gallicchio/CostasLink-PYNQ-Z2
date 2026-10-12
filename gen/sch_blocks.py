@@ -289,34 +289,37 @@ def synthesizer(ref, x, y, rail, le_name, mux_name, lo_name, mon_name, ref_src, 
     e = stub(pl, "25", dx=-5.08)
     tp(e[0], e[1], "LD " + ref)
     U.S.nc(*pl.pin("5"))
-    # loop filter: CP_OUT -> C1 || (R2 + C2) -> R3 -> TUNE with C3 (all C0G)
+    # loop filter: CP_OUT -> C1 || (R2 + C2) -> R3 -> TUNE with C3 (all C0G), the values sim/budget.py section 8 chose
+    import levels as LV
+    V = LV.VAL
     cx, cy = pl.pin("7")
     tx_, ty = pl.pin("20")
     xf = cx - 10.16
     W((cx, cy), (xf, cy))
-    down("C 390pF", xf, cy, text="left")
+    down(V["pll_C1"], xf, cy, text="left")
     J(xf, cy)
     xr2 = xf - 10.16
     W((xf, cy), (xr2, cy))
-    r2, b2 = down("R 820R", xr2, cy, net=None, text="left")
+    r2, b2 = down(V["pll_R2"], xr2, cy, net=None, text="left")
     W(b2, (b2[0], b2[1] + G))
-    down("C 6.8nF C0G", b2[0], b2[1] + G, text="left", drop=0)
+    down(V["pll_C2"], b2[0], b2[1] + G, text="left", drop=0)
     J(xr2, cy)
     xr3 = xr2 - 10.16
     W((xr2, cy), (xr3, cy))
-    rr = part("R 2k", nref("R"), xr3, (cy + ty) / 2.0, rot=0, text="left", fsize=1.0)
+    rr = part(V["pll_R3"], nref("R"), xr3, (cy + ty) / 2.0, rot=0, text="left", fsize=1.0)
     ra, rb = sorted((rr.pin("1"), rr.pin("2")), key=lambda p: p[1])
     W((xr3, cy), ra)
     W(rb, (xr3, ty))
     W((xr3, ty), (tx_, ty))
     xc3 = xr3 - 10.16
     W((xr3, ty), (xc3, ty))
-    down("C 160pF", xc3, ty, text="left")
+    down(V["pll_C3"], xc3, ty, text="left")
     J(xr3, ty)
-    note(xc3 - 10, ty + 20, "Loop filter: 80 kHz, 50 deg, Icp 2.56 mA (RSET 5.1k, CP = 7), Kvco 60 MHz/V, N = 232 (sim/budget.py section 8).  C0G.", cols=30)
+    note(xc3 - 10, ty + 20, "Loop filter: %.0f kHz, 50 deg, Icp %.2f mA (RSET %s, CP = %d), Kvco %.0f MHz/V, N = %.0f (sim/budget.py section 8).  C0G."
+         % (LV.B["pll_fc"] / 1e3, LV.P["pll_icp_mA"], V["pll_Rset"][2:], LV.P["pll_cp_code"], LV.P["pll_kvco_MHz_V"], LV.P["pll_fout_MHz"] / LV.P["pll_pfd_MHz"]), cols=30)
     # RSET
     e = stub(pl, "22", dx=-5.08)
-    down("R 5.1k", e[0], e[1], text="left")
+    down(V["pll_Rset"], e[0], e[1], text="left")
     # the three filter pins on the right (2.54 apart): 1 uF each, hung below the chip from
     # three columns, the top pin's the farthest out so that no line crosses another
     ybot = pl.pin("33")[1] + 10.16
@@ -394,12 +397,14 @@ def arm(S, name, ref, hp, lp, yf, xf, rf_key, rg_key="R 1k", rs_key="R 1.2k", sh
     if trim and shunts:                                      # the shunt hangs at xs2: the trim hangs a step left of the row's start
         J(xv, inn[1])
         W((xv, inn[1]), (xv - 2.54, inn[1]), (xv - 2.54, inn[1] + 2.54))
-        r, b = down("R 100k", xv - 2.54, inn[1] + 2.54, net=None, text="left")
+        import levels as LV
+        r, b = down(LV.VAL["trim_R"], xv - 2.54, inn[1] + 2.54, net=None, text="left")
         W(b, (b[0], b[1] + G))
         label(b[0], b[1] + G, trim, size=1.0, justify="left top")
     elif trim:
         J(xs2, inn[1])
-        r, b = down("R 100k", xs2, inn[1], net=None, text="left")
+        import levels as LV
+        r, b = down(LV.VAL["trim_R"], xs2, inn[1], net=None, text="left")
         W(b, (b[0], b[1] + G))
         label(b[0], b[1] + G, trim, size=1.0, justify="left top")
     if node_label:                                           # the summing node leaves the sheet at the row's left end, a step down

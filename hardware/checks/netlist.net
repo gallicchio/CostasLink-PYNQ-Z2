@@ -2,7 +2,7 @@
 	(version "E")
 	(design
 		(source "../CostasLink-PYNQ-Z2.kicad_sch")
-		(date "2026-10-12T08:44:45")
+		(date "2026-10-12T10:34:49")
 		(tool "Eeschema 10.0.6")
 		(textvar
 			(name "DATE") "2026-10-09")
@@ -12921,7 +12921,7 @@
 			(libsource
 				(lib "CostasLink")
 				(part "Balun_5400")
-				(description "Johanson 5400BL15B050 1:1 balun 4.9-5.9 GHz, 0805")
+				(description "Johanson 5400BL15B050 1:1 balun 4.9-5.875 GHz, 0805")
 			)
 			(property
 				(name "MPN")
@@ -29506,7 +29506,7 @@
 		(libpart
 			(lib "CostasLink")
 			(part "Balun_5400")
-			(description "Johanson 5400BL15B050 1:1 balun 4.9-5.9 GHz, 0805")
+			(description "Johanson 5400BL15B050 1:1 balun 4.9-5.875 GHz, 0805")
 			(fields
 				(field
 					(name "Reference") "T")
@@ -29519,7 +29519,7 @@
 					(name "Datasheet")
 				)
 				(field
-					(name "Description") "Johanson 5400BL15B050 1:1 balun 4.9-5.9 GHz, 0805")
+					(name "Description") "Johanson 5400BL15B050 1:1 balun 4.9-5.875 GHz, 0805")
 			)
 			(pins
 				(pin

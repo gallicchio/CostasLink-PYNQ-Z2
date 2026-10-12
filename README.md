@@ -1,11 +1,11 @@
 # CostasLink-PYNQ-Z2
 
 A 5.8 GHz bidirectional link for quantum position verification that carries one or two bits from one
-FPGA to another in the speed-of-light time plus about 25 ns of electronics, built to test three
+FPGA to another in the speed-of-light time plus about 23.5 ns of electronics, built to test three
 modulations with one receiver: BPSK with a hardware Costas loop, FSK, and QPSK. It plugs onto a
 PYNQ-Z2's Raspberry Pi header like `../GPSDO-PYNQ-Z2`. Two of them talk to each other.
 
-**Status (2026-10-10 evening, rev A, Response 15):** architecture and parts decided and
+**Status (2026-10-12, rev A, Prompt 30):** architecture and parts decided and
 stock-checked, the schematic on seven sheets, ERC-clean, every symbol's pins audited against the
 datasheets, every wire and every connector labelled with what is on it (`gen/levels.py`), the design
 arithmetic asserted, the constraint files and the synthesizer register words generated, the first
@@ -29,8 +29,14 @@ gateware drove it: header pin 24 is now TX_EN, active high, through an inverter 
 ([`REVA_CHANGES.md`](REVA_CHANGES.md)).  The 2x20 socket is soldered at home, which makes JLCPCB's order
 one-sided.  Four LLM reviewers went over build 17 (`design_review_*/`); build 18 fixes what they found
 ([`DESIGN_REVIEW_RESPONSE.md`](DESIGN_REVIEW_RESPONSE.md)), the worst of it the LO pairs, which were
-crossed and are now straight and equal.  **The board routes completely: DRC 0, and the release in
-`mfg/release/` passes every gate (2026-10-12, 00:19).**  Left for the order day: the CPL rotations,
+crossed and are now straight and equal.  Prompts 26-29 added the interference survey
+(`survey()`, from the window comparators' statistics), the system analysis around the radio
+([`docs/SYSTEM.md`](docs/SYSTEM.md)), sheet 6's interference detectors (an AD8310 log amp on the fast Q
+arm and its peak hold, +5V_RF and the board's temperature, read by a second ADS1115 at 0x49), and 6.8 nH
+ESD / DC shunts at the three antenna jacks; rev A covers 4.9-5.875 GHz (the LNA and the balun).  Prompt 30
+put every value in one place (`sim/budget.py`, `gen/parts.py`, `gen/pins.py`), the driver's constants in a
+generated module, and a check of every number these documents quote against the build.  **The board
+routes completely: DRC 0, and the release in `mfg/release/` passes every gate (2026-10-12).**  Left for the order day: the CPL rotations,
 read off JLCPCB's preview, and the three consigned parts.  Nothing ordered.
 
 * [`PLAN.md`](PLAN.md): the idea, the numbers, the antenna question, the parts with the reasons and
@@ -51,7 +57,7 @@ read off JLCPCB's preview, and the three consigned parts.  Nothing ordered.
   `sim/rf_lines.py`: the 50 Ω line geometry on JLCPCB's 4-layer stack.
 * `gen/`: the generator. `pins.py` (the header, one source of truth), `parts.py` (every part, LCSC
   code, consignment source), `symbols.py` and `footprints.py` (what KiCad's libraries lack),
-  `sch_rx.py` / `sch_tx.py` / `sch_pwr.py` / `sch_ant.py` / `sch_slow.py` (the five sheets),
+  `sch_rx.py` / `sch_tx.py` / `sch_pwr.py` / `sch_ant.py` / `sch_slow.py` / `sch_win.py` (the six sheets),
   `schematic.py` (the root), `levels.py` (what is on every wire, from the budget); `placement.py`
   (the floorplan by hand, every passive by rule, the plan drawn to look at), `board.py` (the board,
   inside KiCad's Python, checking pcbnew's pads against the plan before any copper), `routes.py`
@@ -85,8 +91,13 @@ read off JLCPCB's preview, and the three consigned parts.  Nothing ordered.
   of `CLAUDE_PCB.md` section 10: every code's JLCPCB description checked against the parts table,
   stock, the land patterns fitted, DRC clean, the CPL simulated, relative paths only.
 
-Build everything with `python3 build.py` (KiCad 10 found by `tools/kienv.py`). The rules the board
-is held to are the repository's `CLAUDE_PCB.md`.
+Build everything with `python3 build.py` (KiCad 10 found by `tools/kienv.py`). Every value the
+arithmetic chooses is written once, in `sim/budget.py`; the schematic, the board, the driver's
+`gateware/board_constants.py`, every study the plan quotes and the block diagrams are remade from it, and
+the last step, `tools/doc_check.py`, checks the numbers the hand-written documents quote against what the
+build computed (CLAUDE_PCB.md section 2). The release and the cost ask JLCPCB over the network and run
+by hand after it: `python3 mfg/make_release.py --refresh`, then `python3 mfg/cost_estimate.py`. The
+rules the board is held to are the repository's `CLAUDE_PCB.md`.
 
 Regulatory: a bare-chip radio with a custom antenna is uncertified; FCC §15.23 lets a hobbyist
 build up to five for personal use, and the 5.725-5.875 GHz ISM band allows up to +30 dBm with

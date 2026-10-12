@@ -2,7 +2,8 @@
 """What the host changes: the trajectory model of sim/trajectories.py with each host's own terms
 (Jason, Prompt 20: the Icepi Zero, a SYZYGY port on the Brain-1, an ECP5 on the board).
 
-    python3 sim/hosts.py        docs/images/hosts_latency.png, hosts_breakdown.png, build/hosts.json
+    python3 sim/hosts.py        docs/images/hosts_latency.png, hosts_breakdown.png, build/hosts.json and
+                                build/hosts_knobs.json (what each passive on rev A's chips saves)
 
 A variant is the same radio (the ADL5375, the RF chain, the ADL5380) with these swapped:
   tx_tau     the transmitting FPGA pin into the ladder: the PYNQ's 200 ohm into ~10 pF, or a bare pin
@@ -65,16 +66,16 @@ VARIANTS = [
     ("icepi2", "Icepi Zero, GDDRX2 at 656 Ms/s (same board)", 30 * 10e-12, B["fda_bw_MHz"], 2.5, 0.23, 1.52, "TLV3601", "#e07000"),
     ("syzygy", "SYZYGY / Brain-1: TLV3604 LVDS, ISERDES 800 Ms/s", 30 * 10e-12, B["fda_bw_MHz"], 0.8, 0.15, 1.25, "TLV3604", "#1f5fbf"),
     ("tdc", "the same with a carry-chain TDC (or an ECP5 on the board)", 30 * 10e-12, B["fda_bw_MHz"], 0.8, 0.15, 0.03, "TLV3604", "#2a8a3a"),
-    ("wide", "... and the arm at gain 2 (189 MHz)", 30 * 10e-12, 850.0 / 4.5, 0.8, 0.15, 0.03, "TLV3604", "#7a1fa0"),
+    ("wide", "... and the arm at gain 2 (%.0f MHz)" % B["gain2"]["bw_MHz"], 30 * 10e-12, B["gain2"]["bw_MHz"], 0.8, 0.15, 0.03, "TLV3604", "#7a1fa0"),
     ("bare", "... and no FDA: TLV3604 on the ADL5380 (390 MHz)", 30 * 10e-12, None, 0.8, 0.15, 0.03, "TLV3604", "#c8401a"),
 ]
 
 
-def model(v):
+def model(v, tau_ladder=TAU_LADDER):
     key, label, tx_tau, fda, cmp_ns, rx50, ts, cmpn, col = v
     rx_taus = [TAU_DEM] + ([1 / (2 * math.pi * fda * 1e6)] if fda else [])
     step = (t >= T_RF + T_OBUF).astype(float)
-    g = chain(step, [tx_tau, TAU_LADDER, TAU_MOD] + rx_taus)
+    g = chain(step, [tx_tau, tau_ladder, TAU_MOD] + rx_taus)
     imp = np.zeros(20000); imp[0] = 1.0
     h = chain(imp, rx_taus)
     enbw = float(np.sum(h ** 2)) / (2 * DT)
@@ -106,8 +107,27 @@ def model(v):
     return out
 
 
+def knobs():
+    """The passives on rev A's own chips (PLAN.md section 19, "the knobs"): what each saves on the PYNQ-Z2's
+    event, at the bench and at 3 km.  The arm's noise gain with the 1 k summing-node shunts is 1 + Rf / 500."""
+    base = VARIANTS[0]
+    def arm(mhz):
+        return base[:3] + (mhz,) + base[4:]
+    b0 = model(base)["cases"]
+    out = {}
+    for name, v, lad in (("the ladder's node at 100 ohm", base, 100 * 3e-12), ("the ladder's node at 50 ohm", base, 50 * 3e-12),
+                         ("the arm at gain 2", arm(B["gain2"]["bw_MHz"]), TAU_LADDER), ("the arm at gain 1", arm(P["fda_gbw_MHz"] / 3), TAU_LADDER),
+                         ("no arm", arm(None), TAU_LADDER)):
+        c = model(v, lad)["cases"]
+        out[name] = {case: (b0[case]["event_ns"] - c[case]["event_ns"]) if "event_ns" in c[case] else None for case in SNRS}
+    return out
+
+
 def main():
     res = [model(v) for v in VARIANTS]
+    kn = knobs()
+    for name, d in kn.items():
+        print("knob: %-30s saves %s" % (name, ", ".join("%s %s" % (c, "%.2f ns" % x if x is not None else "no fit") for c, x in d.items())))
     print("%-58s %7s %7s %6s %18s %18s %8s" % ("variant", "rise", "ENBW", "z", "bench: t, event", "3 km: t, event", "sign(I)"))
     for r in res:
         b, k = r["cases"]["bench"], r["cases"]["3 km"]
@@ -159,6 +179,7 @@ def main():
     for r in res:
         r.pop("curve")
     json.dump(res, open(os.path.join(ROOT, "build", "hosts.json"), "w"), indent=1)
+    json.dump(kn, open(os.path.join(ROOT, "build", "hosts_knobs.json"), "w"), indent=1)
     print("wrote docs/images/hosts_latency.png, docs/images/hosts_breakdown.png, build/hosts.json")
     return 0
 

@@ -304,7 +304,7 @@ def tcxo():
 # 3 balanced, 4 balanced, 5 GND, 6 NC.
 def balun_5400():
     name = "Balun_5400"
-    out = _hdr(name, "T", "5400BL15B050", 7.62, keywords="Johanson 5400BL15B050 1:1 balun 4.9-5.9 GHz, 0805")
+    out = _hdr(name, "T", "5400BL15B050", 7.62, keywords="Johanson 5400BL15B050 1:1 balun 4.9-5.875 GHz, 0805")
     out.append('(symbol "%s_0_1"' % name)
     out.append(_rect(-5.08, 5.08, 5.08, -5.08))
     out.append(')')

@@ -14,7 +14,7 @@ clocks and a way in to its register bus:
 | fast sampler | `fast_sampler_7series.v`: ISERDESE2 8:1 DDR at 400 MHz, **800 Ms/s** (1.25 ns), SER = 8 | `fast_sampler_ecp5.v`: IDDRX1F, **200 Ms/s** (5 ns), SER = 2 | `fast_sampler_flop.v`, SER = 1 |
 | register bus from | the PS: AXI-Lite at 0x43C00000 (`axil_bridge.v`) | the FTDI's UART at 1 Mbaud (`uart_cmd.v`) | the testbench |
 | capture depth | 4096 words of 64 bits | 2048 words of 28 bits | 1024 |
-| builds | 4989 LUTs, 5562 flip-flops, 9 BRAM tiles, 6 ISERDES; WNS +0.65 ns, WHS +0.02 ns | 9697 LUT4s, 5194 flip-flops, 7 DP16KD; 104 MHz (seed 1; five seeds of seven meet 100) | |
+| builds (2026-10-11) | 4990 LUTs, 5562 flip-flops, 9 BRAM tiles, 6 ISERDES; WNS +1.66 ns, WHS +0.03 ns | 9762 LUT4s, 5194 flip-flops, 7 DP16KD; 105.7 MHz | |
 
 Vivado 2024.1 is the version PYNQ 3.1 (the latest image for the PYNQ-Z2) is built with.  Plain Verilog, not
 SystemVerilog: a block design's module reference cannot have a SystemVerilog top, and Yosys reads the same
@@ -41,7 +41,8 @@ below, and the Python driver imports it.
 | `pynq/build.tcl`, `pynq/board_files/`, `pynq/bd_diagram.tcl`, `pynq/costaslink_pynq.xdc` | the Vivado project, block design, the diagram of it, the overlay's pins |
 | `pynq/sim_sampler.tcl`, `tb_sampler_7series.v` | the ISERDESE2's sample order in Vivado's simulator (the UNISIM model) |
 | `regmap.py` → `regmap.vh` | the register map |
-| `max2871_regs.py` → `max2871_words.vh` | the synthesizers' words |
+| `max2871_regs.py` → `max2871_words.vh` | the synthesizers' words (RSET and CP from `board_constants.py`) |
+| `gen_constants.py` → `board_constants.py` | the board's numbers the driver needs, from `build/budget.json` (do not edit) |
 | `gen_xdc.py` | `pynq_z2.xdc`, `icepi_zero.lpf`, `pynq/costaslink_pynq.xdc` from `gen/pins.py` |
 | `tb_costaslink.v`, `tb_engines.v`, `tb_loopback.vh`, `tb_axil.v`, `tb_pipe.v` | the testbenches (below) |
 | `driver/costaslink.py`, `driver/sim_pipe.py`, `driver/test_sim.py` | the Python driver, its simulator bus, its tests against the RTL |
@@ -66,8 +67,8 @@ timing is met (it refuses otherwise), writes `../build/pynq/overlay/costaslink_t
 block diagram's PDF.  Two and a half minutes.  `-tclargs -bench` adds a JTAG-to-AXI master for bring-up
 without the PS; `-tclargs -synth_only` stops after synthesis.  Do not edit the sources while it runs: the
 module reference's out-of-context run goes stale and the core comes out a black box.  On the board (PYNQ
-3.1): copy `costaslink_top.bit`, `.hwh`, `driver/costaslink.py`, `regmap.py` and `max2871_regs.py` into one
-directory (the driver finds `regmap.py` beside it or one level up).
+3.1): copy `costaslink_top.bit`, `.hwh`, `driver/costaslink.py`, `regmap.py`, `max2871_regs.py` and `board_constants.py` into
+one directory (the driver finds them beside it or one level up).
 
 **Icepi Zero.**  `make pnr-icepi`; 100 MHz closes on some placements and not others, so the target tries
 seeds 1-8 and keeps the first that meets it (`ICEPI_SEEDS`).  `openFPGALoader -b icepi-zero
@@ -225,7 +226,8 @@ the idle vector, the event mask, the 32-entry table for the settled vector or fo
 vector one message alone can make decides it; one two can make stays invalid) and the slow comparators'
 expectations; `Scheme.twin()` is the Costas loop's 180-degree lock point.  The I2C parts and their channels
 (AD5696R 0x0C: V_TQP, V_TQN, V_TIP, V_TIN; MCP4728 0x60: VR_I, VR_Q, Q_OFF_F, VC_OFF; 0x61: V_T2, I_OFF,
-Q_OFF, I_OFF_F; ADS1115 0x48: I, Q, VC, ERR) are the schematic generator's.
+Q_OFF, I_OFF_F; ADS1115 0x48: I, Q, VC, ERR; ADS1115 0x49: LOG_Q, PEAK_Q, V5_MON, TEMP) are the schematic
+generator's; the board's numbers are `board_constants.py`'s, which the build generates from `sim/budget.py`.
 
 ## The testbenches
 
@@ -269,7 +271,8 @@ ECP5 is the TX event's fan-out to ~150 flip-flops (91-99 MHz on the placements t
 * The sample clock from the radio's reference: TRIG_IN is on a clock-capable pin on both boards (U19
   MRCC, G1 PCLK), so REF OUT cabled to TRIG IN could clock the MMCM and make two boards' time stamps
   coherent (one-way time transfer); the clock wizard takes FCLK0 now.
-* IDDRX2F on the Icepi (400 Ms/s: the fast inputs are on banks 6 / 7, which have the gearing).
+* IDDRX2F on the Icepi (the fast inputs are on banks 6 / 7, which have the gearing): 400 Ms/s from the 100 MHz
+  fabric clock, 656 Ms/s with a 164 MHz one (docs/HOSTS.md's figure).
 * The ECP5 IDDRX1F's sample order is from TN1265, not simulated: BRINGUP stage 0 checks it on the bench.
 * Re-centring the RX synthesizer (stage 4.1) is the host's: `CostasLink.pll_tune`.
 

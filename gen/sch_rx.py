@@ -154,12 +154,12 @@ def build(S):
     W(inn_, (inn_[0] + 5.08, inn_[1]), (inn_[0] + 5.08, ci.pin("4")[1]), ci.pin("4"))
     co = ci.pin("1")
     W(co, (co[0] + 7.62, co[1]))
-    ra, rb = series("R 33R", co[0] + 11.43, co[1])                # source termination for the line to the FPGA (no series R on the Icepi)
+    ra, rb = series(LV.VAL["cmp_series"], co[0] + 11.43, co[1])                # source termination for the line to the FPGA (no series R on the Icepi)
     W((co[0] + 7.62, co[1]), ra); W(rb, (co[0] + 20.32, co[1]))
     S.hlabel(co[0] + 20.32, co[1], "CMP_I", shape="output", rot=0)
     J(co[0] + 7.62, co[1])
     W((co[0] + 7.62, co[1]), (co[0] + 7.62, co[1] + 15.24))
-    B.tap(co[0] + 7.62, co[1] + 15.24, "CMP I MON", rkey="R 453R", text="CMP I MON: the comparator's output, /10 into 50 ohm")
+    B.tap(co[0] + 7.62, co[1] + 15.24, "CMP I MON", rkey=LV.VAL["tap_R"], text="CMP I MON: the comparator's output, /10 into 50 ohm")
     sig(co[0] + 10, co[1] - 24, LV.txt("CMP_I"), cols=34)
     sig(ip[0] + 2, ip[1] + 13, LV.txt("I_ARM"), cols=22)
     # I MON tap and the ADC branch from the I_P line
@@ -261,7 +261,7 @@ def build(S):
     W((xn, inn[1]), (xn, yfb))
     r2a, r2b = series(LV.VAL["loop_R2"], xn + 10.16, yfb)
     W((xn, yfb), r2a)
-    ca, cb = series("C 100nF C0G", r2b[0] + 10.16, yfb)
+    ca, cb = series(LV.VAL["loop_C"], r2b[0] + 10.16, yfb)
     W(r2b, ca)
     xo = out[0] + 5.08
     W(cb, (xo, yfb), (xo, out[1]))

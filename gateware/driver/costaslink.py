@@ -9,7 +9,7 @@
     cl = CostasLink(UartBus("/dev/ttyUSB0"))
 
     cl.info()                        # board, clock, samples a clock
-    cl.i2c_scan()                    # BRINGUP stage 1.5: 0x0C, 0x48, 0x60, 0x61
+    cl.i2c_scan()                    # BRINGUP stage 1.5: 0x0C, 0x48, 0x49, 0x60, 0x61
     cl.pll_init()                    # stage 2.1: both synthesizers at the words max2871_regs.py made
     s = SCHEMES["A3"]                # the plan's corners (PLAN.md section 18)
     cl.scheme(s)                     # the transmitter's points and the receiver's table for it
@@ -23,7 +23,9 @@ PipeBus (the simulator, sim_pipe.py), or a fake in a test.
 
 The driver knows nothing that the gateware's registers do not say, except the board's I2C parts and
 their channels (gen/sch_rx.py, sch_slow.py, sch_win.py): the AD5696R at 0x0C (the four window
-thresholds), the MCP4728s at 0x60 and 0x61 (TX references, trims, V_T2) and the ADS1115 at 0x48.
+thresholds), the MCP4728s at 0x60 and 0x61 (TX references, trims, V_T2), the ADS1115 at 0x48 and the
+detectors' ADS1115 at 0x49 (sheet 6).  The board's numbers (gains, levels, the detectors' scales) come from
+board_constants.py, which the build generates from sim/budget.py.
 """
 import math
 import os
@@ -34,6 +36,9 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))           # gateware/: regmap.py, max2871_regs.py
 import regmap                                      # noqa: E402
+from board_constants import (RX_GAIN_DB, DEM_REG_DBM, A_REG_V, DSA_POWER_UP_DB, V_MID, G_SLOW, NF_CHAIN_DB,   # noqa: E402
+                             ENBW_SLOW_HZ, ENBW_FAST_HZ, AD8310_SLOPE_V_DB, AD8310_INTERCEPT_DBV, LOG_TAP_DB, V5_DIV,
+                             NTC_B, NTC_R25, NTC_RTOP, NTC_VDD)
 
 R = regmap.BY_NAME
 ID_EXPECTED = 0x434C0002
@@ -60,30 +65,19 @@ MCP4728_VDD = 3.3
 ADS1115 = 0x48              # AIN0 I_P, AIN1 Q_P, AIN2 VC, AIN3 ERR: single-ended, +-4.096 V, 860 SPS
 ADC_CH = {"I": 0, "Q": 1, "VC": 2, "ERR": 3}
 ADC_LSB_V = 4.096 / 32768
-V_MID = 1.65                # the arms' and the comparators' centre
 
 # the received level (Prompt 18: "a received signal strength indicator"): no detector chip (PLAN.md section 4);
 # once the loop is locked, I is the carrier's amplitude, and the DSA's setting is what the level needed.
-# sim/budget.py sections 3 and 7:
-RX_GAIN_DB = 39.2           # RX ANT to the demodulator's input, the DSA at 0 dB: LNA 13 - DSA 2.4 + 2 x ADL5611 14.3
-DEM_REG_DBM = -20.0         # the demodulator's input at the regulated level ...
-A_REG_V = 0.249             # ... where the fast arm's peak a, differential at the comparators, is 249 mV
-DSA_POWER_UP_DB = 31.75     # the PE43711 starts at its maximum in serial mode (its datasheet, "Power-up control")
+# sim/budget.py sections 3 and 7: RX_GAIN_DB, DEM_REG_DBM, A_REG_V, DSA_POWER_UP_DB, V_MID (board_constants.py, generated)
 # the interference survey (Prompt 26): no carrier, no lock; a window comparator against its threshold is the
 # detector.  sim/budget.py sections 3 and 7b; ENBW "fast" from sim/wifi_channels.py (the ADL5380 and the arm)
-G_SLOW = 20.0               # the slow stage after the fast arm
-NF_CHAIN_DB = 1.96          # the receiver's noise figure at RX ANT
-SURVEY_ENBW_HZ = {"slow": 7.5e6, "fast": 119.4e6}
+SURVEY_ENBW_HZ = {"slow": ENBW_SLOW_HZ, "fast": ENBW_FAST_HZ}
 SURVEY_LADDER_V = (0.0,) + tuple(0.0005 * 1.35 ** k for k in range(24))     # above V_MID: 0.5 mV to 0.5 V
 # the interference detectors (Prompt 28, sheet 6): a second ADS1115 at 0x49 reads an AD8310 log amp on the fast
-# Q arm (LOG_Q, and its peak hold PEAK_Q), +5V_RF through 10 k / 10 k (V5_MON) and an NTC (TEMP)
+# Q arm (LOG_Q, and its peak hold PEAK_Q), +5V_RF halved (V5_MON) and an NTC (TEMP); the numbers: sim/budget.py section 8b
 ADS1115_DET = 0x49
 DET_CH = {"LOG_Q": 0, "PEAK_Q": 1, "V5_MON": 2, "TEMP": 3}
-AD8310_SLOPE_V_DB = 0.024            # its datasheet: 24 mV/dB, intercept -108 dBV (sine), at 10-200 MHz
-AD8310_INTERCEPT_DBV = -108.0
-LOG_TAP_DB = 20 * math.log10(3.0)    # 1 k + 1 k into its 1 k input: it sees a third of the arm
 LOG_NOISE_DB = 2.5                   # a log amp reads Gaussian noise ~2.5 dB under a sine of the same rms (est: calibrate)
-NTC_B, NTC_R25, NTC_RTOP, NTC_VDD = 3380.0, 10e3, 10e3, 3.3
 
 # the transmitter's ladders: a level per axis -> its two bits (tx_symbol.v: 00 = -a, 01 / 10 = 0, 11 = +a)
 LEVEL_CODE = {1: 0b11, 0: 0b01, -1: 0b00}
@@ -496,7 +490,7 @@ class CostasLink:
             return False
 
     def i2c_scan(self, addrs=range(0x08, 0x78)):
-        """BRINGUP stage 1.5: expect 0x0C (AD5696R), 0x48 (ADS1115), 0x60 and 0x61 (the MCP4728s)"""
+        """BRINGUP stage 1.5: expect 0x0C (AD5696R), 0x48 and 0x49 (the ADS1115s), 0x60 and 0x61 (the MCP4728s)"""
         return [a for a in addrs if self.i2c_probe(a)]
 
     # the window thresholds: AD5696R, write-and-update (command 3) one channel
@@ -832,7 +826,7 @@ class CostasLink:
     def bringup_stage1(self, eeprom=False):
         """stage 1.5: the I2C scan, the DAC defaults at mid-scale (EEPROM if asked), the ADC's four channels"""
         found = self.i2c_scan()
-        want = [AD5696R, ADS1115, DAC1, DAC2]
+        want = [AD5696R, ADS1115, ADS1115_DET, DAC1, DAC2]
         if eeprom:
             for d in (DAC1, DAC2):
                 self.dac_eeprom(d)
@@ -966,7 +960,7 @@ class CostasLink:
             v_arm = 10 ** ((dbv_in + LOG_TAP_DB) / 20.0)
             d = self._arm_dbm(v_arm)
             out[name + "_dbm"] = None if d is None else d + cal_db + (LOG_NOISE_DB if name == "log" else 0.0)
-        out["v5_rf"] = 2.0 * v["V5_MON"]
+        out["v5_rf"] = v["V5_MON"] / V5_DIV
         for name, band in (("log", "fast"), ("peak", "fast")):
             x = out[name + "_dbm"]
             out[name + "_inr_db"] = None if x is None else x - self.thermal_dbm(band)

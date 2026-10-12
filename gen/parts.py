@@ -20,7 +20,7 @@ Fields:
 Stock and prices were queried 2026-10-09 00:36-01:11 PDT (tools/jlc_cache.json keeps each answer
 with its time; build/stock_probe*.txt are the printouts).  PLAN.md section 4 has the table.
 """
-import os, sys
+import math, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from board_info import LIB
 
@@ -37,6 +37,9 @@ def P(sym, fp, fp_src, lcsc, mpn, value, match, note="", consign=None):
 
 # Consigned parts: not placed from JLCPCB's stock but bought at a distributor and shipped to
 # JLCPCB (Jason, Prompt 1).  `consign` names the distributor part numbers; stock seen 2026-10-09.
+# consign=: where each consigned part is bought (the Digi-Key cut-tape number, its price and when it was seen) and
+# what JLCPCB's own shelf asked for it on 2026-10-09 (jlc_unit; None: not stocked).  The estimate, the release's
+# CONSIGNMENT.md and its cost table all read these (mfg/cost_estimate.py DIGIKEY).
 CONSIGN_NOTE = "CONSIGNED: bought at Digi-Key/Mouser, shipped to JLCPCB (PLAN.md section 4)"
 
 PARTS = {
@@ -44,15 +47,19 @@ PARTS = {
     "ADL5380": P("ADL5380", "QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm", STOCK + "Package_DFN_QFN", None,
                  "ADL5380ACPZ-R7", "ADL5380",
                  ["ADL5380"], "IQ demodulator 0.4-6 GHz, 390 MHz baseband, DC-coupled outputs: the Costas loop's phase detector. " + CONSIGN_NOTE,
-                 consign=dict(digikey="ADL5380ACPZ-R7CT-ND", mouser="584-ADL5380ACPZ-R7", lcsc="C579152",
-                              seen="Digi-Key 4,527 in stock at $17.96 (1-9), Jason 2026-10-09")),
+                 consign=dict(digikey="505-ADL5380ACPZ-R7CT-ND", mouser="584-ADL5380ACPZ-R7", lcsc="C579152",
+                              dk_unit=17.96, seen="Digi-Key 4,512 at $17.96 (1-9), its product page 2026-10-12",
+                              jlc_unit=23.60)),
     "ADL5375": P("ADL5375", "QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm", STOCK + "Package_DFN_QFN", None,
                  "ADL5375-05ACPZ-R7", "ADL5375-05",
                  ["ADL5375-05"], "IQ modulator 0.4-6 GHz, 0.5 V baseband bias: the transmitter. " + CONSIGN_NOTE,
-                 consign=dict(digikey="ADL5375-05ACPZ-R7CT-ND", mouser="584-ADL5375-05ACPZR7", lcsc="C579150")),
+                 consign=dict(digikey="505-ADL5375-05ACPZ-R7CT-ND", mouser="584-ADL5375-05ACPZR7", lcsc="C579150",
+                              dk_unit=17.26, seen="Digi-Key 5,829 at $17.26 (1-9), its product page 2026-10-12",
+                              jlc_unit=16.00)),
     "BALUN": P("Balun_5400", "Balun_Johanson_5400BL15B050", "gen", None, "5400BL15B0050001E", "5400BL15B050",
-               ["5400BL15B050"], "1:1 balun 4.9-5.9 GHz at the ADL5380's RF input (the datasheet's 5.8 GHz circuit). " + CONSIGN_NOTE,
-               consign=dict(digikey="712-1363-1-ND", mouser="609-5400BL15B0050001E", lcsc="C2837312", legacy="5400BL15B050E")),
+               ["5400BL15B050"], "1:1 balun 4.9-5.875 GHz at the ADL5380's RF input (the datasheet's 5.8 GHz circuit). " + CONSIGN_NOTE,
+               consign=dict(digikey="712-5400BL15B0050001ECT-ND", mouser="609-5400BL15B0050001E", lcsc="C2837312", legacy="5400BL15B050E",
+                            dk_unit=0.69, seen="Digi-Key 6,874 at $0.69 (1-9), its search 2026-10-12", jlc_unit=None)),
     "MAX2871": P("MAX2871", "QFN-32-1EP_5x5mm_P0.5mm_EP3.1x3.1mm", STOCK + "Package_DFN_QFN", "C7458627",
                  "MAX2871ETJ+T", "MAX2871", ["MAX2871ETJ+T"],
                  "23.5 MHz-6 GHz fractional-N synthesizer with VCO, 3.3 V, SPI (ADF4351 register map); one for the TX LO, one for the RX LO"),
@@ -229,6 +236,35 @@ for _v, (_code, _mpn, _match) in RES.items():
 
 def consigned():
     return {k: p for k, p in PARTS.items() if p.get("consign")}
+
+
+# The stocked value nearest to one the arithmetic chose: the schematic draws it (gen/levels.py VAL) and
+# sim/budget.py evaluates the design with it ("as fitted"), so the two cannot disagree.
+def ohms(key):
+    """'R 4.02k' or '4.02k' -> 4020.0"""
+    k = key.replace("R ", "", 1).replace(" 1206", "")
+    return float(k[:-1]) * {"k": 1e3, "M": 1e6}.get(k[-1], 1.0)
+
+
+def farads(key):
+    """'C 6.8nF C0G' or '390pF' -> farads"""
+    k = key.replace("C ", "", 1).replace(" C0G", "")
+    return float(k[:-2]) * {"pF": 1e-12, "nF": 1e-9, "uF": 1e-6}[k[-2:]]
+
+
+def nearest_res(value, tol=1.35):
+    """The resistor key ('R 10k') nearest to `value` ohms on a log scale, within a ratio of `tol`."""
+    best = min((k for k in RES if ohms(k) > 0), key=lambda k: abs(math.log(ohms(k) / value)))
+    assert 1 / tol < ohms(best) / value < tol, "no resistor near %.4g ohm in parts.RES (nearest %s)" % (value, best)
+    return "R " + best
+
+
+def nearest_cap(value, c0g=False, tol=1.1):
+    """The capacitor key nearest to `value` farads; c0g picks among the keys that name C0G (the 0603 and
+    1206 C0G parts the loop filters need), not the plain ones."""
+    best = min((k for k in CAPS if k.endswith(" C0G") == c0g), key=lambda k: abs(math.log(farads(k) / value)))
+    assert 1 / tol < farads(best) / value < tol, "no capacitor near %.4g F in parts.CAPS (nearest %s)" % (value, best)
+    return "C " + best
 
 
 if __name__ == "__main__":

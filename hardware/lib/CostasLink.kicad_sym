@@ -8823,7 +8823,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Johanson 5400BL15B050 1:1 balun 4.9-5.9 GHz, 0805"
+		(property "Description" "Johanson 5400BL15B050 1:1 balun 4.9-5.875 GHz, 0805"
 			(at 0 0 0)
 			(effects
 				(font

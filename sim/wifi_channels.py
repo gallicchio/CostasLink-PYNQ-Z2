@@ -143,8 +143,8 @@ def main():
             row["3 km + PA_window"], ("%.2f ns" % row["3 km + PA row 4_ns"]) if "3 km + PA row 4_ns" in row else "no fit"))
     n100 = B["link_rows"][1][3] - B["link_rows"][1][4]                 # the receiver's noise in 100 MHz, dBm
     print("the noise in 100 MHz is %.1f dBm: INR 10 dB is WiFi at %.0f dBm in our band, 20 dB at %.0f dBm" % (n100, n100 + 10, n100 + 20))
-    res.append(dict(interference_today=inr, noise_dBm_in_100MHz=n100))
-    json.dump(res, open(os.path.join(ROOT, "build", "wifi_channels.json"), "w"), indent=1)
+    json.dump(res + [dict(interference_today=inr, noise_dBm_in_100MHz=n100)],
+              open(os.path.join(ROOT, "build", "wifi_channels.json"), "w"), indent=1)
     # the plot: the turnaround against the channel, and the filters against the WiFi grid
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(12.5, 4.8), gridspec_kw=dict(width_ratios=[1.1, 1]))
     labels = ["today\n(188 MHz, 1 pole)", "150 MHz\nButterworth 2", "80 MHz\n1 pole", "80 MHz\nButterworth 4", "40 MHz\n1 pole", "40 MHz\nButterworth 4", "20 MHz\nButterworth 4"]

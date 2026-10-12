@@ -27,33 +27,37 @@ def lvl(dbm):
     return "%+.1f dBm (%s p-p)" % (dbm, mv(vpp(dbm)))
 
 
-def _ohms(key):
-    k = key.replace(" 1206", "")
-    return float(k[:-1]) * (1e3 if k.endswith("k") else 1.0)
-
-
-def res_key(ohms, tol=1.35):
-    """The parts table's resistor key nearest to `ohms` (a sim/budget.py value), within `tol`."""
-    best = min((k for k in PARTS_MOD.RES if _ohms(k) > 0), key=lambda k: abs(math.log(_ohms(k) / ohms)))
-    ratio = _ohms(best) / ohms
-    assert 1 / tol < ratio < tol, "no resistor near %.0f ohm in parts.RES (nearest %s)" % (ohms, best)
-    return "R " + best
+res_key = PARTS_MOD.nearest_res          # the parts table's key nearest to a sim/budget.py value (budget's "as fitted" too)
+cap_key = PARTS_MOD.nearest_cap
 
 
 VAL = {
     "fda_Rf": res_key(B["fda_Rf"]), "fda_Rg": res_key(B["fda_Rg"]), "fda_Rs": res_key(B["fda_Rs"]),
-    "loop_R1": res_key(B["loop_R1"]), "loop_R2": res_key(B["loop_R2"]),
+    "loop_R1": res_key(B["loop_R1"]), "loop_R2": res_key(B["loop_R2"]), "loop_C": cap_key(B["loop_C"], c0g=True),
     "bias_Rt": res_key(B["bias_Rt"]), "bias_Rb": res_key(B["bias_Rb"]),
+    "trim_R": res_key(B["trim_R"], tol=1.001),                # the DACs' offset trims into the arms (section 7b)
+    "cmp_series": res_key(P["cmp_series_ohm"], tol=1.001),    # every comparator output's source resistor (section 5's latency)
     "slow_Rf": res_key(B["slow_Rf"]), "slow_Rg": res_key(B["slow_Rg"]), "slow_Rrc": res_key(B["slow_Rrc"]),
-    "slow_Crc": "C %.0fpF" % (B["slow_Crc"] * 1e12),
+    "slow_Crc": cap_key(B["slow_Crc"], tol=1.001),
+    # the TX ladders (sim/budget.py section 1)
+    "dac_Rb": res_key(B["dac_Rb"], tol=1.001), "dac_Rr": res_key(B["dac_Rr"], tol=1.001),
+    # the MAX2871 loop filter (section 8): the nearest stocked values to Banerjee's, and RSET
+    "pll_C1": cap_key(B["pll_C1"]), "pll_C2": cap_key(B["pll_C2"], c0g=True), "pll_C3": cap_key(B["pll_C3"]),
+    "pll_R2": res_key(B["pll_R2"], tol=1.1), "pll_R3": res_key(B["pll_R3"], tol=1.1), "pll_Rset": res_key(P["pll_rset_ohm"], tol=1.001),
+    # the logic monitor taps and the interference detectors (section 8b)
+    "tap_R": res_key(B["tap_R"], tol=1.001),
+    "det_Rs": res_key(B["det_Rs"], tol=1.001), "det_Cc": cap_key(B["det_Cc"], tol=1.001),
+    "det_Coflt": cap_key(B["det_Coflt"], tol=1.001), "det_Cbfin": cap_key(B["det_Cbfin"], tol=1.001),
+    "det_Chold": cap_key(B["det_Chold"], tol=1.001), "det_Rbleed": res_key(B["det_Rbleed"], tol=1.001),
+    "det_Radc": res_key(B["det_Radc"], tol=1.001), "det_Cadc": cap_key(B["det_Cadc"], tol=1.001),
+    "v5_Rt": res_key(B["v5_Rt"], tol=1.001), "v5_Rb": res_key(B["v5_Rb"], tol=1.001), "ntc_Rtop": res_key(B["ntc_Rtop"], tol=1.001),
 }
-assert VAL["slow_Crc"] in PARTS_MOD.PARTS, VAL["slow_Crc"]
 
 pr10 = B["rx_in_dBm"]
 pr300 = B["rx_rows"]["300 m 24 dBi"]
 lv = B["dac_levels"]
 rails = B["rails_mA"]
-RF = "5.8 GHz (5.15-5.875 usable)"
+RF = "5.8 GHz (%g-%g in spec)" % tuple(P["band_GHz"])
 BW_RF = "a CW line; a flip adds +-%.0f MHz skirts" % B["B_MHz"]
 sw = B["switch"]
 vpk = B["vcmp_rms"] * 1.414                      # the fast arm's peak at the DSA's regulated level
@@ -82,8 +86,6 @@ T = {
              % (mv(vpk), B["B_MHz"], mv(vpk * 0.707)),
     "CMP_I": "CMP_I, the fast flag: 0 / 3.3 V CMOS, %.1f ns after the input crosses | through 33 ohm (+200 ohm on the PYNQ) | flips with the carrier's 180 deg | %.1f ns jack-to-register on the PYNQ, %.1f on the Icepi | confirmed or vetoed by CMP_I_S %.0f ns later (sheet 6)"
              % (P["cmp_tpd_ns"], B["latency_ns"] - 8.5, B["latency_icepi_ns"] - 4.1, B["slow_t50_ns"]),
-    "CMP_Q": "CMP_QP / CMP_QN (fast): 0 / 3.3 V CMOS through 33 ohm | a pulse while |Q| > Vth (a QPSK or FSK symbol) | Vth = 2 (V_T - 1.65 V): V_T 1.67 V gives +-44 mV",
-    "V_T": "V_T: DC from the DAC, 1.65 V + Vth/2 | 0-3.3 V",
     "ERR": "ERR = sign(I) x Q: 0 V (about 1.65 V) at lock, +-%s peak off lock | DC-%.0f MHz before the filter | K_d %.2f V/rad at the regulated level"
            % (mv(vpk), B["B_MHz"], B["loop_Kd"]),
     "VC": "VC: %.1f-%.1f V, 1.65 V = VCXO centre | slow: the %.0f Hz loop | = %.0f kHz/V of LO (x232)"
@@ -93,10 +95,9 @@ T = {
     "REF_RX": "25 MHz, 3.3 V CMOS square | +-%.0f ppm over %.1f-%.1f V | through 100 nF into REF_IN (0.7 V p-p min)"
               % (P["vcxo_pull_ppm"], P["vcxo_vc_V"][0], P["vcxo_vc_V"][1]),
     "REF_OUT": "REF OUT: 25 MHz, 3.3 V CMOS through 33 ohm | 1.6 V p-p into 50 ohm, 3.3 V open | for the TX sheet's REF IN (transponder)",
-    "DAC": "DAC outputs, DC, 0-3.3 V (12 bit, 0.8 mV): VR_I / VR_Q %.2f V (the ladders' centre; also the carrier null) | V_T 1.65 V + Vth/2 | VC_OFF 1.65 V"
-           % B["dac_Vr"],
+    "DAC": "DAC outputs, DC, 0-3.3 V (12 bit, 0.8 mV): VR_I / VR_Q %.2f V (the ladders' centre; also the carrier null) | Q_OFF_F (the fast Q arm's offset, +-%.0f mV at its output through %s) | VC_OFF 1.65 V"
+           % (B["dac_Vr"], B["fast_trim_V"] * 1e3, VAL["trim_R"][2:]),
     "ADC": "ADC inputs: I_P, Q_P, VC, ERR through 10k / 100 nF (160 Hz): averages, 0-3.3 V",
-    "LO_MON": "LO MON: 5.8 GHz, about 0 dBm into 50 ohm (RFOUTB)",
     "RX_MON": "RX MON: %s at 10 m (-20 dB after the gain blocks)" % lvl(B["dem_in_dBm"] - 20),
     # ---- the slow path --------------------------------------------------------------------------
     "I_SLOW": "I_sP / I_sN, the SLOW arm: x%.0f after the fast arm, then %.0f ohm / %.0f pF = %.1f MHz (%.0f ns rise, decides %.0f ns after the fast one) | saturates at +-1.65 V above +-%s at the fast arm: the sign survives | offset up to %.0f mV, trimmed by I_OFF | reads down to %.0f dBm at the antenna (noise-quiet %.0f, floor %.0f)"
@@ -105,8 +106,8 @@ T = {
               % (B["G_slow"], B["slow_fpole_MHz"], B["G_slow"]),
     "CMP_S": "CMP_I_S / CMP_QP_S / CMP_QN_S: 0 / 3.3 V CMOS through 33 ohm | the same decisions %.0f ns after the fast comparators, %.0f dB more sensitive | the gateware confirms or vetoes the fast flag with them"
              % (B["slow_t50_ns"], B["floor_fast_dBm"] - quiet_slow),
-    "DAC2": "DAC2 (MCP4728A1, I2C 0x61), DC 0-3.3 V: A = V_T2 (the slow Q window) | B = I_OFF, C = Q_OFF (+-%.2f V at the slow outputs through 100 k: null the %.0f mV offsets by watching the slow comparators' duty cycle) | D = I_OFF_F (the FAST I arm's offset on sheet 3, +-66 mV at its output)"
-            % (B["slow_trim_V"], B["slow_vos_mV"]),
+    "DAC2": "DAC2 (MCP4728A1, I2C 0x61), DC 0-3.3 V: A = V_T2 (the slow Q window) | B = I_OFF, C = Q_OFF (+-%.2f V at the slow outputs through %s: null the %.0f mV offsets by watching the slow comparators' duty cycle) | D = I_OFF_F (the FAST I arm's offset on sheet 3, +-%.0f mV at its output)"
+            % (B["slow_trim_V"], VAL["trim_R"][2:], B["slow_vos_mV"], B["fast_trim_V"] * 1e3),
     # ---- transmitter ------------------------------------------------------------------------
     "TX_BITS": "TX_I1, TX_I0, TX_Q1, TX_Q0: 0 / 3.3 V CMOS, FAST slew, 1.5 ns edge (+4.4 ns through the PYNQ's 200 ohm; none on the Icepi)",
     "TX_NODE": "ladder node: %.2f / %.2f / %.2f V DC for 00 / 01,10 / 11 | %.0f ohm, 3 pF: 1.6 ns | into IBBP (0-1 V allowed)" % (lv[0], lv[1], lv[2], B["dac_Znode"]),
@@ -144,6 +145,9 @@ for rail, key in (("PLL_TX", "+3V3_PLL_TX"), ("PLL_RX", "+3V3_PLL_RX"), ("ANA", 
 # silkscreen both print): (the short line printed beside it on the board, the sentence the schematic
 # puts beside it).  CLAUDE_PCB.md section 4: limits at every connector; section 6: on the silkscreen.
 _pa = B["pa_module"]
+TAP_R = VAL["tap_R"][2:].replace("R", " ohm")
+TAP_DIV = "/%.0f into 50 ohm (0 / %.2f V)" % ((B["tap_R"] + 50) / 50, B["tap_V50"])
+TAP_SHORT = "0-%.1f V/50R" % B["tap_V50"]
 LIMITS = {
     "RX ANT": ("in: +1 dBm MAX", "RX ANT, 50 ohm: ABS MAX +1 dBm (the SKY65404's limit).  Expected %s at 10 m with whips, %s at 300 m with panels."
                % (lvl(pr10), lvl(pr300))),
@@ -168,14 +172,14 @@ LIMITS = {
     "Q SLOW MON": ("0-3.3 V, 1k", "Q SLOW MON: the slow Q stage's + output, ahead of its pole, through 1k: 1.65 V, 0 at lock, saturated during a QPSK symbol."),
     "ERR MON": ("1.65 V +-%.0f mV, 1k" % (vpk * 1e3), "ERR MON: the loop error sign(I) x Q through 1k: 1.65 V at lock, +-%s off lock." % mv(vpk)),
     "VC MON": ("%.1f-%.1f V, 1k" % (P["vcxo_vc_V"][0], P["vcxo_vc_V"][1]), "VC MON: the VCXO's control voltage through 1k: %.1f-%.1f V, 1.65 V at the VCXO's centre." % (P["vcxo_vc_V"][0], P["vcxo_vc_V"][1])),
-    "CMP I MON": ("0-0.3 V/50R", "CMP I MON: the fast comparator's output through 453 ohm: /10 into 50 ohm (0 / 0.33 V), the data as it goes to the FPGA."),
+    "CMP I MON": (TAP_SHORT, "CMP I MON: the fast comparator's output through %s: %s, the data" % (TAP_R, TAP_DIV) + " as it goes to the FPGA."),
     "TRIG A": ("3.3 V, 2 V/50R", "TRIG A: 0 / 3.3 V through 33 ohm (2 V into 50 ohm), 2.2 ns: the FPGA marks the symbol it sent."),
     "TRIG B": ("3.3 V, 2 V/50R", "TRIG B: 0 / 3.3 V through 33 ohm (2 V into 50 ohm), 2.2 ns: the FPGA marks the symbol it decoded."),
-    "IP MON": ("0-0.3 V/50R", "IP MON: the I window's + comparator through 453 ohm, /10 into 50 ohm (0 / 0.33 V): for the scope, beside its line to the FPGA."),
-    "IN MON": ("0-0.3 V/50R", "IN MON: the I window's - comparator through 453 ohm, /10 into 50 ohm (0 / 0.33 V): for the scope, beside its line to the FPGA."),
-    "QP MON": ("0-0.3 V/50R", "QP MON: the Q window's + comparator through 453 ohm, /10 into 50 ohm (0 / 0.33 V): for the scope, beside its line to the FPGA."),
-    "QN MON": ("0-0.3 V/50R", "QN MON: the Q window's - comparator through 453 ohm, /10 into 50 ohm (0 / 0.33 V): for the scope, beside its line to the FPGA."),
-    "TRIG IN MON": ("0-0.3 V/50R", "TRIG IN MON: the Schmitt buffer's output through 453 ohm, /10 into 50 ohm (0 / 0.33 V): the trigger edge as the FPGA sees it."),
+    "IP MON": (TAP_SHORT, "IP MON: the I window's + comparator through %s, %s" % (TAP_R, TAP_DIV) + ": for the scope, beside its line to the FPGA."),
+    "IN MON": (TAP_SHORT, "IN MON: the I window's - comparator through %s, %s" % (TAP_R, TAP_DIV) + ": for the scope, beside its line to the FPGA."),
+    "QP MON": (TAP_SHORT, "QP MON: the Q window's + comparator through %s, %s" % (TAP_R, TAP_DIV) + ": for the scope, beside its line to the FPGA."),
+    "QN MON": (TAP_SHORT, "QN MON: the Q window's - comparator through %s, %s" % (TAP_R, TAP_DIV) + ": for the scope, beside its line to the FPGA."),
+    "TRIG IN MON": (TAP_SHORT, "TRIG IN MON: the Schmitt buffer's output through %s, %s" % (TAP_R, TAP_DIV) + ": the trigger edge as the FPGA sees it."),
     "TRIG IN": ("in: 5.5 V MAX", "TRIG IN: a 3.3 V logic pulse into a Schmitt buffer through 1k; 5.5 V MAX, never negative; JP202 fitted = 50 ohm termination."),
     "USB-C 5V": ("5 V, 1.5 A", "USB-C: 5 V only (CC pulled down: any USB-C supply gives 5 V), 1.5 A at most, through a 2 A PTC and an ideal diode."),
     "TR": ("TR A / TR B / GND: 3.3 V logic", "J303: TR_A (from the FPGA, pulled up on the PYNQ) and TR_B (= not TR_A, made on the board), 0 / 3.3 V, and ground: for an external switch module."),

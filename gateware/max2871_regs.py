@@ -23,8 +23,7 @@ import math, sys
 
 F_REF_MHZ = 25.0          # the VCXO / TCXO
 F_PFD_MHZ = 25.0          # R = 1, no doubler, no divide-by-2
-RSET_OHM = 5100.0
-CP_CODE = 7               # ICP = 1.63 / RSET x (1 + CP) = 2.56 mA (sim/budget.py section 8)
+from board_constants import RSET_OHM, CP_CODE      # sim/budget.py section 8: ICP = 1.63 / RSET x (1 + CP) = 2.56 mA
 APWR = 1                  # RFOUTA -1 dBm per side (00 -4, 01 -1, 10 +2, 11 +5 dBm): 0 dBm into the ADL53xx LO, differential
 BPWR = 1                  # RFOUTB -1 dBm when enabled (the LO MON jack)
 

@@ -3389,3 +3389,106 @@ is an RMS.**
 - The LNA's match is the narrower.
 - Nothing else limits before ~4 GHz: the DC blocks are ~15 Ω there, the couplers −21 dB.
 - The transmitter has no band part.
+
+## Prompt 30 (2026-10-12 09:41 PDT)
+
+Is the source of truth for the schematic,  PCB, and simulations duplicated or all in one place (one place for each parameter or passive value)? If that source of truth is changed, does everything downstream get updated and remade, so that everything is consistent? If there are hard coded things that cannot be traced to a single initial source of truth (often in markdown documetation), check that they are at least up to date. Make sure thst some version of this request is in CLAUDE_PCB.md
+
+### Interjection (09:48)
+
+When you are done, do another overall once over and make sure the "release " directory is good to make a consignment Digikey order and a JLCPCB order.
+
+## Response 30 (2026-10-12 09:41 - 10:36)
+
+**Before this prompt the answer was "mostly one place, not entirely".  Now every value is set once, one
+command remakes everything from it, and a build step checks the numbers the documents quote.**
+
+**Where each thing is set:**
+- `sim/budget.py`: every computed value and design parameter.
+- `gen/parts.py`: the parts and their stocked values, plus the consigned parts' distributor numbers and prices.
+- `gen/pins.py`: the header.
+- `gen/placement.py`: positions.
+
+Everything else is derived from those four:
+- `gen/levels.py` maps each computed value to the nearest stocked part (`VAL`); the schematic and its notes use it.
+- The netlist and the board follow from the schematic.
+- `gateware/board_constants.py`, new, carries the driver's and the register script's numbers.
+- The studies, the block diagrams and the release are remade from the same sources.
+
+**What was duplicated, and is now set once:**
+- **23 passive values typed into five sheet generators:** the TX ladders, the MAX2871 loop filter and
+  RSET, the Costas loop's C, the logic monitor taps, sheet 6's detector values, the trim and
+  comparator-series resistors.  They matched the budget, but nothing tied them to it.
+- **The driver's hand copies** of the gains, levels, noise bandwidths and the detectors' scales.
+  `A_REG_V` was the 10 m case's level, 0.1 dB off the regulated one.  `test_sim.py` now fails if
+  `board_constants.py` differs from the build.
+- **RSET and the charge-pump code** were set separately in the budget and in `max2871_regs.py`.
+- **The consigned parts' prices** were in three places.  The release's estimate and
+  `cost_estimate.py`'s also differed by $4.49: each counted pads its own way, and only one charged
+  the depanel fee.  They now agree to the cent.
+- **The band appeared three different ways:** "5.15-5.875 usable" on the schematic, "parts 4.9-6"
+  on the diagram, "4.9-5.9" in the plan.
+- **Smaller ones:** the comparator hysteresis (3 vs 5 mV), the gain-2 bandwidth (189 vs 170 MHz),
+  and rev A's cost hard-coded in the roadmap.
+
+**Is everything remade?  Before, no:**
+- Six studies were outside `build.py`, and `sim/wifi_channels.py` had been crashing unnoticed.
+- The Verilog includes were remade only by `make`.
+- The block diagrams changed on every run.
+
+Now `build.py` has an `analyses` step.  Its `gateware` step writes the constants and the includes
+and runs the driver's tests.  It ends with `docs`: `tools/doc_check.py`, 43 claims plus three tables
+copied verbatim.  Reintroducing two old numbers makes it fail on their lines.  A full rebuild gave a
+board file byte-identical to the last commit, a netlist changed only in the balun's description, and
+DRC 0 / 0 / 0.
+
+**What tracing the values back to their source exposed:**
+- **Sheet 6's log-amp note** gave the demodulator's input noise (0.8 mV) as the log amp's.  The log
+  amp sees 2.3 mV (−53 dBV), 38 dB over its floor.  The OFLT corner is 59 kHz by the datasheet's
+  equation 12, not 65.
+- **The Costas loop as fitted** (the budget had reported an "E24 9.1 k" the board never had):
+  - with the 10 k fitted it is 2916 Hz, ζ 0.687;
+  - a phase step overshoots 21 %, not the diagram's 2 %;
+  - pull-in is 4.2 ms from 30 kHz.
+- **The MAX2871 filter,** evaluated in full: 80.0 kHz and 49.6° as designed, 81.1 kHz and 49.7° as fitted.
+- **The digital rail counted 6 comparators; the board has 8.**  The board draws 1.37 A (6.8 W), not 1.34.
+- **BRINGUP stage 1.1 could not pass.**  It expected under 20 mA at a 0.1 A limit, but the RF chips
+  have no enable.  It is now a short check.  Stage 1.3's current is now 0.89 A plus up to 0.4 A for
+  the unprogrammed synthesizers.
+- **The driver's bring-up never checked the detectors' ADC at 0x49.**
+- **The balun under the number Digi-Key sells is rated 4.9-5.875 GHz.**  The legacy number's sheet
+  said 5.9, so rev A's band is 4.9-5.875 GHz.
+- **Sheet 3's DAC note** still named V_T; channel C has been Q_OFF_F since Response 14.  Three
+  unused texts were deleted.
+
+**The documents:**
+- Two audit agents checked every number in them against the JSON.  About 110 stale figures are now
+  fixed, among them:
+  - the latency: 23.5 ns (8.5 + 15.0) and 14.7 ns on the Icepi;
+  - the noise floors, the isolation table, the reaches and the constellation ranges;
+  - the slow path's 11 dB (not 14 or 16);
+  - the header pins and the parts counts;
+  - the cost table and the roadmap's totals.
+- §19's passive knobs came from no script.  `sim/hosts.py` now computes them.
+- `CLAUDE_PCB.md` §2 has the rule, with your request quoted.  It also gains "evaluate the design as
+  fitted", and §3 a lesson on reading consigned parts' numbers from the distributor's own page.
+
+**The release, once over for the two orders** (regenerated with live JLCPCB stock; every gate passes):
+- **Digi-Key fixes:**
+  - The balun's number, 712-1363-1-ND, is no Digi-Key part.  It is **712-5400BL15B0050001ECT-ND**,
+    $0.69, 6,874 in stock.
+  - The ADI chips are now **505-ADL5380ACPZ-R7CT-ND** ($17.96) and **505-ADL5375-05ACPZ-R7CT-ND**
+    ($17.26, not $14.12).
+  - The cart is 4 of each, **$165.29** with tax and shipping.
+  - CONSIGNMENT.md adds, for home in the same cart, three J302 sockets (Sullins PPTC202LFBN-RC,
+    S6104-ND, the same 8.5 mm height) and 20 shunts (S9001-ND).
+- **JLCPCB:**
+  - $835.08-850.08.  BOM 80 lines (3 consigned), 384 designators, the same 384 in the CPL, all on top.
+  - The Gerber zip is complete, and changed only in its creation dates.
+  - Everything: $1,177-1,346.
+- **Risks on the order day:**
+  - The HMC536 has 5 in stock against 2 needed, and Digi-Key has none until 500 arrive on 2026-12-24.
+  - The CPL rotations (33 part numbers predicted) are left to JLCPCB's preview, as planned.
+- **The order:** buy the Digi-Key cart, register the three LCSC codes under Consigned Parts, post the
+  parts, then upload the zip, the BOM and `*_cpl_jlcpcb_upload.csv` with ORDER_SETTINGS.md's 11
+  non-default fields.

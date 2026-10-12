@@ -9,7 +9,7 @@ The Python drivers (driver/costaslink.py on the PYNQ, driver/uart_client.py for 
 import REGS from here, so a register's address and fields are written once.  8-bit register numbers,
 32-bit data; on AXI-Lite (PYNQ) register n is at byte offset 4 n.
 """
-import sys
+import os, sys
 
 # (address, name, access, block, description).  access: R, W, RW; "pulse" in the text = acts once.
 REGS = [
@@ -181,7 +181,7 @@ def md():
 if __name__ == "__main__":
     check()
     if "--vh" in sys.argv:
-        open("regmap.vh", "w").write(vh())
+        open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "regmap.vh"), "w").write(vh())
         print("regmap.vh: %d registers" % len(REGS))
     elif "--md" in sys.argv:
         sys.stdout.write(md())

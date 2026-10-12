@@ -243,7 +243,7 @@ input, with the comparator's 2.5 ns and the header's 1.6 ns included.
   at the bench.  It approaches the fixed delays (grey line) only slowly, because g(t) starts
   gently.
 * **The shaded band** is the noise's timing jitter, σ divided by the slope at the crossing:
-  ±0.5 ns at 3 km, ±0.1 ns at the bench.
+  ±0.6 ns at 3 km, ±0.1 ns at the bench.
 * **The blue dashed line** is a window fixed halfway, which is also where sign(I) is crossed (both
   sit at g = 0.5): 11.7 ns at every SNR.
 * **The dash-dot line** is the slow path's Q confirmation, 19.3 ns.
@@ -259,7 +259,7 @@ ns late, sampled every 1.25 ns from a random phase, the event, then the table 4 
 |---|---|---|---|---|
 | I+ Q+ | 40 / 0 / 0 | 13.1 ± 0.7 ns | 40 / 0 / 0 | 10.0 ± 0.4 ns |
 | I+ Q− | 40 / 0 / 0 | 13.2 ± 0.9 ns | 40 / 0 / 0 | 10.0 ± 0.4 ns |
-| I− Q+ | 40 / 0 / 0 | 13.1 ± 0.6 ns | 40 / 0 / 0 | 9.9 ± 0.4 ns |
+| I− Q+ | 40 / 0 / 0 | 13.1 ± 0.6 ns | 40 / 0 / 0 | 9.9 ± 0.3 ns |
 | I− Q− | 40 / 0 / 0 | 12.9 ± 0.6 ns | 40 / 0 / 0 | 9.9 ± 0.4 ns |
 
 These spreads are more than section 4's jitter because they include the 1.25 ns sampling grid

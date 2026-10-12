@@ -19,7 +19,7 @@ def ladder(S, x, y, bits, ref_name, name):
     for bit, dy in zip(bits, (-7.62, 7.62)):
         yb = y + dy
         S.hlabel(x - 33.02, yb, bit, shape="input", rot=180)
-        ra, rb = series("R 2.2k", x - 20.32, yb)
+        ra, rb = series(LV.VAL["dac_Rb"], x - 20.32, yb)
         W((x - 33.02, yb), ra)
         W(rb, (x, yb))
     W((x, y - 7.62), (x, y + 7.62))
@@ -27,7 +27,7 @@ def ladder(S, x, y, bits, ref_name, name):
     yr = y + 17.78
     W((x, y + 7.62), (x, yr))
     J(x, y + 7.62)
-    ra, rb = series("R 300R", x - 10.16, yr)
+    ra, rb = series(LV.VAL["dac_Rr"], x - 10.16, yr)
     W(rb, (x, yr))
     W((x - 33.02, yr), ra)
     S.hlabel(x - 33.02, yr, ref_name, shape="input", rot=180)
@@ -233,7 +233,7 @@ def build(S):
     xm = o4[0] + 5.08
     J(xm, o4[1])
     W((xm, o4[1]), (xm, o4[1] - 12.7))
-    B.tap(xm, o4[1] - 12.7, "TRIG IN MON", rkey="R 453R")
+    B.tap(xm, o4[1] - 12.7, "TRIG IN MON", rkey=LV.VAL["tap_R"])
     # the FPGA-free path (Response 12): a DNP 0 ohm from the buffer's output to the TX_Q1 ladder bit.  Fitted,
     # with the FPGA holding TX_Q1 as an input, a TRIG IN pulse steps the transmitter from idle to +Q and the far
     # board's QP comparator answers: TRIG IN MON here against QP MON there is the link's own latency.

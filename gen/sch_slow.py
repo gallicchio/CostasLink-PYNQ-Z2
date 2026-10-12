@@ -49,7 +49,7 @@ def build(S):
     W(inn_, (inn_[0] + 5.08, inn_[1]), (inn_[0] + 5.08, ci.pin("4")[1]), ci.pin("4"))
     co = ci.pin("1")
     W(co, (co[0] + 5.08, co[1]))
-    ra, rb = series("R 33R", co[0] + 8.89, co[1]); W(rb, (co[0] + 20.32, co[1]))
+    ra, rb = series(LV.VAL["cmp_series"], co[0] + 8.89, co[1]); W(rb, (co[0] + 20.32, co[1]))
     S.hlabel(co[0] + 20.32, co[1], "CMP_I_S", shape="output", rot=0)
     # the Q window: Q_sP > V_T2 and Q_sN > V_T2
     qp, qn = arms["Q"]
@@ -69,7 +69,7 @@ def build(S):
     label(vt_x, cqp.pin("4")[1] + 2.54, "V_T2", size=1.0)
     for c, name in ((cqp, "CMP_QP_S"), (cqn, "CMP_QN_S")):
         o = stub(c, "1", dx=5.08)
-        ra, rb = series("R 33R", o[0] + 3.81, o[1]); W(rb, (o[0] + 12.7, o[1]))
+        ra, rb = series(LV.VAL["cmp_series"], o[0] + 3.81, o[1]); W(rb, (o[0] + 12.7, o[1]))
         S.hlabel(o[0] + 12.7, o[1], name, shape="output", rot=0)
     sig(co[0] + 10, co[1] - 24, LV.txt("CMP_S"), cols=34)
     # DAC2: V_T2, I_OFF, Q_OFF, a spare on a test point
@@ -83,7 +83,7 @@ def build(S):
         e = stub(dac, n, dx=12.7); label(e[0], e[1], name, size=1.0)
     e = stub(dac, "9", dx=12.7)                               # D: through 100 k into the fast I arm's summing node (sheet 3)
     label(e[0] - 5.08, e[1], "I_OFF_F", size=1.0)
-    ra, rb = series("R 100k", e[0] + 8.89, e[1], above=False)
+    ra, rb = series(LV.VAL["trim_R"], e[0] + 8.89, e[1], above=False)
     W(e, ra); W(rb, (rb[0] + 5.08, rb[1]))
     S.hlabel(rb[0] + 5.08, rb[1], "I_SUM", shape="output", rot=0)
     B.supply_bar(dac, ["1"], "+3V3_DIG", dy=10.16)
@@ -102,25 +102,26 @@ def detectors(S):
     temperature; a second ADS1115 (0x49) reads all four on the I2C bus the board already has, so no
     FPGA pin is needed.  Drawn in the A2 sheet's lower band."""
     X0, Y0 = 50.8, 304.8
+    V, D, PP = LV.VAL, LV.B, LV.P          # the values and their arithmetic: sim/budget.py section 8b
     title(X0, Y0 - 12.7, "Interference detectors: the link band's level and its bursts, +5V_RF, the temperature (Prompt 28)", size=1.6)
-    # ---- the log amp: Q_P / Q_N through 1 k and 10 nF into the AD8310 (inputs biased inside) ----
+    # ---- the log amp: Q_P / Q_N through det_Rs and det_Cc into the AD8310 (inputs biased inside) ----
     la = part("AD8310", "U507", X0 + 66.04, Y0 + 30.48)
     for pin, name, above in ((la.pin("8"), "Q_P", True), (la.pin("1"), "Q_N", False)):
-        ca, cb = series("C 10nF", pin[0] - 10.16, pin[1], above=above)
+        ca, cb = series(V["det_Cc"], pin[0] - 10.16, pin[1], above=above)
         W(cb, pin)
-        ra, rb = series("R 1k", pin[0] - 25.4, pin[1], above=above)
+        ra, rb = series(V["det_Rs"], pin[0] - 25.4, pin[1], above=above)
         W(rb, ca)
         W(ra, (ra[0] - 7.62, pin[1]))
         S.hlabel(ra[0] - 7.62, pin[1], name, shape="input", rot=180)
     B.supply_bar(la, ["5", "7"], "+5V_RF", dy=10.16)
-    # COMM to ground; OFLT's 1 nF (the offset loop's corner, 2 MHz -> ~65 kHz); BFIN's 390 pF out to the
-    # right (the video bandwidth, 25 MHz -> ~135 kHz: a burst's power, not the noise's every flicker)
+    # COMM to ground; OFLT's capacitor (the offset loop's corner, 2 MHz down to det_f_oflt); BFIN's out to the
+    # right (the video bandwidth, 25 MHz down to det_f_video: a burst's power, not the noise's every flicker)
     B.bottom_gnd(la, ["2"])
-    down("C 1nF", la.pin("3")[0], la.pin("3")[1], drop=5.08, text="right")
+    down(V["det_Coflt"], la.pin("3")[0], la.pin("3")[1], drop=5.08, text="right")
     bf = stub(la, "6", dy=G)
-    W(bf, (bf[0] + 12.7, bf[1])); down("C 390pF", bf[0] + 12.7, bf[1], text="right")
+    W(bf, (bf[0] + 12.7, bf[1])); down(V["det_Cbfin"], bf[0] + 12.7, bf[1], text="right")
     vo = la.pin("4")
-    # ---- the peak hold: OPA2388 A charges 10 nF through the diode inside its loop, B buffers it; 4.7 M bleeds it ----
+    # ---- the peak hold: OPA2388 A charges det_Chold through the diode inside its loop, B buffers it; det_Rbleed bleeds it ----
     oa = part("OPA2388", "U508", X0 + 132.08, Y0 + 30.48 + 2.54, unit=1)
     inp, inn, out = oa.pin("3"), oa.pin("2"), oa.pin("1")
     W(vo, (inp[0] - 25.4, vo[1]), (inp[0] - 25.4, inp[1]), inp)
@@ -143,8 +144,8 @@ def detectors(S):
     W(ca_, ra)
     xh = rb[0] + 5.08
     W(rb, (xh + 10.16, out[1]))
-    J(xh, out[1]); down("C 10nF", xh, out[1], text="left")
-    J(xh + 10.16, out[1]); down("R 4.7M", xh + 10.16, out[1], text="right")
+    J(xh, out[1]); down(V["det_Chold"], xh, out[1], text="left")
+    J(xh + 10.16, out[1]); down(V["det_Rbleed"], xh + 10.16, out[1], text="right")
     W((xh + 10.16, out[1]), (xh + 20.32, out[1]))
     label(xh + 20.32, out[1], "PEAK_HOLD", size=1.0)
     ob = part("OPA2388", "U508", X0 + 236.22, Y0 + 30.48 + 2.54, unit=2)
@@ -157,23 +158,28 @@ def detectors(S):
     pw = part("OPA2388", "U508", X0 + 274.32, Y0 + 33.02, unit=3, text="right")
     B.supply_bar(pw, ["8"], "+3V3_ANA", dy=7.62, caps_side="left")
     B.bottom_gnd(pw, ["4"])
-    note(X0 + 4, Y0 + 52, "AD8310 on the fast Q arm: the link's whole band (+-94 MHz round the carrier), 95 dB, 24 mV/dB; LOG_Q is "
-         "a burst's envelope (BFIN ~135 kHz).  1 k + 1 k against its 1 k input: a third of the arm (its thermal noise ~0.8 mV, "
-         "-62 dBV, 29 dB over the log amp's floor).  A scope on the LOG Q pad shows WiFi's frames.", cols=48)
+    note(X0 + 4, Y0 + 52, "AD8310 on the fast Q arm: the link's whole band (+-%.0f MHz round the carrier), %.0f dB, %.0f mV/dB; LOG_Q is "
+         "a burst's envelope (BFIN %.0f kHz; OFLT %.0f kHz).  %s + %s against its %.0f ohm input: %.2f of the arm.  With no carrier and the "
+         "DSA at 0 the arm's own noise is %.1f mV rms, %.1f mV (%.0f dBV) here, %.0f dB over the log amp's floor.  A scope on the "
+         "LOG Q pad shows WiFi's frames."
+         % (D["fda_bw_MHz"], PP["log_top_dBV"] - PP["log_floor_dBV"], PP["log_slope_V_dB"] * 1e3, D["det_f_video_kHz"], D["det_f_oflt_kHz"],
+            V["det_Rs"][2:], V["det_Rs"][2:], PP["log_Rin_ohm"], D["det_tap"], D["det_noise_arm_mV"], D["det_noise_arm_mV"] * D["det_tap"],
+            D["det_noise_log_dBV"], D["det_noise_log_dBV"] - PP["log_floor_dBV"]), cols=48)
     note(X0 + 112, Y0 + 52, "Peak hold of LOG_Q (Jason: a slowly decaying peak for WiFi's bursts beside a truer level).  A charges "
-         "10 nF through the diode inside its loop (no diode drop), B reads it, 4.7 M lets it fall in 47 ms, so a 20 us frame "
-         "still reads at the ADC a few conversions later.  The link's own events lift it too: read it in a pause.", cols=48)
+         "%s through the diode inside its loop (no diode drop), B reads it, %s lets it fall in %.0f ms, so a 20 us frame "
+         "still reads at the ADC a few conversions later.  The link's own events lift it too: read it in a pause."
+         % (V["det_Chold"][2:], V["det_Rbleed"][2:], D["det_tau_ms"]), cols=48)
 
-    # ---- +5V_RF through 10 k / 10 k: the rail the ADL5380, ADL5375 and gain blocks need at 4.75-5.25 V (Prompt 28:
+    # ---- +5V_RF through v5_Rt / v5_Rb: the rail the ADL5380, ADL5375 and gain blocks need at 4.75-5.25 V (Prompt 28:
     # the LTC1968 true-RMS converter this channel was drawn for left rev A: over Jason's $25-35 a board, and the
     # router could not finish its lines in the arms' corner; the comparator survey measures the slow band) ----
     xv, yv = X0 + 337.82, Y0 + 30.48
-    up("R 10k", xv, yv, "+5V_RF", text="right")
-    down("R 10k", xv, yv, text="right")
+    up(V["v5_Rt"], xv, yv, "+5V_RF", text="right")
+    down(V["v5_Rb"], xv, yv, text="right")
     W((xv, yv), (xv - 10.16, yv)); label(xv - 10.16, yv, "V5_MON", size=1.0, justify="right bottom")
-    note(X0 + 300, Y0 + 56, "AIN2: +5V_RF / 2.  The ADL53xx and the ADL5611s want 4.75-5.25 V; on a roof's long supply "
+    note(X0 + 300, Y0 + 56, "AIN2: +5V_RF x %.2f.  The ADL53xx and the ADL5611s want 4.75-5.25 V; on a roof's long supply "
          "lead this says so before the link does.  (The LTC1968 true-RMS converter drawn here first is a rev B option: "
-         "PLAN.md section 19.)", cols=40)
+         "PLAN.md section 19.)" % D["v5_div"], cols=40)
 
     # ---- the second ADC (0x49: ADDR to VDD): LOG_Q, PEAK_Q, V5_MON, TEMP ----
     adc = part("ADS1115", "U510", X0 + 472.44, Y0 + 30.48)
@@ -183,19 +189,20 @@ def detectors(S):
     S.nc(*adc.pin("2"))
     for k, (n, name) in enumerate((("4", "LOG_Q"), ("5", "PEAK_Q"), ("6", "V5_MON"), ("7", "TEMP"))):
         px, py = adc.pin(n)
-        ra, rb = series("R 10k", px - 10.16 - 10.16 * (3 - k), py); W(rb, (px, py))
+        ra, rb = series(V["det_Radc"], px - 10.16 - 10.16 * (3 - k), py); W(rb, (px, py))
         x0 = px - 55.88 + 10.16 * k
         W((x0, py), ra)
         label(x0, py, name, size=1.0)
-        J(x0 + 2.54, py); down("C 100nF", x0 + 2.54, py, text="right")
+        J(x0 + 2.54, py); down(V["det_Cadc"], x0 + 2.54, py, text="right")
     B.supply_bar(adc, ["8"], "+3V3_DIG", dy=10.16)
     B.bottom_gnd(adc, ["3"])
-    # the board's temperature: 10 k from 3.3 V over a 10 k NTC (B 3380): 1.65 V at 25 C, 0.76 V at 60 C
+    # the board's temperature: ntc_Rtop from 3.3 V over a 10 k NTC (B 3380): D["ntc_V25"] at 25 C, D["ntc_V60"] at 60 C
     xt, yt = X0 + 500.38, Y0 + 50.8
-    up("R 10k", xt, yt, "+3V3_DIG", text="right")
+    up(V["ntc_Rtop"], xt, yt, "+3V3_DIG", text="right")
     t, b = vpart("NTC10K", "TH501", xt, yt + G + 3.81, text="right", ref_at=(xt + 4.2, yt + G + 3.5), val_at=(xt + 4.2, yt + G + 4.1))
     W((xt, yt), t); gnd(*b)
     W((xt, yt), (xt - 10.16, yt)); label(xt - 10.16, yt, "TEMP", size=1.0, justify="right bottom")
     note(X0 + 412, Y0 + 56, "ADS1115 (I2C 0x49, ADDR to VDD): AIN0 LOG_Q (its conversion averages the log: 1.2 ms at 860 SPS, "
-         "125 ms at 8 SPS), AIN1 PEAK_Q, AIN2 V5_MON (+5V_RF / 2), AIN3 TEMP (a 10 k NTC under 10 k from 3.3 V).  The driver's detectors() "
-         "reads them; nothing new on the FPGA's header.", cols=40)
+         "125 ms at 8 SPS), AIN1 PEAK_Q, AIN2 V5_MON (+5V_RF x %.2f), AIN3 TEMP (a %.0f k NTC under %s from 3.3 V: %.2f V at 25 C, %.2f V at 60 C).  "
+         "Each input through %s / %s (%.0f Hz).  The driver's detectors() reads them; nothing new on the FPGA's header."
+         % (D["v5_div"], PP["ntc_R25_ohm"] / 1e3, V["ntc_Rtop"][2:], D["ntc_V25"], D["ntc_V60"], V["det_Radc"][2:], V["det_Cadc"][2:], D["det_f_adc_Hz"]), cols=40)

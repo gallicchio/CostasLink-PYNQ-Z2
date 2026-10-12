@@ -13,7 +13,7 @@ of `sim/trajectories.py`, the same radio, with each host's own terms swapped in.
 * **The Icepi Zero, with this board as it is: yes, almost only the resistors.**  It was designed in:
   the 33 Ω on each comparator output replaces the PYNQ's 200 Ω, and the ladder's levels shift a
   little, which VR trims.  But today's Icepi gateware samples at 200 Ms/s (5 ns), and that eats the
-  whole gain: 10.7 ns against the PYNQ's 10.9, with three times the timing jitter.  The ECP5's
+  whole gain: 10.7 ns against the PYNQ's 10.9, with nearly four times the timing jitter at the bench.  The ECP5's
   GDDRX2 inputs at 656 Ms/s (already the plan, gateware/README.md's "not here yet") give the real
   improvement: **8.9 ns at the bench and 10.9 ns at 3 km, 2-3 ns faster than the PYNQ.**
 * **A SYZYGY port or an ECP5 on the board: more should change, because differential pairs now
@@ -47,7 +47,7 @@ these are 1.0 ns longer: they add the input buffer.
 | Icepi Zero, GDDRX2 at 656 Ms/s (same board) | 4.5 ns | same | **8.9 ± 0.44** | **10.9 ± 0.59** | 10.5 |
 | SYZYGY / Brain-1: TLV3604 LVDS, ISERDES 800 Ms/s | 4.5 ns | same | **7.0 ± 0.37** | **9.0 ± 0.53** | 8.6 |
 | the same with a carry-chain TDC (or an ECP5 on the board) | 4.5 ns | same | **6.4 ± 0.07** | **8.4 ± 0.39** | 8.0 |
-| ... and the arm at gain 2 (189 MHz) | 3.0 ns | 0.13 a / 0.79 a | 6.3 ± 0.06 | 8.4 ± 0.55 | 7.3 |
+| ... and the arm at gain 2 (170 MHz) | 3.2 ns | 0.13 a / 0.76 a | 6.3 ± 0.06 | 8.4 ± 0.50 | 7.4 |
 | ... and no FDA: TLV3604 on the ADL5380 (390 MHz) | 2.2 ns | 0.24 a / 1.45 a | 6.0 ± 0.06 | does not fit | 6.5 |
 
 (± is the rms timing jitter: the noise divided by the slope where it crosses, plus the sampling
@@ -57,7 +57,7 @@ grid's step / √12.)
 
 Reading the breakdown:
 
-* **The PYNQ's two RC terms are 3.6 ns between them.**  The 200 Ω into 10 pF at the transmitter
+* **The PYNQ's two RC terms are 3.7 ns between them.**  The 200 Ω into 10 pF at the transmitter
   slows the rise (2.1 against 1.4 ns to the window), and the 233 Ω into 10 pF at the receiver adds
   1.6 ns to 50 %.  That is all the Icepi saves, if its sampling keeps up.
 * **The comparator is the next biggest term** (2.5 ns), and it only changes where a differential
@@ -66,7 +66,7 @@ Reading the breakdown:
   and about ±0.01 ns.  On the bench, where the noise is small, the TDC is what sets the timing
   precision.  At 3 km the noise sets it (±0.39 ns).
 * **The arm hardly matters once the rest is fast.**  A wider arm passes more noise, and the
-  CFAR window moves out with it: 0.13 a at 189 MHz, 0.24 a with no FDA.  The rise gets faster and
+  CFAR window moves out with it: 0.13 a at 170 MHz, 0.24 a with no FDA.  The rise gets faster and
   the window gets farther away, and the two nearly cancel: 0.1 ns at the bench.  At 3 km the wider
   arms lose outright: with no FDA a window 7.9 σ from the idle no longer fits inside a (sim/
   constellations.py's point 5 found the same).  The ~94 MHz arm stays right.  The one thing a
@@ -83,7 +83,7 @@ What stays:
 
 What should change, all in gateware and software:
 * **GDDRX2 (IDDRX2F) at 656 Ms/s** in place of IDDRX1F at 200 Ms/s.  Without it the Icepi is no
-  faster than the PYNQ and three times noisier in time.  This is the one change that matters.
+  faster than the PYNQ and nearly four times noisier in time at the bench.  This is the one change that matters.
 * **The ladder's levels:** 0.167 / 0.521 / 0.874 V without the 200 Ω, against 0.170 / 0.500 /
   0.830 V on the PYNQ (sim/budget.py section 1).  VR_I and VR_Q re-centre them at bring-up.
 * **The host link** is a 1 Mbaud UART, not AXI.  Control is fine; reading the capture buffer is
@@ -126,7 +126,7 @@ What could and should change on this board, for a SYZYGY rev B:
   At VIO 2.5 V, though, the HMC536's 0/3 V control and the ladders' levels would need redoing.  So
   keep VIO at 3.3 V and put the 100 Ω on this board, at the connector, as the SYZYGY radio board's
   review concluded.
-* **The power.**  The board draws 1.34 A at 5 V.  A pod may draw up to 2 A from each SYZYGY rail,
+* **The power.**  The board draws 1.37 A at 5 V.  A pod may draw up to 2 A from each SYZYGY rail,
   but a carrier is not obliged to supply it
   ([Digilent's PMCU specification](https://files.digilent.com/resources/programmable-logic/eclypse/Eclypse-PMCU-Specification-Public.pdf)),
   and the Brain-1's per-port budget is not in the documents here.  Keep the USB-C input.

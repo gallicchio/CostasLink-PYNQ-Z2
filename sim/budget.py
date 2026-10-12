@@ -12,7 +12,9 @@ resistor DAC, the Costas loop, the FDA level shift, the MAX2871 loop filter, pow
 regulator dissipation.  Sources are cited beside each figure (datasheet text in
 build/txt/, made by the build from datasheets/).
 """
-import json, math, sys
+import cmath, json, math, os, sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "gen"))
+import parts as STOCKED                  # the stocked value nearest each one chosen here: what the schematic draws
 
 c0 = 299792458.0
 kT_dBm_Hz = -174.0                       # kT at 290 K per Hz
@@ -29,11 +31,16 @@ PARTS = dict(
     mod_bb_Rin_k=60.0,                 # differential input resistance, kOhm (min)
     mod_bb_Ibias_uA=41.0,              # bias current sourced from each baseband input
     mod_I_mA=203.0,
+    mod_off_I_mA=127.0,                # with DSOP high, the output disabled (TX_EN low, Response 15): 126 typ, 127 max
     # ADL5611 at 5800 MHz (ADL5611 Rev. B, "FREQUENCY = 5800 MHz")
     gb_gain_dB=14.3,
     gb_p1db_dBm=12.8,                  # the 5800 MHz row (Grok4.7 / KimiK3 review: 16.0 was the 6 GHz band's figure)
     gb_nf_dB=6.0,                      # the 5800 MHz row (was 3.5, the 3.5 GHz figure)
     gb_I_mA=124.0,                     # max
+    # the band rev A works over as built (PLAN.md section 19, Prompt 29): the SKY65404-31 is rated 4.9-5.9 GHz (Table 3);
+    # the Johanson balun 4.9-5.875 GHz under the number Digi-Key sells, 5400BL15B0050001E (docs/datasheets/txt; the
+    # legacy 5400BL15B050E's sheet said 5.9); the other RF parts reach further
+    band_GHz=(4.9, 5.875),
     # SKY65404-31 (201512O, Table 4, 4.9-5.9 GHz)
     lna_gain_dB=13.0,
     lna_nf_dB=1.0,
@@ -59,12 +66,16 @@ PARTS = dict(
     fda_I_mA=10.1,
     # TLV3601 (datasheet 6.5): propagation 2.5 ns typ, 3.5 ns max at 50 mV overdrive; hysteresis 1.5-5 mV
     cmp_tpd_ns=2.5,
-    cmp_hyst_mV=5.0,
+    cmp_hyst_mV=5.0,                   # the worst (the floor below); sim/trajectories.py models the typical:
+    cmp_hyst_typ_mV=3.0,               # TLV3601 3 mV typ (1.5-5)
     cmp_offset_mV=5.0,
     cmp_I_mA=4.9,
+    cmp3603_I_mA=5.7,                  # TLV3603 (the four window comparators, Response 14): 5.7 mA typ, 7.8 max (build/txt/TLV3601.txt)
+    n_tlv3601=4, n_tlv3603=4,          # CMP_I and the three slow ones; the four windows (the netlist: Prompt 30's audit found 6 counted)
     # MAX2871 (datasheet): total 165 mA typ / 200 mA max both outputs at max power; REF_IN 10-210 MHz
     pll_I_mA=200.0,
-    pll_icp_mA=2.56,                   # ICP = 1.63/RSET x (1+CP) : RSET 5.1k, CP = 7
+    pll_rset_ohm=5100.0,               # RSET to ground (sheet 4, the synthesizers): ICP = 1.63 V / RSET x (1 + CP), register 2
+    pll_cp_code=7,                     # CP[3:0]; gateware/max2871_regs.py writes it (through gateware/board_constants.py)
     pll_pfd_MHz=25.0,
     pll_fout_MHz=5800.0,
     pll_kvco_MHz_V=60.0,               # MAX2871 VCO gain, typical 40-80 MHz/V across the band (datasheet)
@@ -85,8 +96,16 @@ PARTS = dict(
     bead_dcr_max_ohm=0.045,            # Murata BLM21PG221SN1: DC resistance max (on +5V_RF only)
     supply_min_V=5.10,                 # BRINGUP.md: the bench supply at the plug, a short lead (USB-C's vSafe5V minimum is 4.75)
     hdr_C_pF=10.0,                     # header + trace + Zynq input, about
+    # AD8310 (docs/datasheets/txt/ad8310.txt): input 1 kohm || 1 pF; 95 dB from -91 dBV; 24 mV/dB, intercept -108 dBV;
+    # the offset loop's corner 1 / (2 pi 2625 (33 pF + C_OFLT)) (eq. 12, 33 pF on chip: "about 2 MHz");
+    # the video bandwidth 1 / (2 pi 3 kohm (2.1 pF + C_BFIN)) (eq. 11); 8 mA
+    log_Rin_ohm=1000.0, log_floor_dBV=-91.0, log_top_dBV=4.0, log_slope_V_dB=0.024, log_intercept_dBV=-108.0,
+    log_I_mA=8.0,
+    # the board's thermistor (NCP15XH103F03RC class, LCSC C13564): 10 k at 25 C, B 3380
+    ntc_R25_ohm=10e3, ntc_B=3380.0,
 )
 P = PARTS
+P["pll_icp_mA"] = 1.63 / P["pll_rset_ohm"] * (1 + P["pll_cp_code"]) * 1e3      # 2.56 mA
 R = {}                                 # results
 
 
@@ -298,10 +317,21 @@ lna_out, dsa_out, dem_in = chain(pr10, dsa_set)
 R.update(rx_in_dBm=pr10, lna_out_dBm=lna_out, dsa_out_dBm=dsa_out, gb1_out_dBm=dsa_out + P["gb_gain_dB"], N_GB=N_GB, G_rf_dB=G_rf_dB)
 vin_rms = dBm_to_Vrms(dem_in)
 vbb_diff_rms = vin_rms * 10 ** (P["dem_gain_dB"] / 20.0)
-G_fda = 4.0                                # the fast arms: gain 4 = 100 MHz; gain 2 would be 180 MHz and 1.7 ns sooner, but 20 dB less
-                                           # rejection of the own transmitter 600 MHz away (section 4), so no (Response 7)
+G_fda = 4.0                                # the fast arms: gain 4 = 100 MHz; gain 2 would be 170 MHz and ~0.6 ns sooner (sim/hosts.py), but
+                                           # 9 dB less rejection of the own transmitter 600 MHz away (section 4: R["gain2"]), so no (Response 7)
 vcmp_rms = vbb_diff_rms * G_fda
 R.update(dsa_set_dB=dsa_set, dem_in_dBm=dem_in, vbb_diff_rms=vbb_diff_rms, G_fda=G_fda, vcmp_rms=vcmp_rms)
+# the regulated level the driver holds (its received_dBm and agc): the fast arm's differential peak a with exactly
+# target_dem_in at the demodulator (vcmp_rms above is at the 10 m case's level, a quarter-dB step off it)
+a_reg_V = dBm_to_Vrms(target_dem_in) * 10 ** (P["dem_gain_dB"] / 20.0) * G_fda * math.sqrt(2)
+R.update(dem_target_dBm=target_dem_in, a_reg_V=a_reg_V)
+# what received_dBm() can read at RX ANT (the driver, BRINGUP.md stage 4): the DSA's range above the regulated level, and
+# below it the I arm's amplitude on the ADC (+-4.096 V in 16 bits; I_P is V_MID + a / 2) down to ten LSBs
+adc_lsb_V = 4.096 / 32768
+adc_span_dB = 20 * math.log10(a_reg_V / 2 / (10 * adc_lsb_V))
+R["rssi_range_dBm"] = (target_dem_in - G_rf_dB - adc_span_dB, target_dem_in - G_rf_dB + P["dsa_max_dB"])
+print("received_dBm() reads %.0f to %.0f dBm at RX ANT: %.2f dB of DSA above the regulated level, %.0f dB of the I arm on the ADC below it"
+      % (R["rssi_range_dBm"][0], R["rssi_range_dBm"][1], P["dsa_max_dB"], adc_span_dB))
 print("RX %.1f dBm -> LNA %.1f -> DSA (%.2f dB set) %.1f -> 2 x ADL5611 %.1f dBm at the demodulator (IP1dB %.1f)"
       % (pr10, lna_out, dsa_set, dsa_out, dem_in, P["dem_ip1db_dBm"]))
 print("demod: %.1f mV rms in, x%.2f (%.1f dB) -> %.1f mV rms differential baseband; FDA x%.0f -> %.0f mV rms (+-%.0f mV peak) at the comparators"
@@ -337,12 +367,22 @@ section("4. One antenna?  TX-to-RX isolation needed for frequency-division duple
 def lp_reject_dB(df_MHz, poles=2, fc_MHz=B_MHz):
     return 10 * poles * math.log10(1 + (df_MHz / fc_MHz) ** 2)
 print("arm filter %.0f MHz, 2 poles; the wanted signal at 10 m is %.1f dBm" % (B_MHz, pr10))
-for df in (25.0, 50.0, 100.0, 200.0, 600.0):
-    rej = lp_reject_dB(df)
+def iso_needed(df, fc_MHz=B_MHz):
+    rej = lp_reject_dB(df, fc_MHz=fc_MHz)
     leak_max_at_rx = min(pr10 - 10 + rej, (P["dem_ip1db_dBm"] - 10) - (P["lna_gain_dB"] - P["dsa_il_dB"] - dsa_set + P["gb_gain_dB"]))
-    iso = tx_out_dBm - leak_max_at_rx
+    return rej, leak_max_at_rx, tx_out_dBm - leak_max_at_rx
+R["iso_table"] = []
+for df in (25.0, 50.0, 100.0, 200.0, 600.0):
+    rej, leak_max_at_rx, iso = iso_needed(df)
+    R["iso_table"].append(dict(df_MHz=df, reject_dB=rej, iso_dB=iso))
     print("  TX/RX %4.0f MHz apart: filter rejects %4.1f dB, leakage at the RX port must be below %.1f dBm => %.0f dB of isolation"
           % (df, rej, leak_max_at_rx, iso))
+# the fast arms at gain 2 instead of 4 (Response 7 kept 4): noise gain 1 + 2k / (1k || 1k) = 5
+bw_g2 = P["fda_gbw_MHz"] / 5.0
+rej_g2, _, iso_g2 = iso_needed(600.0, fc_MHz=bw_g2)
+R["gain2"] = dict(bw_MHz=bw_g2, reject600_dB=rej_g2, iso600_dB=iso_g2)
+print("  at gain 2 the arms would run at %.0f MHz: %.1f dB of rejection 600 MHz away instead of %.1f, %.0f dB of isolation instead of %.0f"
+      % (bw_g2, rej_g2, lp_reject_dB(600.0), iso_g2, iso_needed(600.0)[2]))
 R["iso_200MHz_dB"] = tx_out_dBm - min(pr10 - 10 + lp_reject_dB(200.0), (P["dem_ip1db_dBm"] - 10) - (P["lna_gain_dB"] - P["dsa_il_dB"] - dsa_set + P["gb_gain_dB"]))
 print("  a splitter gives 3 dB, a circulator about 20 dB, two patches side by side 30-40 dB: FDD on one antenna does not work in-band;")
 print("  separate TX and RX antennas, or time-division with a switch (the protocol is half duplex anyway).")
@@ -363,9 +403,12 @@ for n, t in tx: print("  TX  %-58s %5.1f ns" % (n, t))
 for n, t in rx: print("  RX  %-58s %5.1f ns" % (n, t))
 print("  total electronics %.1f ns (TX %.1f + RX %.1f); the OOK board's envelope detector path was budgeted at 10-100 ns" % (ttx + trx, ttx, trx))
 R["latency_ns"] = ttx + trx
+R.update(latency_tx_ns=ttx, latency_rx_ns=trx)
 assert ttx + trx < 25
 t_icepi = ttx + trx - t_hdr - t_hdr_rx + 2.2 * P["cmp_series_ohm"] * P["hdr_C_pF"] * 1e-12 * 1e9
 R["latency_icepi_ns"] = t_icepi
+R["latency_icepi_rx_ns"] = trx - t_hdr_rx + 2.2 * P["cmp_series_ohm"] * P["hdr_C_pF"] * 1e-12 * 1e9
+R["cmp_series_rc_ns"] = 2.2 * P["cmp_series_ohm"] * P["hdr_C_pF"] * 1e-12 * 1e9
 print("  on the Icepi Zero (no header resistors) the same path is %.1f ns" % t_icepi)
 t_slow50 = 0.35 / (B_slow_MHz / 1.57) * 1e3 * 0.5
 R["slow_t50_ns"] = t_slow50
@@ -388,14 +431,16 @@ wn = 2 * math.pi * fn_Hz
 tau1 = Kd * Ko / wn ** 2
 tau2 = 2 * zeta / wn
 C_loop = 100e-9
-R1 = tau1 / C_loop
-R2 = tau2 / C_loop
-R.update(loop_N=N, loop_Ko=Ko, loop_Kd=Kd, loop_R1=R1, loop_R2=R2, loop_C=C_loop)
+R1 = R1_loop = tau1 / C_loop
+R2 = R2_loop = tau2 / C_loop
+R.update(loop_N=N, loop_Ko=Ko, loop_Kd=Kd, loop_R1=R1, loop_R2=R2, loop_C=C_loop, loop_fn_Hz=fn_Hz, loop_zeta=zeta,
+         loop_pull_kHz=pull_Hz / 1e3, tcxo_offset_kHz=2 * P["tcxo_ppm"] * 1e-6 * P["pll_fout_MHz"] * 1e3, vc_kHz_per_V=Ko / (2 * math.pi) / 1e3)
 print("PLL multiplies the %.0f MHz VCXO by N = %.0f; pull +-%.0f ppm = +-%.0f kHz at 5.8 GHz over %.1f V: Ko = %.2e rad/s/V"
       % (P["vcxo_MHz"], N, P["vcxo_pull_ppm"], pull_Hz / 1e3, P["vcxo_vc_V"][1] - P["vcxo_vc_V"][0], Ko))
 print("Kd = %.2f V/rad at the DSA's regulated level (-20 dBm at the demodulator, kept from 3 m to about 300 m); for fn = %.0f Hz, zeta = %.2f with C = %.0f nF:"
       % (Kd, fn_Hz, zeta, C_loop * 1e9))
-print("  R1 = %.1f k (E24 %.1f k), R2 = %.0f ohm (E24 %.0f)" % (R1 / 1e3, e24(R1) / 1e3, R2, e24(R2)))
+print("  R1 = %.1f k (fitted %s), R2 = %.0f ohm (fitted %s): section 8c evaluates the loop as fitted"
+      % (R1 / 1e3, STOCKED.nearest_res(R1)[2:], R2, STOCKED.nearest_res(R2)[2:]))
 for dfk in (30.0, 300.0):
     dw = 2 * math.pi * dfk * 1e3
     tp = dw ** 2 / (2 * zeta * wn ** 3)
@@ -408,20 +453,22 @@ assert fn_Hz * 10 < 80e3, "Costas loop must be well inside the PLL's loop bandwi
 # ---------------------------------------------------------------------------
 section("7. FDA level shift (ADL5380 outputs sit at %.1f V; THS4541 on 3.3 V accepts inputs to %.1f V, guaranteed)" % (P["dem_out_cm_V"], 3.3 - P["fda_cm_headroom_V"]))
 Rg, Rf, Rs = 1000.0, 4000.0, 1000.0            # Rg from the demodulator, Rf feedback, Rs from the summing node to ground (1.2 k until the review: 2.02 V at 3.8 V)
-Vocm = 1.65
+Vocm = 1.65                                    # the arms' output common mode, V_MID: half of +3V3_ANA
 Vn = (P["dem_out_cm_V"] / Rg + Vocm / Rf) / (1 / Rg + 1 / Rf + 1 / Rs)
 gain = Rf / Rg
 noise_gain = 1 + Rf / (Rg * Rs / (Rg + Rs))
 bw = P["fda_gbw_MHz"] / noise_gain
 i_pull_mA = (P["dem_out_cm_V"] - Vn) / Rg * 1e3
-R.update(fda_Rg=Rg, fda_Rf=Rf, fda_Rs=Rs, fda_Vn=Vn, fda_bw_MHz=bw)
+R.update(fda_Rg=Rg, fda_Rf=Rf, fda_Rs=Rs, fda_Vn=Vn, fda_bw_MHz=bw, V_mid=Vocm)
 print("Rg %.0f, Rf %.0f, Rs %.0f: summing nodes at %.2f V (limit %.1f), gain %.0f (%.0f dB), noise gain %.1f -> about %.0f MHz, %.2f mA drawn from each demodulator pin"
       % (Rg, Rf, Rs, Vn, 3.3 - P["fda_cm_headroom_V"], gain, 20 * math.log10(gain), noise_gain, bw, i_pull_mA))
 # the ADL5380's own tables disagree on its output common mode with ADJ open: Table 4 ~3.2 V, Table 1 VS - 1.2 V
 # (3.8 V at 5.0 V).  Check the worse at the highest +5V_RF the input path can deliver (5.25 V at the plug, less the
 # drop at the start-up current: 5.15 V) against the THS4541's guaranteed limit (Grok4.7 / KimiK3)
+R["fda_vn_cases"] = []
 for vcm, why in ((3.2, "Table 4"), (P["dem_out_cm_V"], "Table 1 at 5.0 V"), (5.15 - 1.2, "Table 1 at the highest +5V_RF, 5.15 V")):
     vn = (vcm / Rg + Vocm / Rf) / (1 / Rg + 1 / Rf + 1 / Rs)
+    R["fda_vn_cases"].append(dict(vcm_V=vcm, why=why, vn_V=vn, margin_mV=(3.3 - P["fda_cm_headroom_V"] - vn) * 1e3))
     print("  demodulator common mode %.2f V (%s): summing nodes %.3f V, %.0f mV under the guaranteed %.1f V"
           % (vcm, why, vn, (3.3 - P["fda_cm_headroom_V"] - vn) * 1e3, 3.3 - P["fda_cm_headroom_V"]))
     assert vn < 3.3 - P["fda_cm_headroom_V"], (vcm, vn)
@@ -437,12 +484,17 @@ Rrc, Crc = 1000.0, 33e-12
 f_rc = 1 / (2 * math.pi * Rrc * Crc) / 1e6
 B_slow_noise = f_rc * 1.57                     # one dominant pole's noise bandwidth
 vos_out_mV = (P["fda_vos_mV"] * G_fda + P["fda_vos_mV"]) * G_slow
-trim_V = 3.3 / 2 * Rf2 / 100e3
-R.update(slow_Rg=Rg2, slow_Rf=Rf2, slow_bw_MHz=bw2, slow_Rrc=Rrc, slow_Crc=Crc, slow_fpole_MHz=f_rc, slow_vos_mV=vos_out_mV, slow_trim_V=trim_V)
+trim_R = 100e3                                 # from a DAC channel into each arm's summing node (the slow arms' I_OFF / Q_OFF, the fast I arm's I_OFF_F)
+trim_V = 3.3 / 2 * Rf2 / trim_R
+trim_fast_V = 3.3 / 2 * Rf / trim_R            # the fast I arm's reach at its output
+vos_fast_mV = P["fda_vos_mV"] * (1 + G_fda)
+R.update(slow_Rg=Rg2, slow_Rf=Rf2, slow_bw_MHz=bw2, slow_Rrc=Rrc, slow_Crc=Crc, slow_fpole_MHz=f_rc, slow_vos_mV=vos_out_mV, slow_trim_V=trim_V, trim_R=trim_R, fast_trim_V=trim_fast_V)
 print("gain %.0f (Rf %.0f k / Rg %.0f k), noise gain %.0f -> %.0f MHz; then %.0f ohm / %.0f pF = %.1f MHz, noise bandwidth %.1f MHz (budgeted %.1f)"
       % (G_slow, Rf2 / 1e3, Rg2 / 1e3, ng2, bw2, Rrc, Crc * 1e12, f_rc, B_slow_noise, B_slow_MHz))
 print("offsets: %.1f mV of THS4541 input offset twice, x%.0f = up to %.0f mV at the slow comparators against +-%.0f mV of signal at the quiet threshold: "
-      "trimmed by the second DAC through 100 k (+-%.2f V of reach)" % (P["fda_vos_mV"], G_slow, vos_out_mV, 1000 * vmin_cmp * 10 ** ((noise_slow + 8.4 - floor_slow) / 20.0), trim_V))
+      "trimmed by the second DAC through %.0f k (+-%.2f V of reach)" % (P["fda_vos_mV"], G_slow, vos_out_mV, 1000 * vmin_cmp * 10 ** ((noise_slow + 8.4 - floor_slow) / 20.0), trim_R / 1e3, trim_V))
+print("the fast I arm's own trim (I_OFF_F) through %.0f k: +-%.0f mV at its output against up to %.1f mV of offset" % (trim_R / 1e3, trim_fast_V * 1e3, vos_fast_mV))
+assert trim_fast_V > vos_fast_mV * 1e-3 * 2
 assert abs(B_slow_noise - B_slow_MHz) < 1.0, B_slow_noise
 assert trim_V > vos_out_mV * 1e-3 * 2, "the trim must reach twice the worst offset"
 
@@ -469,22 +521,116 @@ R2 = T2 / C2
 R3 = A2 / (C1 * C3 * T2)
 R.update(pll_C1=C1, pll_C2=C2, pll_C3=C3, pll_R2=R2, pll_R3=R3, pll_fc=fc)
 print("N = %.0f, Kvco %.0f MHz/V, Icp %.2f mA, loop bandwidth %.0f kHz, phase margin %.0f deg:" % (Nd, P["pll_kvco_MHz_V"], P["pll_icp_mA"], fc / 1e3, math.degrees(pm)))
-print("  C1 %.0f pF (E24 %.0f pF), C2 %.1f nF (E24 %.1f nF), R2 %.0f ohm (E24 %.0f), R3 %.0f ohm (E24 %.0f), C3 %.0f pF (E24 %.0f pF)"
-      % (C1 * 1e12, e24(C1) * 1e12, C2 * 1e9, e24(C2) * 1e9, R2, e24(R2), R3, e24(R3), C3 * 1e12, e24(C3) * 1e12))
+print("  C1 %.0f pF, C2 %.2f nF, R2 %.0f ohm, R3 %.0f ohm, C3 %.0f pF (fitted: section 8c)" % (C1 * 1e12, C2 * 1e9, R2, R3, C3 * 1e12))
 assert C1 > 0 and C2 > 0 and C3 > 0 and R2 > 0 and R3 > 0
 assert fc < P["pll_pfd_MHz"] * 1e6 / 10
 pn_inband = -230 + 20 * math.log10(Nd) + 10 * math.log10(P["pll_pfd_MHz"] * 1e6)
+R["pll_pn_inband_dBc"] = pn_inband
 print("  in-band phase noise floor about %.0f dBc/Hz (normalised -230 dBc/Hz); %.0f kHz loop lets the %.0f Hz Costas loop through untouched" % (pn_inband, fc / 1e3, fn_Hz))
+
+# ---------------------------------------------------------------------------
+section("8b. The monitor taps and the interference detectors (sheets 3, 6, 7)")
+# a 3.3 V logic line watched by a 50 ohm scope beside its line to the FPGA (CMP I MON, the window MONs, TRIG IN MON):
+# a series resistor making it /10 into 50 ohm, and a light load (3.3 V across 500 ohm) on the driver
+tap_div = 10.0
+tap_R = e96(50.0 * (tap_div - 1))
+tap_V50 = 3.3 * 50.0 / (tap_R + 50.0)
+R.update(tap_R=tap_R, tap_V50=tap_V50)
+print("logic monitor taps: %.0f ohm into 50 ohm = /%.2f, 0 / %.2f V on the scope; %.1f mA from the driver" % (tap_R, (tap_R + 50) / 50, tap_V50, 3.3 / (tap_R + 50) * 1e3))
+# the AD8310 on the fast Q arm (Prompt 28): each leg through a series R and a coupling C into its 1 k input
+det_Rs, det_Cc = 1000.0, 10e-9
+det_tap = P["log_Rin_ohm"] / (P["log_Rin_ohm"] + 2 * det_Rs)              # the share of the arm the log amp sees
+det_f_ac = 1 / (2 * math.pi * (2 * det_Rs + P["log_Rin_ohm"]) * det_Cc / 2)   # the two coupling caps in series round the loop
+det_Coflt, det_Cbfin = 1e-9, 390e-12
+det_f_oflt = 1 / (2 * math.pi * 2625 * (33e-12 + det_Coflt))
+det_f_video = 1 / (2 * math.pi * 3000 * (2.1e-12 + det_Cbfin))
+# with no carrier the Q arm carries half the noise of both sidebands: N0 x 2 x ENBW at RF, ENBW one pole's (pi/2 f)
+enbw_fast_MHz = math.pi / 2 * bw
+n_arm_V = dBm_to_Vrms(noise_dBm + db(2 * enbw_fast_MHz / B_MHz) + G_rf_dB) * 10 ** (P["dem_gain_dB"] / 20.0) * G_fda
+n_log_dBV = 20 * math.log10(n_arm_V * det_tap)
+# the peak hold: OPA2388 charges C_hold through the diode inside its loop, R_bleed lets it fall
+det_Chold, det_Rbleed = 10e-9, 4.7e6
+det_tau_ms = det_Chold * det_Rbleed * 1e3
+# the second ADS1115's inputs: R / C ahead of each; +5V_RF halved; the NTC under a resistor from 3.3 V
+det_Radc, det_Cadc = 10e3, 100e-9
+v5_Rt, v5_Rb = 10e3, 10e3
+ntc_Rtop = 10e3
+def ntc_V(tc):
+    r = P["ntc_R25_ohm"] * math.exp(P["ntc_B"] * (1 / (tc + 273.15) - 1 / 298.15))
+    return 3.3 * r / (r + ntc_Rtop)
+R.update(det_Rs=det_Rs, det_Cc=det_Cc, det_tap=det_tap, det_f_ac_kHz=det_f_ac / 1e3, det_Coflt=det_Coflt, det_Cbfin=det_Cbfin,
+         det_f_oflt_kHz=det_f_oflt / 1e3, det_f_video_kHz=det_f_video / 1e3, det_enbw_fast_MHz=enbw_fast_MHz, det_noise_arm_mV=n_arm_V * 1e3,
+         det_noise_log_dBV=n_log_dBV, det_Chold=det_Chold, det_Rbleed=det_Rbleed, det_tau_ms=det_tau_ms, det_Radc=det_Radc, det_Cadc=det_Cadc,
+         det_f_adc_Hz=1 / (2 * math.pi * det_Radc * det_Cadc), v5_Rt=v5_Rt, v5_Rb=v5_Rb, v5_div=v5_Rb / (v5_Rt + v5_Rb),
+         ntc_Rtop=ntc_Rtop, ntc_V25=ntc_V(25.0), ntc_V60=ntc_V(60.0))
+print("AD8310 on the fast Q arm: %.0f ohm + %.0f ohm against its %.0f ohm: %.2f of the arm (%.1f dB); coupling %.1f kHz, offset loop %.0f kHz, "
+      "video bandwidth %.0f kHz" % (det_Rs, det_Rs, P["log_Rin_ohm"], det_tap, -20 * math.log10(det_tap), det_f_ac / 1e3, det_f_oflt / 1e3, det_f_video / 1e3))
+print("  the arm's own noise, DSA at 0 and no carrier (N0 x 2 x %.0f MHz): %.1f mV rms at the arm, %.1f mV = %.1f dBV at the log amp, "
+      "%.0f dB over its %.0f dBV floor" % (enbw_fast_MHz, n_arm_V * 1e3, n_arm_V * det_tap * 1e3, n_log_dBV, n_log_dBV - P["log_floor_dBV"], P["log_floor_dBV"]))
+print("  peak hold %.0f nF x %.1f M = %.0f ms; ADC inputs %.0f k / %.0f nF = %.0f Hz; V5_MON = +5V_RF x %.2f; NTC %.2f V at 25 C, %.2f V at 60 C"
+      % (det_Chold * 1e9, det_Rbleed / 1e6, det_tau_ms, det_Radc / 1e3, det_Cadc * 1e9, 1 / (2 * math.pi * det_Radc * det_Cadc), v5_Rb / (v5_Rt + v5_Rb), ntc_V(25.0), ntc_V(60.0)))
+assert det_f_video < det_f_oflt * 5, "the video bandwidth should sit near or under the offset loop's corner"
+assert n_log_dBV - P["log_floor_dBV"] > 20, "the log amp's own floor must sit well under the arm's noise"
+assert 20 * math.log10(1.65 * det_tap) < P["log_top_dBV"], "the arm's full swing must not overload the log amp"
+
+# ---------------------------------------------------------------------------
+section("8c. As fitted: the stocked values the schematic draws (gen/parts.py), and the loops they make")
+# the Costas loop: the PI's R1, R2 and C as fitted
+R1f, R2f, Cf = (STOCKED.ohms(STOCKED.nearest_res(R1_loop)), STOCKED.ohms(STOCKED.nearest_res(R2_loop)),
+                STOCKED.farads(STOCKED.nearest_cap(C_loop, c0g=True)))
+wn_f = math.sqrt(Kd * Ko / (R1f * Cf))
+zeta_f = wn_f * R2f * Cf / 2
+fn_f = wn_f / (2 * math.pi)
+pullin_f = {dfk: (2 * math.pi * dfk * 1e3) ** 2 / (2 * zeta_f * wn_f ** 3) for dfk in (30.0, 300.0)}
+# the closed loop's response to a phase step, H(s) = (2 zeta wn s + wn^2) / (s^2 + 2 zeta wn s + wn^2): its overshoot
+wd_f = wn_f * math.sqrt(1 - zeta_f ** 2)
+overshoot_f = max(1 - math.exp(-zeta_f * wn_f * t) * (math.cos(wd_f * t) - zeta_f / math.sqrt(1 - zeta_f ** 2) * math.sin(wd_f * t))
+                  for t in [k * 2e-6 for k in range(1, 2000)]) - 1
+R.update(loop_R1_fit=R1f, loop_R2_fit=R2f, loop_C_fit=Cf, loop_fn_fit_Hz=fn_f, loop_zeta_fit=zeta_f, loop_overshoot_fit=overshoot_f,
+         loop_pullin_fit_ms={"%.0f" % k: v * 1e3 for k, v in pullin_f.items()})
+print("Costas loop: R1 %.1f k, R2 %.0f ohm, C %.0f nF fitted (designed %.2f k, %.0f ohm): fn %.0f Hz, zeta %.3f (designed %.0f Hz, %.3f); "
+      "a phase step overshoots %.0f %%; pull-in %.1f ms from 30 kHz off, %.2f s from 300 kHz"
+      % (R1f / 1e3, R2f, Cf * 1e9, R1_loop / 1e3, R2_loop, fn_f, zeta_f, fn_Hz, zeta, overshoot_f * 100, pullin_f[30.0] * 1e3, pullin_f[300.0]))
+assert abs(fn_f / fn_Hz - 1) < 0.1 and 0.6 < zeta_f < 0.8, (fn_f, zeta_f)
+# the MAX2871 loop filter: the open loop Kphi F(s) Kv / (s N), F the third-order filter's transimpedance to TUNE
+def pll_open(f, c1, c2, c3, r2, r3):
+    s = 2j * math.pi * f
+    zin = 1 / (s * c1 + 1 / (r2 + 1 / (s * c2)) + 1 / (r3 + 1 / (s * c3)))
+    return Kphi * zin / (1 + s * r3 * c3) * Kv / (s * Nd)
+def pll_margin(*vals):
+    lo, hi = 1e3, 1e7
+    for _ in range(80):
+        mid = math.sqrt(lo * hi)
+        lo, hi = (mid, hi) if abs(pll_open(mid, *vals)) > 1 else (lo, mid)
+    return lo, 180 + math.degrees(cmath.phase(pll_open(lo, *vals)))
+pll_fit = (STOCKED.farads(STOCKED.nearest_cap(C1)), STOCKED.farads(STOCKED.nearest_cap(C2, c0g=True)), STOCKED.farads(STOCKED.nearest_cap(C3)),
+           STOCKED.ohms(STOCKED.nearest_res(R2, tol=1.1)), STOCKED.ohms(STOCKED.nearest_res(R3, tol=1.1)))
+fc_d, pm_d = pll_margin(C1, C2, C3, R2, R3)
+fc_f, pm_f = pll_margin(*pll_fit)
+R.update(pll_fc_design=fc_d, pll_pm_design=pm_d, pll_fc_fit=fc_f, pll_pm_fit=pm_f)
+print("MAX2871 loop filter: designed %.1f kHz, %.1f deg; fitted (C1 %.0f pF, C2 %.1f nF, C3 %.0f pF, R2 %.0f, R3 %.0f) %.1f kHz, %.1f deg of phase margin"
+      % (fc_d / 1e3, pm_d, pll_fit[0] * 1e12, pll_fit[1] * 1e9, pll_fit[2] * 1e12, pll_fit[3], pll_fit[4], fc_f / 1e3, pm_f))
+assert abs(fc_d / fc - 1) < 0.05 and abs(pm_d - 50) < 2, (fc_d, pm_d)
+assert pm_f > 45 and abs(fc_f / fc - 1) < 0.15, (fc_f, pm_f)
+# the fast arm: Rf as fitted
+Rf_f = STOCKED.ohms(STOCKED.nearest_res(Rf))
+ng_f = 1 + Rf_f / (Rg * Rs / (Rg + Rs))
+R.update(fda_gain_fit=Rf_f / Rg, fda_bw_fit_MHz=P["fda_gbw_MHz"] / ng_f)
+print("fast arm: Rf %.2f k fitted: gain %.2f (%.2f dB from the designed %.0f), %.1f MHz" % (Rf_f / 1e3, Rf_f / Rg, 20 * math.log10(Rf_f / Rg / G_fda), G_fda, P["fda_gbw_MHz"] / ng_f))
 
 # ---------------------------------------------------------------------------
 section("9. Power and regulator dissipation")
 # the interference detectors (Prompt 28): the AD8310 8 mA and the 20 k monitor divider on +5V_RF,
 # the peak hold's OPA2388 ~2 mA on +3V3_ANA, the second ADS1115 and the NTC's divider ~0.4 mA on +3V3_DIG
-I5 = dict(ADL5380=P["dem_I_mA"], ADL5375=P["mod_I_mA"], ADL5611_x3=3 * P["gb_I_mA"], detectors=8.0 + 0.25)
-I33 = dict(PLL_TX=P["pll_I_mA"], PLL_RX=P["pll_I_mA"], OSC=P["vcxo_I_mA"] + 5, DIG=6 * P["cmp_I_mA"] + 10 + 5 + 2 + 0.4,
+I5 = dict(ADL5380=P["dem_I_mA"], ADL5375=P["mod_I_mA"], ADL5611_x3=3 * P["gb_I_mA"], detectors=P["log_I_mA"] + 5.0 / (v5_Rt + v5_Rb) * 1e3)
+I33 = dict(PLL_TX=P["pll_I_mA"], PLL_RX=P["pll_I_mA"], OSC=P["vcxo_I_mA"] + 5, DIG=P["n_tlv3601"] * P["cmp_I_mA"] + P["n_tlv3603"] * P["cmp3603_I_mA"]
+           + 10 + 5 + 2 + 0.4,                 # the logic (switch, mux, buffers), the three DACs, the first ADC; the detectors' ADC and NTC
            ANA=4 * P["fda_I_mA"] + P["lna_I_mA"] + 5 + 2.0)
 tot = sum(I5.values()) + sum(I33.values())
 R["I_total_mA"] = tot
+# at power-up (BRINGUP.md stage 1): the transmitter disabled until a gateware drives TX_EN, and the two MAX2871 with their
+# registers undefined and CE pulled high: anywhere from asleep to full output until they are programmed
+R["I_powerup_mA"] = tot - (P["mod_I_mA"] - P["mod_off_I_mA"]) - 2 * P["pll_I_mA"]
 R["rails_mA"] = dict(I33, RF=sum(I5.values()))
 print("5 V parts: %s mA; 3.3 V rails (each its own LDO): %s mA; total from 5 V %.0f mA (%.1f W)" % (I5, I33, tot, tot * 5e-3))
 for rail, i in I33.items():
