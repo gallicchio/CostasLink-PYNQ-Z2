@@ -13,23 +13,23 @@ Written by `mfg/make_release.py` on 2026-10-12.  Parts: JLCPCB's live prices and
 | | Standard PCBA setup, one side | $25.75 |
 | | stencil, one side | $8.27 |
 | | PCB assembly fixture | $16.54 |
-| | feeder loading, 48 Extended codes x $2.70 (Basic and Preferred parts are free; the 3 consigned lines may be charged the same) | $129.60 |
-| | SMT, 1094 pads a board x $0.0017 + $1.50 a board, x 2 | $6.72 |
+| | feeder loading, 49 Extended codes x $2.70 (Basic and Preferred parts are free; the 3 consigned lines may be charged the same) | $132.30 |
+| | SMT, 1100 pads a board x $0.0017 + $1.50 a board, x 2 | $6.74 |
 | | through-hole: $3.61 labour an order + 93 joints a board (22 parts) x 2 x $0.0157 | $6.53 |
 | | packaging | $0.51 |
 | | special components | $0.12 |
 | | depanel: JLCPCB's assembly rails taken off before delivery (the ECP5 cart's $2.32) | $2.32 |
-| | their parts: 76 BOM lines, 378 placements a board, for 2 boards with attrition, x 1.0066 | $352.73 |
-| | **goods before duty and shipping** | **$597.02** |
-| | US duty, 35 % of the goods, collected under DDP | $208.96 |
+| | their parts: 77 BOM lines, 381 placements a board, for 2 boards with attrition, x 1.0066 | $353.47 |
+| | **goods before duty and shipping** | **$600.47** |
+| | US duty, 35 % of the goods, collected under DDP | $210.17 |
 | | shipping, UPS Express Saver DDP | $25.00-$40.00 |
-| | **JLCPCB total** | **$830.98-$845.98** |
+| | **JLCPCB total** | **$835.64-$850.64** |
 | **Digi-Key** | the consigned parts (CONSIGNMENT.md): $129.64, plus 9.5 % tax and $8.00 shipping | **$149.96** |
 | | shipping the consignment to JLCPCB | $35.00-$60.00 |
 | **other** | the bench and the field (mfg/cost_estimate.py's list) | **$139.00-$267.00** |
-| | **everything** | **$1154.94-$1322.94** |
+| | **everything** | **$1159.60-$1327.60** |
 
-An assembled board: about $298.51 of the JLCPCB goods, plus its share of the consignment.  The range on the bare boards moves the goods from $578.64 to $615.40.
+An assembled board: about $300.24 of the JLCPCB goods, plus its share of the consignment.  The range on the bare boards moves the goods from $582.09 to $618.86.
 
 ## Per-part fees: Basic, Preferred, Extended
 
@@ -37,12 +37,12 @@ An assembled board: about $298.51 of the JLCPCB goods, plus its share of the con
 |---|--:|--:|
 | Basic | 25 | 231 |
 | Preferred | 3 | 27 |
-| **Extended** | **48** | 120 |
+| **Extended** | **49** | 123 |
 | consigned | 3 | 3 |
 
-Feeder loading is the largest assembly fee after the setup: 48 Extended codes x $2.70 = $129.60.  Every value merged into another saves $2.70.
+Feeder loading is the largest assembly fee after the setup: 49 Extended codes x $2.70 = $132.30.  Every value merged into another saves $2.70.
 
-The 48 distinct Extended parts: C10425 (SN74LVC1G17DCKR), C113126 (LQW18AN43NG00D), C113952 (SMAJ5.0A), C13564 (NCP18XH103F03RB), C137968 (RC0402FR-074K02L), C144499 (AC1206FR-072R2L), C14461 (SN74LVC2G34DCKR), C162241 (GRM1885C1H682JA01D), C165948 (TYPE-C-31-M-12), C170182 (1206N104J500CT), C17271830 (HMC536MS8G), C19270534 (1010100506TR), C2058382 (THS4541IRGTT), C2059281 (OPA2388IDGKR), C208262 (ADL5611ARKZ-R7), C210262 (SKY65404-31), C210837 (MF-MSMF200-2), C2188753 (GCM1555C1H161JA16D), C23380874 (LP5907MFX-3.3), C25132 (0402WGF7500TCE), C25135 (0402WGF8200TCE), C282239 (CC0402JRNPO9BN391), C285052 (0402CG0R5B500NT), C2862740 (TPS7A2033PDBVR), C2937625 (PZ254V-11-03P), C2974371 (TLV3601DCKR), C37593 (ADS1115IDGSR), C38663 (SN74LVC1G3157DCKR), C42711 (AD8310ARMZ-REEL7), C46388 (TS5A3159DCKR), C470929 (PE43711B-Z), C474132 (0402WGF4704TCE), C478093 (MCP4728T-E/UN), C492401 (PZ254V-11-02P), C496551 (BWSMA-KWE-Z001), C5119013 (TC32H4-25.000-33GNDTNL), C5126227 (FRC0402F4530TS), C5137198 (BWMMCX-KE), C5179998 (SX3V25.000B20100F30TNN), C5213955 (TLV3603DCKR), C627342 (MCP4728A1T-E/UN), C650158 (AD5696RARUZ), C7458627 (MAX2871ETJ+T), C8207 (SN74LVC1G04DCKR), C85840 (BLM21PG221SN1D), C882469 (LQW15AN27NG80D), C88374 (U.FL-R-SMT-1(80)), C95042 (MLG1005S0N6CT000).
+The 49 distinct Extended parts: C10425 (SN74LVC1G17DCKR), C113126 (LQW18AN43NG00D), C113952 (SMAJ5.0A), C13564 (NCP18XH103F03RB), C137968 (RC0402FR-074K02L), C144499 (AC1206FR-072R2L), C14461 (SN74LVC2G34DCKR), C162241 (GRM1885C1H682JA01D), C165948 (TYPE-C-31-M-12), C170182 (1206N104J500CT), C17271830 (HMC536MS8G), C19270534 (1010100506TR), C2058382 (THS4541IRGTT), C2059281 (OPA2388IDGKR), C208262 (ADL5611ARKZ-R7), C210262 (SKY65404-31), C210837 (MF-MSMF200-2), C2188753 (GCM1555C1H161JA16D), C23380874 (LP5907MFX-3.3), C25132 (0402WGF7500TCE), C25135 (0402WGF8200TCE), C282239 (CC0402JRNPO9BN391), C285052 (0402CG0R5B500NT), C2862740 (TPS7A2033PDBVR), C2937625 (PZ254V-11-03P), C2974371 (TLV3601DCKR), C37593 (ADS1115IDGSR), C38663 (SN74LVC1G3157DCKR), C42711 (AD8310ARMZ-REEL7), C46388 (TS5A3159DCKR), C470929 (PE43711B-Z), C474132 (0402WGF4704TCE), C478093 (MCP4728T-E/UN), C492401 (PZ254V-11-02P), C496551 (BWSMA-KWE-Z001), C5119013 (TC32H4-25.000-33GNDTNL), C5126227 (FRC0402F4530TS), C5137198 (BWMMCX-KE), C5179998 (SX3V25.000B20100F30TNN), C5213955 (TLV3603DCKR), C627342 (MCP4728A1T-E/UN), C650158 (AD5696RARUZ), C7458627 (MAX2871ETJ+T), C8207 (SN74LVC1G04DCKR), C82919 (LQW15AN6N8G00D), C85840 (BLM21PG221SN1D), C882469 (LQW15AN27NG80D), C88374 (U.FL-R-SMT-1(80)), C95042 (MLG1005S0N6CT000).
 
 ## What to look at
 
@@ -58,7 +58,7 @@ The 48 distinct Extended parts: C10425 (SN74LVC1G17DCKR), C113126 (LQW18AN43NG00
 - JLCPCB had 4 of C579150, 18 of C579152 on 2026-10-09: buying the two ADI chips there and consigning only the balun would cost about $15.04 more on parts and save their consignment handling; the consignment shipment is needed either way for the balun (mfg/cost_estimate.py)
 - Not in the total: baking the moisture-sensitive parts (the QFNs are MSL 3; about $7.50 if ticked), shipping, and duty beyond the 35 %
 
-## Parts (79 BOM lines; the consigned ones at the end)
+## Parts (80 BOM lines; the consigned ones at the end)
 
 | LCSC | part | a board | ordered | library | unit | line | stock | left after | asked |
 |---|---|--:|--:|---|--:|--:|--:|--:|---|
@@ -87,6 +87,7 @@ The 48 distinct Extended parts: C10425 (SN74LVC1G17DCKR), C113126 (LQW18AN43NG00
 | C45783 | CL21A226MAQNNNE (22uF) | 3 | 6 | Basic | $0.2369 | $1.42 | 3,634,715 | 3,634,709 | 2026-10-11 23:48 |
 | C15127 | AO3401A (AO3401A) | 2 | 8 | Basic | $0.1018 | $0.81 | 683,803 | 683,795 | 2026-10-11 23:48 |
 | C46388 | TS5A3159DCKR (TS5A3159) | 1 | 2 | Extended | $0.3753 | $0.75 | 37,015 | 37,013 | 2026-10-11 23:49 |
+| C82919 | LQW15AN6N8G00D (6.8nH) | 3 | 10 | Extended | $0.0727 | $0.73 | 23,999 | 23,989 | 2026-10-12 05:15 |
 | C8207 | SN74LVC1G04DCKR (74LVC1G04) | 2 | 8 | Extended | $0.0838 | $0.67 | 75,977 | 75,969 | 2026-10-11 23:49 |
 | C1525 | CL05B104KO5NNNC (100nF) | 68 | 146 | Basic | $0.0045 | $0.66 | 24,145,880 | 24,145,734 | 2026-10-11 23:48 |
 | C14461 | SN74LVC2G34DCKR (74LVC2G34) | 1 | 4 | Extended | $0.1592 | $0.64 | 22,430 | 22,426 | 2026-10-11 23:49 |
@@ -144,5 +145,5 @@ The 48 distinct Extended parts: C10425 (SN74LVC1G17DCKR), C113126 (LQW18AN43NG00
 
 "ordered" is what JLCPCB charges for: the placements on 2 boards plus its attrition (`lossNumber`) or minimum purchase, at the price break for that quantity; for a consigned line it is what we send (CONSIGNMENT.md).  A Preferred part is an Extended part JLCPCB keeps on its machines.
 
-`mfg/cost_estimate.py`'s last run (build/COST_ESTIMATE.md) put the JLCPCB goods at $556.91 (boards $46.88, assembly $185.71, parts $324.32); this release $597.02.  The two should agree within a few dollars: they share the fees and the prices, and differ by the depanel option and by how the joints are counted.
+`mfg/cost_estimate.py`'s last run (build/COST_ESTIMATE.md) put the JLCPCB goods at $593.70 (boards $46.88, assembly $194.08, parts $352.73); this release $600.47.  The two should agree within a few dollars: they share the fees and the prices, and differ by the depanel option and by how the joints are counted.
 

@@ -3346,3 +3346,46 @@ there:
 **Docs and lessons:** PLAN.md (section 4's table, section 17's cost, section 19's detectors, band and
 ESD), REVA_CHANGES 25-26, BRINGUP 4.5, and two CLAUDE_PCB.md lessons (the inductive shunt, and that a
 late block can break the board elsewhere).
+
+## Prompt 29 (2026-10-12 08:43 PDT)
+
+What is the difference between the RMS monitor that you could route to an ADC channel and the one you could not route? What are we missing now that you tried to get?
+
+If the fancy inductor would prevent permanent damage for minimal risk, it's worth taking the very small hit. Why did you make it DNI? Because it was not in stock or Because I was hesitant in my last prompt? 
+
+What sets the lower frequency of the range? The balun?
+
+## Response 29 (2026-10-12 08:43 - 09:00)
+
+**The two monitors measure different bands and different statistics.  Neither of the ones on the board
+is an RMS.**
+- **Kept:** the AD8310 is a log amp on the fast Q arm, the link's whole ±94 MHz.  The ADC averages its
+  output in dB: the log-average, which behaves like a median.  It reads Gaussian noise ~2.5 dB under its
+  rms (a fixed calibration) and barely moves for bursts.  Its peak hold shows the bursts, over 95 dB.
+- **Dropped:** the LTC1968 was a true RMS of the slow Q arm, ~±5 MHz round the LO, the band the slow
+  confirm/veto comparators see.  It averages power, so a burst counts by its energy, over ~34 dB.
+- **What is missing now:**
+  - a direct energy average.  Floor and peak bracket it, and the survey's tail gives an airtime bound;
+  - a continuous reading of the slow band while the link runs (`survey()` borrows the slow comparators,
+    so it measures only between sessions);
+  - the 10 MHz-resolution survey in one reading instead of a ~0.14 s threshold scan per frequency.
+  The latency-relevant number (the link band's floor) and the burst flag are both on the board.
+- **Why it was dropped, with the cost corrected.**  It would take the block from the $25 a board measured
+  to ≈ $52, not my earlier ≈ $59.  Two placements of it failed to route: one its own input, the other the
+  I-window monitor's line.  It is not unroutable in principle; I stopped because of the cost.
+
+**The inductor was unfitted because of your "I'll consider it", not stock.**  JLCPCB has 23,999.
+- Now fitted on L101, L202, L401: $4.66 an order with the feeder and duty.
+- It drains static from cables and from antennas that are not DC-grounded.  Below ~1 GHz, where most of
+  a touch's ESD energy lies, it is a few ohms (4 Ω at 100 MHz), and with the 1.5 pF DC block it makes a
+  high-pass in front of the LNA.
+- It does nothing for lightning: that is the bulkhead arrestor's job.
+- Rebuilt: ERC 0, nets 0, placement 0, DRC 0, labels 0; the release regenerated (80 BOM lines, JLCPCB
+  $831-846).
+
+**The lower edge is set by both the LNA and the balun.**  Each is rated 4.9-5.9 GHz.
+- Their plots reach a little further: the LNA's from 4.8 GHz, the balun's from 4.4 GHz.  So 4.8-4.9 GHz
+  is in their data but out of their guarantee.  Below 4.8 GHz the board has no data.
+- The LNA's match is the narrower.
+- Nothing else limits before ~4 GHz: the DC blocks are ~15 Ω there, the couplers −21 dB.
+- The transmitter has no band part.

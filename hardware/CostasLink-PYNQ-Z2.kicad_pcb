@@ -50736,7 +50736,7 @@
 				)
 			)
 		)
-		(property "Value" "DNP 6.8nH"
+		(property "Value" "6.8nH"
 			(at 0 1.17 270)
 			(layer "F.Fab")
 			(uuid "5576fe2e-5380-421f-a66b-a496bff96d41")
@@ -50805,7 +50805,7 @@
 				)
 			)
 		)
-		(attr smd exclude_from_pos_files exclude_from_bom dnp)
+		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_rect
 			(start -0.93 -0.47)
@@ -52758,7 +52758,7 @@
 				)
 			)
 		)
-		(property "Value" "DNP 6.8nH"
+		(property "Value" "6.8nH"
 			(at 0 1.17 270)
 			(layer "F.Fab")
 			(uuid "a00b6398-0aa3-499f-8809-30999f1248ad")
@@ -52827,7 +52827,7 @@
 				)
 			)
 		)
-		(attr smd exclude_from_pos_files exclude_from_bom dnp)
+		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_rect
 			(start -0.93 -0.47)
@@ -65538,7 +65538,7 @@
 				)
 			)
 		)
-		(property "Value" "DNP 6.8nH"
+		(property "Value" "6.8nH"
 			(at 0 1.17 0)
 			(layer "F.Fab")
 			(uuid "8f1657ee-a93b-4072-87d7-318b5625a529")
@@ -65607,7 +65607,7 @@
 				)
 			)
 		)
-		(attr smd exclude_from_pos_files exclude_from_bom dnp)
+		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_rect
 			(start -0.93 -0.47)

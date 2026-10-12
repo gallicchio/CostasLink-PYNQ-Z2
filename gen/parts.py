@@ -154,7 +154,7 @@ PARTS = {
     "L0N6": P("L", "L_0402_1005Metric", STOCK + "Inductor_SMD", "C95042", "MLG1005S0N6CT000", "0.6nH",
               ["MLG1005S0N6CT000"], "SKY65404 supply inductor (Skyworks' circuit)"),
     "L6N8": P("L", "L_0402_1005Metric", STOCK + "Inductor_SMD", "C82919", "LQW15AN6N8G00D", "6.8nH",
-              ["LQW15AN6N8G00D"], "antenna jacks' ESD / DC path (DNP; Prompt 28): a wirewound 6.8 nH whose self-resonance is at "
+              ["LQW15AN6N8G00D"], "antenna jacks' ESD / DC path (Prompt 28; fitted since Prompt 29): a wirewound 6.8 nH whose self-resonance is at "
               "6.0 GHz or above, so it stays inductive and 400 ohm to 1.5 k across 4.9-6 GHz (about 0.05 dB as a shunt)"),
     # --- the interference detectors (sheet 6, Prompt 28) -----------------------------------------
     "AD8310": P("AD8310", "MSOP-8_3x3mm_P0.65mm", STOCK + "Package_SO", "C42711", "AD8310ARMZ-REEL7", "AD8310",

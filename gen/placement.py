@@ -170,7 +170,7 @@ ANCHORS = {
     "TH501": at(33.8, 52.4, 0),              # NTC
     "R523": at(35.6, 50.35, 0),              # the log amp's 1 k inputs, west of the column where J105's labels stand
     "R524": at(35.6, 48.8, 0),
-    # the antenna jacks' DNP ESD / DC shunts (Prompt 28), ON their lines: the rules had stood them 4 mm off,
+    # the antenna jacks' ESD / DC shunts (Prompt 28, fitted since 29), ON their lines: the rules had stood them 4 mm off,
     # a stub that would detune 5.8 GHz when fitted.  Each as near its line as the placer's rules allow (0.5 mm
     # between courtyards, 0.2 mm round the SMA's legs): a 1-1.6 mm stub, 0.05 of a wavelength.  RX and ANT:
     # upright beside the DC block, off its jack-side pad; TX: lying beside the line under the jack's leg

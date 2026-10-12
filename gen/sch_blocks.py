@@ -133,13 +133,14 @@ def dcblock(x0, y, x1, key="C 1.5pF", above=True):
 
 
 def esd_shunt(x, y):
-    """Prompt 28: an antenna jack's ESD and DC path, DNP: a 6.8 nH wirewound (LQW15AN6N8, self-resonant at
-    6.0 GHz or above) from the line to ground, on the jack's side of its DC block.  Across 4.9-6 GHz it is
-    400 ohm to 1.5 k (about 0.05 dB); it carries static off a cable or an antenna that is not DC-grounded."""
+    """Prompt 28: an antenna jack's ESD and DC path: a 6.8 nH wirewound (LQW15AN6N8, self-resonant at 6.0 GHz
+    or above) from the line to ground, on the jack's side of its DC block.  Across 4.9-6 GHz it is 400 ohm to
+    1.5 k (about 0.05 dB); it carries static off a cable or an antenna that is not DC-grounded, and below
+    ~1 GHz, where most of a touch's ESD energy is, it is a few ohms to ground.  Fitted since Prompt 29."""
     from sch_util import nref
     ref = nref("L")
     J(x, y)
-    t, b = vpart("L6N8", ref, x, y + G + 3.81, dnp=True, value="DNP 6.8nH", text="left", fsize=1.0)
+    t, b = vpart("L6N8", ref, x, y + G + 3.81, value="6.8nH", text="left", fsize=1.0)
     W((x, y), t)
     gnd(*b)
     return ref

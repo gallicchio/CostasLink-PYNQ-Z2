@@ -6,9 +6,6 @@ H302,M3,MountingHole_3.2mm_M3_DIN965,HOLE: mounting hole: not a part
 H303,M3,MountingHole_3.2mm_M3_DIN965,HOLE: mounting hole: not a part
 H304,M3 slot,MountingHole_Slot_3.2x5.2mm_M3,HOLE_SLOT: the slot onto the PYNQ-Z2's own standoff: not a part
 J302,PYNQ-Z2 RPi header,RPi_Socket_2x20_P2.54mm_Underside,"hand-soldered at home: the PYNQ-Z2 socket on the back, alone there: JLCPCB fitting it made the order two-sided (a second setup and stencil, its feeder and 40 joints a board: about $38 before duty, $51 with it).  Solder it from the back, square to the board, after JLCPCB's top side (as the GPSDO's J4001)"
-L101,DNP 6.8nH,L_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
-L202,DNP 6.8nH,L_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
-L401,DNP 6.8nH,L_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
 R104,DNP 1.5k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
 R210,DNP,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
 R211,DNP,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic

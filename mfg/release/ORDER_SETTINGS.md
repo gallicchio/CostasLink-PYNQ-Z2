@@ -104,9 +104,9 @@ Then upload `BOM_JLCPCB.csv` and `CostasLink-PYNQ-Z2_cpl_jlcpcb_upload.csv` (not
 ## Numbers behind the choices
 
 - Board 120.0 x 100.0 mm, 4 copper layers, 1.6 mm; smallest track 0.150 mm; 1088 vias, all 0.45/0.25 mm.
-- Assembly: 381 placements a board on 79 BOM lines (48 Extended, 3 consigned), 1094 SMD pads and 93 through-hole joints a board, on top.
+- Assembly: 384 placements a board on 80 BOM lines (49 Extended, 3 consigned), 1100 SMD pads and 93 through-hole joints a board, on top.
 - Mounting holes: H301 3.2 mm at (5.0, 5.0), H302 3.2 mm at (115.0, 5.0), H303 3.2 mm at (115.0, 94.0), H304 3.2 mm at (61.3, 93.3).
-- Estimate: $597.02 of goods before duty and shipping, JLCPCB $830.98-$845.98 all in, Digi-Key $149.96 (COST_ESTIMATE.md).
+- Estimate: $600.47 of goods before duty and shipping, JLCPCB $835.64-$850.64 all in, Digi-Key $149.96 (COST_ESTIMATE.md).
 - Checks passed: DRC 0 violations, 0 unconnected, 0 parity; the connectors' labels 38 connectors, 22 rows, 0 violations; 2 limit(s) left off on record; 213 filled zone polygons; every netlist part on the board; every code matched (gen/parts.py's words, the value, the package, the MPN) and in stock; no ordered part wants a hole; every part of three or more pads has a read or predicted rotation; the CPL agrees with KiCad's position export, and JLCPCB's drawings placed by it land on our pads (54 parts, top side).
 
 Sources: the ECP5-2ADC-2DAC order of 2026-10-09 (the form's fields and defaults, its cart's fees), jlcpcb.com/help/article/pcb-assembly-price, /capabilities/pcb-assembly-capabilities, /help/article/How-to-mark-on-PCB (2026-05-22), /help/article/us-tariff-policy-faq (2026-09-09).  The form changes; when a screenshot shows it has, update the lists in mfg/make_release.py and this date.

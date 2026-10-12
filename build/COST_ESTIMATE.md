@@ -7,15 +7,15 @@ Written by `mfg/cost_estimate.py` on 2026-10-12 for 5 bare boards, 2 of them ass
 | where | what | cost |
 |---|---|--:|
 | **JLCPCB** | 5 bare boards 120 x 100 mm, 4 layers, ENIG: model $28.50-$65.26 | $46.88 |
-| | assembly: setup $25.75, stencils $8.27, fixture $16.54, feeder loading 48 Extended codes x $2.70 = $129.60, SMT 1066 pads x 2 boards, through-hole 64 joints x 2, packaging, confirmation | $194.08 |
-| | their parts: 76 BOM lines, 378 placements a board, with attrition, x 1.0066 | $352.73 |
-| | US duty, 35 % of the above, collected under DDP | $207.79 |
+| | assembly: setup $25.75, stencils $8.27, fixture $16.54, feeder loading 49 Extended codes x $2.70 = $132.30, SMT 1072 pads x 2 boards, through-hole 64 joints x 2, packaging, confirmation | $196.80 |
+| | their parts: 77 BOM lines, 381 placements a board, with attrition, x 1.0066 | $353.47 |
+| | US duty, 35 % of the above, collected under DDP | $209.00 |
 | | shipping, UPS Express Saver DDP | $25.00-$40.00 |
-| | **JLCPCB total** | **$826.49-$841.49** |
+| | **JLCPCB total** | **$831.15-$846.15** |
 | **Digi-Key** | the consigned parts (table below): $129.64, plus 9.5 % tax and $8.00 shipping | **$149.96** |
 | | shipping the consignment to JLCPCB (USPS Priority International to FedEx) | $35.00-$60.00 |
 | **other** | the bench and the field (table below) | **$139.00-$267.00** |
-| | **everything** | **$1150.45-$1318.45** |
+| | **everything** | **$1155.11-$1323.11** |
 
 ## Digi-Key: the consigned parts
 
@@ -44,10 +44,10 @@ The order is the placements on the assembled boards plus one spare each for JLCP
 ## What to look at
 
 - **C17271830 HMC536MS8G**: 5 in stock against 2 for this order
-- Feeder loading is the largest assembly fee after the setup: 48 Extended codes x $2.70 = $129.60.  Every value merged saves $2.70.
+- Feeder loading is the largest assembly fee after the setup: 49 Extended codes x $2.70 = $132.30.  Every value merged saves $2.70.
 - Hand-soldering the 2x20 socket (J302, alone on the back) makes the order one-sided: half the setup and the stencil, its feeder and joints, about $38 before duty.  Economic PCBA would not take the through-hole SMAs and headers, so Standard it stays.
 
-## Parts (76 BOM lines)
+## Parts (77 BOM lines)
 
 | LCSC | part | a board | ordered | library | unit | line | stock | asked |
 |---|---|--:|--:|---|--:|--:|--:|---|
@@ -76,6 +76,7 @@ The order is the placements on the assembled boards plus one spare each for JLCP
 | C45783 | CL21A226MAQNNNE (22uF) | 3 | 6 | Basic | $0.2369 | $1.42 | 3,634,715 | 2026-10-11 23:48 |
 | C15127 | AO3401A (AO3401A) | 2 | 8 | Basic | $0.1018 | $0.81 | 683,803 | 2026-10-11 23:48 |
 | C46388 | TS5A3159DCKR (TS5A3159) | 1 | 2 | Extended | $0.3753 | $0.75 | 37,015 | 2026-10-11 23:49 |
+| C82919 | LQW15AN6N8G00D (6.8nH) | 3 | 10 | Extended | $0.0727 | $0.73 | 23,999 | 2026-10-12 05:15 |
 | C8207 | SN74LVC1G04DCKR (74LVC1G04) | 2 | 8 | Extended | $0.0838 | $0.67 | 75,977 | 2026-10-11 23:49 |
 | C1525 | CL05B104KO5NNNC (100nF) | 68 | 146 | Basic | $0.0045 | $0.66 | 24,145,880 | 2026-10-11 23:48 |
 | C14461 | SN74LVC2G34DCKR (74LVC2G34) | 1 | 4 | Extended | $0.1592 | $0.64 | 22,430 | 2026-10-11 23:49 |

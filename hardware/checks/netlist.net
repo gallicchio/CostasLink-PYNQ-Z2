@@ -2,7 +2,7 @@
 	(version "E")
 	(design
 		(source "../CostasLink-PYNQ-Z2.kicad_sch")
-		(date "2026-10-12T07:52:19")
+		(date "2026-10-12T08:44:45")
 		(tool "Eeschema 10.0.6")
 		(textvar
 			(name "DATE") "2026-10-09")
@@ -9469,7 +9469,7 @@
 		)
 		(comp
 			(ref "L101")
-			(value "DNP 6.8nH")
+			(value "6.8nH")
 			(footprint "CostasLink:L_0402_1005Metric")
 			(fields
 				(field
@@ -9505,9 +9505,6 @@
 			(property
 				(name "Sheetfile")
 				(value "rx.kicad_sch")
-			)
-			(property
-				(name "dnp")
 			)
 			(property
 				(name "ki_keywords")
@@ -17538,7 +17535,7 @@
 		)
 		(comp
 			(ref "L202")
-			(value "DNP 6.8nH")
+			(value "6.8nH")
 			(footprint "CostasLink:L_0402_1005Metric")
 			(fields
 				(field
@@ -17574,9 +17571,6 @@
 			(property
 				(name "Sheetfile")
 				(value "tx.kicad_sch")
-			)
-			(property
-				(name "dnp")
 			)
 			(property
 				(name "ki_keywords")
@@ -20884,7 +20878,7 @@
 		)
 		(comp
 			(ref "L401")
-			(value "DNP 6.8nH")
+			(value "6.8nH")
 			(footprint "CostasLink:L_0402_1005Metric")
 			(fields
 				(field
@@ -20920,9 +20914,6 @@
 			(property
 				(name "Sheetfile")
 				(value "ant.kicad_sch")
-			)
-			(property
-				(name "dnp")
 			)
 			(property
 				(name "ki_keywords")
