@@ -2626,3 +2626,450 @@ SMA, electronics only (QPV bounds exactly this).
 
 The HMC6300/6301, ADCMP572 and Brain-1 prices were not found in public listings (≈ in the table).  A
 lesson went into CLAUDE_PCB.md section 14.
+
+## Prompt 22 (2026-10-12 01:41 PDT, three messages pasted from Digi-Key)
+
+````
+Brain-1 is $450, 
+
+
+16 LFCSP-VQ
+ADCMP572BCPZ-RL7
+IC COMPARATOR 1CH 16-LFCSP
+Analog Devices Inc.
+1,309
+In Stock
+1 : $30.18000
+Cut Tape (CT)
+1,500 : $19.55525
+Tape & Reel (TR)
+Tariff may apply if shipping to the United States
+-
+Tape & Reel (TR)
+Cut Tape (CT)
+Digi-Reel®
+Active
+with Latch
+1
+CML, Complementary
+3.1V ~ 5.4V
+2mV @ 3.3V
+25µA @ 3.3V
+20mA
+52mA
+65dB CMRR, 74dB PSRR
+0.165ns
+±1mV
+-40°C ~ 85°C
+16-WFQFN Exposed Pad, CSP
+Surface Mount
+16-LFCSP (3x3)
+
+16 LFCSP-VQ
+ADCMP572BCPZ-R2
+IC COMPARATOR 1CH 16-LFCSP
+Analog Devices Inc.
+506
+In Stock
+1 : $34.29000
+Cut Tape (CT)
+250 : $23.55672
+Tape & Reel (TR)
+Tariff may apply if shipping to the United States
+-
+Tape & Reel (TR)
+Cut Tape (CT)
+Digi-Reel®
+Active
+with Latch
+1
+CML, Complementary
+3.1V ~ 5.4V
+2mV @ 3.3V
+25µA @ 3.3V
+20mA
+52mA
+65dB CMRR, 74dB PSRR
+0.165ns
+±1mV
+-40°C ~ 85°C
+16-WFQFN Exposed Pad, CSP
+Surface Mount
+16-LFCSP (3x3)
+
+16 LFCSP-VQ
+ADCMP572BCPZ-WP
+IC COMPARATOR 1CH 16-LFCSP
+Analog Devices Inc.
+33
+In Stock
+1 : $30.18000
+Tray
+-
+-
+Tray
+Active
+with Latch
+1
+CML, Complementary
+3.1V ~ 5.4V
+2mV @ 3.3V
+25µA @ 3.3V
+20mA
+52mA
+65dB CMRR, 74dB PSRR
+0.165ns
+±1mV
+-40°C ~ 85°C
+16-WFQFN Exposed Pad, CSP
+Surface Mount
+16-LFCSP (3x3)
+
+
+16 LFCSP-VQ
+ADCMP580BCPZ-RL7
+IC COMPARATOR 1CH 16-LFCSP
+Analog Devices Inc.
+1,235
+In Stock
+1 : $30.97000
+Cut Tape (CT)
+1,500 : $20.10601
+Tape & Reel (TR)
+Tariff may apply if shipping to the United States
+-
+Tape & Reel (TR)
+Cut Tape (CT)
+Digi-Reel®
+Active
+with Latch
+1
+CML, Complementary
+±4.5V ~ 5.5V
+10mV @ ±5V
+30µA @ ±5V
+44mA @ 5V
+8mA
+60dB CMRR, 75dB PSRR
+0.18ns
+1mV
+-40°C ~ 125°C
+16-WFQFN Exposed Pad, CSP
+Surface Mount
+16-LFCSP (3x3)
+
+16 LFCSP-VQ
+ADCMP580BCPZ-WP
+IC COMPARATOR 1CH 16-LFCSP
+Analog Devices Inc.
+0
+In Stock
+Check Lead Time
+1 : $30.97000
+Tray
+-
+-
+Tray
+Active
+with Latch
+1
+CML, Complementary
+±4.5V ~ 5.5V
+10mV @ ±5V
+30µA @ ±5V
+44mA @ 5V
+8mA
+60dB CMRR, 75dB PSRR
+0.18ns
+1mV
+-40°C ~ 125°C
+16-WFQFN Exposed Pad, CSP
+Surface Mount
+16-LFCSP (3x3)
+
+
+
+Mfr Part #
+Quantity Available
+
+Price
+Price by Quantity
+Tariff Status
+
+Series
+Package
+Product Status
+Type
+Frequency
+Contents
+Antenna Type
+Utilized IC / Part
+
+EK1HMC6350
+EK1HMC6350
+EVALUATION KIT ASSEMBLY
+Analog Devices Inc.
+1
+In Stock
+1 : $6,385.19000
+Box
+Tariff may apply if shipping to the United States
+-
+Box
+Active
+Transmitter, Receiver
+60GHz
+Board(s), Cable(s), Power Supply
+-
+HMC6300, HMC6301
+
+EV1HMC6300BG46
+EV1HMC6300BG46
+HMC6300BG46 EVALUATION PCB
+Analog Devices Inc.
+1
+In Stock
+1 : $1,587.52000
+Box
+Tariff may apply if shipping to the United States
+-
+Box
+Active
+Transmitter
+57GHz ~ 64GHz
+Board(s)
+-
+HMC6300BG46
+````
+
+````
+65 WLBGA
+HMC6300BG46TR
+V-BAND EWLB PKG TRANSMITTER
+Analog Devices Inc.
+357
+In Stock
+1 : $25.91000
+Cut Tape (CT)
+500 : $18.29462
+Tape & Reel (TR)
+-
+-
+Tape & Reel (TR)
+Cut Tape (CT)
+Digi-Reel®
+Active
+-
+57GHz ~ 64GHz
+General Purpose
+FSK, ISM, OOK
+-
+13.9dBm ~ 17dBm
+0.08mA ~ 56mA
+Analog Signal, Digital Signal, SPI
+Not Included
+-
+Multiple Channels, Analog and Digital Data
+2.565V ~ 2.835V, 3.9V ~ 4.1V
+-40°C ~ 85°C
+-
+-
+Surface Mount
+65-VFBGA, WLBGA
+65-WLBGA (6x4)
+
+65 WLBGA
+HMC6300BG46
+RF XMITTER ISM 57-64GHZ 65VFBGA
+Analog Devices Inc.
+0
+In Stock
+Check Lead Time
+1 : $25.91000
+Tray
+Tariff may apply if shipping to the United States
+-
+Tray
+Active
+Not Verified
+57GHz ~ 64GHz
+General Purpose
+ISM
+-
+15dBm
+29mA
+SPI
+-
+-
+-
+4V
+-40°C ~ 85°C
+-
+-
+Surface Mount
+65-VFBGA, WLBGA
+65-WLBGA (6x4)
+
+65 WLBGA
+HMC6300BG46P7
+V-BAND EWLB PKG TRANSMITTER
+Analog Devices Inc.
+48
+In Stock
+1 : $25.91000
+Strip
+-
+-
+Strip
+Active
+-
+57GHz ~ 64GHz
+ISM
+FSK, ISM, MSK, OOK
+-
+13.9dBm ~ 17dBm
+0.08mA ~ 56mA
+Analog Signal, Digital Signal, SPI
+Not Included
+-
+Multiple Channels, Analog and Digital Data
+2.565V ~ 2.835V, 3.9V ~ 4.1V
+-40°C ~ 85°C
+-
+-
+Surface Mount
+65-VFBGA, WLBGA
+65-WLBGA (6x4)
+````
+
+````
+75 WLBGA
+HMC6301BG46TR
+V-BAND EWLB PKG RECEIVER
+Analog Devices Inc.
+303
+In Stock
+1 : $25.91000
+Cut Tape (CT)
+500 : $18.29462
+Tape & Reel (TR)
+-
+-
+Tape & Reel (TR)
+Cut Tape (CT)
+Digi-Reel®
+Active
+57GHz ~ 64GHz
+-
+-
+AM, FM, FSK, ISM, MSK, OOK
+ISM
+-
+SPI
+-
+Not Included
+Image Reject Filter, On-Chip Temperature Sensor
+1.3V ~ 1.48V, 2.565V ~ 2.835V
+-40°C ~ 85°C
+-
+-
+Surface Mount
+75-VFBGA, WLBGA
+75-WLBGA (6x4)
+
+75 WLBGA
+HMC6301BG46P7
+V-BAND EWLB PKG RECEIVER
+Analog Devices Inc.
+12
+In Stock
+1 : $25.91000
+Strip
+-
+-
+Strip
+Active
+57GHz ~ 64GHz
+-
+-
+AM, FM, ISM, OOK
+ISM
+-
+SPI, USB
+-
+Not Included
+SPI digital interface
+1.3V ~ 1.48V, 2.565V ~ 2.835V
+-40°C ~ 85°C
+-
+-
+Surface Mount
+75-VFBGA, WLBGA
+75-WLBGA (6x4)
+
+
+EK1HMC6350
+EK1HMC6350
+EVALUATION KIT ASSEMBLY
+Analog Devices Inc.
+1
+In Stock
+1 : $6,385.19000
+Box
+Tariff may apply if shipping to the United States
+-
+Box
+Active
+Transmitter, Receiver
+60GHz
+Board(s), Cable(s), Power Supply
+-
+HMC6300, HMC6301
+
+EV1HMC6301BG46
+EV1HMC6301BG46
+HMC6301BG46 EVALUATION PCB
+Analog Devices Inc.
+1
+In Stock
+1 : $1,587.52000
+Box
+Tariff may apply if shipping to the United States
+-
+Box
+Active
+Receiver
+57GHz ~ 64GHz
+Board(s)
+-
+HMC6301BG46
+````
+
+## Response 22 (2026-10-12 01:42 - 01:50)
+
+**The costs are now line items.**  `sim/latency_roadmap.py` builds each row's two-node link from
+line items (`build/latency_roadmap.json` lists every one).  The total is what that row costs to build
+directly; Δ is that total less the row before.  Jason's Digi-Key prices are exact; the rest are marked ≈.
+The ADCMP572's delay is now Digi-Key's 165 ps; row 4 is 2.43 ns.
+
+| # | bench | 3 km + PA | what changes | Δ$ | total $ |
+|---|---|---|---|---|---|
+| 0 | ~71 ns | ~71 ns | rev A as built | — | $1,220-1,260 |
+| 1 | 13.6 ns | 13.4 ns | combinational gateware path | $0 | $1,220-1,260 |
+| 2 | 10.8 ns | 10.7 ns | bare-pin host (Icepi Zero) | ≈ −$120 to $0 | ≈ $1,100-1,260 |
+| 3 | 9.1 ns | 8.9 ns | TLV3604 LVDS into an ECP5 on the board (or two Brain-1 at $450: $1,900-2,000) | ≈ +$30-90 | ≈ $1,130-1,350 |
+| 4 | 2.4 ns | 2.3 ns | 8 ADCMP572 at $30.18 into CML gates, outside the FPGA | ≈ +$430-960 | ≈ $1,560-2,300 |
+| 5 | 1.7 ns | 1.7 ns | passive I/Q mixers, GHz FDAs, wideband antennas, ~2 GHz on the air | ≈ +$520-1,460 | ≈ $2,080-3,760 |
+| 6 | 1.3 ns | (hundreds of m) | 60 GHz: four HMC6300/6301 at $25.91 ($104), a Rogers board (≈ $2k) or four eval PCBs ($6,350), horns, InP comparators | ≈ +$3-10k | ≈ $5-14k |
+| 7 | ~0.2-0.5 ns | — | free-space optical (≈ $11-33k a node) | ≈ +$20-65k | ≈ $26-80k |
+
+**What changed in the conclusions:**
+
+- **The steps are cheaper than the first guesses.**
+  - Row 3: the ECP5 on the board costs about what the hosts it replaces cost.
+  - Row 4: still the best value, 3.8× for ≈ $0.4-1k, less than doubling the total.
+  - Row 6: the 60 GHz chips are $104 for four.  The board and horns are the cost, and ADI's evaluation
+    PCBs are the quick way in.
+- **The shape stands:** past row 4 each step costs several times the one before and buys less.
+- **The ADCMP572 over the ADCMP580:** one 3.3 V supply instead of ±5 V, and 2 mV of offset instead of
+  10 mV, for less money and 15 ps less delay.

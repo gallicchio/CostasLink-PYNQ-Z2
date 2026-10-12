@@ -1170,10 +1170,12 @@ docs/TRAJECTORIES.md and the host terms of docs/HOSTS.md.
 - **The first chip bottlenecks are the FPGA's I/O and the TLV3601.**
   - The PYNQ's 200 Ω go with a bare-pin host.
   - LVDS comparators (TLV3604) come with a SYZYGY or on-board-FPGA rev B (docs/HOSTS.md).
-  - **Then the fast path should leave the FPGA:** SiGe comparators (ADI ADCMP572, 150 ps, CML out)
-    into a CML gate that computes the answer and drives the modulator's baseband directly.  The FPGA
-    only arms it, configures it and time-stamps it.  This is the step with the best value in the
-    table: **about 9 to 2.4 ns for ~$1-2k.**
+  - **Then the fast path should leave the FPGA:** SiGe comparators (ADI ADCMP572, 165 ps, CML out,
+    $30.18 at Digi-Key) into a CML gate that computes the answer and drives the modulator's baseband
+    directly.  The FPGA only arms it, configures it and time-stamps it.  This is the step with the best
+    value in the table: **about 9 to 2.4 ns for ≈ $0.4-1k more.**
+  - The ADCMP572 rather than the ADCMP580 ($30.97, 180 ps): it runs from one 3.3 V supply where the
+    ADCMP580 needs ±5 V, and its offset is 2 mV where the ADCMP580's is 10 mV.
 - **The next chip bottleneck is the ADL5380's 390 MHz baseband** (the ADL5375's 750 MHz follows it).
   - It takes a wideband I/Q demodulator: a passive I/Q mixer and a GHz-class FDA, about 2 GHz on the
     air.
@@ -1182,7 +1184,10 @@ docs/TRAJECTORIES.md and the host terms of docs/HOSTS.md.
   - It buys only ~0.7 ns, because the filters were never the big term.
 - **A higher centre frequency only for the spectrum.**  57-64 GHz is unlicensed, with 2 GHz channels.
   - ADI's HMC6300 / HMC6301 chipset has 1.8 GHz of analog I/Q baseband, so the architecture carries over:
-    I/Q, windows, a Costas loop.
+    I/Q, windows, a Costas loop.  Each chip integrates its own synthesizer.
+  - The chips are cheap: $25.91 each at Digi-Key.  The board is the cost: a Rogers stack, an eWLB BGA,
+    a transition to waveguide.  ADI's evaluation PCBs are $1,587.52 each (EV1HMC6300BG46,
+    EV1HMC6301BG46), and the EK1HMC6350 kit (one of each, cables, a supply) is $6,385.19.
   - At 60 GHz, oxygen absorbs ~15 dB/km, which limits it to hundreds of metres.  For kilometres with
     GHz channels, 71-86 GHz (E-band, light-licensed in the US) is the band.
   - Fixed-aperture antennas gain with frequency, so the link budget is not the problem; pointing is.
@@ -1196,33 +1201,47 @@ docs/TRAJECTORIES.md and the host terms of docs/HOSTS.md.
 
 ### The table: each row a lower turnaround
 
-Totals are rough, for a two-node link (two boards and their hosts; antennas, amplifiers and bench kit
-excluded).  Rev A's total is JLCPCB's order for 2 assembled boards, the consigned chips, and two
-PYNQ-Z2 at about $129 each.  Prices not checked are marked ≈; the HMC6300/6301, ADCMP572 and Brain-1
-prices were not found in public listings.
+**What the money columns mean:**
+- **Total $** is what that row's two-node link costs to build directly: two boards and their hosts.
+  Antennas, amplifiers and bench kit are excluded, except antennas a row needs that rev A's cannot be.
+- **Δ$** is that total less the row before.  Walking the steps one by one also pays a board order
+  (about $1k) at every re-spin, and the engineering time, which is not in the table.
+- **The sources:**
+  - Jason's Digi-Key prices of 2026-10-12, 1-9 pieces, are exact: the Brain-1 $450, the ADCMP572
+    $30.18, the HMC6300 and HMC6301 $25.91, the evaluation PCBs $1,587.52, the EK1HMC6350 $6,385.19.
+  - Rev A's boards are section 17's $962-1,002: JLCPCB $777-792, the consigned chips $150, shipping
+    them $35-60.
+  - The rest are estimates (≈); `build/latency_roadmap.json` lists every line.
 
 | # | turnaround, bench | at 3 km (with the PA) | what changes | Δ$ (two nodes) | total $ |
 |---|---|---|---|---|---|
-| 0 | **~71 ns** | ~71 ns | rev A as built: PYNQ-Z2, header RCs, TLV3601, A3 through the registered decoder at 100 MHz (estimated: rev A has no RX-to-TX path) | — | ~$1.2-1.4k |
-| 1 | **13.6 ns** | 13.4 ns | gateware: B2's first edge through a combinational LUT path, pin to pin; a TDC time-stamps alongside | $0 | ~$1.2-1.4k |
-| 2 | **10.8 ns** | 10.7 ns | a bare-pin host (Icepi Zero, or any host without the 200 Ω) | −$120 to $0 | ~$1.1-1.4k |
-| 3 | **9.1 ns** | 8.9 ns | rev B: TLV3604 LVDS comparators over LVDS pairs (SYZYGY on the Brain-1, or an on-board ECP5) | ≈ +$1.5-2.5k | ≈ $2.6-3.9k |
-| 4 | **2.4 ns** | 2.3 ns | the fast path leaves the FPGA: ADCMP572-class SiGe comparators, a CML gate driving the modulator's baseband, the DSA out of the fast path; the FPGA arms and time-stamps | ≈ +$1-2k | ≈ $3.6-5.9k |
-| 5 | **1.7 ns** | 1.7 ns | ~1 GHz baseband: a wideband I/Q demodulator, arm and modulator, ~2 GHz on the air (a shielded lab or an experimental licence); the PA at range | ≈ +$2-5k | ≈ $6-11k |
-| 6 | **1.3 ns** | (hundreds of metres only) | 60 GHz: HMC6300 / HMC6301 (1.8 GHz I/Q), InP comparators (HMC674, 85 ps), a Rogers board, horns | ≈ +$15-30k | ≈ $20-40k |
-| 7 | **~0.2-0.5 ns** | — | a different architecture: free-space optical, 20-40 GHz photoreceivers and modulators, an InP / SiGe gate | ≈ +$50-100k | ≈ $70-140k |
+| 0 | **~71 ns** | ~71 ns | rev A as built: PYNQ-Z2, header RCs, TLV3601, A3 through the registered decoder at 100 MHz (estimated: rev A has no RX-to-TX path) | — | $1,220-1,260 |
+| 1 | **13.6 ns** | 13.4 ns | gateware: B2's first edge through a combinational LUT path, pin to pin; a TDC time-stamps alongside | $0 | $1,220-1,260 |
+| 2 | **10.8 ns** | 10.7 ns | a bare-pin host (Icepi Zero, ≈ $69-129, or any host without the 200 Ω) | ≈ −$120 to $0 | ≈ $1,100-1,260 |
+| 3 | **9.1 ns** | 8.9 ns | rev B: TLV3604 LVDS comparators over LVDS pairs into an ECP5 on the board (≈ $150-300 for two); or on SYZYGY, two Brain-1 at $450, for $1,900-2,000 in all | ≈ +$30-90 | ≈ $1,130-1,350 |
+| 4 | **2.4 ns** | 2.3 ns | the fast path leaves the FPGA: 8 ADCMP572 ($30.18), CML gates (≈ $15-60 each) driving the modulator's baseband, the DSA out of the fast path; the FPGA arms and time-stamps | ≈ +$430-960 | ≈ $1,560-2,300 |
+| 5 | **1.7 ns** | 1.7 ns | ~1 GHz baseband: passive I/Q mixers and GHz FDAs for the ADL5380 and ADL5375, LO amplifiers, 4.8-6.8 GHz antennas; ~2 GHz on the air (a shielded lab or an experimental licence); the PA at range | ≈ +$520-1,460 | ≈ $2,080-3,760 |
+| 6 | **1.3 ns** | (hundreds of metres only) | 60 GHz: 2 HMC6300 + 2 HMC6301 ($25.91 each), a Rogers board (≈ $2k) or ADI's four evaluation PCBs ($6,350), WR-15 horns (≈ $1.2-2.4k), InP comparators (HMC674-class) | ≈ +$3-10k | ≈ $5-14k |
+| 7 | **~0.2-0.5 ns** | — | a different architecture: free-space optical; each node a laser, a 20-40 GHz modulator and its driver, a photoreceiver, an EDFA, optics, an InP / SiGe gate (≈ $11-33k a node) | ≈ +$20-65k | ≈ $26-80k |
 
 ![latency against cost](docs/images/latency_vs_cost.png)
 
 ### What it says
 
-- **Rows 0-2 cost nothing and take the turnaround from ~71 to ~11 ns**: gateware and a host.
-- **Row 4 is the step with the best value:** 3.8× for ~$1-2k.  The comparator-to-modulator path in
-  CML, outside the FPGA, is the architecture for a fast prover.
+- **Rows 0-3 cost what rev A costs, about $1.1-1.35k, and take the turnaround from ~71 to ~9 ns.**
+  - Rows 0-2 are gateware and a host.
+  - Row 3's ECP5 on the board costs about what the hosts it replaces cost.
+  - The Brain-1 route to the same row costs $0.8k more for the same speed; it buys a ready-made board
+    and a Zynq instead of an FPGA designed onto ours.
+- **Row 4 is the step with the best value:** 3.8× for ≈ $0.4-1k, less than doubling the total.  The
+  comparator-to-modulator path in CML, outside the FPGA, is the architecture for a fast prover.
 - **Past row 4 the money balloons.**
-  - Each further step costs several times the one before (+$2-5k, then +$15-30k, then +$50-100k).
-  - Each buys less (0.7 ns, then 0.4 ns, then about 1 ns), because the filters, the energy bound and the
-    RF chips' own delays are all already within a factor of a few of each other.
+  - Each further step costs several times the one before (≈ +$0.5-1.5k, then +$3-10k, then
+    +$20-65k).
+  - Each buys less (0.7 ns, then 0.4 ns, then about 1 ns).  The filters, the energy bound and the RF
+    chips' own delays are all already within a factor of a few of each other.
 - **Widening the air bandwidth and raising the frequency come last, and pay least per dollar.**
   - They matter only below ~2 ns.
   - At range, power (the energy bound) matters before bandwidth.
+- **The 60 GHz chips are not the expense.**  Four of them are $104; the 60 GHz board and its horns
+  are the cost, and ADI's evaluation PCBs ($6,350 for four) are the quick way to try it.

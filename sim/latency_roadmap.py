@@ -56,24 +56,57 @@ def tau(MHz):
     return 1 / (2 * math.pi * MHz * 1e6)
 
 
-#  step, latency label, what changes, delta $ (low, high) for a two-node link, parameters
+#  step, latency label, what changes, parameters
 STEPS = [
     ("0", "rev A as built", "PYNQ-Z2, header RCs, TLV3601, rev A gateware (A3, registered decoder at 100 MHz)",
-     (0, 0), dict(rx_rf=1.1, B_dem=390, B_arm=94.4, cmp=2.5, link=1.62, core=59.4, fpga_io=3.0, tx_tau=[2.0, 0.72], B_mod=750, tx_rf=0.5)),
+     dict(rx_rf=1.1, B_dem=390, B_arm=94.4, cmp=2.5, link=1.62, core=59.4, fpga_io=3.0, tx_tau=[2.0, 0.72], B_mod=750, tx_rf=0.5)),
     ("1", "gateware fast path", "B2 scheme; comparator pins through one LUT level straight to the ladder pins, combinational (a TDC time-stamps alongside); no hardware change",
-     (0, 0), dict(rx_rf=1.1, B_dem=390, B_arm=94.4, cmp=2.5, link=1.62, core=2.0, fpga_io=3.0, tx_tau=[2.0, 0.72], B_mod=750, tx_rf=0.5)),
+     dict(rx_rf=1.1, B_dem=390, B_arm=94.4, cmp=2.5, link=1.62, core=2.0, fpga_io=3.0, tx_tau=[2.0, 0.72], B_mod=750, tx_rf=0.5)),
     ("2", "bare-pin host", "Icepi Zero (or any host without series resistors): the 200 ohm RCs gone both ways",
-     (-120, 0), dict(rx_rf=1.1, B_dem=390, B_arm=94.4, cmp=2.5, link=0.23, core=2.0, fpga_io=3.0, tx_tau=[0.3, 0.72], B_mod=750, tx_rf=0.5)),
-    ("3", "LVDS comparators", "rev B on SYZYGY (Brain-1) or an on-board ECP5: TLV3604 (0.8 ns) over LVDS pairs",
-     (1500, 2500), dict(rx_rf=1.1, B_dem=390, B_arm=94.4, cmp=0.8, link=0.15, core=2.0, fpga_io=3.0, tx_tau=[0.3, 0.72], B_mod=750, tx_rf=0.5)),
-    ("4", "fast path out of the FPGA", "SiGe comparators (ADCMP572, 150 ps, CML) into a CML gate that drives the modulator's baseband; the FPGA only arms, configures and time-stamps; the DSA leaves the fast path",
-     (1000, 2000), dict(rx_rf=0.8, B_dem=390, B_arm=94.4, cmp=0.15, link=0.05, core=0.25, fpga_io=0.0, tx_tau=[0.05, 0.1], B_mod=750, tx_rf=0.4)),
-    ("5", "1 GHz baseband", "a wideband I/Q demodulator (a passive I/Q mixer and a GHz FDA) and arm, a wideband modulator: about 2 GHz on the air, which 5.8 GHz's ISM and amateur bands do not have (a shielded lab or an experimental licence); the PA at range",
-     (2000, 5000), dict(rx_rf=0.6, B_dem=2000, B_arm=1000, cmp=0.15, link=0.05, core=0.25, fpga_io=0.0, tx_tau=[0.05, 0.1], B_mod=1500, tx_rf=0.3)),
+     dict(rx_rf=1.1, B_dem=390, B_arm=94.4, cmp=2.5, link=0.23, core=2.0, fpga_io=3.0, tx_tau=[0.3, 0.72], B_mod=750, tx_rf=0.5)),
+    ("3", "LVDS comparators", "rev B with an ECP5 on the board (or on SYZYGY, the Brain-1): TLV3604 (0.8 ns) over LVDS pairs",
+     dict(rx_rf=1.1, B_dem=390, B_arm=94.4, cmp=0.8, link=0.15, core=2.0, fpga_io=3.0, tx_tau=[0.3, 0.72], B_mod=750, tx_rf=0.5)),
+    ("4", "fast path out of the FPGA", "SiGe comparators (ADCMP572, 165 ps, CML) into a CML gate that drives the modulator's baseband; the FPGA only arms, configures and time-stamps; the DSA leaves the fast path",
+     dict(rx_rf=0.8, B_dem=390, B_arm=94.4, cmp=0.165, link=0.05, core=0.25, fpga_io=0.0, tx_tau=[0.05, 0.1], B_mod=750, tx_rf=0.4)),
+    ("5", "1 GHz baseband", "passive I/Q mixers (IF to GHz) and GHz FDAs for the ADL5380 and ADL5375: about 2 GHz on the air, which 5.8 GHz's ISM and amateur bands do not have (a shielded lab or an experimental licence); the PA at range",
+     dict(rx_rf=0.6, B_dem=2000, B_arm=1000, cmp=0.165, link=0.05, core=0.25, fpga_io=0.0, tx_tau=[0.05, 0.1], B_mod=1500, tx_rf=0.3)),
     ("6", "60 GHz", "57-64 GHz unlicensed (2 GHz channels): ADI's HMC6300 / HMC6301 with 1.8 GHz of I/Q baseband, InP comparators (HMC674, 85 ps), a Rogers board, horns; oxygen (15 dB/km) limits it to hundreds of metres",
-     (15000, 30000), dict(rx_rf=0.4, B_dem=900, B_arm=None, cmp=0.085, link=0.05, core=0.15, fpga_io=0.0, tx_tau=[0.05, 0.05], B_mod=900, tx_rf=0.3)),
+     dict(rx_rf=0.4, B_dem=900, B_arm=None, cmp=0.085, link=0.05, core=0.15, fpga_io=0.0, tx_tau=[0.05, 0.05], B_mod=900, tx_rf=0.3)),
 ]
-BASE_TOTAL = (1200, 1400)    # rev A for a two-node link: JLCPCB's order for 2 assembled, the consigned chips, 2 PYNQ-Z2 (~$129)
+
+# What each row's two-node link costs to build directly, line by line (antennas, amplifiers and bench kit
+# excluded, except antennas a row needs that rev A's cannot be).  Prices Jason gave from Digi-Key on
+# 2026-10-12 are exact (1-9 pieces); the rest are estimates, marked "est".  Each row's delta is its total
+# less the row before; walking the steps one by one also pays a board order (~$1k) at every re-spin.
+REV_A = ("two rev A boards, assembled: JLCPCB $777-792, the consigned chips $150, shipping them $35-60 (section 17)", 962, 1002)
+REV_B = ("two rev B boards: rev A's, the TLV3601 swapped for 8 TLV3604 (est +$2-4 each, with duty)", 962 + 20, 1002 + 45)
+ECP5 = ("an ECP5 on each board: LFE5U-25F, flash, oscillator, USB-JTAG, regulators, their assembly lines and duty (est)", 150, 300)
+CML = [("8 ADCMP572 at $30.18 (Digi-Key) for the 8 TLV3604", 210, 225),
+       ("CML logic: the answer gate and a fan-out to the FPGA's TDC, about 4 gates a board at $15-60 (est)", 120, 480),
+       ("their assembly lines and duty (est)", 100, 250)]
+WIDE = [("4 passive I/Q mixers (HMC525-class, IF to 3.5 GHz) for the ADL5380 and ADL5375-05, less the $64 of consigned chips (est)", 140, 260),
+        ("GHz FDAs (LMH5401-class), 4 a board (est)", 120, 200),
+        ("LO amplifiers for the passive mixers (est)", 40, 100),
+        ("4 antennas for 4.8-6.8 GHz, Vivaldi or horn (est)", 120, 600),
+        ("their assembly lines and duty (est)", 100, 200),
+        ("an FCC Part 5 experimental licence (est)", 0, 100)]
+V60 = [("2 HMC6300 + 2 HMC6301 at $25.91 (Digi-Key)", 104, 104),
+       ("a 60 GHz board: a Rogers or hybrid stack, eWLB BGA assembly at a prototype house (est); ADI's evaluation PCBs instead are $1,587.52 each, $6,350 for four", 2000, 6350),
+       ("4 WR-15 horns and transitions, if the boards need them (est)", 1200, 2400),
+       ("8 InP comparators (HMC674-class) for the ADCMP572 (est)", 560, 1360),
+       ("less the 5.8 GHz chain: mixers, LO, LNA, DSA, gain blocks, antennas (est)", -900, -300)]
+COSTS = {
+    "0": [REV_A, ("two PYNQ-Z2", 258, 258)],
+    "1": [REV_A, ("two PYNQ-Z2", 258, 258)],
+    "2": [REV_A, ("two Icepi Zero (est $69-129 each)", 138, 258)],
+    "3": [REV_B, ECP5],
+    "4": [REV_B, ECP5] + CML,
+    "5": [REV_B, ECP5] + CML + WIDE,
+    "6": [REV_B, ECP5] + CML + WIDE + V60,
+}
+ALT = {"3": ("two Brain-1 at $450 and a SYZYGY connector with its DNA chip a board, instead of the ECP5", 920 - 150, 950 - 300)}
+OPTICAL = (26e3, 80e3)       # row 7, estimated: a node is a laser and its controller, a 20-40 GHz modulator and its
+                             # driver, a photoreceiver, an EDFA, free-space optics, an InP / SiGe gate: $11-33k
 
 
 def run(p, snr_dB):
@@ -103,16 +136,20 @@ def run(p, snr_dB):
 
 def main():
     rows = []
-    lo, hi = BASE_TOTAL
-    for key, name, what, (dlo, dhi), p in STEPS:
-        lo, hi = lo + dlo, hi + dhi
-        r = dict(step=key, name=name, what=what, delta=(dlo, dhi), total=(lo, hi), params=p)
+    plo, phi = None, None
+    for key, name, what, p in STEPS:
+        lo, hi = sum(c[1] for c in COSTS[key]), sum(c[2] for c in COSTS[key])
+        dlo, dhi = (lo - plo, hi - phi) if plo is not None else (0, 0)
+        plo, phi = lo, hi
+        r = dict(step=key, name=name, what=what, delta=(dlo, dhi), total=(lo, hi), costs=COSTS[key], params=p)
+        if key in ALT:
+            r["alternative"] = dict(item=ALT[key][0], total=(lo + ALT[key][1], hi + ALT[key][2]))
         for case, snr in SNR.items():
             r[case] = run(p, snr)
             r[case + "_PA"] = run(p, snr + 20.0)            # the 2 W module at +30 dBm: 20 dB more
         rows.append(r)
         b, k, kp = r["bench"], r["3 km"], r["3 km_PA"]
-        print("%s %-26s bench %6.2f ns (decide %5.2f: rise %5.2f, energy %5.3f)  3 km %s  3 km + PA %6.2f   $%d-%d (total $%d-%d)"
+        print("%s %-26s bench %6.2f ns (decide %5.2f: rise %5.2f, energy %5.3f)  3 km %s  3 km + PA %6.2f   %+d to %+d (total $%d-%d)"
               % (key, name, b["turnaround_ns"], b["decide_ns"], b["rise_ns"], b["energy_ns"],
                  ("%6.2f" % k["turnaround_ns"]) if k else "  n/a ", kp["turnaround_ns"], dlo, dhi, lo, hi))
     # the energy bound alone, for the text
@@ -120,6 +157,9 @@ def main():
         for pa in (0, 20):
             pn = 10 ** ((snr + pa) / 10) * 100e6
             print("energy bound, %s%s: z = 7.5 -> %.3f ns" % (case, " + PA" if pa else "", 7.5 ** 2 / pn * 1e9))
+    for r in rows:
+        print("%s total $%d-%d, delta $%+d to %+d%s" % (r["step"], r["total"][0], r["total"][1], r["delta"][0], r["delta"][1],
+              ("   (alternative: $%d-%d)" % r["alternative"]["total"]) if "alternative" in r else ""))
     json.dump(rows, open(os.path.join(ROOT, "build", "latency_roadmap.json"), "w"), indent=1, default=float)
     # the latency against the money
     fig, ax = plt.subplots(figsize=(8.0, 5.4))
@@ -128,17 +168,18 @@ def main():
     yk = [r["3 km_PA"]["turnaround_ns"] for r in rows if r["step"] != "6"]      # 60 GHz: oxygen, 15 dB/km
     ax.plot(xs, yb, "o-", color="#1f5fbf", label="the bench (10 m, whips)")
     ax.plot(xs[:len(yk)], yk, "s--", color="#c8401a", label="3 km (panels, 10 m cables, the PA at +30 dBm)")
-    ax.plot([math.sqrt(70e3 * 140e3)], [0.3], "o", mfc="none", mec="#1f5fbf", ms=8)
-    ax.errorbar([math.sqrt(70e3 * 140e3)], [0.3], xerr=[[math.sqrt(70e3 * 140e3) - 70e3], [140e3 - math.sqrt(70e3 * 140e3)]],
+    xo = math.sqrt(OPTICAL[0] * OPTICAL[1])
+    ax.plot([xo], [0.3], "o", mfc="none", mec="#1f5fbf", ms=8)
+    ax.errorbar([xo], [0.3], xerr=[[xo - OPTICAL[0]], [OPTICAL[1] - xo]],
                 yerr=[[0.1], [0.2]], fmt="none", ecolor="#1f5fbf", alpha=0.4, lw=1)
-    ax.annotate("7: optical (estimated, not modelled)", (math.sqrt(70e3 * 140e3), 0.3), xytext=(-150, 8),
+    ax.annotate("7: optical (estimated, not modelled)", (xo, 0.3), xytext=(-150, 8),
                 textcoords="offset points", fontsize=7.5)
     for r, x, y in zip(rows, xs, yb):
         ax.annotate("%s: %s" % (r["step"], r["name"]), (x, y), xytext=(6, 4), textcoords="offset points", fontsize=7.5)
     ax.errorbar(xs, yb, xerr=[[x - r["total"][0] for x, r in zip(xs, rows)], [r["total"][1] - x for x, r in zip(xs, rows)]],
                 fmt="none", ecolor="#1f5fbf", alpha=0.4, lw=1)
     ax.set_xscale("log"); ax.set_yscale("log")
-    ax.set_xlabel("a two-node link's hardware, $ (log; rough, see PLAN.md section 19)")
+    ax.set_xlabel("a two-node link's hardware, $ (log; line items in PLAN.md section 19)")
     ax.set_ylabel("the prover's turnaround, RX SMA to TX SMA, ns (log)")
     ax.set_title("Latency against money: each step keeps the ones before it", fontsize=10)
     ax.grid(alpha=0.25, which="both")
