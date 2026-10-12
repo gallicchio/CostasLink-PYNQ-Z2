@@ -14,25 +14,25 @@
    g 0.05: 0.58 ns  g 0.10: 0.85 ns  g 0.25: 1.48 ns  g 0.50: 2.42 ns  g 0.75: 3.51 ns  g 0.90: 4.47 ns  g 1.00: 7.49 ns
 
 == 3. The schemes (a = the largest point's amplitude / sigma; SNR = a^2 in the arm's 100 MHz)
-   lab: 10 m, whips, SNR 38.6 dB (a = 85); far: 3 km, panels, 10 m cables, SNR 23.1 dB (a = 14.3)
+   lab: 10 m, whips, SNR 38.2 dB (a = 81); far: 3 km, panels, 10 m cables, SNR 22.6 dB (a = 13.5)
         scheme                                 SNR axis SNR peak comps  lab: event / all bits, ns  far: event / all bits, ns 
-   A1   BPSK flip, sign(I)                      17.3 dB  17.3 dB    1   2.50 / 2.50                2.95 / 2.95               
+   A1   BPSK flip, sign(I)                      17.3 dB  17.3 dB    1   2.50 / 2.50                2.98 / 2.98               
         rev A as built; an event and no bit: the plan's BPSK row
-   A2   1 bit: Q step, QP / QN at +-V_T         20.9 dB  23.9 dB    2   0.99 / 0.99                3.67 / 3.67               
+   A2   1 bit: Q step, QP / QN at +-V_T         20.9 dB  23.9 dB    2   1.02 / 1.02                3.91 / 3.91               
         rev A as built; the event and the bit from the same edge; V_T by the FPGA's false-event count
-   A3   2 bits: corners (the plan's QPSK)       20.9 dB  23.9 dB    3   0.99 / 2.50                3.67 / 3.67               
+   A3   2 bits: corners (the plan's QPSK)       20.9 dB  23.9 dB    3   1.02 / 2.50                3.91 / 3.91               
         rev A as built; QP / QN give the event and the Q bit; sign(I) gives the I bit at mid-rise
-   J1   Jason's +, idle the right arm           20.8 dB  20.8 dB    4   0.99 / 3.63                3.63 / 4.32               
+   J1   Jason's +, idle the right arm           20.8 dB  20.8 dB    4   1.02 / 3.64                3.87 / 4.37               
         needs a second I threshold; the centre point is the nearest to idle; the far arm is known at 3/4 of the rise
-   J2   Jason's even circle: 5-PSK              19.5 dB  19.5 dB    5   0.90 / 3.02                3.09 / 3.72               
+   J2   Jason's even circle: 5-PSK              19.5 dB  19.5 dB    5   0.93 / 3.02                3.25 / 3.77               
         needs 5-level TX and phase comparators; phase lines through the origin: the far messages are known late
-   B1   weak pilot + 4 orthogonal               21.4 dB  21.4 dB    4   1.03 / 1.03                3.93 / 3.93               
+   B1   weak pilot + 4 orthogonal               21.4 dB  21.4 dB    4   1.06 / 1.06                4.23 / 4.23               
         rev A TX (the pilot by VR_I); rev B RX (+1 window comparator pair); each message moves only its own comparator: the event and both bits on one edge
-   B2   weak pilot at 45 deg + the 4 corners    18.3 dB  21.3 dB    4   0.83 / 0.83                2.71 / 2.71               
+   B2   weak pilot at 45 deg + the 4 corners    18.3 dB  21.3 dB    4   0.86 / 0.86                2.84 / 2.84               
         rev A TX (the pilot by VR_I and VR_Q); rev B RX (+1 window pair); rev A RX does the +-Q half; the loop turns the corners onto the receiver's axes: one window per message, all bits on one edge
-   A4   1 bit: pilot at 45 deg, TX (-1,1) / (1,-1)  17.9 dB  20.9 dB    2   0.81 / 0.81                2.61 / 2.61               
+   A4   1 bit: pilot at 45 deg, TX (-1,1) / (1,-1)  17.9 dB  20.9 dB    2   0.84 / 0.84                2.73 / 2.73               
         rev A as built; the 1-bit half of B2: QP / QN with V_T by the false-event count
-   R4   idle on a corner, lines through it      18.2 dB  21.2 dB    4   0.81 / 0.83                2.59 / 2.68               
+   R4   idle on a corner, lines through it      18.2 dB  21.2 dB    4   0.83 / 0.85                2.71 / 2.81               
         rev A TX; rev B RX with AC-coupled, resistor-weighted comparators; the best layout on the 3 x 3 grid (17.7 dB with an event comparator per message): no better than B2 in practice
 
 == 4. The best any comparator layout can do, by search (peak-limited; SNR of the largest point)
@@ -47,23 +47,23 @@
    8    21.5 dB (idle at 0.05)        21.5 dB (idle at 0.05)               21.5 dB, 16 comparators
 
 == 5. Matching the arm's bandwidth to the SNR (B2: the event and both bits at g* = (zFA + zM) / (a L), L = sqrt 2 - rho)
-   lab   SNR  38.6 dB: the 94 MHz arm decides 0.83 ns into the rise; the best bandwidth, 400 MHz, decides at 0.30 ns
-   far   SNR  23.1 dB: the 94 MHz arm decides 2.71 ns into the rise; the best bandwidth, 246 MHz, decides at 1.85 ns
+   lab   SNR  38.2 dB: the 94 MHz arm decides 0.86 ns into the rise; the best bandwidth, 400 MHz, decides at 0.31 ns
+   far   SNR  22.6 dB: the 94 MHz arm decides 2.84 ns into the rise; the best bandwidth, 221 MHz, decides at 2.05 ns
    limit SNR  19.3 dB: the 94 MHz arm decides 4.40 ns into the rise; the best bandwidth, 104 MHz, decides at 4.36 ns
 
 == 6. Range at the design point (free space; the budget's antennas, cables and margins)
    board alone: the axis point is +9.8 dBm; corners sit at the ADL5611's 12.8 dBm P1dB (5.8 GHz), so a scheme with corners
    needs 1 dB more; with the 2 W module its +30 dBm is the PEAK (3 dB under its P1dB) and the peak SNR counts
-   A1   BPSK flip, sign(I)                 needs 17.3 dB: lab 37 m; campus  1.7 km; campus +PA 16.5 km
-   A2   1 bit: Q step, QP / QN at +-V_T    needs 21.9 dB: lab 22 m; campus  968 m; campus +PA 7.7 km
-   A3   2 bits: corners (the plan's QPSK)  needs 21.9 dB: lab 22 m; campus  968 m; campus +PA 7.7 km
-   A4   1 bit: pilot at 45 deg, TX (-1,1) / (1,-1) needs 18.9 dB: lab 31 m; campus  1.4 km; campus +PA 10.9 km
-   B1   weak pilot + 4 orthogonal          needs 21.4 dB: lab 23 m; campus  1.0 km; campus +PA 10.3 km
-   B2   weak pilot at 45 deg + the 4 corners needs 19.3 dB: lab 29 m; campus  1.3 km; campus +PA 10.4 km
+   A1   BPSK flip, sign(I)                 needs 17.3 dB: lab 35 m; campus  1.6 km; campus +PA 15.7 km
+   A2   1 bit: Q step, QP / QN at +-V_T    needs 21.9 dB: lab 21 m; campus  919 m; campus +PA 7.3 km
+   A3   2 bits: corners (the plan's QPSK)  needs 21.9 dB: lab 21 m; campus  919 m; campus +PA 7.3 km
+   A4   1 bit: pilot at 45 deg, TX (-1,1) / (1,-1) needs 18.9 dB: lab 29 m; campus  1.3 km; campus +PA 10.3 km
+   B1   weak pilot + 4 orthogonal          needs 21.4 dB: lab 22 m; campus  973 m; campus +PA 9.7 km
+   B2   weak pilot at 45 deg + the 4 corners needs 19.3 dB: lab 28 m; campus  1.2 km; campus +PA 9.9 km
 
 == 7. The comparators' own offset and hysteresis against the noise (TLV3601: offset 0.5 typ / 5 max mV, hysteresis 3 mV)
-   lab  sigma at the comparator 2.9 mV (the axis point 249 mV at the DSA's regulated level): 5 mV offset = 1.7 sigma, the CFAR threshold 22 mV from idle
-   far  sigma at the comparator 17.4 mV (the axis point 249 mV at the DSA's regulated level): 5 mV offset = 0.3 sigma, the CFAR threshold 130 mV from idle
+   lab  sigma at the comparator 3.1 mV (the axis point 249 mV at the DSA's regulated level): 5 mV offset = 1.6 sigma, the CFAR threshold 23 mV from idle
+   far  sigma at the comparator 18.4 mV (the axis point 249 mV at the DSA's regulated level): 5 mV offset = 0.3 sigma, the CFAR threshold 137 mV from idle
 
 == 8. Holding the RX loop while this station transmits (TS5A3159 open: the 100 nF integrator holds VC)
    leakage typical, 25 C (0.2 nA)   VC drifts   2.00 mV/s =     859 Hz/s at 5.8 GHz: the carrier phase is off by 0.1 rad after 6.1 ms
@@ -72,7 +72,7 @@
 
 == 9. What the scores leave out: the angle between the pilot and the messages (B2)
    first-edge decoding tolerates 19 deg of angle error at any SNR
-   settled-state decoding, lab          (a corner 121 sigma from the pilot): 1.8 deg
+   settled-state decoding, lab          (a corner 115 sigma from the pilot): 1.9 deg
    settled-state decoding, at the limit (a corner 12 sigma from the pilot): 18.9 deg
    the pilot's size against the loop's static phase error (a 20 mV Q-arm offset: the ADL5380's +-10 mV x 4, one side)
    and against the modulator's feedthrough (the residual that turns the pilot by 5 deg):

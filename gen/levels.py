@@ -43,6 +43,7 @@ def res_key(ohms, tol=1.35):
 VAL = {
     "fda_Rf": res_key(B["fda_Rf"]), "fda_Rg": res_key(B["fda_Rg"]), "fda_Rs": res_key(B["fda_Rs"]),
     "loop_R1": res_key(B["loop_R1"]), "loop_R2": res_key(B["loop_R2"]),
+    "bias_Rt": res_key(B["bias_Rt"]), "bias_Rb": res_key(B["bias_Rb"]),
     "slow_Rf": res_key(B["slow_Rf"]), "slow_Rg": res_key(B["slow_Rg"]), "slow_Rrc": res_key(B["slow_Rrc"]),
     "slow_Crc": "C %.0fpF" % (B["slow_Crc"] * 1e12),
 }
@@ -109,7 +110,8 @@ T = {
     # ---- transmitter ------------------------------------------------------------------------
     "TX_BITS": "TX_I1, TX_I0, TX_Q1, TX_Q0: 0 / 3.3 V CMOS, FAST slew, 1.5 ns edge (+4.4 ns through the PYNQ's 200 ohm; none on the Icepi)",
     "TX_NODE": "ladder node: %.2f / %.2f / %.2f V DC for 00 / 01,10 / 11 | %.0f ohm, 3 pF: 1.6 ns | into IBBP (0-1 V allowed)" % (lv[0], lv[1], lv[2], B["dac_Znode"]),
-    "TX_BIAS": "IBBN / QBBN: %.2f V DC (5.1k / 1k from 3.3 V, 1 uF) | the differential drive is then +-%.2f V" % (0.54, lv[2] - lv[1]),
+    "TX_BIAS": "IBBN / QBBN: %.3f V DC (%s / %s from 3.3 V, 1 uF; the pins' own 2 x 41 uA included) | the differential drive is then +-%.2f V"
+               % (B["bias_VN"], res_key(B["bias_Rt"])[2:], res_key(B["bias_Rb"])[2:], lv[2] - lv[1]),
     "VR": "VR_I / VR_Q: %.2f V DC from the DAC (0-0.6 V): centres the ladder, nulls the carrier" % B["dac_Vr"],
     "MOD_OUT": "%s | %s | carrier feedthrough %.1f dBm | no DC (1.5 pF)" % (RF, lvl(B["tx_mod_out_dBm"]), P["mod_carrier_feedthrough_dBm"]),
     "TX_OUT": "%s | %s (P1dB +%.0f) | DC: 5 V bias behind 43 nH, blocked" % (RF, lvl(B["tx_out_dBm"]), P["gb_p1db_dBm"]),
@@ -124,14 +126,16 @@ T = {
     # ---- switch -------------------------------------------------------------------------------
     "ANT": "%s | out: %+.1f dBm (TX less %.1f dB) | in: whatever arrives, less %.1f dB | ABS MAX +%.0f dBm at the switch (the LNA behind SW RX: +1)"
            % (RF, B["tx_out_dBm"] - sw["il_dB"], sw["il_dB"], sw["il_dB"], sw["p01dB_dBm"]),
-    "SW_TX": "SW TX: from TX ANT (%+.1f dBm) or a PA (<= +%.0f dBm) | %.0f dB to SW RX: %+.1f dBm leaks into the receiver while transmitting (0 dBm with a +27 dBm PA: then a limiter)"
-             % (B["tx_out_dBm"], sw["p01dB_dBm"], sw["iso_dB"], B["tx_out_dBm"] - sw["iso_dB"]),
+    "SW_TX": "SW TX: from TX ANT (%+.1f dBm) or a PA (<= %+.0f dBm without a limiter) | %.0f dB (min) to SW RX: %+.1f dBm leaks into the receiver "
+             "while transmitting; a PA over %+.0f dBm wants a limiter ahead of the LNA (+1 dBm abs max)"
+             % (B["tx_out_dBm"], sw["tx_max_dBm"], sw["iso_dB"], B["tx_out_dBm"] - sw["iso_dB"], sw["tx_max_dBm"]),
     "SW_RX": "SW RX: to RX ANT or the LNA | the rest state (A high, B low)",
     "TR": "TR_A / TR_B: 0 / 3.3 V from the FPGA | %.0f ns edge-to-RF, %.0f ns rise" % (sw["t_on_ns"], sw["t_rise_ns"]),
     # ---- power -------------------------------------------------------------------------------
     "5V_IN": "5 V in: %.0f mA total (%.1f W); USB-C or the header, each through a 2 A PTC and an ideal diode" % (B["I_total_mA"], B["I_total_mA"] * 5e-3),
-    "5V_RF": "+5V_RF: 5 V through the ferrite, %.0f mA (ADL5380 %.0f, ADL5375 %.0f, 3 x ADL5611 %.0f); 4.80 V from a 5.00 V source after the FET's 80 mV and the bead's 40 mV (the ADL53xx want 4.75): a bench supply at 5.1 V"
-             % (rails["RF"], P["dem_I_mA"], P["mod_I_mA"], 3 * P["gb_I_mA"]),
+    "5V_RF": "+5V_RF: 5 V through the ferrite, %.0f mA (ADL5380 %.0f, ADL5375 %.0f, 3 x ADL5611 %.0f); the PTC, FET and bead drop up to %.0f mV "
+             "at their maxima, so %.2f V at the plug leaves %.2f V (the ADL53xx and ADL5611 want 4.75): a bench supply at 5.1-5.25 V, not a weak USB port"
+             % (rails["RF"], P["dem_I_mA"], P["mod_I_mA"], 3 * P["gb_I_mA"], B["vdrop_in_max_V"] * 1e3, P["supply_min_V"], B["v_rf_min_V"]),
 }
 for rail, key in (("PLL_TX", "+3V3_PLL_TX"), ("PLL_RX", "+3V3_PLL_RX"), ("ANA", "+3V3_ANA"), ("DIG", "+3V3_DIG"), ("OSC", "+3V3_OSC")):
     T[key] = "%s: 3.3 V, %.0f mA%s" % (key, rails[rail], "; 2.2 ohm ahead shares the heat" if rail.startswith("PLL") else "")
@@ -147,8 +151,9 @@ LIMITS = {
                % (lvl(B["tx_out_dBm"]), _pa["p1db_dBm"] - _pa["gain_dB"], _pa["pad_dB"])),
     "ANT": ("+%.0f dBm MAX" % sw["p01dB_dBm"], "ANT: the one antenna.  ABS MAX +%.0f dBm through the switch; what comes in reaches SW RX less %.1f dB."
             % (sw["p01dB_dBm"], sw["il_dB"])),
-    "SW TX": ("+%.0f dBm MAX" % sw["p01dB_dBm"], "SW TX: from TX ANT (%s) or a PA up to +%.0f dBm.  %.0f dB of it leaks to SW RX."
-              % (lvl(B["tx_out_dBm"]), sw["p01dB_dBm"], sw["iso_dB"])),
+    "SW TX": ("%+.0f dBm MAX" % sw["tx_max_dBm"], "SW TX: from TX ANT (%s) or a PA up to %+.0f dBm: %.0f dB (min) less of it reaches SW RX, "
+              "3 dB under the LNA's +1 dBm abs max.  More wants a limiter ahead of the LNA."
+              % (lvl(B["tx_out_dBm"]), sw["tx_max_dBm"], sw["iso_dB"])),
     "SW RX": ("to RX ANT", "SW RX: the received signal, to RX ANT (or the LNA module).  Rest state (A high, B low)."),
     "REF IN": ("10-210 MHz, 0.7-3.3 Vpp", "REF IN: 10-210 MHz, 0.7 V p-p min, 3.3 V p-p max (AC-coupled into the MAX2871); fit 49.9 ohm for a 50 ohm source; JP201 to REF IN."),
     "REF OUT": ("25 MHz, 1.6 Vpp/50R", "REF OUT: 25 MHz square, 3.3 V CMOS through 33 ohm: 1.6 V p-p into 50 ohm, 3.3 V open."),
@@ -158,8 +163,9 @@ LIMITS = {
     "LO TX MON": ("0 dBm, 50R", "LO TX MON: the TX synthesizer's second output (RFOUTB), about 0 dBm at 5.8 GHz when enabled in software; 50 ohm."),
     "I MON": ("1.65 V +-%.0f mV, 1k" % (vpk * 1e3), "I MON: the fast I arm's + output through 1k: 1.65 V +-%s peak at the regulated level, %.0f MHz.  A high-impedance probe; a 50 ohm input reads it /21." % (mv(vpk), B["B_MHz"])),
     "Q MON": ("1.65 V +-%.0f mV, 1k" % (vpk * 1e3), "Q MON: the fast Q arm's + output through 1k: 1.65 V, 0 at lock, +-%s off lock or during a QPSK symbol." % mv(vpk)),
-    "I SLOW MON": ("0-3.3 V, 1k", "I SLOW MON: the slow I stage's + output through 1k: 1.65 V +-1.65 V (x%.0f, saturates), %.1f MHz." % (B["G_slow"], B["slow_fpole_MHz"])),
-    "Q SLOW MON": ("0-3.3 V, 1k", "Q SLOW MON: the slow Q stage's + output through 1k: 1.65 V, 0 at lock, saturated during a QPSK symbol."),
+    "I SLOW MON": ("0-3.3 V, 1k", "I SLOW MON: the slow I stage's + output, ahead of its %.1f MHz pole, through 1k: 1.65 V +-1.65 V (x%.0f, saturates), "
+                   "the stage's own %.0f MHz.  A 50 ohm scope here does not move the comparator." % (B["slow_fpole_MHz"], B["G_slow"], B["slow_bw_MHz"])),
+    "Q SLOW MON": ("0-3.3 V, 1k", "Q SLOW MON: the slow Q stage's + output, ahead of its pole, through 1k: 1.65 V, 0 at lock, saturated during a QPSK symbol."),
     "ERR MON": ("1.65 V +-%.0f mV, 1k" % (vpk * 1e3), "ERR MON: the loop error sign(I) x Q through 1k: 1.65 V at lock, +-%s off lock." % mv(vpk)),
     "VC MON": ("%.1f-%.1f V, 1k" % (P["vcxo_vc_V"][0], P["vcxo_vc_V"][1]), "VC MON: the VCXO's control voltage through 1k: %.1f-%.1f V, 1.65 V at the VCXO's centre." % (P["vcxo_vc_V"][0], P["vcxo_vc_V"][1])),
     "CMP I MON": ("0-0.3 V/50R", "CMP I MON: the fast comparator's output through 453 ohm: /10 into 50 ohm (0 / 0.33 V), the data as it goes to the FPGA."),

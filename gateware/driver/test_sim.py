@@ -54,6 +54,42 @@ class TestSchemes(unittest.TestCase):
         self.assertEqual(point_code(1, 1), 0b1111)
 
 
+class TestReceivedLevel(unittest.TestCase):
+    """received_dBm() and agc() against a model of the arm: a carrier at RX ANT, the DSA, the ADC's I_P"""
+
+    def make(self, p_ant):
+        import costaslink as CLM
+
+        class Bus:
+            def read(self, reg):
+                return 0
+            def write(self, reg, value):
+                pass
+        cl = CostasLink(Bus(), check=False)
+        cl.spi = lambda which, word: None
+        cl.wait_s = lambda s_: None
+
+        def adc(ch, settle=0.0):
+            dem = p_ant + CLM.RX_GAIN_DB - cl._dsa_db            # dBm at the demodulator
+            a = CLM.A_REG_V * 10 ** ((dem - CLM.DEM_REG_DBM) / 20.0)
+            return CLM.V_MID + min(a, 2.9) / 2.0                 # the locked arm, its legs clip at the rails
+        cl.adc = adc
+        return cl
+
+    def test_reading(self):
+        for p_ant in (-75.0, -59.2, -40.0):
+            cl = self.make(p_ant)
+            cl.dsa(max(0.0, p_ant + 59.2))
+            self.assertAlmostEqual(cl.received_dBm(), p_ant, places=1)
+
+    def test_agc(self):
+        for p_ant in (-70.0, -50.0, -35.0):
+            cl = self.make(p_ant)                                # the DSA starts at its power-up 31.75 dB
+            db, r = cl.agc()
+            self.assertAlmostEqual(r, p_ant, delta=0.3)
+            self.assertAlmostEqual(db, max(0.0, min(31.75, p_ant + 59.2)), delta=0.6)
+
+
 class TestOnRtl(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

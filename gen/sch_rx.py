@@ -109,19 +109,25 @@ def build(S):
     S.nc(*dem.pin("12"))
     note(dem.pin("1")[0] - 20, y + 48, "ADL5380: ADJ open at 5.8 GHz (its spec condition): baseband common mode 3.2 V, gain x1.95, 390 MHz.  "
          "Fit 1.5k here to drop the common mode to 2.5 V (and the 5.8 GHz gain).  LO 0 dBm, differential from the synthesizer below.  CONSIGNED.", cols=44)
-    lop, lon = dem.pin("9"), dem.pin("10")
+    # P to LOIN, N to LOIP (the design review, KimiK3): on the board the synthesizer's RFOUTA_P faces
+    # the demodulator's LOIN, so the pair runs straight and equal; P to LOIP crossed it and sent one
+    # leg 40 mm round.  Inverting the LO inverts I and Q together, which the Costas loop's
+    # sign(I) x Q and the gateware's learned idle do not see.
+    lop, lon = dem.pin("10"), dem.pin("9")
     # the LO pair arrives from the synthesizer below on two verticals just left of the chip, each
-    # with its DC block standing in the vertical (P outside, turning in above N's top)
-    xlo_p, xlo_n = lop[0] - 5.08, lon[0] - 2.54
+    # with its DC block standing in the vertical (the upper pin's outside, turning in above the other's top)
+    x_out, x_in = min(lop[0], lon[0]) - 5.08, min(lop[0], lon[0]) - 2.54
+    xlo_p, xlo_n = (x_out, x_in) if lop[1] < lon[1] else (x_in, x_out)
     W(lop, (xlo_p, lop[1])); W(lon, (xlo_n, lon[1]))
-    yblk = lon[1] + 27.94
+    yblk = max(lop[1], lon[1]) + 27.94
     tops = {}
-    for xv, yrow, dyb in ((xlo_p, lop[1], 0.0), (xlo_n, lon[1], 10.16)):      # N's block lower: their texts clear each other
-        ct, cb = vpart("C 1.5pF", nref("C"), xv, yblk + dyb, fsize=1.0, text="left" if xv == xlo_p else "right")
+    for xv, yrow in ((xlo_p, lop[1]), (xlo_n, lon[1])):      # the inner block lower: their texts clear each other
+        dyb = 0.0 if xv == x_out else 10.16
+        ct, cb = vpart("C 1.5pF", nref("C"), xv, yblk + dyb, fsize=1.0, text="left" if xv == x_out else "right")
         W((xv, yrow), ct)
         tops[xv] = (xv, yblk + dyb + 3.81)
     lo_top = {"p": tops[xlo_p], "n": tops[xlo_n]}
-    sig(xlo_p - 36, yblk - 4, LV.txt("LO_RX"), cols=26)
+    sig(x_out - 36, yblk - 4, LV.txt("LO_RX"), cols=26)
 
     # ---- I and Q arms: the FDAs and the comparators -----------------------------------------
     ihi, ilo, qhi, qlo = dem.pin("3"), dem.pin("4"), dem.pin("16"), dem.pin("15")

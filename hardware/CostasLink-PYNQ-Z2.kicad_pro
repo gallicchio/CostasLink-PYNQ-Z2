@@ -290,7 +290,7 @@
       {
         "name": "RF",
         "track_width": 0.29,
-        "clearance": 0.25,
+        "clearance": 0.15,
         "via_diameter": 0.45,
         "via_drill": 0.25,
         "diff_pair_width": 0.29,
@@ -309,7 +309,7 @@
       {
         "name": "LO",
         "track_width": 0.29,
-        "clearance": 0.25,
+        "clearance": 0.15,
         "via_diameter": 0.45,
         "via_drill": 0.25,
         "diff_pair_width": 0.29,
@@ -429,20 +429,168 @@
         "pattern": "/^VC($|_)/"
       },
       {
-        "netclass": "RF",
-        "pattern": "/^RF_/"
-      },
-      {
-        "netclass": "LO",
-        "pattern": "/^LO_/"
-      },
-      {
         "netclass": "Baseband",
         "pattern": "/^(I|Q)_(HI|LO|P|N)$/"
       },
       {
         "netclass": "Baseband",
         "pattern": "/^BB_/"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(C213-Pad2)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(CP101-CPL)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(CP101-IN)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(CP101-ISO)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(CP101-OUT)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(CP201-CPL)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(CP201-IN)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(CP201-ISO)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(CP201-OUT)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(J101-In)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(J401-In)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(J402-In)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(J403-In)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(U101-RF_IN)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(U101-RF_OUT)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(U102-RF1)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(U102-RF2)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(U103-RFIN)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(U103-RFOUT)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(U117-RFIN)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(U117-RFOUT)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(U201-RFOUT)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(U202-RFIN)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(U202-RFOUT)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(U401-RF1)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(U401-RF2)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(U401-RFC)"
+      },
+      {
+        "netclass": "LO",
+        "pattern": "/Receiver and Costas loop/LO_RX_N"
+      },
+      {
+        "netclass": "LO",
+        "pattern": "/Receiver and Costas loop/LO_RX_P"
+      },
+      {
+        "netclass": "LO",
+        "pattern": "/Transmitter and triggers/LO_TX_N"
+      },
+      {
+        "netclass": "LO",
+        "pattern": "/Transmitter and triggers/LO_TX_P"
+      },
+      {
+        "netclass": "LO",
+        "pattern": "Net-(U104-LOIN)"
+      },
+      {
+        "netclass": "LO",
+        "pattern": "Net-(U104-LOIP)"
+      },
+      {
+        "netclass": "LO",
+        "pattern": "Net-(U115-RFOUTA_N)"
+      },
+      {
+        "netclass": "LO",
+        "pattern": "Net-(U115-RFOUTA_P)"
+      },
+      {
+        "netclass": "LO",
+        "pattern": "Net-(U201-LOIN)"
+      },
+      {
+        "netclass": "LO",
+        "pattern": "Net-(U201-LOIP)"
+      },
+      {
+        "netclass": "LO",
+        "pattern": "Net-(U203-RFOUTA_N)"
+      },
+      {
+        "netclass": "LO",
+        "pattern": "Net-(U203-RFOUTA_P)"
       }
     ]
   },

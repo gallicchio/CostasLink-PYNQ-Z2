@@ -212,6 +212,8 @@ st = cl.loopback_latency("A3", period=2000, count=10000)   # stage 3.4-3.5: stat
 cl.threshold_scan("QP", volts); CostasLink.rice_fit(points) # stage 3.7: sigma and offset by counting
 cl.threshold_servo("QP", rate_hz=1/60)              # one false event a minute
 cl.null_slow_offsets()                              # stage 3.2: the slow comparators to 50 % duty
+cl.agc(); cl.received_dBm(ext_db=15)                # the DSA to the regulated level; the level at the antenna
+                                                    # (locked; +15 for an LNA module ahead of RX ANT): the RSSI
 cap = cl.capture("tx_event", post=256, start=cl.tx_one)    # the in-FPGA scope
 cl.ber_run(seconds=1, poly=15, period=1, invert=True)      # stage 4.3: BPSK PRBS at the clock rate
 cl.time_division(rx_clocks, tx_clocks)              # stage 4.4: the T/R sequence

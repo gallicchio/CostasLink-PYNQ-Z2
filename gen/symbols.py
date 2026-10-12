@@ -344,7 +344,7 @@ CUSTOM = {"MAX2871": max2871, "Coupler_20dB": coupler, "ADL5380": adl5380, "ADL5
 
 # KiCad's own symbols, by our name (gen/library.py vendors them, flattened)
 STOCK = {
-    "R": "Device:R", "C": "Device:C", "L": "Device:L", "LED": "Device:LED", "D_TVS": "Device:D_TVS",
+    "R": "Device:R", "C": "Device:C", "C_Polarized": "Device:C_Polarized", "L": "Device:L", "LED": "Device:LED", "D_TVS": "Device:D_TVS",
     "Polyfuse": "Device:Polyfuse", "Ferrite_Bead": "Device:FerriteBead",
     "USB_C_Receptacle_USB2.0_16P": "Connector:USB_C_Receptacle_USB2.0_16P",
     "Conn_Coaxial": "Connector:Conn_Coaxial", "Conn_02x20_Odd_Even": "Connector_Generic:Conn_02x20_Odd_Even",

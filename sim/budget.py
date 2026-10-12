@@ -31,8 +31,8 @@ PARTS = dict(
     mod_I_mA=203.0,
     # ADL5611 at 5800 MHz (ADL5611 Rev. B, "FREQUENCY = 5800 MHz")
     gb_gain_dB=14.3,
-    gb_p1db_dBm=16.0,                  # P1dB at 5.8 GHz is not tabulated; 16.0 dBm is the 6 GHz band figure
-    gb_nf_dB=3.5,
+    gb_p1db_dBm=12.8,                  # the 5800 MHz row (Grok4.7 / KimiK3 review: 16.0 was the 6 GHz band's figure)
+    gb_nf_dB=6.0,                      # the 5800 MHz row (was 3.5, the 3.5 GHz figure)
     gb_I_mA=124.0,                     # max
     # SKY65404-31 (201512O, Table 4, 4.9-5.9 GHz)
     lna_gain_dB=13.0,
@@ -55,7 +55,7 @@ PARTS = dict(
     # THS4541 (datasheet): 850 MHz GBW, input common-mode range to Vs+ - 1.2 V
     fda_gbw_MHz=850.0,
     fda_vos_mV=0.5,                    # input offset, typical (the datasheet: +-0.4 mV typ, 1.5 max)
-    fda_cm_headroom_V=1.2,
+    fda_cm_headroom_V=1.3,             # input common-mode high, GUARANTEED minimum (Vs+) - 1.3 V over -40..125 C (1.2 is typical)
     fda_I_mA=10.1,
     # TLV3601 (datasheet 6.5): propagation 2.5 ns typ, 3.5 ns max at 50 mV overdrive; hysteresis 1.5-5 mV
     cmp_tpd_ns=2.5,
@@ -78,6 +78,12 @@ PARTS = dict(
     # TPS7A2033: SOT-23-5, R_thJA about 187 C/W (as the ECP5 board found for this package)
     ldo_rth_C_W=187.0,
     hdr_R_ohm=200.0,                   # PYNQ-Z2 RPi header series resistor on every signal (TUL schematic sheet 4)
+    cmp_series_ohm=33.0,               # the board's own series resistor on every comparator output (sheets 3, 6, 7)
+    # the 5 V input path's MAXIMUM resistances (CLAUDE_PCB.md section 15: the worst case, not the typical)
+    ptc_R1max_ohm=0.070,               # Bourns MF-MSMF200: R1max (the PTC after a trip and an hour)
+    fet_rds_max_ohm=0.060,             # AO3401A: RDS(on) max at VGS = -4.5 V, 25 C
+    bead_dcr_max_ohm=0.045,            # Murata BLM21PG221SN1: DC resistance max (on +5V_RF only)
+    supply_min_V=5.10,                 # BRINGUP.md: the bench supply at the plug, a short lead (USB-C's vSafe5V minimum is 4.75)
     hdr_C_pF=10.0,                     # header + trace + Zynq input, about
 )
 P = PARTS
@@ -137,6 +143,10 @@ print("ADL5375 out %.1f dBm (carrier feedthrough %.1f dBm = %.0f dBc), ADL5611 +
          P["gb_gain_dB"], tx_out_dBm))
 assert mod_out_dBm < P["mod_op1db_dBm"] - 3, "modulator driven into compression"
 assert tx_out_dBm < P["gb_p1db_dBm"] - 1, "TX gain block in compression"
+# the QPSK corners are +3 dB on the axis point: they land on the gain block's 5.8 GHz P1dB (PLAN.md section 18
+# prices that as 1 dB on a corner); assert they are not past it
+print("QPSK corners %.1f dBm against the ADL5611's 5.8 GHz P1dB %.1f dBm" % (tx_out_dBm + 3.0, P["gb_p1db_dBm"]))
+assert tx_out_dBm + 3.0 <= P["gb_p1db_dBm"] + 0.1, "the corners are past the gain block's P1dB"
 
 # The 2-bit resistor DAC: two equal resistors Rb from the FPGA pins (0 / 3.3 V, through the
 # PYNQ's 200 ohm) and Rr from the Vr reference.  Node X = (3.3 (b0+b1)/Rb + Vr/Rr) / (2/Rb + 1/Rr).
@@ -162,12 +172,33 @@ i_dac_mA = (0.5 - Vr) / Rr * 1e3
 print("  Vr DAC channel sources %.2f mA at the centre level (MCP4728 output buffer: fine)" % i_dac_mA)
 ib_offset_mV = P["mod_bb_Ibias_uA"] * 1e-6 * Znode * 1e3
 print("  ADL5375's %.0f uA input bias current lifts the node %.1f mV: trimmed by Vr" % (P["mod_bb_Ibias_uA"], ib_offset_mV))
+# The N inputs (IBBN, QBBN) share one divider from +3V3_ANA, and both pins source their 41 uA into it: the
+# build-17 5.1k / 1k (836 ohm) sat at 0.61 V, 0.1 V over the ladders (Gemini3.8Flash, Grok4.7, KimiK3).  Choose
+# the divider so that, loaded by 82 uA, it lands on the ladders' centre level with their own lift.
+bias_Rt, bias_Rb = 4700.0, 750.0
+bias_Rth = bias_Rt * bias_Rb / (bias_Rt + bias_Rb)
+bias_VN = 3.3 * bias_Rb / (bias_Rt + bias_Rb) + 2 * P["mod_bb_Ibias_uA"] * 1e-6 * bias_Rth
+vp_centre = 0.5 + ib_offset_mV * 1e-3
+R.update(bias_Rt=bias_Rt, bias_Rb=bias_Rb, bias_VN=bias_VN)
+print("  N-side bias: %.1fk / %.0f from 3.3 V (%.0f ohm) loaded by 2 x %.0f uA: %.3f V against the ladders' %.3f V (%+.1f mV)"
+      % (bias_Rt / 1e3, bias_Rb, bias_Rth, P["mod_bb_Ibias_uA"], bias_VN, vp_centre, (bias_VN - vp_centre) * 1e3))
+assert abs(bias_VN - vp_centre) < 0.010, bias_VN
 
 # ---------------------------------------------------------------------------
 section("2. Link budget")
 f = 5.8e9
 B_MHz = 100.0                              # the fast arm's bandwidth (THS4541 at gain 4, section 7): noise, latency AND selectivity (section 4)
-nf_chain_dB = P["lna_nf_dB"] + 0.5         # LNA sets it; the DSA at 0 dB and the gain block add a little
+def friis(stages):
+    """Cascade noise figure (dB) of [(gain_dB, nf_dB), ...]."""
+    F, G = 1.0, 1.0
+    for g_dB, nf_dB in stages:
+        F += (10 ** (nf_dB / 10.0) - 1) / G
+        G *= 10 ** (g_dB / 10.0)
+    return 10 * math.log10(F)
+# the receive chain by Friis, the DSA at 0 dB (its insertion loss is its noise figure), the 5.8 GHz rows of
+# each datasheet (the old note said "LNA + 0.5 dB" with the ADL5611 at 3.5 dB; at 5.8 GHz it is 6.0)
+nf_chain_dB = friis([(P["lna_gain_dB"], P["lna_nf_dB"]), (-P["dsa_il_dB"], P["dsa_il_dB"]), (P["gb_gain_dB"], P["gb_nf_dB"]),
+                     (P["gb_gain_dB"], P["gb_nf_dB"]), (P["dem_gain_dB"], P["dem_nf_dB"])])
 noise_dBm = kT_dBm_Hz + db(B_MHz * 1e6) + nf_chain_dB
 R["noise_floor_dBm"] = noise_dBm
 # The antennas (Prompt 2): four 24 dBi 40 x 30 cm flat panels with 10 m cables (N at the panel, SMA at
@@ -196,7 +227,11 @@ assert rows[6][4] > 10, "20 km with the panels and no amplifier still clears 10 
 
 # ---------------------------------------------------------------------------
 section("2b. One antenna by time division: the HMC536 switch (build/txt/HMC536.txt)")
-SW = dict(t_rise_ns=15.0, t_on_ns=30.0, iso_dB=27.0, il_dB=0.7, p01dB_dBm=29.0)
+# the 5.0-6.0 GHz rows, GUARANTEED (minimum) values: isolation 27 dB (typ 32), P0.1dB 27 dBm at 3 V control (typ 29)
+SW = dict(t_rise_ns=15.0, t_on_ns=30.0, iso_dB=27.0, il_dB=0.7, p01dB_dBm=27.0)
+# SW TX's limit: what leaks to SW RX must stay 3 dB under the LNA's +1 dBm absolute maximum (no limiter), and
+# the switch must stay linear (the silkscreen printed +29, its typical P0.1dB: the design review)
+SW["tx_max_dBm"] = min(SW["p01dB_dBm"], P["lna_abs_max_in_dBm"] + SW["iso_dB"] - 3.0)
 R["switch"] = SW
 flight_ns_per_m = 1e9 / c0
 for d in (10.0, 100.0, 300.0):
@@ -207,6 +242,8 @@ leak = tx_out_dBm - SW["iso_dB"]
 print("  own TX leaks %.1f - %.0f = %.1f dBm into the RX jack while transmitting (LNA abs max %.0f dBm): fine bare, "
       "but a PA at +27 dBm leaks 0 dBm, so a PA with the switch wants a limiter ahead of the LNA" % (tx_out_dBm, SW["iso_dB"], leak, P["lna_abs_max_in_dBm"]))
 assert leak < P["lna_abs_max_in_dBm"] - 10
+print("  SW TX limit without a limiter: %+.0f dBm (leaks %+.0f dBm to SW RX against the LNA's %+.0f dBm; the switch's P0.1dB %+.0f dBm min)"
+      % (SW["tx_max_dBm"], SW["tx_max_dBm"] - SW["iso_dB"], P["lna_abs_max_in_dBm"], SW["p01dB_dBm"]))
 for name, t in (("SKY13453 (SOI, integrated driver)", 1000.0), ("HMC8038 / HMC849A", 150.0), ("HMC536 (chosen)", SW["t_on_ns"]), ("HMC427A ($62-75, 5 V logic)", 10.0)):
     print("  %-36s %6.0f ns = the round trip of %.0f m: usable beyond that, and adds that much to the prover's answer" % (name, t, t / flight_ns_per_m / 2))
 
@@ -316,8 +353,10 @@ t_hdr = 2.2 * P["hdr_R_ohm"] * P["hdr_C_pF"] * 1e-12 * 1e9        # 10-90 % rise
 tx = [("FPGA output buffer", 1.5), ("PYNQ header RC %.0f ohm x %.0f pF (10-90 %%)" % (P["hdr_R_ohm"], P["hdr_C_pF"]), t_hdr),
       ("TX resistor DAC node (%.0f ohm, 3 pF)" % Znode, 2.2 * Znode * 3e-12 * 1e9), ("ADL5375 (750 MHz baseband bandwidth)", 0.5),
       ("ADL5611 + lines + SMA", 0.5)]
+t_hdr_rx = 2.2 * (P["hdr_R_ohm"] + P["cmp_series_ohm"]) * P["hdr_C_pF"] * 1e-12 * 1e9   # the comparator's own 33 ohm too (KimiK3)
 rx = [("SMA + LNA + DSA + 2 x ADL5611", 1.1), ("ADL5380 (390 MHz)", 1.0), ("THS4541 at gain %.0f, %.0f MHz (10-90 %%)" % (G_fda, B_MHz), 0.35 / B_MHz * 1e3),
-      ("fast arm to the 50 %% crossing (half the rise, net of the above)", -0.35 / B_MHz * 1e3 * 0.5), ("TLV3601", P["cmp_tpd_ns"]), ("PYNQ header RC", t_hdr),
+      ("fast arm to the 50 % crossing (half the rise, net of the above)", -0.35 / B_MHz * 1e3 * 0.5), ("TLV3601", P["cmp_tpd_ns"]),
+      ("33 ohm + PYNQ header RC", t_hdr_rx),
       ("Zynq input buffer + register at 400 MHz (worst 1 clock)", 1.0 + 2.5)]
 ttx = sum(t for _, t in tx); trx = sum(t for _, t in rx)
 for n, t in tx: print("  TX  %-58s %5.1f ns" % (n, t))
@@ -325,7 +364,7 @@ for n, t in rx: print("  RX  %-58s %5.1f ns" % (n, t))
 print("  total electronics %.1f ns (TX %.1f + RX %.1f); the OOK board's envelope detector path was budgeted at 10-100 ns" % (ttx + trx, ttx, trx))
 R["latency_ns"] = ttx + trx
 assert ttx + trx < 25
-t_icepi = ttx + trx - 2 * t_hdr
+t_icepi = ttx + trx - t_hdr - t_hdr_rx + 2.2 * P["cmp_series_ohm"] * P["hdr_C_pF"] * 1e-12 * 1e9
 R["latency_icepi_ns"] = t_icepi
 print("  on the Icepi Zero (no header resistors) the same path is %.1f ns" % t_icepi)
 t_slow50 = 0.35 / (B_slow_MHz / 1.57) * 1e3 * 0.5
@@ -338,8 +377,11 @@ section("6. The Costas loop (the RX synthesizer's VCXO is the loop's VCO)")
 N = P["pll_fout_MHz"] / P["vcxo_MHz"]
 pull_Hz = P["vcxo_pull_ppm"] * 1e-6 * P["pll_fout_MHz"] * 1e6
 Ko = 2 * math.pi * 2 * pull_Hz / (P["vcxo_vc_V"][1] - P["vcxo_vc_V"][0])      # rad/s per V at 5.8 GHz
-A_bb = vcmp_rms * 1.414                                                        # error-signal amplitude at lock (V per radian, small angle)
-Kd = A_bb
+A_bb = vcmp_rms * 1.414                                                        # the arms' DIFFERENTIAL peak at lock
+# U110 passes ONE leg of the Q pair (Q_P or Q_N, each V_MID +- half the differential swing) to the
+# integrator, which is referenced to V_MID: the detector sees half of A_bb (GPT-5.6Terra's review; the
+# budget had used all of it, and the loop ran at 2.05 kHz, zeta 0.48 with the 20 k it chose)
+Kd = A_bb / 2.0
 fn_Hz = 3000.0
 zeta = 0.707
 wn = 2 * math.pi * fn_Hz
@@ -364,7 +406,7 @@ assert pull_Hz > 3 * tcxo_off_Hz
 assert fn_Hz * 10 < 80e3, "Costas loop must be well inside the PLL's loop bandwidth"
 
 # ---------------------------------------------------------------------------
-section("7. FDA level shift (ADL5380 outputs sit at %.1f V; THS4541 on 3.3 V accepts inputs to %.1f V)" % (P["dem_out_cm_V"], 3.3 - P["fda_cm_headroom_V"]))
+section("7. FDA level shift (ADL5380 outputs sit at %.1f V; THS4541 on 3.3 V accepts inputs to %.1f V, guaranteed)" % (P["dem_out_cm_V"], 3.3 - P["fda_cm_headroom_V"]))
 Rg, Rf, Rs = 1000.0, 4000.0, 1000.0            # Rg from the demodulator, Rf feedback, Rs from the summing node to ground (1.2 k until the review: 2.02 V at 3.8 V)
 Vocm = 1.65
 Vn = (P["dem_out_cm_V"] / Rg + Vocm / Rf) / (1 / Rg + 1 / Rf + 1 / Rs)
@@ -375,7 +417,14 @@ i_pull_mA = (P["dem_out_cm_V"] - Vn) / Rg * 1e3
 R.update(fda_Rg=Rg, fda_Rf=Rf, fda_Rs=Rs, fda_Vn=Vn, fda_bw_MHz=bw)
 print("Rg %.0f, Rf %.0f, Rs %.0f: summing nodes at %.2f V (limit %.1f), gain %.0f (%.0f dB), noise gain %.1f -> about %.0f MHz, %.2f mA drawn from each demodulator pin"
       % (Rg, Rf, Rs, Vn, 3.3 - P["fda_cm_headroom_V"], gain, 20 * math.log10(gain), noise_gain, bw, i_pull_mA))
-assert Vn < 3.3 - P["fda_cm_headroom_V"] - 0.12, Vn       # 1.87 V against the THS4541's 2.0 V minimum
+# the ADL5380's own tables disagree on its output common mode with ADJ open: Table 4 ~3.2 V, Table 1 VS - 1.2 V
+# (3.8 V at 5.0 V).  Check the worse at the highest +5V_RF the input path can deliver (5.25 V at the plug, less the
+# drop at the start-up current: 5.15 V) against the THS4541's guaranteed limit (Grok4.7 / KimiK3)
+for vcm, why in ((3.2, "Table 4"), (P["dem_out_cm_V"], "Table 1 at 5.0 V"), (5.15 - 1.2, "Table 1 at the highest +5V_RF, 5.15 V")):
+    vn = (vcm / Rg + Vocm / Rf) / (1 / Rg + 1 / Rf + 1 / Rs)
+    print("  demodulator common mode %.2f V (%s): summing nodes %.3f V, %.0f mV under the guaranteed %.1f V"
+          % (vcm, why, vn, (3.3 - P["fda_cm_headroom_V"] - vn) * 1e3, 3.3 - P["fda_cm_headroom_V"]))
+    assert vn < 3.3 - P["fda_cm_headroom_V"], (vcm, vn)
 assert abs(bw - B_MHz) < 25, (bw, B_MHz)
 assert abs(gain - G_fda) < 1e-9
 
@@ -441,9 +490,16 @@ for rail, i in I33.items():
     pd = (vin - 3.3) * i * 1e-3
     print("  LDO %-6s %3.0f mA: %s dissipates %.2f W, +%.0f C in SOT-23-5" % (rail, i, "2.2 ohm then " if rdrop else "", pd, pd * P["ldo_rth_C_W"]))
     assert pd * P["ldo_rth_C_W"] < 70, rail
-vdrop_in = tot * 1e-3 * (0.06 + 0.08)
-print("input path at %.2f A: AO3401A 60 mOhm + PTC 80 mOhm = %.2f V, so the ADL53xx see >= %.2f V from a 5.0 V source (their minimum is 4.75 V)" % (tot * 1e-3, vdrop_in, 5.0 - vdrop_in))
-assert 5.0 - vdrop_in > 4.75
+# the input path at its MAXIMUM resistances (the review: the old note used typical drops from a perfect 5.0 V)
+i_rf = sum(I5.values()) * 1e-3
+vdrop_in = tot * 1e-3 * (P["ptc_R1max_ohm"] + P["fet_rds_max_ohm"]) + i_rf * P["bead_dcr_max_ohm"]
+v_rf_min = P["supply_min_V"] - vdrop_in
+R.update(vdrop_in_max_V=vdrop_in, v_rf_min_V=v_rf_min)
+print("input path at %.2f A, maxima: PTC %.0f mOhm + AO3401A %.0f mOhm, then the bead %.0f mOhm at %.2f A = %.3f V: +5V_RF >= %.2f V from a %.2f V supply "
+      "(the ADL53xx and ADL5611 want 4.75 V); from USB-C's 4.75 V minimum it would be %.2f V: USB-C hosts and power banks must hold %.2f V at the plug"
+      % (tot * 1e-3, P["ptc_R1max_ohm"] * 1e3, P["fet_rds_max_ohm"] * 1e3, P["bead_dcr_max_ohm"] * 1e3, i_rf, vdrop_in, v_rf_min, P["supply_min_V"],
+         4.75 - vdrop_in, 4.75 + vdrop_in + 0.05))
+assert v_rf_min > 4.75 + 0.10, v_rf_min
 
 if "--json" in sys.argv:
     R["parts"] = P

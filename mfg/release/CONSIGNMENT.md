@@ -1,6 +1,6 @@
 # CostasLink-PYNQ-Z2 rev A: the consigned parts
 
-Written by `mfg/make_release.py` on 2026-10-10 for 2 assembled boards.  Three parts are not deep enough at JLCPCB to order from their stock (PLAN.md section 4), so they are bought at Digi-Key and sent to JLCPCB, who fit them like any other part.  In `BOM_JLCPCB.csv` each sits under the LCSC code JLCPCB's consigned-parts process files it by, with CONSIGNED in its Note column.
+Written by `mfg/make_release.py` on 2026-10-12 for 2 assembled boards.  Three parts are not deep enough at JLCPCB to order from their stock (PLAN.md section 4), so they are bought at Digi-Key and sent to JLCPCB, who fit them like any other part.  In `BOM_JLCPCB.csv` each sits under the LCSC code JLCPCB's consigned-parts process files it by, with CONSIGNED in its Note column.
 
 ## What to buy
 

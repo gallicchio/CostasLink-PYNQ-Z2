@@ -96,7 +96,7 @@ and the receiver now has two ADL5611 gain blocks.
    |   MCP4728 4-ch DAC (Vr_I, Vr_Q, Vth, VC offset)   ADS1115 ADC (I, Q, VC, error)    |                      |
    |   I2C ---------------------------------------------- I2C                            |                      |
    |                                                                                     |                      |
-   |   USB-C 5 V in --fuse--P-FET--+-- +5V_RF (ADL5380, ADL5375, 2x ADL5611)             |  TRIG A/B out, TRIG IN  |
+   |   USB-C 5 V in --fuse--P-FET--+-- +5V_RF (ADL5380, ADL5375, 3x ADL5611)             |  TRIG A/B out, TRIG IN  |
    |   header 5 V  --fuse--P-FET--+-- 4x TPS7A2033 (PLL TX, PLL RX, ANA, DIG) + LP5907 (OSC)                    |
    +------------------------------- 2x20 socket to the PYNQ-Z2's RPi header (underside) -------------------------+
 ```
@@ -115,9 +115,9 @@ and the receiver now has two ADL5611 gain blocks.
 | baseband at the fast comparators | ±249 mV peak at the DSA's regulated level (−20 dBm at the demodulator, held from 3 m to about 300 m) | ADL5380 ×1.95, THS4541 ×4 (R_f 4.00 k / R_g 1 k: 100 MHz, 3.5 ns rise); gain 2 would be 180 MHz and 1.7 ns sooner but 20 dB less deaf to the own transmitter 600 MHz away (section 15), so no |
 | the comparator floor | a TLV3601 needs about 20 mV peak (2 × offset + hysteresis) to decide: **fast path -81 dBm** at the antenna (noise-quiet -84: balanced), **slow path -107 dBm** (noise-limited at -95) | the second ADL5611 (Response 6) is what brings the fast floor to its noise; the slow stage's ×20 takes the slow path well past it |
 | electronics latency, FPGA pin to FPGA register | **22.7 ns** on the PYNQ-Z2 (TX 8.5 + RX 14.2), **13.9 ns on the Icepi Zero**; the slow path's confirmation **+37 ns** | the two passes through the PYNQ's 200 Ω header resistors are 8.8 ns of it; the Icepi has none (section 12). Response 7 found the earlier 24.1 ns counted the arm amplifier and "the arm filter" separately: they are the same part |
-| the antenna switch (section 14) | HMC536: 15 ns rise, 30 ns on/off, 27 dB isolation, +29 dBm | own TX leaks −17 dBm into the RX jack while transmitting (0 dBm with a +27 dBm PA: then a limiter) |
-| Costas loop | fn 3 kHz, ζ 0.7, R1 19 k (E24 18 k → 20 k fitted), R2 750 Ω, C 100 nF C0G | Kd 0.25 V/rad at the DSA's regulated level, Ko 2.7 Mrad/s/V (VCXO ±100 ppm over 2.7 V, ×232) |
-| pull-in | 4 ms from 30 kHz off; 0.4 s from 300 kHz | the FPGA re-centres the RX synthesizer (1 Hz steps) when the VCXO is near its end |
+| the antenna switch (section 14) | HMC536: 15 ns rise, 30 ns on/off, 27 dB isolation and +27 dBm P0.1dB (both the 5-6 GHz minimum); SW TX takes +25 dBm without a limiter | own TX leaks −17 dBm into the RX jack while transmitting (0 dBm with a +27 dBm PA: then a limiter) |
+| Costas loop | fn 3 kHz, ζ 0.7, R1 9.4 k (10 k fitted: fn 2.9 kHz, ζ 0.68), R2 750 Ω, C 100 nF C0G | Kd 0.12 V/rad at the DSA's regulated level: U110 passes ONE leg of the Q pair against V_MID, half the differential swing (build 17 used the whole swing and fitted 20 k: fn 2.05 kHz, ζ 0.48; the design review), Ko 2.7 Mrad/s/V (VCXO ±100 ppm over 2.7 V, ×232) |
+| pull-in | 3.8 ms from 30 kHz off; 0.38 s from 300 kHz | the VCXO's guaranteed absolute pull (APR) is ±50 ppm = ±290 kHz at 5.8 GHz, against 29 kHz between two TCXO-referenced transmitters.  Beyond it the driver steps the RX synthesizer in whole 25 MHz integer-N channels (gateware/max2871_regs.py); a fractional-N re-centre (about 6 kHz steps) is not written yet (the design review) |
 | MAX2871 loop filter | 80 kHz, 50°: C1 390 p, C2 6.8 n, R2 820, R3 2 k, C3 160 p (C0G) | Icp 2.56 mA (RSET 5.1 k, CP 7), Kvco 60 MHz/V, N 232; in-band floor ≈ −109 dBc/Hz |
 | power | 1.34 A from 5 V (6.7 W) | ADL5380 245, ADL5375 203, 3 × ADL5611 372, 2 × MAX2871 ≤ 400, the rest 122 mA |
 | hottest regulator | PLL LDOs, 0.25 W each after a 2.2 Ω series resistor: +47 °C in SOT-23-5 | the ECP5 board's trick |
@@ -224,7 +224,7 @@ MAX2871's outputs are differential and drive them directly.
 | **SN74LVC2G34DCKR** | buffers for TRIG A/B outputs to U.FL (latency measurement) | C14461, 22998, $0.16 | one package, 2.2 ns, 24 mA into 50 Ω through 33 Ω | — |
 | **SN74LVC1G17** ×2 | Schmitt buffer for TRIG IN (a detector pulse); the REF OUT buffer on the VCXO | C10425, 83000, $0.07 | 1 kΩ series protection then a Schmitt input, 50 Ω termination jumper; REF OUT is the VCXO's 25 MHz through 33 Ω for the TX synthesizer's REF IN (coherent transponder) | straight to the FPGA pin (1 kΩ × 10 pF = 10 ns) |
 | **SN74LVC1G04DCKR** | TR_B = not TR_A on the board (Response 14), freeing header pin 28 | C8207, 76408, $0.08 | the switch rests in receive on both hosts (A's pull-ups hold A high) | the FPGA driving B (one header pin) |
-| **HMC536MS8G** | the antenna switch (T/R), section 14 | C17271830, **5**, $9.91 (Digi-Key 0 until 2027-01) | DC-6 GHz GaAs, 15 ns rise, 30 ns on/off, 27 dB isolation, +29 dBm at 0.1 dB, 0/3.3 V control straight from the FPGA, no supply pin, MSOP-8 with a paddle (hand-solderable: Jason's limit is 0603) | HMC427A (10 ns, 40-45 dB, $62-75 at Digi-Key, 389 in stock; +5 V complementary logic needs two translators; QFN 3×3); HMC8038 (150 ns, 60 dB, +36 dBm, $8.6, 282 at JLCPCB: the right switch for campus distances with a PA, useless in the lab); HMC849A (150 ns, $9, none at JLCPCB); ADRF5019 (150 ns, needs −2.5 V); ADRF5020 (10 ns, $41-75, needs −2.5 V, none); PE42423 (500 ns), PE42422 (2 µs), SKY13453 (1 µs), SKY13350 (45 ns, discontinued), HMC545A/UPG2179 (3 GHz) |
+| **HMC536MS8G** | the antenna switch (T/R), section 14 | C17271830, **5**, $9.91 (Digi-Key 0 until 2027-01) | DC-6 GHz GaAs, 15 ns rise, 30 ns on/off, 27 dB isolation, +27 dBm at 0.1 dB (minimum; +29 typical), 0/3.3 V control straight from the FPGA, no supply pin, MSOP-8 with a paddle (hand-solderable: Jason's limit is 0603) | HMC427A (10 ns, 40-45 dB, $62-75 at Digi-Key, 389 in stock; +5 V complementary logic needs two translators; QFN 3×3); HMC8038 (150 ns, 60 dB, +36 dBm, $8.6, 282 at JLCPCB: the right switch for campus distances with a PA, useless in the lab); HMC849A (150 ns, $9, none at JLCPCB); ADRF5019 (150 ns, needs −2.5 V); ADRF5020 (10 ns, $41-75, needs −2.5 V, none); PE42423 (500 ns), PE42422 (2 µs), SKY13453 (1 µs), SKY13350 (45 ns, discontinued), HMC545A/UPG2179 (3 GHz) |
 | **AO3401A** ×2 | P-FET ideal diodes on the two 5 V inputs (USB-C, header) | C15127 Basic, 756184, $0.10 | 60 mΩ at 4.5 V: 50 mV at 1.3 A against a Schottky's 350 mV, which the ADL53xx's 4.75 V minimum cannot spare; each input blocked from the other (CLAUDE_PCB.md §4) | Schottky OR-ing |
 | **MF-MSMF200-2** ×2 | 2 A PTC fuses on both inputs | C210837, 16439, $0.07 | — | — |
 | **SMAJ5.0A** | TVS on the 5 V rail | C113952, 575476, $0.04 | — | — |
@@ -306,7 +306,7 @@ from its own USB-C.
 | rail | from | load | notes |
 |---|---|---|---|
 | +5V_IN | USB-C (CC 5.1 k) or header pins 2/4, each: PTC 2 A → AO3401A ideal diode | 1.34 A | both inputs blocked from each other; TVS; USB-C is the default, header 5 V only with the PYNQ on its barrel supply (its USB input cannot give 1.2 A) |
-| +5V_RF | +5V_IN through a ferrite | ADL5380, ADL5375, 3 × ADL5611 | 0.19 V of drop at 1.34 A leaves ≥ 4.81 V from a 5.0 V source (ADL53xx min 4.75 V): use a decent supply |
+| +5V_RF | +5V_IN through a ferrite | ADL5380, ADL5375, 3 × ADL5611 | the PTC, FET and bead at their MAXIMUM resistances drop 0.21 V (sim/budget.py section 9), so 5.10 V at the plug leaves ≥ 4.89 V (the ADL53xx and ADL5611 want 4.75 V): a bench supply at 5.1-5.25 V; a USB port must hold 5.01 V, which a laptop port or a thin cable may not (the design review) |
 | +3V3_PLL_TX, +3V3_PLL_RX | 2.2 Ω + TPS7A2033 each | 200 mA each | 0.25 W per LDO, +47 °C |
 | +3V3_ANA | TPS7A2033 | four FDAs, op amp, LNA, DSA, TX ladder reference | 60 mA |
 | +3V3_DIG | TPS7A2033 | six comparators, switch, mux, two DACs, ADC, buffers | 46 mA |
@@ -423,15 +423,19 @@ number in a table.
    bench level high (±250 mV); the ADC reads the averaged I and Q, so the offset is known. The fast Q
    arm has no trim: its offset shifts the loop's static phase by a few milliradians and biases the Q
    window, which the slow path's own window confirms or vetoes.
-3. **The 3.2 V common-mode level shift into a 3.3 V FDA.** The 1.2 k shunts put the THS4541's
-   summing nodes at 1.73 V against an input limit of 2.1 V: 0.37 V of margin against the
-   demodulator's output common mode (3.2 V typical, part- and temperature-dependent) and the
-   1.5 mA pulled from each demodulator pin. Guard: the DNP 1.5 k on ADJ drops the common mode to
+3. **The 3.2-3.8 V common-mode level shift into a 3.3 V FDA.** The ADL5380's two tables disagree
+   on its output common mode (Table 4: 3.2 V; Table 1: VS − 1.2 V, 3.8 V at 5.0 V).  The 1 k shunts
+   put the THS4541's summing nodes at 1.61 V (3.2 V) to 1.87 V (3.8 V), and at 1.94 V from the
+   highest +5V_RF the input path delivers (5.15 V), against the THS4541's guaranteed 2.0 V
+   (VS+ − 1.3 V; 1.2 V is its typical): 61 mV of margin at the worst corner (sim/budget.py section
+   7; the design review), and 1.9 mA pulled from each demodulator pin. Guard: the DNP 1.5 k on ADJ drops the common mode to
    2.5 V (and the 5.8 GHz gain a little); the FDA's PD pin and supply are per-arm, so one arm can
    be tried alone.
 4. **5.8 GHz layout.** Two ADL5611s in a row are 28 dB of gain at 5.8 GHz; with sloppy grounding or
    bias-choke placement they oscillate. The balun footprint, the LO differential pairs from the
-   MAX2871's open-collector outputs (27 nH chokes, matched lengths), the SKY65404's 0.5 pF/0.6 nH
+   MAX2871's open-collector outputs (27 nH chokes; each pair straight and mirror-symmetric, its
+   legs equal to 0.00 mm, gated in gen/board.lo_skew: build 17's pairs were crossed and one leg went
+   40 mm round, the design review), the SKY65404's 0.5 pF/0.6 nH
    match and the coupled-line coupler (copper drawn from sim/rf_lines.py, never built) are all
    single-chance structures. Guards: the DSA between the LNA and the gain blocks; the pi pad on
    TX; TX MON, RX MON, LO TX MON, LO RX MON for the spectrum analyser; JLCPCB's stack-up with its
@@ -583,11 +587,11 @@ figure. The scenario column of the tables says which.
 
 | scheme | SNR for 5 % | for 1 % | quiet | lab, whips, no amp, quiet: fast / slow | campus, panels, amps at the panel, no PA: fast / slow |
 |---|---|---|---|---|---|
-| BPSK | 4.3 dB | 7.3 dB | 11.4 dB | 72 m / 265 m | 17.2 km / 62.9 km |
-| QPSK | 7.3 dB | 10.3 dB | 14.4 dB | 51 m / 187 m | 12.2 km / 44.4 km |
-| FSK | 9.6 dB | 11.9 dB | 15.3 dB | 46 m / 169 m | 11.0 km / 40.0 km |
-| OOK | 19.6 dB | 21.9 dB | 25.3 dB | 15 m / 53 m | 3.5 km / 12.7 km |
-| whitened | 3.5 dB | 5.7 dB | 9.0 dB | 72 m / 350 m | 18.1 km / 82.9 km |
+| BPSK | 4.3 dB | 7.3 dB | 11.4 dB | 69 m / 251 m | 17.2 km / 62.9 km |
+| QPSK | 7.3 dB | 10.3 dB | 14.4 dB | 49 m / 178 m | 12.2 km / 44.4 km |
+| FSK | 9.6 dB | 11.9 dB | 15.3 dB | 44 m / 160 m | 11.0 km / 40.0 km |
+| OOK | 19.6 dB | 21.9 dB | 25.3 dB | 14 m / 51 m | 3.5 km / 12.7 km |
+| whitened | 3.5 dB | 5.7 dB | 9.0 dB | 72 m / 332 m | 18.1 km / 82.9 km |
 
 Every number above is the shorter of two limits (Response 6; the amplifier tiers are the 2 W module
 Jason has, run 3 dB below its P1dB through a 20 dB pad and at its P1dB, and a 10 W amplifier he does
@@ -604,22 +608,22 @@ which `sim/link_rates.py` writes; the 5 % block is there too):
 
 | scenario | amplifier | path | BPSK | QPSK | FSK | OOK | whitened |
 |---|---|---|---|---|---|---|---|
-| lab: 2 dBi whips on the SMAs, no cables | board alone ($0) | fast | 72 m | 51 m | 46 m | 15 m | 72 m |
-| lab: 2 dBi whips on the SMAs, no cables | board alone ($0) | slow | 265 m | 187 m | 169 m | 53 m | 350 m |
-| lab: 2 dBi whips on the SMAs, no cables | 2 W module at +30 dBm (20 dB pad) ($29, owned) | fast | 720 m | 510 m | 462 m | 146 m | 720 m |
-| lab: 2 dBi whips on the SMAs, no cables | 2 W module at +30 dBm (20 dB pad) ($29, owned) | slow | 2.7 km | 1.9 km | 1.7 km | 534 m | 3.5 km |
-| lab: 2 dBi whips on the SMAs, no cables | 2 W module at its P1dB (+33) (compressed) | fast | 1.0 km | 733 m | 665 m | 210 m | 1.0 km |
-| lab: 2 dBi whips on the SMAs, no cables | 2 W module at its P1dB (+33) (compressed) | slow | 3.8 km | 2.7 km | 2.4 km | 768 m | 5.0 km |
-| lab: 2 dBi whips on the SMAs, no cables | 10 W amplifier (+40) ($300+) | fast | 2.3 km | 1.6 km | 1.5 km | 471 m | 2.3 km |
-| lab: 2 dBi whips on the SMAs, no cables | 10 W amplifier (+40) ($300+) | slow | 8.5 km | 6.0 km | 5.4 km | 1.7 km | 11.3 km |
-| campus: panels, 10 m cables, amplifiers at the board | board alone ($0) | fast | 3.2 km | 2.3 km | 2.1 km | 653 m | 4.3 km |
-| campus: panels, 10 m cables, amplifiers at the board | board alone ($0) | slow | 11.8 km | 8.4 km | 7.5 km | 2.4 km | 15.6 km |
-| campus: panels, 10 m cables, amplifiers at the board | 2 W module at +30 dBm (20 dB pad) ($29, owned) | fast | 32.4 km | 22.9 km | 20.7 km | 6.5 km | 42.8 km |
-| campus: panels, 10 m cables, amplifiers at the board | 2 W module at +30 dBm (20 dB pad) ($29, owned) | slow | >100 km | 83.7 km | 75.4 km | 23.9 km | >100 km |
-| campus: panels, 10 m cables, amplifiers at the board | 2 W module at its P1dB (+33) (compressed) | fast | 46.6 km | 33.0 km | 29.7 km | 9.4 km | 61.5 km |
-| campus: panels, 10 m cables, amplifiers at the board | 2 W module at its P1dB (+33) (compressed) | slow | >100 km | >100 km | >100 km | 34.3 km | >100 km |
-| campus: panels, 10 m cables, amplifiers at the board | 10 W amplifier (+40) ($300+) | fast | >100 km | 73.8 km | 66.5 km | 21.0 km | >100 km |
-| campus: panels, 10 m cables, amplifiers at the board | 10 W amplifier (+40) ($300+) | slow | >100 km | >100 km | >100 km | 76.8 km | >100 km |
+| lab: 2 dBi whips on the SMAs, no cables | board alone ($0) | fast | 69 m | 49 m | 44 m | 14 m | 72 m |
+| lab: 2 dBi whips on the SMAs, no cables | board alone ($0) | slow | 251 m | 178 m | 160 m | 51 m | 332 m |
+| lab: 2 dBi whips on the SMAs, no cables | 2 W module at +30 dBm (20 dB pad) ($29, owned) | fast | 689 m | 487 m | 439 m | 139 m | 720 m |
+| lab: 2 dBi whips on the SMAs, no cables | 2 W module at +30 dBm (20 dB pad) ($29, owned) | slow | 2.5 km | 1.8 km | 1.6 km | 507 m | 3.3 km |
+| lab: 2 dBi whips on the SMAs, no cables | 2 W module at its P1dB (+33) (compressed) | fast | 991 m | 701 m | 631 m | 200 m | 1.0 km |
+| lab: 2 dBi whips on the SMAs, no cables | 2 W module at its P1dB (+33) (compressed) | slow | 3.6 km | 2.6 km | 2.3 km | 729 m | 4.8 km |
+| lab: 2 dBi whips on the SMAs, no cables | 10 W amplifier (+40) ($300+) | fast | 2.2 km | 1.6 km | 1.4 km | 447 m | 2.3 km |
+| lab: 2 dBi whips on the SMAs, no cables | 10 W amplifier (+40) ($300+) | slow | 8.1 km | 5.7 km | 5.2 km | 1.6 km | 10.7 km |
+| campus: panels, 10 m cables, amplifiers at the board | board alone ($0) | fast | 3.1 km | 2.2 km | 2.0 km | 620 m | 4.1 km |
+| campus: panels, 10 m cables, amplifiers at the board | board alone ($0) | slow | 11.2 km | 7.9 km | 7.2 km | 2.3 km | 14.8 km |
+| campus: panels, 10 m cables, amplifiers at the board | 2 W module at +30 dBm (20 dB pad) ($29, owned) | fast | 30.8 km | 21.8 km | 19.6 km | 6.2 km | 40.6 km |
+| campus: panels, 10 m cables, amplifiers at the board | 2 W module at +30 dBm (20 dB pad) ($29, owned) | slow | >100 km | 79.4 km | 71.6 km | 22.6 km | >100 km |
+| campus: panels, 10 m cables, amplifiers at the board | 2 W module at its P1dB (+33) (compressed) | fast | 44.3 km | 31.3 km | 28.2 km | 8.9 km | 58.4 km |
+| campus: panels, 10 m cables, amplifiers at the board | 2 W module at its P1dB (+33) (compressed) | slow | >100 km | >100 km | >100 km | 32.6 km | >100 km |
+| campus: panels, 10 m cables, amplifiers at the board | 10 W amplifier (+40) ($300+) | fast | 99.1 km | 70.1 km | 63.1 km | 20.0 km | >100 km |
+| campus: panels, 10 m cables, amplifiers at the board | 10 W amplifier (+40) ($300+) | slow | >100 km | >100 km | >100 km | 72.9 km | >100 km |
 | campus: panels, PA and LNA at the panel | board alone ($0) | fast | 17.2 km | 12.2 km | 11.0 km | 3.5 km | 18.1 km |
 | campus: panels, PA and LNA at the panel | board alone ($0) | slow | 62.9 km | 44.4 km | 40.0 km | 12.7 km | 82.9 km |
 | campus: panels, PA and LNA at the panel | 2 W module at +30 dBm (20 dB pad) ($29, owned) | fast | >100 km | >100 km | >100 km | 34.7 km | >100 km |
@@ -641,21 +645,21 @@ which `sim/link_rates.py` writes; the 5 % block is there too):
 
 | scenario | amplifier | path | BPSK | QPSK | FSK | OOK | whitened |
 |---|---|---|---|---|---|---|---|
-| lab: 2 dBi whips on the SMAs, no cables | board alone ($0) | fast | 72 m | 51 m | 68 m | 22 m | 72 m |
-| lab: 2 dBi whips on the SMAs, no cables | board alone ($0) | slow | 424 m | 300 m | 249 m | 79 m | 514 m |
-| lab: 2 dBi whips on the SMAs, no cables | 2 W module at +30 dBm (20 dB pad) ($29, owned) | fast | 720 m | 510 m | 682 m | 216 m | 720 m |
-| lab: 2 dBi whips on the SMAs, no cables | 2 W module at +30 dBm (20 dB pad) ($29, owned) | slow | 4.2 km | 3.0 km | 2.5 km | 788 m | 5.1 km |
-| lab: 2 dBi whips on the SMAs, no cables | 2 W module at its P1dB (+33) (compressed) | fast | 1.0 km | 733 m | 982 m | 310 m | 1.0 km |
-| lab: 2 dBi whips on the SMAs, no cables | 2 W module at its P1dB (+33) (compressed) | slow | 6.1 km | 4.3 km | 3.6 km | 1.1 km | 7.4 km |
-| lab: 2 dBi whips on the SMAs, no cables | 10 W amplifier (+40) ($300+) | fast | 2.3 km | 1.6 km | 2.2 km | 695 m | 2.3 km |
-| lab: 2 dBi whips on the SMAs, no cables | 10 W amplifier (+40) ($300+) | slow | 13.6 km | 9.6 km | 8.0 km | 2.5 km | 16.5 km |
-| campus: panels, 10 m cables, amplifiers at the board | board alone ($0) | fast | 5.2 km | 3.7 km | 3.0 km | 964 m | 5.7 km |
-| campus: panels, 10 m cables, amplifiers at the board | board alone ($0) | slow | 18.9 km | 13.4 km | 11.1 km | 3.5 km | 23.0 km |
-| campus: panels, 10 m cables, amplifiers at the board | 2 W module at +30 dBm (20 dB pad) ($29, owned) | fast | 51.8 km | 36.7 km | 30.5 km | 9.6 km | 57.2 km |
-| campus: panels, 10 m cables, amplifiers at the board | 2 W module at +30 dBm (20 dB pad) ($29, owned) | slow | >100 km | >100 km | >100 km | 35.2 km | >100 km |
-| campus: panels, 10 m cables, amplifiers at the board | 2 W module at its P1dB (+33) (compressed) | fast | 74.6 km | 52.7 km | 43.8 km | 13.9 km | 82.3 km |
-| campus: panels, 10 m cables, amplifiers at the board | 2 W module at its P1dB (+33) (compressed) | slow | >100 km | >100 km | >100 km | 50.6 km | >100 km |
-| campus: panels, 10 m cables, amplifiers at the board | 10 W amplifier (+40) ($300+) | fast | >100 km | >100 km | 98.2 km | 31.0 km | >100 km |
+| lab: 2 dBi whips on the SMAs, no cables | board alone ($0) | fast | 72 m | 51 m | 65 m | 20 m | 72 m |
+| lab: 2 dBi whips on the SMAs, no cables | board alone ($0) | slow | 402 m | 284 m | 236 m | 75 m | 488 m |
+| lab: 2 dBi whips on the SMAs, no cables | 2 W module at +30 dBm (20 dB pad) ($29, owned) | fast | 720 m | 510 m | 648 m | 205 m | 720 m |
+| lab: 2 dBi whips on the SMAs, no cables | 2 W module at +30 dBm (20 dB pad) ($29, owned) | slow | 4.0 km | 2.8 km | 2.4 km | 748 m | 4.9 km |
+| lab: 2 dBi whips on the SMAs, no cables | 2 W module at its P1dB (+33) (compressed) | fast | 1.0 km | 733 m | 931 m | 295 m | 1.0 km |
+| lab: 2 dBi whips on the SMAs, no cables | 2 W module at its P1dB (+33) (compressed) | slow | 5.8 km | 4.1 km | 3.4 km | 1.1 km | 7.0 km |
+| lab: 2 dBi whips on the SMAs, no cables | 10 W amplifier (+40) ($300+) | fast | 2.3 km | 1.6 km | 2.1 km | 659 m | 2.3 km |
+| lab: 2 dBi whips on the SMAs, no cables | 10 W amplifier (+40) ($300+) | slow | 12.9 km | 9.2 km | 7.6 km | 2.4 km | 15.7 km |
+| campus: panels, 10 m cables, amplifiers at the board | board alone ($0) | fast | 4.9 km | 3.5 km | 2.9 km | 915 m | 5.7 km |
+| campus: panels, 10 m cables, amplifiers at the board | board alone ($0) | slow | 18.0 km | 12.7 km | 10.6 km | 3.3 km | 21.8 km |
+| campus: panels, 10 m cables, amplifiers at the board | 2 W module at +30 dBm (20 dB pad) ($29, owned) | fast | 49.2 km | 34.8 km | 28.9 km | 9.1 km | 57.2 km |
+| campus: panels, 10 m cables, amplifiers at the board | 2 W module at +30 dBm (20 dB pad) ($29, owned) | slow | >100 km | >100 km | >100 km | 33.4 km | >100 km |
+| campus: panels, 10 m cables, amplifiers at the board | 2 W module at its P1dB (+33) (compressed) | fast | 70.7 km | 50.0 km | 41.6 km | 13.2 km | 82.3 km |
+| campus: panels, 10 m cables, amplifiers at the board | 2 W module at its P1dB (+33) (compressed) | slow | >100 km | >100 km | >100 km | 48.0 km | >100 km |
+| campus: panels, 10 m cables, amplifiers at the board | 10 W amplifier (+40) ($300+) | fast | >100 km | >100 km | 93.1 km | 29.5 km | >100 km |
 | campus: panels, 10 m cables, amplifiers at the board | 10 W amplifier (+40) ($300+) | slow | >100 km | >100 km | >100 km | >100 km | >100 km |
 | campus: panels, PA and LNA at the panel | board alone ($0) | fast | 18.1 km | 12.8 km | 16.2 km | 5.1 km | 18.1 km |
 | campus: panels, PA and LNA at the panel | board alone ($0) | slow | >100 km | 71.0 km | 59.1 km | 18.7 km | >100 km |
@@ -801,7 +805,7 @@ it. A **second ADL5611** in the receive chain (+14.3 dB, 0.3 ns, $5.21) moves ev
 
 | | fast path (sheet 3) | slow path (sheet 6) |
 |---|---|---|
-| amplifier | THS4541 at gain 4 (R_f 4.02 k / R_g 1 k with the 1.2 k shunts): 100 MHz, 3.5 ns rise | the fast arm's output through a second THS4541 at gain 20 (R_f 20 k / R_g 1 k, no shunts), then 1 k / 33 pF: a 4.8 MHz pole, 73 ns rise |
+| amplifier | THS4541 at gain 4 (R_f 4.02 k / R_g 1 k with the 1 k shunts): 94 MHz, 3.7 ns rise (docs/TRAJECTORIES.md: 6.6 ns end to end with the PYNQ's header RC) | the fast arm's output through a second THS4541 at gain 20 (R_f 20 k / R_g 1 k, no shunts), then 1 k / 33 pF: a 4.8 MHz pole, 73 ns rise |
 | noise bandwidth | 100 MHz: noise floor -92.5 dBm, quiet from -84.1 dBm | 7.5 MHz: noise floor -103.7 dBm, quiet from -95.3 dBm |
 | comparator floor | -81 dBm (balanced with the noise) | -107 dBm (12 dB below its noise: noise-limited) |
 | decides | when its arm crosses: 14.2 ns from the jack to the FPGA register on the PYNQ, 9.8 ns on the Icepi | 37 ns after the fast one |
@@ -842,7 +846,8 @@ that plan, and `gen/routes.py` lays the copper in the order CLAUDE_PCB.md sectio
 supply pours; the five RF paths as straight 0.29 mm coplanar tracks with via fences; a stub out of
 every LO pin; the LO pairs, the I/Q pairs, the slow pairs, the couplers' monitor and isolated ports
 and every tap as straight planned lines (an L where the straight line is not clear, each segment
-checked with exact geometry); a via grid in every paddle and a tie into it from every ground pin; a
+checked with exact geometry); a via grid in every paddle (0.8 mm pitch: 3 × 3 in a 2.6 mm paddle), vias
+in the smaller paddles and the SOT-89 tabs too, and a tie into it from every ground pin; a
 planned fan-out for every one of the 33 chips with five pads or more (each signal and supply pin a
 stub, a line and a via of its own, the vias of a side evenly spaced, OWLternating Current's planner),
 then each chip's short local nets; a via beside every remaining ground and rail pad; then the router
@@ -901,7 +906,7 @@ preview (Jason's call).
 **Response 15, the rev-A changes the gateware found (20:00).**  Header pin 24 became TX_EN (high
 transmits) through U206, a 74LVC1G04 beside the modulator at (66.5, 42), with R227 1 k holding it low and R209 now
 pulling DSOP up; R314-R318 hold the synthesizers' and the DSA's latch enables and the trigger buffer's inputs low
-(REVA_CHANGES.md 2-3).  382 parts.  The placer hung LE_PLL_RX's pull-down 12 mm off U115's crowded side and the
+(REVA_CHANGES.md 2-3).  383 parts (C320, the input's polymer, since Response 18).  The placer hung LE_PLL_RX's pull-down 12 mm off U115's crowded side and the
 net would not route: R315 is pinned above header pin 33.  A new cleanup step joins a pad that KiCad's
 connectivity finds isolated to its net's nearest track (the router had run TX_EN past R227's pad 0.05 mm
 clear of it).  3784 tracks, 1054 vias; DRC 0 items (0 violations, 0 unconnected, 0 parity), the labels' check
@@ -924,15 +929,15 @@ ECP5 cart of 2026-10-09 for the fees (`build/COST_ESTIMATE.md` has every line):
 | where | what | cost |
 |---|---|--:|
 | JLCPCB | 5 boards 120 × 100 mm, 4 layers, ENIG (a model: $35-60) | $47 |
-| | assembly on the top only, Standard PCBA (the SMAs and headers are through-hole): setup, stencil, fixture, 44 Extended codes' feeders, 1010 SMT pads and 93 through-hole joints a board; the 2x20 socket on the back soldered at home (Response 15) | $183 |
-| | their parts: 68 BOM lines, with attrition | $324 |
-| | US duty at 35 % under DDP | $194 |
+| | assembly on the top only, Standard PCBA (the SMAs and headers are through-hole): setup, stencil, fixture, 45 Extended codes' feeders, 1012 SMT pads and 93 through-hole joints a board; the 2x20 socket on the back soldered at home (Response 15) | $186 |
+| | their parts: 70 BOM lines (73 with the three consigned), with attrition | $324 |
+| | US duty at 35 % under DDP | $195 |
 | | shipping | $25-40 |
-| | **JLCPCB total** | **$773-788** |
+| | **JLCPCB total** | **$777-792** |
 | Digi-Key | the three consigned lines, 4 + 4 + 4 pieces, with tax and shipping | **$150** |
 | | shipping the consignment to JLCPCB | $35-60 |
 | other | attenuators, pigtails, MMCX leads, whips, leads, two PD power banks, standoffs, a heatsink; a second PA and LNA module when the far end needs them | **$139-267** |
-| | **everything** | **$1,097-1,265** |
+| | **everything** | **$1,101-1,269** |
 
 The duty is a third of JLCPCB's line and nothing lowers it truthfully. The 45 Extended parts are
 what they are (every chip is Extended). Buying the ADL5380 and ADL5375-05 from JLCPCB's own stock
@@ -984,19 +989,19 @@ comparators, and when does a flash ADC win? Five facts decide it.
 
 **The schemes, scored.** The SNR is the axis point's in 100 MHz, for one false event an hour and
 1e-4 wrong messages; a star adds 1 dB for corners at the ADL5611's P1dB. The times are how far
-into the arm's rise every bit is reliable: in the lab at 10 m with whips (38.6 dB), and at 3 km
-with panels and 10 m cables (23.1 dB).
+into the arm's rise every bit is reliable: in the lab at 10 m with whips (38.2 dB), and at 3 km
+with panels and 10 m cables (22.6 dB).
 
 | | scheme | N | SNR | comparators | lab | 3 km | needs |
 |---|---|---|---|---|---|---|---|
-| A1 | BPSK flip, sign(I) | event | 17.3 dB | 1 | 2.50 ns | 2.95 ns | rev A |
-| A4 | pilot at 45°, TX (−1, 1) / (1, −1), QP / QN | 2 | 18.9 dB* | 2 | 0.81 ns | 2.61 ns | rev A |
-| A3 | corners round a full idle (the plan's QPSK) | 4 | 21.9 dB* | 3 | 2.50 ns | 3.67 ns | rev A |
-| J1 | Jason's "+", the idle on the right arm | 4 | 20.8 dB | 4 | 3.63 ns | 4.32 ns | a second I threshold |
-| J2 | Jason's even circle: 5-PSK | 4 | 19.5 dB | 5 | 3.02 ns | 3.72 ns | five-level TX, phase comparators |
-| B1 | weak pilot + the 4 axis points | 4 | 21.4 dB | 4 | 1.03 ns | 3.93 ns | an I window pair |
-| **B2** | **weak pilot at 45° + the 4 corners** | **4** | **19.3 dB*** | **4** | **0.83 ns** | **2.71 ns** | **an I window pair** |
-| R4 | idle on a corner, lines through it | 4 | 19.2 dB* | 4 | 0.83 ns | 2.68 ns | AC-coupled weighted comparators |
+| A1 | BPSK flip, sign(I) | event | 17.3 dB | 1 | 2.50 ns | 2.98 ns | rev A |
+| A4 | pilot at 45°, TX (−1, 1) / (1, −1), QP / QN | 2 | 18.9 dB* | 2 | 0.84 ns | 2.73 ns | rev A |
+| A3 | corners round a full idle (the plan's QPSK) | 4 | 21.9 dB* | 3 | 2.50 ns | 3.91 ns | rev A |
+| J1 | Jason's "+", the idle on the right arm | 4 | 20.8 dB | 4 | 3.64 ns | 4.37 ns | a second I threshold |
+| J2 | Jason's even circle: 5-PSK | 4 | 19.5 dB | 5 | 3.02 ns | 3.77 ns | five-level TX, phase comparators |
+| B1 | weak pilot + the 4 axis points | 4 | 21.4 dB | 4 | 1.06 ns | 4.23 ns | an I window pair |
+| **B2** | **weak pilot at 45° + the 4 corners** | **4** | **19.3 dB*** | **4** | **0.86 ns** | **2.84 ns** | **an I window pair** |
+| R4 | idle on a corner, lines through it | 4 | 19.2 dB* | 4 | 0.85 ns | 2.81 ns | AC-coupled weighted comparators |
 
 The best any comparator layout can do, by search: 14.8, 15.4, 16.7, 18.2, 19.7 and 21.1 dB for
 N = 1 to 6 (envelope limit, lines through the idle point), and 21.4-21.5 dB for N = 7 and 8.

@@ -114,14 +114,14 @@
    "F"
   ],
   "C119": [
-   24.0,
-   64.0875,
+   25.450000000000003,
+   64.96000000000001,
    270.0,
    "F"
   ],
   "C120": [
-   25.1,
-   66.5375,
+   24.25,
+   64.96000000000001,
    270.0,
    "F"
   ],
@@ -241,7 +241,7 @@
   ],
   "C140": [
    22.1,
-   69.66000000000001,
+   68.66000000000001,
    90.0,
    "F"
   ],
@@ -294,14 +294,14 @@
    "F"
   ],
   "C149": [
-   25.700000000000003,
-   71.4125,
+   25.450000000000003,
+   70.515,
    90.0,
    "F"
   ],
   "C150": [
-   24.6,
-   68.9625,
+   24.25,
+   70.515,
    90.0,
    "F"
   ],
@@ -312,7 +312,7 @@
    "F"
   ],
   "C152": [
-   28.6,
+   28.85,
    69.66000000000001,
    90.0,
    "F"
@@ -372,14 +372,14 @@
    "F"
   ],
   "C204": [
-   55.15,
-   42.3375,
+   56.6,
+   42.96,
    90.0,
    "F"
   ],
   "C205": [
-   56.25,
-   44.7875,
+   55.4,
+   42.96,
    90.0,
    "F"
   ],
@@ -510,26 +510,26 @@
    "F"
   ],
   "C227": [
-   49.66,
-   49.25,
+   41.91,
+   48.5,
    180.0,
    "F"
   ],
   "C228": [
-   41.91,
-   49.0,
+   49.66,
+   65.25,
    180.0,
    "F"
   ],
   "C229": [
-   56.85,
-   50.4125,
+   56.6,
+   49.515,
    90.0,
    "F"
   ],
   "C230": [
-   55.75,
-   47.9625,
+   55.4,
+   49.515,
    90.0,
    "F"
   ],
@@ -540,7 +540,7 @@
    "F"
   ],
   "C232": [
-   51.75,
+   51.25,
    48.66,
    90.0,
    "F"
@@ -677,6 +677,12 @@
    0.0,
    "F"
   ],
+  "C320": [
+   94.8,
+   86.0,
+   0.0,
+   "F"
+  ],
   "C401": [
    92.0,
    11.75,
@@ -702,8 +708,8 @@
    "F"
   ],
   "C501": [
-   13.25,
-   75.33999999999999,
+   10.25,
+   77.83999999999999,
    270.0,
    "F"
   ],
@@ -720,7 +726,7 @@
    "F"
   ],
   "C504": [
-   10.64,
+   13.14,
    86.65,
    180.0,
    "F"
@@ -751,7 +757,7 @@
   ],
   "C509": [
    33.14,
-   79.4,
+   80.15,
    180.0,
    "F"
   ],
@@ -781,7 +787,7 @@
   ],
   "C514": [
    8.0,
-   86.50999999999999,
+   87.50999999999999,
    270.0,
    "F"
   ],
@@ -1122,20 +1128,20 @@
    "F"
   ],
   "L104": [
-   22.1,
-   66.64,
-   270.0,
+   26.890000000000004,
+   70.995,
+   180.0,
    "F"
   ],
   "L105": [
-   30.6,
-   80.03230484541326,
-   270.0,
+   22.81,
+   70.995,
+   0.0,
    "F"
   ],
   "L106": [
-   17.850000000000005,
-   80.46531754730549,
+   22.1,
+   66.17589838486225,
    270.0,
    "F"
   ],
@@ -1152,26 +1158,26 @@
    "F"
   ],
   "L202": [
-   53.25,
-   45.64,
-   270.0,
+   58.04,
+   49.995,
+   180.0,
    "F"
   ],
   "L203": [
-   59.75,
+   53.96,
+   49.995,
+   0.0,
+   "F"
+  ],
+  "L204": [
+   60.0,
    48.64,
    270.0,
    "F"
   ],
-  "L204": [
-   50.25,
-   43.64,
-   270.0,
-   "F"
-  ],
   "L205": [
-   61.0,
-   42.39,
+   50.25,
+   44.14,
    270.0,
    "F"
   ],
@@ -1302,8 +1308,8 @@
    "F"
   ],
   "R119": [
-   47.86,
-   64.75,
+   49.86,
+   66.75,
    180.0,
    "F"
   ],
@@ -1314,9 +1320,9 @@
    "F"
   ],
   "R121": [
-   34.919999999999995,
-   81.35,
-   180.0,
+   37.7,
+   82.5,
+   0.0,
    "F"
   ],
   "R122": [
@@ -1398,8 +1404,8 @@
    "F"
   ],
   "R135": [
-   31.21,
-   82.0,
+   35.71,
+   80.75,
    180.0,
    "F"
   ],
@@ -1428,8 +1434,8 @@
    "F"
   ],
   "R140": [
-   23.6,
-   66.57000000000001,
+   30.85,
+   79.87736835487436,
    90.0,
    "F"
   ],
@@ -1446,8 +1452,8 @@
    "F"
   ],
   "R143": [
-   89.56,
-   82.25,
+   92.31,
+   79.25,
    180.0,
    "F"
   ],
@@ -1464,8 +1470,8 @@
    "F"
   ],
   "R202": [
-   47.09839827639831,
-   66.86152113147799,
+   47.111216419948455,
+   65.34088452294986,
    90.0,
    "F"
   ],
@@ -1506,8 +1512,8 @@
    "F"
   ],
   "R209": [
-   54.75,
-   44.83,
+   53.75,
+   43.83,
    270.0,
    "F"
   ],
@@ -1560,8 +1566,8 @@
    "F"
   ],
   "R218": [
-   42.39,
-   47.5,
+   41.89,
+   47.0,
    0.0,
    "F"
   ],
@@ -1572,7 +1578,7 @@
    "F"
   ],
   "R220": [
-   53.65,
+   53.15,
    48.18,
    0.0,
    "F"
@@ -1782,27 +1788,27 @@
    "F"
   ],
   "R506": [
-   6.25,
-   80.86,
+   13.5,
+   75.36,
    90.0,
    "F"
   ],
   "R507": [
-   12.185,
-   79.05625,
-   270.0,
-   "F"
-  ],
-  "R508": [
-   11.25,
+   10.5,
    75.36,
    270.0,
    "F"
   ],
+  "R508": [
+   12.185,
+   80.75,
+   270.0,
+   "F"
+  ],
   "R509": [
-   42.36,
-   56.75,
-   0.0,
+   11.95,
+   77.56,
+   270.0,
    "F"
   ],
   "R510": [
@@ -1812,51 +1818,51 @@
    "F"
   ],
   "R511": [
+   42.36,
+   56.75,
+   0.0,
+   "F"
+  ],
+  "R512": [
    37.75,
    53.39000000000001,
    90.0,
    "F"
   ],
-  "R512": [
+  "R513": [
    30.5,
    53.39000000000001,
    90.0,
    "F"
   ],
-  "R513": [
+  "R514": [
    32.55,
    55.440000000000005,
    270.0,
    "F"
   ],
-  "R514": [
+  "R515": [
    40.0,
    72.36,
    90.0,
    "F"
   ],
-  "R515": [
+  "R516": [
    40.75,
    75.36,
    270.0,
    "F"
   ],
-  "R516": [
-   38.435,
-   73.55625,
-   270.0,
-   "F"
-  ],
   "R517": [
-   13.120000000000001,
-   85.35,
-   180.0,
+   29.869999999999997,
+   81.9,
+   0.0,
    "F"
   ],
   "R518": [
-   8.777044200901527,
-   76.4517768245191,
-   180.0,
+   38.435,
+   73.55625,
+   270.0,
    "F"
   ],
   "R519": [
@@ -1866,14 +1872,14 @@
    "F"
   ],
   "R520": [
-   29.369999999999997,
-   83.84519052838328,
+   29.619999999999997,
+   83.41217782649106,
    180.0,
    "F"
   ],
   "R521": [
-   31.869999999999997,
-   83.6,
+   32.37,
+   83.1,
    180.0,
    "F"
   ],
@@ -1896,8 +1902,8 @@
    "F"
   ],
   "R603": [
-   42.77125,
-   89.695,
+   44.41175618518547,
+   89.08570577192278,
    180.0,
    "F"
   ],
@@ -1944,13 +1950,13 @@
    "F"
   ],
   "R611": [
-   43.37,
-   82.6,
-   180.0,
+   36.9384094649518,
+   97.97954594192798,
+   270.0,
    "F"
   ],
   "R612": [
-   42.919999999999995,
+   42.92,
    87.1,
    180.0,
    "F"
@@ -2251,7 +2257,7 @@
   ],
   "U506": [
    9.0,
-   82.0,
+   83.0,
    90.0,
    "F"
   ],
@@ -2785,14 +2791,18 @@
   "TP308": "POWER: 5 V in, five 3.3 V rails",
   "TP101": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
   "TP201": "TX LO: MAX2871 on the TCXO or REF IN",
-  "C229": "TX LO: MAX2871 on the TCXO or REF IN",
-  "C230": "TX LO: MAX2871 on the TCXO or REF IN",
-  "C204": "TRANSMITTER: ADL5375, gain block, pad, coupler",
-  "C205": "TRANSMITTER: ADL5375, gain block, pad, coupler",
   "C149": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
-  "C150": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
   "C119": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
+  "L104": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
+  "C150": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
   "C120": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
+  "L105": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
+  "C229": "TX LO: MAX2871 on the TCXO or REF IN",
+  "C204": "TRANSMITTER: ADL5375, gain block, pad, coupler",
+  "L202": "TX LO: MAX2871 on the TCXO or REF IN",
+  "C230": "TX LO: MAX2871 on the TCXO or REF IN",
+  "C205": "TRANSMITTER: ADL5375, gain block, pad, coupler",
+  "L203": "TX LO: MAX2871 on the TCXO or REF IN",
   "C103": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "C105": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "C107": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
@@ -2918,13 +2928,9 @@
   "L101": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "L102": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "L103": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
-  "L104": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
-  "L105": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
   "L106": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
   "L107": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
   "L201": "TRANSMITTER: ADL5375, gain block, pad, coupler",
-  "L202": "TX LO: MAX2871 on the TCXO or REF IN",
-  "L203": "TX LO: MAX2871 on the TCXO or REF IN",
   "L204": "TX LO: MAX2871 on the TCXO or REF IN",
   "L205": "TX LO: MAX2871 on the TCXO or REF IN",
   "Q303": "POWER: 5 V in, five 3.3 V rails",
@@ -2934,8 +2940,6 @@
   "R104": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "R111": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "R119": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
-  "R120": "FAST COMPARATORS: CMP_I and the I and Q windows",
-  "R121": "FAST COMPARATORS: CMP_I and the I and Q windows",
   "R122": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "R123": "COSTAS LOOP: sign(I) x Q, HOLD, PI filter; DACs, ADC",
   "R124": "COSTAS LOOP: sign(I) x Q, HOLD, PI filter; DACs, ADC",
@@ -3003,8 +3007,8 @@
   "R506": "SLOW PATH: x20, 4.8 MHz, confirm or veto",
   "R507": "SLOW PATH: x20, 4.8 MHz, confirm or veto",
   "R508": "SLOW PATH: x20, 4.8 MHz, confirm or veto",
-  "R509": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
-  "R511": "SLOW PATH: x20, 4.8 MHz, confirm or veto",
+  "R509": "SLOW PATH: x20, 4.8 MHz, confirm or veto",
+  "R511": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "R512": "SLOW PATH: x20, 4.8 MHz, confirm or veto",
   "R513": "SLOW PATH: x20, 4.8 MHz, confirm or veto",
   "R514": "SLOW PATH: x20, 4.8 MHz, confirm or veto",
@@ -3023,8 +3027,6 @@
   "R608": "FAST COMPARATORS: CMP_I and the I and Q windows",
   "R609": "FAST COMPARATORS: CMP_I and the I and Q windows",
   "R610": "FAST COMPARATORS: CMP_I and the I and Q windows",
-  "R611": "FAST COMPARATORS: CMP_I and the I and Q windows",
-  "R612": "FAST COMPARATORS: CMP_I and the I and Q windows",
   "R613": "FAST COMPARATORS: CMP_I and the I and Q windows",
   "R614": "FAST COMPARATORS: CMP_I and the I and Q windows",
   "R615": "FAST COMPARATORS: CMP_I and the I and Q windows",

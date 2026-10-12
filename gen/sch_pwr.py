@@ -145,16 +145,24 @@ def build(S):
     note(14, yh + 24, "JP301 HDR 5V: fit it to power the board from the PYNQ-Z2's 5 V (pins 2/4) when the PYNQ runs on its barrel supply.  "
          "Q302 turns off whenever USB-C 5 V is present (VBUS lifts its gate), and Q301 is off unless VBUS is present (Q303 pulls its gate down; +5V_HDR holds it up), so USB wins when both are plugged and neither supply ever feeds the other.", cols=34)
     # TVS, bulk, LED, the +5V_IN flag
+    xe = xin + 43.18
     W((xin, y), (xin + 38.1, y))
     J(xin + 7.62, y); down("C 22uF", xin + 7.62, y, text="right")
     J(xin + 17.78, y); down("C 22uF", xin + 17.78, y, text="right")
     J(xin + 27.94, y); down("TVS5V", xin + 27.94, y, text="right", ref="D303")
-    W((xin + 38.1, y), (xin + 43.18, y))
-    W((xin + 43.18, y), (xin + 43.18, y - 5.08)); flag("+5V_IN", xin + 43.18, y - 5.08)
+    W((xin + 38.1, y), (xe, y))
+    # the hot-plug damper, drawn under the row on its own +5V_IN flag (on the board it stands beside
+    # the two 22 uF): CLAUDE_PCB.md section 15, the design review
+    xd, yd = xin + 12.7, y + 22.86
+    flag("+5V_IN", xd, yd)
+    down("CP 100uF", xd, yd, text="right", ref="C320")      # after the sheet's last (the others keep theirs)
+    note(xd + 8, yd + 1, "C320: a cable's inductance and an all-ceramic input ring to twice the supply on a hot plug.  "
+         "This polymer's 0.1 ohm ESR is about the ring's impedance (0.5 uH of USB cable against the 22 uF pair), so it damps it.", cols=30)
+    W((xe, y), (xe, y - 5.08)); flag("+5V_IN", xe, y - 5.08)
     # ERC: these rails are made by passive parts (a FET, a bead), so each carries a PWR_FLAG
     U.pwr_flag(xin + 2.54, y); J(xin + 2.54, y)
-    J(xin + 43.18, y)
-    r, b = down("R 1k", xin + 43.18, y, net=None, text="right")
+    J(xe, y)
+    r, b = down("R 1k", xe, y, net=None, text="right")
     dled = part("LED_G", "D301", b[0], b[1] + 3.81 + G, rot=90, value="5V", text="right", fsize=1.0)
     W(b, dled.pin("2"))
     k = dled.pin("1"); W(k, (k[0], k[1] + G)); gnd(k[0], k[1] + G)
@@ -170,8 +178,10 @@ def build(S):
     W((fb3[0] + 27.94, yrf), (fb3[0] + 27.94, yrf - 5.08)); flag("+5V_RF", fb3[0] + 27.94, yrf - 5.08)
     sig(fb3[0] + 36, yrf - 10, LV.txt("5V_RF"), cols=30)
     U.pwr_flag(fb3[0] + 2.54, yrf); J(fb3[0] + 2.54, yrf)
-    note(14, yrf + 18, "+5V_RF: the ADL5380 (245 mA), the ADL5375 (203 mA) and both ADL5611 (124 mA each) through a 2 A bead.  "
-         "They need 4.75 V: 80 mV in the FET and 100 mV in the PTC leave 4.8 V from a 5.0 V source.", cols=34)
+    note(14, yrf + 18, "+5V_RF: the ADL5380 (245 mA), the ADL5375 (203 mA) and the three ADL5611 (124 mA each) through a 2 A bead.  "
+         "They need 4.75 V: the PTC, the FET and the bead at their maximum resistances drop %.0f mV, so %.2f V at the plug leaves %.2f V "
+         "(sim/budget.py section 9).  A bench supply at 5.1-5.25 V; a USB port must hold %.2f V."
+         % (LV.B["vdrop_in_max_V"] * 1e3, LV.P["supply_min_V"], LV.B["v_rf_min_V"], 4.75 + LV.B["vdrop_in_max_V"] + 0.05), cols=34)
 
     # ---- the five regulators -----------------------------------------------------------
     xl = 205.74

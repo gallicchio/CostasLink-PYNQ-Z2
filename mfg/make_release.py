@@ -666,12 +666,14 @@ def tht_joints(fp):
 
 
 def board_features(B, fps, box, parts=()):
-    """What the board carries for the assembler: fiducials (none of its own: JLCPCB adds rails
-    with fiducials, the form's default), the mounting holes, any order-number marker (JLCPCB
+    """What the board carries for the assembler: fiducials (three of its own, gen/placement.FIDUCIALS,
+    and JLCPCB adds rails with more, the form's default), the mounting holes, any order-number marker (JLCPCB
     now asks that it NOT be added), and the parts that hang over the edge, which JLCPCB's
     rails must leave room for."""
     x0, y0, x1, y1 = box
     fid = [fp["ref"] for fp in fps.values() if "fiducial" in fp["short"].lower() or re.match(r"^FID\d+$", fp["ref"])]
+    # the board's own fiducials are netless graphics (gen/board.marks), named by where they stand
+    fid += ["(%.1f, %.1f)" % xy for xy in PL.FIDUCIALS]
     holes = []
     for fp in sorted(fps.values(), key=lambda f: refkey(f["ref"])):
         for p in fp["pads"]:
@@ -1070,7 +1072,7 @@ JLC_PCBA_FORM = [
     ("PCB Assembly", "PCBA Type", "Standard", "the through-hole parts (the SMAs, the 2.54 mm headers) and the consigned ones: Economic takes neither"),
     ("PCB Assembly", "Assembly Side", "<sides>", "<sides_why>"),
     ("PCB Assembly", "PCBA Qty", "<assembled>", "of the <boards> boards; the other <spares> are bare spares"),
-    ("PCB Assembly", "Edge Rails/Fiducials", "Added by JLCPCB", "the board carries no rails<fiducials> of its own; JLCPCB adds two rails with its fiducials, and Depanel below takes them off<overhang>"),
+    ("PCB Assembly", "Edge Rails/Fiducials", "Added by JLCPCB", "the board carries no rails of its own<fiducials>; JLCPCB adds two rails with its fiducials, and Depanel below takes them off<overhang>"),
     ("PCB Assembly", "Confirm Parts Placement", "Yes", "free: the placement preview, read against PLACEMENT_CHECKS.txt (<unread> part numbers have predicted, unseen rotations)"),
     ("PCB Assembly", "Stencil Storage", "No", ""),
     ("PCB Assembly", "Fixture Storage", "No", ""),
@@ -1146,8 +1148,8 @@ def order_md(out, dims, boards, assembled, feat, B, cost, checks, n_unread, cons
             "<sides>": "Both Sides" if len(sides) == 2 else ("Top Side" if sides == {"top"} else "Bottom Side"),
             "<sides_why>": ("parts on both sides: %s on the back, everything else on top" % ", ".join(bottom_refs))
                            if len(sides) == 2 else "every part on one side",
-            "<fiducials>": (" (its %d fiducials, %s, sit inside the outline)" % (len(feat["fiducials"]), ", ".join(feat["fiducials"])))
-                           if feat["fiducials"] else " or fiducials",
+            "<fiducials>": ("; its %d fiducials (1 mm copper in 2 mm mask openings, at %s mm from the top-left corner) sit inside the outline"
+                            % (len(feat["fiducials"]), ", ".join(feat["fiducials"]))) if feat["fiducials"] else ", nor fiducials",
             "<overhang>": (".  Parts hang over the edge (%s): the Assembly remark below says so" % over_txt) if over_txt else "",
             "<unread>": str(n_unread), "<ncons>": str(len(cons_lines)),
             "<jlctext>": ("; this board still carries it: take it off" if feat["jlc_text"] else "; this board carries none"),

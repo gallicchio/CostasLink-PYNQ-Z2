@@ -56,14 +56,15 @@ def build(S):
     W(ni, (ni[0] + 2.54, ni[1]), (ni[0] + 2.54, ibbp[1]), ibbp)
     nq = ladder(S, qbbp[0] - 27.94, qbbp[1] + 33.02, ("TX_Q1", "TX_Q0"), "VR_Q", "TX_Q")
     W(nq, (nq[0] + 2.54, nq[1]), (nq[0] + 2.54, qbbp[1]), qbbp)
-    # the N inputs at the 0.5 V bias: 5.1k / 1k from +3V3_ANA, between the two
+    # the N inputs at the ladders' centre level: the divider sim/budget.py section 1 chose with the pins' own
+    # 2 x 41 uA flowing into it (the 5.1k / 1k of build 17 sat at 0.61 V: the design review)
     xb = ibbn[0] - 10.16
     W(ibbn, (xb, ibbn[1])); W(qbbn, (xb, qbbn[1])); W((xb, ibbn[1]), (xb, qbbn[1]))
     yb = (ibbn[1] + qbbn[1]) / 2.0
     J(xb, yb)
     W((xb, yb), (xb - 7.62, yb))
-    up("R 5.1k", xb - 7.62, yb, "+3V3_ANA", text="left")
-    r, bpt = down("R 1k", xb - 7.62, yb, net=None, text="left")
+    up(LV.VAL["bias_Rt"], xb - 7.62, yb, "+3V3_ANA", text="left")
+    r, bpt = down(LV.VAL["bias_Rb"], xb - 7.62, yb, net=None, text="left")
     W(bpt, (bpt[0], bpt[1] + G)); gnd(bpt[0], bpt[1] + G)
     J(xb - 7.62, yb)
     W((xb - 7.62, yb), (xb - 17.78, yb))
@@ -101,11 +102,15 @@ def build(S):
          "modulator is off whenever no running gateware drives it: the host off, unconfigured, or loading another overlay.  "
          "The gateware's CTRL[0] (TX_DIS) and the keyer drive the header pin inverted.", cols=44)
     # LO
-    lop, lon = mod.pin("3"), mod.pin("4")
-    e = stub(mod, "3", dx=-5.08)
-    a, b = series("C 1.5pF", lop[0] - 12.7, lop[1]); W(b, e)
-    e2 = stub(mod, "4", dx=-5.08)
-    a2, b2 = series("C 1.5pF", lon[0] - 12.7, lon[1], above=False); W(b2, e2)
+    # P to LOIN, N to LOIP, as on the RX sheet (the design review): the synthesizer's RFOUTA_P faces
+    # the modulator's LOIN on the board, so the pair runs straight and equal.  The carrier comes out
+    # inverted, which a far end's Costas loop does not see (and a board of this revision inverts it back).
+    p_pin, n_pin = "4", "3"
+    lop, lon = mod.pin(p_pin), mod.pin(n_pin)
+    e = stub(mod, p_pin, dx=-5.08)
+    a, b = series("C 1.5pF", lop[0] - 12.7, lop[1], above=lop[1] < lon[1]); W(b, e)
+    e2 = stub(mod, n_pin, dx=-5.08)
+    a2, b2 = series("C 1.5pF", lon[0] - 12.7, lon[1], above=lon[1] < lop[1]); W(b2, e2)
     lo_top = {"p": a, "n": a2}
     # supplies and grounds
     B.supply_bar(mod, ["18", "24"], "+5V_RF", dy=12.7, side_caps=2, bulk="C 1uF")
@@ -125,7 +130,8 @@ def build(S):
     xbias = gout[0] + 10.16
     W(gout, (xbias, yr))
     B.bias_tee(xbias, yr)
-    note(gb.pin("2")[0] - 2, yr + 18, "ADL5611: +14.3 dB at 5.8 GHz -> +9.8 dBm at the SMA.  P1dB about +16 dBm.", cols=28)
+    note(gb.pin("2")[0] - 2, yr + 18, "ADL5611: %+.1f dB at 5.8 GHz -> %+.1f dBm at the SMA.  P1dB %+.1f dBm at 5.8 GHz (its 5800 MHz row): "
+         "the QPSK corners, 3 dB over the axis points, reach it." % (LV.P["gb_gain_dB"], LV.B["tx_out_dBm"], LV.P["gb_p1db_dBm"]), cols=28)
     xpad = xbias + 40.64                         # past the bias tee's three capacitors
     B.dcblock(xbias, yr, xpad)
     sig(xbias + 2, yr - 34, LV.txt("TX_OUT"), cols=24)
@@ -177,11 +183,12 @@ def build(S):
     pll, lo = B.synthesizer("U203", tout[0] + 83.82, ys + 5.08, "+3V3_PLL_TX", "LE_PLL_TX", "MUX_TX", "LO_TX", "LO TX MON", ref_src,
                             bar_dy=25.4)                      # the bar high enough for its capacitors to clear the REF IN jack
     lp, ln = lo["lo_p"], lo["lo_n"]
-    xup_p, xup_n = lo_top["p"][0] - 5.08, lo_top["p"][0] - 2.54
+    x_out, x_in = lo_top["p"][0] - 5.08, lo_top["p"][0] - 2.54          # the upper row's vertical outside
+    xup_p, xup_n = (x_out, x_in) if lo_top["p"][1] < lo_top["n"][1] else (x_in, x_out)
     W(lp, (xup_p, lp[1]), (xup_p, lo_top["p"][1]), lo_top["p"])
     W(ln, (xup_n, ln[1]), (xup_n, lo_top["n"][1]), lo_top["n"])
     label(lp[0] + 1.27, lp[1], "LO_TX_P", size=1.0)
-    sig(xup_p - 32, (lo_top["p"][1] + lp[1]) / 2.0, LV.txt("LO_TX"), cols=24)
+    sig(x_out - 32, (lo_top["p"][1] + lp[1]) / 2.0, LV.txt("LO_TX"), cols=24)
     label(ln[0] + 1.27, ln[1], "LO_TX_N", size=1.0, justify="left top")
     note(tout[0] + 30, ys - 60, "TX synthesizer: MAX2871, 5.8 GHz integer-N from 25 MHz (N = 232; the far end's RX sits 50 MHz away), RFOUTA differential into the ADL5375's LO, "
          "RFOUTB to the LO TX MON jack.  Its own LDO, +3V3_PLL_TX.", cols=52)

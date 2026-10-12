@@ -109,11 +109,12 @@ module rx_engine #(
     reg        out_found;
     reg [3:0]  out_s;
     reg        all_idle;
-    always @* begin
+    integer    j;                                     // its own loop variable: one shared by two always @*
+    always @* begin                                       // blocks is a multi-driven signal (Verilator 5.051)
         out_found = 1'b0; out_s = 4'd0;
-        for (i = SER - 1; i >= 0; i = i - 1) begin
-            if (|((vec(fs, i[8:0]) ^ {1'b0, idle}) & {1'b0, mask})) begin
-                out_found = 1'b1; out_s = i[3:0];
+        for (j = SER - 1; j >= 0; j = j - 1) begin
+            if (|((vec(fs, j[8:0]) ^ {1'b0, idle}) & {1'b0, mask})) begin
+                out_found = 1'b1; out_s = j[3:0];
             end
         end
         all_idle = !out_found;

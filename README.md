@@ -27,9 +27,11 @@ hosts (`gateware/README.md`: one core, the PYNQ-Z2 at 800 Ms/s over AXI-Lite, th
 UART, a Python driver tested against the RTL), and writing it found that the transmitter ran whenever no
 gateware drove it: header pin 24 is now TX_EN, active high, through an inverter with a 1 k pull-down
 ([`REVA_CHANGES.md`](REVA_CHANGES.md)).  The 2x20 socket is soldered at home, which makes JLCPCB's order
-one-sided.  **The board routes completely: DRC 0, and the release in `mfg/release/` passes every gate
-(2026-10-10, 20:02).**  Left for the order day: the CPL rotations of 30 parts, read off JLCPCB's preview,
-and the three consigned parts.  Nothing ordered.
+one-sided.  Four LLM reviewers went over build 17 (`design_review_*/`); build 18 fixes what they found
+([`DESIGN_REVIEW_RESPONSE.md`](DESIGN_REVIEW_RESPONSE.md)), the worst of it the LO pairs, which were
+crossed and are now straight and equal.  **The board routes completely: DRC 0, and the release in
+`mfg/release/` passes every gate (2026-10-12, 00:19).**  Left for the order day: the CPL rotations,
+read off JLCPCB's preview, and the three consigned parts.  Nothing ordered.
 
 * [`PLAN.md`](PLAN.md): the idea, the numbers, the antenna question, the parts with the reasons and
   the rejected alternatives, the header pin map, power, the board, bring-up, what could go wrong.
@@ -37,6 +39,10 @@ and the three consigned parts.  Nothing ordered.
   link between two hills, each with its pass condition and the risk it retires.
 * [`CLAUDE_CODE_CHAT.md`](CLAUDE_CODE_CHAT.md): every prompt and response, with the decisions as
   they were made.
+* [`DESIGN_REVIEW_RESPONSE.md`](DESIGN_REVIEW_RESPONSE.md): the four reviews of build 17, every finding
+  fixed, documented or answered, and how useful each reviewer was.
+* [`docs/TRAJECTORIES.md`](docs/TRAJECTORIES.md): from the idle to each QPSK corner at the receiver, in
+  time and on the I/Q plane, with the comparators, the slow path and the noise (`sim/trajectories.py`).
 * `sim/constellations.py`: idle plus N messages decided by comparators: false events by Rice's
   formula, the bits' time into the arm's rise, a search for the best layout (PLAN.md §18).
 * `sim/budget.py`: every number the plan quotes, computed from the datasheets and asserted;

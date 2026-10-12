@@ -45,7 +45,7 @@ module uart_cmd (
     reg        have_digit;
     reg [1:0]  rep_kind;
     reg [3:0]  rep_idx;
-    reg [31:0] rep_hex;             // the value being printed, consumed a nibble at a time from the top
+    reg [31:0] rep_val;             // the value being printed, consumed a nibble at a time from the top
 
     // ---- character classes --------------------------------------------------------------------
     wire c_nl    = (rx_data == 8'h0A) || (rx_data == 8'h0D);
@@ -76,7 +76,7 @@ module uart_cmd (
             bus_wdata  <= 32'd0;
             rep_kind   <= REP_OK;
             rep_idx    <= 4'd0;
-            rep_hex    <= 32'd0;
+            rep_val    <= 32'd0;
             tx_data    <= 8'd0;
         end else begin
             case (st)
@@ -145,7 +145,7 @@ module uart_cmd (
             end
 
             P_RD_L: begin
-                rep_hex  <= bus_rdata;
+                rep_val  <= bus_rdata;
                 rep_kind <= REP_HEX;
                 rep_idx  <= 4'd0;
                 st       <= P_REPL;
@@ -157,7 +157,7 @@ module uart_cmd (
                 case (rep_kind)
                 REP_HEX: begin
                     if (rep_idx == 4'd8) begin tx_data <= 8'h0A; st <= P_IDLE; end
-                    else begin tx_data <= hexchar(rep_hex[31:28]); rep_hex <= {rep_hex[27:0], 4'd0}; end
+                    else begin tx_data <= hexchar(rep_val[31:28]); rep_val <= {rep_val[27:0], 4'd0}; end
                 end
                 REP_OK: begin
                     if (rep_idx == 4'd0)      tx_data <= 8'h4F;                      // 'O'

@@ -24,6 +24,7 @@ import router as R
 LAYERS = [pcbnew.F_Cu, pcbnew.In2_Cu, pcbnew.B_Cu]
 LIDX = {pcbnew.F_Cu: 0, pcbnew.In2_Cu: 1, pcbnew.B_Cu: 2}
 VIA = (0.45, 0.25)                 # pad, drill: JLCPCB's standard 4-layer via
+TAB_MIN = 0.75                     # a chip's ground pad this wide or more is a paddle or tab (vias inside it)
 # Planes: a via or through-hole pad of the net, inside the polygon (board
 # mm; None = everywhere), is joined through that plane.  GND is In1.Cu, solid;
 # routes.py adds the In2 supply pours (their real outlines, inset by a margin).
@@ -122,6 +123,7 @@ class Router:
         self.eps = []
         self.ep_refs = set()
         self.ep_shape = {}
+        self.tabs = []                                 # a chip's smaller ground paddle or tab: vias inside it (tab_vias)
         n_rules = 0
         for fp in self.board.GetFootprints():
             for it in fp.GraphicalItems():
@@ -176,15 +178,26 @@ class Router:
                     self.ep_refs.add(fp.GetReference())
                     self.ep_shape[fp.GetReference()] = shape
                     continue
+                # a chip's ground paddle or tab under 1.5 mm (the SKY65404's 1.3 x 0.8, the SOT-89's tab:
+                # a custom pad, judged by its outline): vias inside it too, where they fit (the design
+                # review: the LNA's paddle had none and the gain blocks' tabs none)
+                if (att == pcbnew.PAD_ATTRIB_SMD and net == "GND" and fp.GetReference().startswith("U") and shape[0] == "rect"
+                        and min(shape[3], shape[4]) * 2 >= TAB_MIN):
+                    self.tabs.append((pad, shape, fp.GetReference()))
+                    continue
                 # no vias inside any other pad (SMD or through hole), nor touching it
                 self._novia_shape(shape, VIA[0] / 2 + R.CLEAR)
-        print("copper: %d footprint rule areas, %d exposed pads" % (n_rules, len(self.eps)), flush=True)
+        self.n_tab_vias = self.tab_vias()          # first, before any fence or fan-out via can stand in a tab
+        print("copper: %d footprint rule areas, %d exposed pads, %d vias in %d smaller paddles and tabs"
+              % (n_rules, len(self.eps), self.n_tab_vias, len(self.tabs)), flush=True)
 
-    def ep_vias(self, pitch=1.0, inset=0.45):
+    def ep_vias(self, pitch=0.8, inset=0.45):
         """A grid of ground vias inside every exposed pad (CLAUDE_PCB.md section 5: many vias in an
         RF chip's paddle; they also join the paddle to the plane, so the chip's ground pins can be
         tied to it with short tracks instead of a via in front of each, which walled its
-        neighbours in).  Returns the number made."""
+        neighbours in).  At 0.8 mm a 2.6 mm paddle takes 3 x 3, the ADL5380's and ADL5375's
+        datasheet pattern (1.0 mm gave 2 x 2: the design review); then the smaller paddles and
+        tabs (tab_vias, made with the pads).  Returns the number made."""
         n = 0
         for net, shape, ref in self.eps:
             _, cx, cy, hw, hh, ang = shape
@@ -199,6 +212,32 @@ class Router:
                         continue
                     self.via(net, x, y)
                     n += 1
+        return n
+
+    def tab_vias(self, spacing=0.75, margin=0.05):
+        """Vias inside each smaller ground paddle or tab: as many along each axis as fit `spacing`
+        apart (0.5 mm of drill to drill at the least), each wholly inside the pad's copper (its
+        outline tested, so the SOT-89's tab takes them and its narrow lead does not)."""
+        n = 0
+        r = VIA[0] / 2 + margin
+        for pad, shape, ref in self.tabs:
+            _, cx, cy, hw, hh, ang = shape
+            pos = []
+            for half in (hw, hh):
+                span = max(0.0, 2 * (half - r))
+                k = 1 + int(span / spacing + 1e-9)
+                pos.append([0.0] if k == 1 else [-span / 2 + i * span / (k - 1) for i in range(k)])
+            for dx in pos[0]:
+                for dy in pos[1]:
+                    x, y = cx + dx, cy + dy
+                    ring = [(x, y)] + [(x + r * math.cos(a), y + r * math.sin(a)) for a in [i * math.pi / 4 for i in range(8)]]
+                    if not all(pad.HitTest(self.P(px, py)) for px, py in ring):
+                        continue
+                    if self.g.novia[self.g.k(x, y)]:
+                        continue
+                    self.via("GND", x, y)
+                    n += 1
+            self._novia_shape(shape, VIA[0] / 2 + R.CLEAR)     # then no other via in it, nor touching it
         return n
 
     def _inner_cells(self, shape, m=0.075):

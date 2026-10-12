@@ -61,6 +61,14 @@ ADC_CH = {"I": 0, "Q": 1, "VC": 2, "ERR": 3}
 ADC_LSB_V = 4.096 / 32768
 V_MID = 1.65                # the arms' and the comparators' centre
 
+# the received level (Prompt 18: "a received signal strength indicator"): no detector chip (PLAN.md section 4);
+# once the loop is locked, I is the carrier's amplitude, and the DSA's setting is what the level needed.
+# sim/budget.py sections 3 and 7:
+RX_GAIN_DB = 39.2           # RX ANT to the demodulator's input, the DSA at 0 dB: LNA 13 - DSA 2.4 + 2 x ADL5611 14.3
+DEM_REG_DBM = -20.0         # the demodulator's input at the regulated level ...
+A_REG_V = 0.249             # ... where the fast arm's peak a, differential at the comparators, is 249 mV
+DSA_POWER_UP_DB = 31.75     # the PE43711 starts at its maximum in serial mode (its datasheet, "Power-up control")
+
 # the transmitter's ladders: a level per axis -> its two bits (tx_symbol.v: 00 = -a, 01 / 10 = 0, 11 = +a)
 LEVEL_CODE = {1: 0b11, 0: 0b01, -1: 0b00}
 
@@ -308,6 +316,8 @@ class CostasLink:
         self.clk_mhz = bits(b, 31, 16) or 100
         self.t_clk = 1e-6 / self.clk_mhz
         self.t_sample = self.t_clk / self.ser
+        self._dsa_db = DSA_POWER_UP_DB
+        self._i_zero = V_MID
 
     def wait_s(self, seconds):
         """wall time on a board; the simulator's clocks on a bus that has them (PipeBus)"""
@@ -397,7 +407,50 @@ class CostasLink:
         """the PE43711: 0-31.75 dB in 0.25 dB steps"""
         code = max(0, min(127, int(round(db / 0.25))))
         self.spi(2, code)
+        self._dsa_db = code * 0.25
         return code * 0.25
+
+    # ---- the received level and the AGC ----
+    def rssi_zero(self, n=16):
+        """I_P's level with no carrier (the far end muted): the arm's own centre, which received_dBm()
+        measures the amplitude from (V_MID until this is called)"""
+        self._i_zero = sum(self.adc("I") for _ in range(n)) / n
+        return self._i_zero
+
+    def received_dBm(self, n=8, ext_db=0.0):
+        """The carrier's level (dBm), from the locked I arm (the ADC's I_P, n readings) and the DSA's
+        setting: at RX ANT, or at the antenna when `ext_db` names the gain of what is between them (an
+        LNA module +15, a pad -30).  Valid only with the loop locked (I is then the amplitude, at 0 or
+        180 degrees); None when the arm reads less than two ADC steps.  Unlocked, read RX MON instead."""
+        v = sum(self.adc("I") for _ in range(n)) / n
+        a = 2.0 * abs(v - self._i_zero)                       # I_P is V_MID + I / 2
+        if a < 2 * ADC_LSB_V:
+            return None
+        return DEM_REG_DBM + 20 * math.log10(a / A_REG_V) - RX_GAIN_DB + self._dsa_db - ext_db
+
+    def agc(self, target_db=0.0, tol_db=0.5, steps=12, settle_s=0.01):
+        """Step the DSA until the demodulator sits at the regulated level (+ target_db) within tol_db,
+        which also sets the Costas loop's gain (Kd follows the level: PLAN.md section 10.1).  Returns
+        (the DSA's dB, the level at RX ANT in dBm), or the last pair when the DSA runs out of range."""
+        r = None
+        for _ in range(steps):
+            r = self.received_dBm()
+            if r is None:                                     # nothing readable: open the DSA by 10 dB
+                if self._dsa_db <= 0:
+                    return self._dsa_db, None
+                self.dsa(self._dsa_db - 10.0)
+                self.wait_s(settle_s)
+                continue
+            dem = r + RX_GAIN_DB - self._dsa_db               # what the demodulator sees now
+            err = dem - (DEM_REG_DBM + target_db)
+            if abs(err) <= tol_db:
+                break
+            want = min(31.75, max(0.0, self._dsa_db + err))
+            if abs(want - self._dsa_db) < 0.125:               # at an end of the DSA's range
+                break
+            self.dsa(want)
+            self.wait_s(settle_s)
+        return self._dsa_db, r
 
     # ---- I2C ----
     def i2c(self, addr, wbytes=b"", nread=0, timeout=0.1):

@@ -337,15 +337,17 @@ def synthesizer(ref, x, y, rail, le_name, mux_name, lo_name, mon_name, ref_src, 
 
 
 def arm(S, name, ref, hp, lp, yf, xf, rf_key, rg_key="R 1k", rs_key="R 1.2k", shunts=True, hlabels=False, out_rc=None, trim=None, note_text=None,
-        node_label=None):
+        node_label=None, out_tap=None):
     """One baseband arm: the pair (hp, lp) through two Rg into a THS4541 at (xf, yf) with the
     feedback resistors `rf_key`; `shunts` adds the 1.2 k level-shift shunts at the summing nodes
     (for the 3.2 V pairs out of the demodulator); `hlabels` also exports the output pair as
     hierarchical labels NAME_P / NAME_N; `out_rc` = (R key, C key) puts a series R and a shunt C on
     each output (the slow path's pole); `trim` = a net name whose voltage reaches the IN- summing
     node through 100 k (an offset trim, drawn here); `node_label` exports the IN- summing node itself as
-    a hierarchical label at the left end of its row, for a trim drawn on another sheet.  Returns the
-    output pair (after the RC when there is one)."""
+    a hierarchical label at the left end of its row, for a trim drawn on another sheet; `out_tap`
+    names a monitor tap on the + output AHEAD of the RC (CLAUDE_PCB.md section 9: never tap a
+    comparator's input behind a series resistor; the design review).  Returns the output pair
+    (after the RC when there is one)."""
     fda = part("THS4541", ref, xf, yf)
     fbn, inp, inn, fbp, vocm = fda.pin("1"), fda.pin("2"), fda.pin("3"), fda.pin("4"), fda.pin("9")
     outp, outn = fda.pin("10"), fda.pin("11")
@@ -419,6 +421,10 @@ def arm(S, name, ref, hp, lp, yf, xf, rf_key, rg_key="R 1k", rs_key="R 1.2k", sh
     if hlabels:
         S.hlabel(xo, outp[1], name + "_P", shape="output", rot=0)
         S.hlabel(xo, outn[1], name + "_N", shape="output", rot=0)
+    if out_tap:
+        J(xo, outp[1])
+        W((xo, outp[1]), (xo, outp[1] - 15.24))
+        tap(xo, outp[1] - 15.24, out_tap)
     if out_rc:
         rk, ck = out_rc
         # P: series R, node, capacitor to ground.  N jogs down 12.7 first so its capacitor and P's do not meet.

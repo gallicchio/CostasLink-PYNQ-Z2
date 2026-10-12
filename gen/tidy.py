@@ -84,6 +84,34 @@ def _nearest(board, item, p, layer, net, pads):
     return None if best is None else best[1]
 
 
+def _r(p):
+    return (round(p[0], 4), round(p[1], 4))
+
+
+def _seg_key(t):
+    return (t.GetNetCode(), t.GetLayer(), tuple(sorted([_r(_mm(t.GetStart())), _r(_mm(t.GetEnd()))])))
+
+
+def dedupe(board, log=print):
+    """Remove every track that repeats another of its net on its layer end for end, keeping the
+    widest (snap_to_vias added its joining segment again on every pass until build 18, and the
+    router laid some twice: build 17 carried 90).  Returns how many it removed."""
+    best = {}
+    for t in board.GetTracks():
+        if t.GetClass() == "PCB_VIA":
+            continue
+        k = _seg_key(t)
+        if k not in best or t.GetWidth() > best[k].GetWidth():
+            best[k] = t
+    gone = [t for t in board.GetTracks() if t.GetClass() != "PCB_VIA"
+            and t.m_Uuid.AsString() != best[_seg_key(t)].m_Uuid.AsString()]
+    for t in gone:
+        board.Remove(t)
+    if gone:
+        log("   tidy: %d duplicate track segments removed" % len(gone))
+    return len(gone)
+
+
 def snap_to_vias(board, log=print):
     """Join every track end that lies inside a via of its own net, but off its centre, to the centre by
     a short segment.  The planned fan-out vias stand at exact, off-grid places and the router ends its
@@ -97,13 +125,18 @@ def snap_to_vias(board, log=print):
         if t.GetClass() == "PCB_VIA":
             vias.setdefault(t.GetNetCode(), []).append((_mm(t.GetPosition()), pcbnew.ToMM(t.GetWidth(pcbnew.F_Cu)) / 2.0))
     added = 0
+    have = {_seg_key(t) for t in board.GetTracks() if t.GetClass() != "PCB_VIA"}
     for t in list(board.GetTracks()):
         if t.GetClass() == "PCB_VIA":
             continue
         for p in (_mm(t.GetStart()), _mm(t.GetEnd())):
             for c, r in vias.get(t.GetNetCode(), []):
                 d = math.hypot(p[0] - c[0], p[1] - c[1])
+                key = (t.GetNetCode(), t.GetLayer(), tuple(sorted([_r(p), _r(c)])))
+                if 0.005 < d <= r + 0.001 and key in have:
+                    break                     # joined by an earlier pass (tidy runs again after the refill)
                 if 0.005 < d <= r + 0.001:
+                    have.add(key)
                     s_ = pcbnew.PCB_TRACK(board)
                     s_.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(p[0]), pcbnew.FromMM(p[1])))
                     s_.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(c[0]), pcbnew.FromMM(c[1])))
@@ -178,6 +211,7 @@ def tidy(board, log=print):
     whole path with it, Response 14's first run).  Then dead stubs, then vias touching nothing."""
     joined = removed = 0
     snap_to_vias(board, log)
+    removed += dedupe(board, log)
     joined += join_isolated_pads(board, log)
     for _ in range(8):
         board.BuildConnectivity()

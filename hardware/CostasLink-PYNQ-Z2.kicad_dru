@@ -2,6 +2,9 @@
 # Written by gen/project.py.  Edit that, not this.
 # (no silk_clearance rule: KiCad 10 then reports every designator against Fab text and
 #  courtyards as a silkscreen overlap; its built-in silk checks stay on)
-(rule "LO pair skew"
-    (constraint skew (max 0.5mm))
-    (condition "A.NetClass == 'LO' && B.NetClass == 'LO'"))
+# The 50 ohm lines' CPWG gap: the ground pour keeps 0.25 mm from every RF and LO track and pad.
+# (The LO legs' equal length is gen/board.lo_skew's gate: each leg is three nets through two DC
+#  blocks, which KiCad's skew constraint cannot add up.)
+(rule "CPWG gap"
+    (constraint clearance (min 0.25mm))
+    (condition "(A.NetClass == 'RF' || A.NetClass == 'LO') && B.Type == 'Zone'"))

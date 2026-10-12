@@ -177,6 +177,11 @@ CAPS = {
     "10uF": ("C15850", "CL21A106KAYNNNE", "C_0805_2012Metric", ["10uF", "0805"], "bulk (Basic)"),
     "22uF": ("C45783", "CL21A226MAQNNNE", "C_0805_2012Metric", ["22uF", "0805"], "input bulk (Basic)"),
 }
+# the hot-plug damper on +5V_IN (CLAUDE_PCB.md section 15; the design review: the input was all
+# ceramic): a polymer whose ESR is about the tank's impedance, sqrt(L / C) for a metre of USB cable
+# (~0.5 uH) against the two 22 uF (~30 uF at 5 V), 0.13 ohm, and four times their capacitance
+PARTS["CP 100uF"] = P("C_Polarized", "CP_Elec_5x5.9", STOCK + "Capacitor_SMD", "C19270534", "1010100506TR", "100uF",
+                      ["100uF", "10V", "Polymer"], "+5V_IN hot-plug damping: polymer, 100 mOhm ESR (the cable's ring), 10 V over the TVS's 9.2 V clamp")
 RES = {
     "0R": ("C17168", "0402WGF0000TCE", ["0Ω", "0402"]),
     "2.2R 1206": ("C144499", "AC1206FR-072R2L", ["2.2Ω", "1206"]),

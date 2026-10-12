@@ -48,7 +48,11 @@ IN2_SIG_COST = float(os.environ.get("COSTASLINK_IN2_COST", "3.0"))
 RF_W, RF_GAP = rf_lines.RF_W, rf_lines.RF_GAP
 FENCE_PITCH = 1.2                      # ground vias along an RF line, both sides (lambda/10 in the dielectric at 5.8 GHz is 2.5 mm)
 FENCE_OFF = RF_W / 2 + RF_GAP + 0.45   # the fence's centre line from the track's: the via's pad clears the coplanar gap
-BB_W = 0.2                             # baseband pairs and the LO pairs
+BB_W = 0.2                             # baseband pairs
+# the PAIR_PATHS that carry 5.8 GHz: the LO pairs and the couplers' ports, 50 ohm lines like the RF chains
+# (they were BB_W, 57-60 ohm: the design review)
+RF_PAIRS = ("RX LO +", "RX LO -", "TX LO +", "TX LO -", "RX MON", "TX MON", "RX ISO", "TX ISO")
+LO_PAIRS = ("RX LO +", "RX LO -", "TX LO +", "TX LO -")
 SIG_W = 0.15
 FAN_W = 0.15                           # a fan-out line
 PWR_W = 0.2                            # the rails' links to their pours (the pours carry the current; a wider
@@ -93,8 +97,9 @@ RF_PATHS = [
 # the pairs and monitor lines laid straight at BB_W on the top layer, pad to pad through the
 # series parts on the line (an L where a straight segment is not clear; the router where neither is)
 PAIR_PATHS = [
-    ("RX LO +", ("U115", "12"), ("U104", "9")), ("RX LO -", ("U115", "13"), ("U104", "10")),
-    ("TX LO +", ("U203", "12"), ("U201", "3")), ("TX LO -", ("U203", "13"), ("U201", "4")),
+    # P to LOIN and N to LOIP: the pins face each other (sheets 1 and 2, gen/placement.LO_LINKS)
+    ("RX LO +", ("U115", "12"), ("U104", "10")), ("RX LO -", ("U115", "13"), ("U104", "9")),
+    ("TX LO +", ("U203", "12"), ("U201", "4")), ("TX LO -", ("U203", "13"), ("U201", "3")),
     ("I hi", ("U104", "3"), ("U105", "2")), ("I lo", ("U104", "4"), ("U105", "3")),
     ("Q hi", ("U104", "16"), ("U106", "2")), ("Q lo", ("U104", "15"), ("U106", "3")),
     ("I slow +", ("U105", "10"), ("U501", "2")), ("I slow -", ("U105", "11"), ("U501", "3")),
@@ -323,52 +328,86 @@ def pair_lines_by_plan(R, pads):
                 continue
             box = (min(pa[0], pb[0]) - 3, min(pa[1], pb[1]) - 3, max(pa[0], pb[0]) + 3, max(pa[1], pb[1]) + 3)
             copper = local_copper(R, 0, box)
-            need = BB_W / 2 + RR.CLEAR
-            why = []
-            ok = lambda p, q: _clear_of(copper, net, p, q, need, why) and _keep_free(R, 0, p, q)
-            # the stubs: NECK_L straight out of a narrow pad, along its axis (a coupler's own copper
-            # ends inside its pads and is not in the way of a stub out of one)
-            stubbed = getattr(R, "stubbed", set())
-            own = [c for c in copper if not (c[4].startswith("copper ") and c[4].split()[1] in (a[0], b[0]))]
+            # a 50 ohm line where 0.29 mm fits, else 0.2 mm (the RX coupler's isolated port had no room: build 18)
+            for width in ((RF_W, BB_W) if name in RF_PAIRS else (BB_W,)):
+                need = width / 2 + RR.CLEAR
+                why = []
+                ok = lambda p, q: _clear_of(copper, net, p, q, need, why) and _keep_free(R, 0, p, q)
+                # the stubs: NECK_L straight out of a narrow pad, along its axis (a coupler's own copper
+                # ends inside its pads and is not in the way of a stub out of one)
+                stubbed = getattr(R, "stubbed", set())
+                own = [c for c in copper if not (c[4].startswith("copper ") and c[4].split()[1] in (a[0], b[0]))]
 
-            def stub_of(key, pk):
-                """The run out of the pad: the fan band's depth at a fine pin if that is clear, else
-                the short neck; None for a wide pad."""
-                for run in ((PIN_RUN, 0.9, NECK_L) if fine_pin(pads, key) else (None,)):
-                    n = neck(pads, key, run)
-                    if n is None:
-                        return None, pk
-                    if key in stubbed or (_clear_of(own, net, pk, n[0], need, why) and _keep_free(R, 0, pk, n[0])):
-                        return n, n[0]
-                return False, pk
-            na, qa = stub_of(a, pa)
-            nb, qb = stub_of(b, pb)
-            stubs = [(pa, qa, a[0])] if na and a not in stubbed else []
-            stubs += [(pb, qb, b[0])] if nb and b not in stubbed else []
-            if na is False or nb is False:
-                left.append("%s: %s.%s -> %s.%s: the stub out of the pad (%s)" % (name, a[0], a[1], b[0], b[1], ", ".join(sorted(set(why)))))
-                continue
-            pts = None
-            if ok(qa, qb):
-                pts = [qa, qb]
-            else:
-                ua = (qa[0] - pa[0], qa[1] - pa[1]) if na else None
-                ub = (qb[0] - pb[0], qb[1] - pb[1]) if nb else None
-                nb_pins = sum(1 for k in pads.xy if k[0] == b[0])
-                na_pins = sum(1 for k in pads.xy if k[0] == a[0])
-                for c in _corners(qa, qb, ua, ub, nb_pins >= na_pins):
-                    why = []
-                    if ok(qa, c) and ok(c, qb):
-                        pts = [qa, c, qb]
-                        break
+                def stub_of(key, pk):
+                    """The run out of the pad: the fan band's depth at a fine pin if that is clear, else
+                    the short neck; None for a wide pad."""
+                    for run in ((PIN_RUN, 0.9, NECK_L) if fine_pin(pads, key) else (None,)):
+                        n = neck(pads, key, run)
+                        if n is None:
+                            return None, pk
+                        if key in stubbed or (_clear_of(own, net, pk, n[0], need, why) and _keep_free(R, 0, pk, n[0])):
+                            return n, n[0]
+                    return False, pk
+                na, qa = stub_of(a, pa)
+                nb, qb = stub_of(b, pb)
+                stubs = [(pa, qa, a[0])] if na and a not in stubbed else []
+                stubs += [(pb, qb, b[0])] if nb and b not in stubbed else []
+                if na is False or nb is False:
+                    pts = None
+                    continue
+                pts = None
+                if ok(qa, qb):
+                    pts = [qa, qb]
+                else:
+                    ua = (qa[0] - pa[0], qa[1] - pa[1]) if na else None
+                    ub = (qb[0] - pb[0], qb[1] - pb[1]) if nb else None
+                    nb_pins = sum(1 for k in pads.xy if k[0] == b[0])
+                    na_pins = sum(1 for k in pads.xy if k[0] == a[0])
+                    for c in _corners(qa, qb, ua, ub, nb_pins >= na_pins):
+                        why = []
+                        if ok(qa, c) and ok(c, qb):
+                            pts = [qa, c, qb]
+                            break
+                if pts is not None:
+                    break
             if pts is None:
                 left.append("%s: %s.%s -> %s.%s (%s)" % (name, a[0], a[1], b[0], b[1], ", ".join(sorted(set(why))[:6])))
                 continue
             for p, q, _ in stubs:
-                R.track(net, 0, p, q, BB_W)
-            R.polyline(net, 0, pts, BB_W)
+                R.track(net, 0, p, q, min(width, NECK_W) if name in RF_PAIRS else BB_W)   # a pin's own width out of it
+            R.polyline(net, 0, pts, width)
             laid += 1
+        if name in LO_PAIRS:
+            laid += choke_stubs(R, pads, chain, left, name)
     return laid, left
+
+
+def choke_stubs(R, pads, chain, left, name):
+    """Each LO leg's pull-up choke (gen/placement.lo_blocks stands it beside its leg's
+    synthesizer-side block, outboard): a straight stub from its pad to that block's pad, laid
+    with the leg so both legs carry the same stub."""
+    n = 0
+    for key in chain:
+        net = pads.net[key]
+        for other in pads.of[net]:
+            if other[0][0] != "L" or other in chain:
+                continue
+            near = min((k for k in chain if pads.net[k] == net), key=lambda k: math.hypot(pads.xy[k][0] - pads.xy[other][0],
+                                                                                       pads.xy[k][1] - pads.xy[other][1]))
+            if near != key:
+                continue
+            a, b = pads.xy[other], pads.xy[key]
+            box = (min(a[0], b[0]) - 3, min(a[1], b[1]) - 3, max(a[0], b[0]) + 3, max(a[1], b[1]) + 3)
+            why = []
+            if _clear_of(local_copper(R, 0, box), net, a, b, CHOKE_W / 2 + RR.CLEAR, why) and _keep_free(R, 0, a, b):
+                R.track(net, 0, a, b, CHOKE_W)
+                n += 1
+            else:
+                left.append("%s: the choke %s.%s -> %s.%s (%s)" % (name, other[0], other[1], key[0], key[1], ", ".join(sorted(set(why)))))
+    return n
+
+
+CHOKE_W = 0.25                         # an LO pull-up choke's stub to its line
 
 
 # ---------------------------------------------------------------------------------------------
@@ -949,10 +988,36 @@ def fine_chips(pads):
     return [r for r in first if r in refs] + sorted(r for r in refs if r not in first)
 
 
+CLASSES_JSON = os.path.join(BI.ROOT, "build", "netclasses.json")
+
+
+def write_classes(pads):
+    """The nets of the RF and LO net classes, by name, from the walks this file lays them by
+    (gen/project.py binds them exactly: its name patterns had matched none of them, so the CPWG gap
+    and the pair rule bound nothing: the design review), and each LO leg's nets in order for the
+    skew gate (gen/board.lo_skew)."""
+    import json
+    rf, lo, legs = set(), set(), {}
+    for name, start, stop in RF_PATHS + [p for p in PAIR_PATHS if p[0] in RF_PAIRS]:
+        chain = walk(pads, start, stop)
+        nets = [pads.net[k] for k in chain[0::2]]
+        if name in LO_PAIRS:
+            lo.update(nets)
+            legs[name] = nets
+        else:
+            rf.update(nets)
+    os.makedirs(os.path.dirname(CLASSES_JSON), exist_ok=True)
+    json.dump({"RF": sorted(rf), "LO": sorted(lo), "lo_legs": legs}, open(CLASSES_JSON, "w"), indent=1)
+
+
 def plan_and_route(R, pads, planned_only=False):
     """Everything from the pours to the last widened rail; returns a dict of counts."""
     out = {}
+    write_classes(pads)
     R.keepout(*IDENTITY_STRIP, [2], via=True)     # the identity block on the back (gen/silk.bottom): no track or via under it, from the start
+    for kb in PL.MARK_KEEP[:-1]:
+        R.keepout(*kb, [0], via=True)            # a fiducial: bare laminate round its dot (gen/board.marks)
+    R.keepout(*PL.MARK_KEEP[-1], [0, 1, 2], via=True)     # the layer numbers, on every layer
     supply_pours(R)
     laid, segs = rf_lines_by_plan(R, pads)
     out["rf_nets"] = len(laid)

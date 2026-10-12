@@ -2353,3 +2353,189 @@ Left out:
 
 **Ready.**  Start each LLM in `CostasLink-PYNQ-Z2/` with: "Read DESIGN_REVIEW_PROMPT.md and follow it.  You are
 <Name>; your directory is design_review_<Name>/."
+
+## Prompt 18 (2026-10-11 22:00 PDT)
+
+The other LLM's reviews are in. Fix the legitimate schematic and PCB and other problems that they found. Summarize with a ranking of how useful and insightful each reviewer was
+
+Then, simulate the trajectory from "idle" to each of the 4 states at the receiver. Show i and Q as function of time. Do this starting with your chosen component values and the chip's specs. In the plot, also show the threshold and outputs of Comparator. Somehow show both the fast and slow paths. It should be clear from these plots thst the I and Q signals themselves have some slower timescale, corresponding to a 100 MHz bandwidth (if that's correct), but that for high SNR, the decision of where it's going can be made early on in the trajectory.
+Then show a second type of plot: the path on the I/Q plane, using dots of equal time with different dots every 10 nanoseconds (or whatever would help interpret the time scale in the plot). Draw the comparator regions on these plots, such that visually, one could see how long each trajectory would take to trigger the Comparator thresholds.
+Do a few additional simulations with noise added to get a sense of that. Noise runs can be shown on these plots with very transparent alpha. These plots, along with the others, should all be presented in a very clear and pedagogical way in a markdown file describing the setups.
+
+As usual, log this prompt and your response in the CHAT file. Be sure to show the plots in your response, including here in the chat, so I can comment on them from my phone.
+
+## Response 18 (2026-10-11 22:00 - 2026-10-12 00:25)
+
+**Build 18 fixes what the four reviewers found.  The worst was the LO pairs: they were crossed, and one leg
+ran 4× the other.  The board routes completely (DRC 0 items), and the release passes every gate
+(2026-10-12 00:19).  The trajectories are in [`docs/TRAJECTORIES.md`](docs/TRAJECTORIES.md); the plots were
+sent to the chat.**
+
+**The fixes** (DESIGN_REVIEW_RESPONSE.md reconciles every finding; REVA_CHANGES.md entries 8-21):
+
+- **The LO pairs** (KimiK3, from the copper).  The MAX2871's RFOUTA_P faces the mixer's LOIN, so the P-to-LOIP
+  pair had to cross.  One leg ran 10 mm, the other 42-44 mm round the chip.
+  - Both sheets now take P to LOIN and N to LOIP.  Inverting the LO inverts I and Q together, which sign(I)·Q
+    ignores.
+  - The DC blocks and the chokes stand as mirror images, in a corridor.
+  - A gate fails the build over 0.5 mm of skew.  Now 10.76 / 10.76 mm (RX) and 11.76 / 11.76 mm (TX).
+- **The RF and LO net classes bound no net** (Gemini3.8Flash).  They are now bound by exact names from the
+  router's own walks, with a zone rule for the 0.25 mm CPWG gap.  The board is refilled in a fresh KiCad
+  process: in-process, KiCad had filled by a default project and written it over the .kicad_pro, which gave
+  479 DRC errors on the first try.
+- **Paddle vias** (Grok4.7): 3 × 3 at 0.8 mm in the 2.6 mm paddles.  Vias now also go in the SKY65404's paddle
+  and the ADL5611 tabs (11 in all).
+- **Kd was twice the real one** (GPT-5.6Terra): U110 passes one leg against V_MID.  R126 20 k → 10 k (fn
+  2.9 kHz, ζ 0.68).
+- **The ADL5375's N-side bias divider** carried the chip's own 2 × 41 µA: 0.61 V instead of 0.51 V.  Now
+  4.7 k / 750 Ω, which gives 0.507 V.
+- **I/Q SLOW MON** moved ahead of the 4.8 MHz pole (CLAUDE_PCB.md section 9).
+- **C320**, a 100 µF polymer (0.1 Ω ESR), damps a hot plug on +5V_IN.
+- **Three fiducials and the copper layer numbers**, as netless graphics.
+- **The SW TX limit:** +29 → +25 dBm, from the HMC536's guaranteed numbers.
+- **The budget:**
+  - the ADL5611's 5.8 GHz row (P1dB 12.8 dBm, NF 6.0 dB);
+  - NF by Friis (2.0 dB: every range shrinks about 6 %; PLAN.md's tables are refreshed);
+  - the THS4541's guaranteed CM limit (61 mV of margin at the worst corner);
+  - the 5 V path at its maxima (≥ 4.89 V from 5.10 V).
+- **Gateware lint** under Verilator 5.051.  All testbenches pass; Vivado WNS +1.661 ns; the Icepi reaches
+  105.7 MHz.
+- **The documents:** PLAN.md and BRINGUP.md corrected and extended.  BRINGUP.md now covers the supply, the
+  power order, setting the DSA before judging lock, the summing nodes, TRIG IN into 50 Ω, and the field list
+  (the PA through the switch, exposure, arrestors, heat, the second harmonic).
+
+**What I rejected, with reasons:**
+
+- GPT's "impedance control = respin": a step costs about 0.1 dB.  Free standard impedance control is
+  insurance for the order day.
+- Gemini's "LO matched within 0.1 mm": false.
+- Kimi's APR argument: the APR already includes the VCXO's own tolerance.
+- Kimi's invented cross-references.
+
+**The reviewers, most useful first:**
+
+1. **KimiK3.**  It found the worst defect by parsing the copper, plus five more findings no one else had.
+   Its citations are unreliable.
+2. **Grok4.7.**  The most accurate, with the best-calibrated severities, and two findings no one else had
+   (the window comparators at power-up, the PTC's derating).
+3. **GPT-5.6Terra.**  The sharpest single catch (Kd), the narrowest review.
+4. **Gemini3.8Flash.**  One important catch (the netclasses), but a confident false confirmation of the LO
+   pairs.
+
+**The trajectories** (`sim/trajectories.py`).  The chain is the board's own:
+- the PYNQ header RC, the ladder node and the ADL5375 on the transmitter;
+- the ADL5380 and the THS4541 at 94 MHz on the receiver;
+- TLV3601s with 2.5 ns and 3 mV;
+- the slow stage ×20, clipped, into 1 k / 33 pF;
+- the gateware's own decoder table.
+
+Noise is 40 runs per corner at the bench SNR (38.2 dB) and the 3 km SNR (22.6 dB).  The four time plots,
+the I/Q plane, the slow plane and the latency against SNR are in the markdown file, explained panel by
+panel.  What they show:
+
+- **"100 MHz" is right for the receiver's arm** (3.9 ns rise).  End to end the rise is 6.6 ns, because the
+  PYNQ's 200 Ω header resistors into about 10 pF add 4.4 ns at the transmitter.
+- **High SNR buys early decisions.**  The CFAR window sits 7.5 σ from the idle: 0.60 a at 3 km, crossed at
+  8.2 ns; 0.10 a on the bench, crossed at 5.2 ns, a tenth of the way into the rise.
+- **sign(I) is crossed at mid-rise at any SNR** (A3's I bit).  B2 avoids that.
+- **The slow path confirms Q about 6 ns after the fast event, and I about 25 ns after it.**  Its I starts
+  saturated.
+- **All 320 noisy decisions were right.**
+
+> **(23:31)** Keep going, but don't forget to write any lessons learned, which would be valuable for future PCB work,
+> into CLAUDE_PCB.md.
+
+**Lessons in CLAUDE_PCB.md:**
+
+- section 4: each equation's inputs at the guaranteed figure, the operating row, and the load the next stage
+  really sees;
+- section 5: check that a pair's pins face each other; build placement variants in parallel against a chaotic
+  router; reserve every labelled connector's strip;
+- section 10, gates 20-21: net classes must bind; paddle vias against the land pattern;
+- section 11: LoadBoard's cached default project; the DRC and the connectivity API disagree on a dangling end;
+  a clean-up pass must be idempotent (snap_to_vias had duplicated 786 segments);
+- section 14: a link's rise time includes the transmitter's pins.
+
+> **(23:42)** Keep going, but I had some questions about your trajectory plots. Maybe I'm misunderstanding what some
+> of the signal names mean, but why aren't CMP_QP and CMP_QN always complementary? Also, is there a "data valid"
+> signal so the FPGA knows when the comparators are valid and should be trusted? For example, if there is an idle
+> state and also 00, 01, 10, and 11, how will the FPGA not accidentally think that it went from idle to 10 when it
+> should have waited a tiny bit longer to see that it actually went from idle to 11?
+
+**QP and QN are a window round Q = 0, not the sign of Q.**  At the idle (Q = 0) both are low; QP fires above
++t·a and QN below −t·a.  A sign comparator would sit on the idle, and the noise would toggle it into false
+events.
+
+**The "data valid" is made in time by the gateware, and the table refuses half-finished vectors:**
+
+- The event is the first sample with QP or QN off its idle value.  The decision reads all five fast
+  comparators 4 samples (5 ns) later.
+- The decoder's table maps only the vector each message settles to.  A vector in transit (I between its
+  windows) matches no message and counts as undecided, never as the nearer one.
+- The time plots now carry a strip with the table's view at every instant: idle, then "in transit" from 8.4
+  to 12.7 ns, then the message.  The decision lands well inside the message.
+- The slow path then confirms or vetoes.  With B2, each message moves one comparator alone, and the first
+  edge is the whole answer.
+
+TRAJECTORIES.md has a section on this.
+
+> **(23:56)** Keep going, but is the a received signal strength indicator, so that this can be monitored in operation
+> and used during setup to insert our remove external amplification or attenuation stages?
+
+**There is no detector chip** (PLAN.md section 4 left the AD8318 out).  But with the loop locked, I is the
+carrier's amplitude, and the DSA's setting is what the level needed.
+
+- The driver now has `received_dBm(ext_db)`: the DSA plus the I arm on the ADC, about −90 to −28 dBm at RX
+  ANT, or referred to the antenna through an LNA module or pad.
+- It also has `agc()`, which steps the DSA to the regulated −20 dBm and so restores the loop gain.  Both are
+  tested (17 driver tests).
+- BRINGUP.md stage 5 uses them:
+  - the DSA pinned at 0 dB with the level low: add the LNA module;
+  - pinned at 31.75 dB with the arm high: add a pad.
+- Unlocked, RX MON on the analyser is the reading.
+- A lock-independent detector on the RX coupler's monitor port is a rev B option (REVA_CHANGES 21).
+
+**Found on the way:**
+
+- The router is chaotic.  Moving the slow tap walled in DAC 2's pins, then a comparator input, then U305's
+  ground, then the MAX2871's CE.  Four placement variants built in parallel copies settled it, twice.
+- `snap_to_vias` duplicated its joining segments on every tidy pass; it is now idempotent, with a dedupe.
+- KiCad's DRC and its connectivity disagree on a stub ending mid-track; the refill now asks kicad-cli.
+- REF OUT's limit text lost its place to a re-placed resistor.  R121 is anchored, and REF OUT should join
+  the label rows (a lesson).
+
+**Not done:**
+
+- CONSIGNMENT.md's procedure text: the release rewrote its table, not the process.
+- The fractional-N re-centre in the driver.
+
+## Prompt 19 (2026-10-12 01:05 PDT)
+
+You should always be adding relevant files, .gitignore'ing files that you're sure should not be in the repo, and committing at the end of each reasonable step. You are running alone now, but in general, it's good to check for other LLMs working on this repo in this directory so that you can be conservative about what you do to git, so that you don't stomp on them.
+
+Also, what does DSA mean? Define it when you use it in docs/TRAJECTORIES.md.
+
+## Response 19 (2026-10-12 01:05 - 01:15)
+
+**The DSA is the digital step attenuator: U102, a PE43711 between the LNA and the gain blocks, 0 to
+31.75 dB in 0.25 dB steps, set by the FPGA over SPI.  It is the receiver's gain control.  TRAJECTORIES.md
+now says so at its first use, and expands LNA, GBW, SNR, kTF and CFAR the same way.**
+
+**Committed in two steps, after checking for other agents:**
+
+- Nothing else was changing the tree.  The running Claude sessions in OpticsPCBs (GPSDO, ECP5, the top
+  level) dated from September or early October, `git status` showed only this project's paths plus
+  CLAUDE_PCB.md and .gitignore, and nothing outside it had been written in three hours.
+- A stale `.git/index.lock` blocked the first `git add`.  It was empty, from 2026-10-11 02:14 (inside the
+  review window), and no git process was running, so it went.
+- `git fsck` finds two missing trees.  They belong only to three `refs/agents/.../checkpoints` refs that
+  some agent host left; every object reachable from master, ecp5-2adc-2dac, icepi-maze-router and
+  origin/master is present.  Those refs are not this project's to delete; they are left as they are.
+- **1ba4b42**: the four reviews as received.  The machine paths in Grok4.7's run logs and scripts and in
+  KimiK3's notes were made relative.  The `.gitignore` note now says a public version must also drop the
+  datasheet PDFs and extracts the reviewers copied.  Their private tree copies (`repo/`) stay ignored.
+- **The next commit**: build 18 (Responses 18-19): the fixes, the release, TRAJECTORIES.md and its
+  script, the driver's RSSI, CLAUDE_PCB.md's lessons, this log.  `build/trajectories.json` joins the
+  tracked build outputs, because the document cites it.
+
+From now on each finished step is committed (memory: commit-each-step).

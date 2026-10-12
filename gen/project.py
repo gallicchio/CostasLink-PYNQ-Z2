@@ -40,8 +40,10 @@ LIMITS = {
 # name, track, clearance, via dia, via drill, diff-pair width, diff-pair gap
 CLASSES = [
     ("Default", 0.15, 0.15, 0.45, 0.25, 0.15, 0.15),
-    ("RF", rf_lines.RF_W, rf_lines.RF_GAP, 0.45, 0.25, rf_lines.RF_W, rf_lines.RF_GAP),   # 50 ohm CPWG on L1 over L2
-    ("LO", rf_lines.RF_W, rf_lines.RF_GAP, 0.45, 0.25, rf_lines.RF_W, rf_lines.RF_GAP),   # the synthesizers' differential outputs
+    # 50 ohm CPWG on L1 over L2.  The clearance to other tracks and pads is the default's (a 0.5 mm pitch
+    # RF pin is 0.25 mm from its neighbours); the gap to the ground pour is the "CPWG gap" rule below
+    ("RF", rf_lines.RF_W, 0.15, 0.45, 0.25, rf_lines.RF_W, rf_lines.RF_GAP),
+    ("LO", rf_lines.RF_W, 0.15, 0.45, 0.25, rf_lines.RF_W, rf_lines.RF_GAP),   # the synthesizers' differential outputs
     ("Baseband", 0.2, 0.15, 0.45, 0.25, 0.2, 0.15),       # I/Q from the demodulator to the comparators
     ("Power", 0.5, 0.15, 0.6, 0.3, 0.5, 0.2),             # 3.3 V rails and VC
     ("Power_5V", 0.8, 0.15, 0.6, 0.3, 0.8, 0.2),          # +5V_IN, +5V_RF: 1.3 A
@@ -51,18 +53,34 @@ PATTERNS = [
     ("GND", "GND"),
     ("Power_5V", "/^\\+5V_/"), ("Power_5V", "VBUS"),
     ("Power", "/^\\+3V3_/"), ("Power", "/^VC($|_)/"),
-    ("RF", "/^RF_/"), ("LO", "/^LO_/"),
     ("Baseband", "/^(I|Q)_(HI|LO|P|N)$/"), ("Baseband", "/^BB_/"),
 ]
+
+# The RF and LO classes bind their nets by name: gen/routes.write_classes lists the nets its walks lay
+# (build/netclasses.json; the board step writes the project again once it exists).  Name patterns
+# ("/^RF_/", "/^LO_/") had matched none of them: the nets are "Net-(U101-RF_IN)", "/Receiver and Costas
+# loop/LO_RX_P" (the design review).
+CLASSES_JSON = os.path.join(BI.ROOT, "build", "netclasses.json")
+
+
+def class_patterns():
+    if not os.path.exists(CLASSES_JSON):
+        return []
+    named = json.load(open(CLASSES_JSON))
+    return [(c, n) for c in ("RF", "LO") for n in named.get(c, [])]
+
 
 DRU = '''(version 1)
 # Written by gen/project.py.  Edit that, not this.
 # (no silk_clearance rule: KiCad 10 then reports every designator against Fab text and
 #  courtyards as a silkscreen overlap; its built-in silk checks stay on)
-(rule "LO pair skew"
-    (constraint skew (max 0.5mm))
-    (condition "A.NetClass == 'LO' && B.NetClass == 'LO'"))
-'''
+# The 50 ohm lines' CPWG gap: the ground pour keeps %.2f mm from every RF and LO track and pad.
+# (The LO legs' equal length is gen/board.lo_skew's gate: each leg is three nets through two DC
+#  blocks, which KiCad's skew constraint cannot add up.)
+(rule "CPWG gap"
+    (constraint clearance (min %.2fmm))
+    (condition "(A.NetClass == 'RF' || A.NetClass == 'LO') && B.Type == 'Zone'"))
+''' % (rf_lines.RF_GAP, rf_lines.RF_GAP)
 
 
 def write(hw):
@@ -96,7 +114,7 @@ def write(hw):
                        "pcb_color": "rgba(0, 0, 0, 0.000)", "schematic_color": "rgba(0, 0, 0, 0.000)",
                        "priority": 2147483647 if n == "Default" else 0, "tuning_profile": ""}
                       for n, tw, cl, vd, vdr, dw, dg in CLASSES]
-    net["netclass_patterns"] = [{"netclass": c, "pattern": p} for c, p in PATTERNS]
+    net["netclass_patterns"] = [{"netclass": c, "pattern": p} for c, p in PATTERNS + class_patterns()]
     net.setdefault("meta", {"version": 4})
     sch = pro.setdefault("schematic", {})
     sch.setdefault("meta", {"version": 1})

@@ -82,6 +82,16 @@ RX_X, TX_X = 24.0, 56.0              # the receive chain's and the transmit chai
 # pushed onto the TX line, and the LNA's DC block sideways off the RX line)
 CORRIDORS = [(RX_X - 0.9, SMA_Y + 3.0, RX_X + 0.9, 56.5), (TX_X - 0.9, SMA_Y + 3.0, TX_X + 0.9, 36.0)]
 
+# The board's own marks (CLAUDE_PCB.md section 5; the design review: there were none): three fiducials,
+# netless copper dots in mask openings at three corners on the top (every part JLCPCB places is there),
+# and the copper layers' numbers at one spot.  No part, track, via, pour or silkscreen comes near
+# either (gen/board.marks draws them; gen/routes.plan_and_route and gen/silk keep clear).
+FIDUCIALS = [(11.0, 11.0), (115.5, 15.0), (116.5, 87.5)]
+FID_COPPER, FID_MASK, FID_CLEAR = 0.5, 1.0, 1.5      # radii: the copper dot, the mask opening, nothing else
+LAYER_MARK = (74.0, 30.0)                            # "1" on F.Cu ... "4" on B.Cu, 1.2 mm high
+LAYER_MARK_BOX = (LAYER_MARK[0] - 1.6, LAYER_MARK[1] - 1.3, LAYER_MARK[0] + 1.6, LAYER_MARK[1] + 1.3)
+MARK_KEEP = [(x - FID_CLEAR, y - FID_CLEAR, x + FID_CLEAR, y + FID_CLEAR) for x, y in FIDUCIALS] + [LAYER_MARK_BOX]
+
 
 def at(x, y, rot=0, side="F"):
     return (float(x), float(y), float(rot), side)
@@ -151,14 +161,19 @@ ANCHORS = {
     "J603": at(69.9, 73.6, 90), "J604": at(75.4, 73.6, 90), "J601": at(80.9, 73.6, 90), "J602": at(86.4, 73.6, 90),
     "U605": at(95.5, 70.0, 0),               # the window thresholds' DAC (AD5696R, 0x0C), where DAC 2 stood
     "J103": at(47.0, 78.6, 0),               # CMP I MON (under the SIGN jumper, right of the slow Q comparators)
+    "R121": at(37.7, 82.5, 0),               # its 1 k, between U107 and REF OUT: in build 18's reshuffle the rules put it
+                                             # under REF OUT's name, and J108's limit had nowhere to go
+    "R120": at(40.12, 82.85, 180),           # and the two beside it where the rules had them (the four variants of
+    "R612": at(42.92, 87.1, 180),            # build 18: this one routes completely)
     # ---- transmit chain, straight up x = TX_X ----
     "U203": at(TX_X, 55.0, 180),             # TX synthesizer: RFOUTA on its top face, up into the modulator's LO
     "Y201": at(66.0, 55.0, 0),               # TCXO
     "JP201": at(71.0, 49.0, 90),             # REF: TCXO / REF IN, pins along x
     "J203": at(113.0, 49.0, 0),              # REF IN: an SMA off the right edge, level with JP201 (its line crosses the power column)
     "J204": at(46.5, 45.5, 180),             # LO TX MON: left of the synthesizer, level with its RFOUTB pins' run
-    "C232": at(51.75, 48.66, 90),            # RFOUTB_N's 1.5 pF block where the rules put it (a series part follows its load, so both are anchored)
-    "R220": at(53.65, 48.18, 0),             # and its 49.9 ohm load level with the block's top pad: it was walled in 3 mm away
+    "C232": at(51.25, 48.66, 90),            # RFOUTB_N's 1.5 pF block where the rules put it (a series part follows its load, so both are anchored)
+    "R220": at(53.15, 48.18, 0),             # and its 49.9 ohm load level with the block's top pad: it was walled in 3 mm away
+                                             # (both 0.5 mm left since the LO pair's N leg moved out to x 55.4: the design review)
     "U201": at(TX_X, 38.0, 90),              # ADL5375: RFOUT (16) up, LO (3/4) below, I pins (21/22) left, Q (9/10) right
     "U206": at(TX_X + 10.5, 42.0, 0),        # TX_EN -> DSOP (Response 15, REVA_CHANGES 2): in the room right of the modulator
     "R315": at(13.14, 89.0, 0),              # LE_PLL_RX's pull-down above header pin 33: by rule it hung 12 mm off U115's
@@ -177,8 +192,10 @@ ANCHORS = {
     "J107": at(80.0, 57.5, 0),               # VC MON (MMCX)
     "U113": at(85.0, 69.0, 0),               # DAC 1
     "U114": at(85.0, 81.0, 0),               # ADC
-    "U506": at(9.0, 82.0, 90),               # DAC 2 (0x61): all four outputs serve the left half (V_T2, I_OFF, Q_OFF, I_OFF_F);
-                                             # it sat by DAC 1 until Response 10 and its lines crossed the board.  I2C pins down
+    "U506": at(9.0, 83.0, 90),               # DAC 2 (0x61): all four outputs serve the left half (V_T2, I_OFF, Q_OFF, I_OFF_F);
+                                             # it sat by DAC 1 until Response 10 and its lines crossed the board.  I2C pins down.
+                                             # 1 mm lower since build 18: I SLOW MON's planned line (the tap now ahead of
+                                             # the pole) runs above its I_OFF / Q_OFF pins and had walled them in
     # ---- triggers, left margin ----
     # TRIG A, TRIG B, TRIG IN: SMAs off the left edge (rot 180: the barrel points -x), 11.5 mm apart for the nuts and fingers
     # TRIG A and B a millimetre up from 25 and 36.5 (Response 15): room under TRIG B's name for J208 and its own name
@@ -211,6 +228,7 @@ ANCHORS = {
     "U301": at(98.0, 28.0, 0), "U302": at(98.0, 36.0, 0), "U303": at(98.0, 44.0, 0), "U304": at(98.0, 52.0, 0), "U305": at(98.0, 60.0, 0),
     "J301": at(117.55, 70.0, 90),            # USB-C, its face 1.2 mm past the right edge (rot 90: the pad row toward -x)
     "Q301": at(106.0, 78.0, 0), "D303": at(106.0, 86.0, 0), "FB301": at(88.5, 50.0, 0),
+    "C320": at(94.8, 86.0, 0),               # +5V_IN's 100 uF polymer (the hot-plug damper), left of the 22 uF pair: the rules found no room
     "D301": at(112.0, 62.0, 0), "D302": at(112.0, 57.0, 0),
     "Q302": at(72.0, 86.0, 0), "JP301": at(66.0, 79.5, 90),     # JP301 moved up in Response 14: the comparator row took its place
     "J303": at(103.2, 96.0, 90),             # right of the test pads (Response 15: they moved 4.6 mm right); pins run +x
@@ -560,48 +578,88 @@ class Plan:
         return (0.0, 1.0 if dy >= 0 else -1.0)
 
     # ---- the LO pairs' blocks -----------------------------------------------------------------
-    LO_PAIRS = [("U203", "12", "13"), ("U201", "3", "4"), ("U115", "12", "13"), ("U104", "9", "10")]
+    # each synthesizer's RFOUTA pair and the mixer pins it faces: (synthesizer, P, N, mixer, P's pin, N's pin).
+    # P goes to LOIN and N to LOIP (sheets 1 and 2): the pins then face each other, and the pair runs
+    # straight (P to LOIP crossed it, and one leg went 40 mm round: the design review)
+    LO_LINKS = [("U115", "12", "13", "U104", "10", "9"), ("U203", "12", "13", "U201", "4", "3")]
+    LO_PITCH = 1.2                       # the legs' centres where the DC blocks stand side by side (0.58 mm between their pads)
+    LO_RUN = 1.4                         # straight out of each 0.5 mm pitch pin first (gen/routes.PIN_RUN)
+    LO_CHOKE_GAP = 0.35                  # between a block's pad and its choke's (the choke's stub: a pad and this)
+    LO_CORRIDOR = 1.05                   # half the pair's corridor: a leg's line edge (0.745) and room for its gap
 
     def lo_blocks(self):
-        """The DC block at each LO pin: the two pins of a pair are 0.5 mm apart, so their blocks
-        cannot stand side by side; the first stands on its pin's axis 2 mm out, the second 1.3 mm
-        further out and 0.7 mm to the far side, and each line goes straight out of its pin to its
-        own block (Response 9)."""
-        for ref, pa, pb in self.LO_PAIRS:
-            if ref not in self.pos:
+        """The LO pairs, mirror images of each other leg for leg (CLAUDE_PCB.md section 5: a
+        differential pair is two equal lines): out of each pin straight for LO_RUN, a jog out to
+        LO_PITCH, the two DC blocks of each leg side by side (the mixer's near the mixer, the
+        synthesizer's near the synthesizer), and each RFOUTA pull-up choke beside its leg's
+        synthesizer-side block, outboard, its rail end away from the line.  Every one is pinned:
+        nothing pushes one leg's part and not the other's."""
+        self.lo_parts = set()
+        self.lo_corridors = []
+        for syn, sp, sn, mix, mp, mn in self.LO_LINKS:
+            if syn not in self.pos or mix not in self.pos:
                 continue
-            for pin, k in ((pa, 0), (pb, 1)):
-                net = self.pin_net.get((ref, pin))
-                if not net:
-                    continue
-                caps = [r for r, p in self.nets[net] if r != ref and r[0] == "C" and len(self.fp(r)["pads"]) == 2]
-                if len(caps) != 1 or caps[0] in self.pos:
-                    continue
-                cap = caps[0]
-                px, py = self.pad_xy(ref, pin)
-                nx, ny = self.side_normal(ref, pin)
-                ax, ay = self.pad_xy(ref, pa)
-                bx, by = self.pad_xy(ref, pb)
-                L = math.hypot(bx - ax, by - ay) or 1.0
-                ux, uy = (bx - ax) / L, (by - ay) / L                 # along the row, from the first pin to the second
-                # the FIRST block steps 0.6 mm away from its partner's lane and stands 2.4 mm out; the
-                # second stands straight on its own axis 2.2 mm further out, so its line runs straight
-                # past the first block (a second block stepped sideways left its line no way past)
-                out = 2.4 + 2.2 * k
-                step = -0.6 if k == 0 else 0.0
-                cx, cy = px + nx * out + ux * step, py + ny * out + uy * step
-                pads = self.fp(cap)["pads"]
-                nums = sorted(pads, key=lambda n: (len(n), n))
-                sig = next(n for n in nums if self.pin_net.get((cap, n)) == net)
-                other = nums[1] if sig == nums[0] else nums[0]
-                if nx:
-                    rot = 0 if (nx > 0) == (pads[sig][0] < pads[other][0]) else 180
-                else:
-                    rot = 270 if (ny > 0) == (pads[sig][0] < pads[other][0]) else 90
-                self.pos[cap] = at(cx, cy, rot)
-                self.want[cap] = (nx, ny)
-                self.on_line.add(cap)
-                self.group[cap] = self.group.get(ref)
+            xs_p, ys = self.pad_xy(syn, sp)
+            xs_n, _ = self.pad_xy(syn, sn)
+            xm_p, ym = self.pad_xy(mix, mp)
+            xm_n, _ = self.pad_xy(mix, mn)
+            assert abs(xm_p - xs_p) < 0.01 and abs(xm_n - xs_n) < 0.01, \
+                "%s/%s: the LO pins do not face each other (%.2f/%.2f against %.2f/%.2f)" % (syn, mix, xs_p, xs_n, xm_p, xm_n)
+            u = 1.0 if ys > ym else -1.0                     # along the pair, mixer to synthesizer
+            half = lambda ref, pin: max(self.fp(ref)["pads"][pin][2:]) / 2
+            tip_m = ym + u * half(mix, mp)                   # the pins' outer ends
+            tip_s = ys - u * half(syn, sp)
+            xc = (xs_p + xs_n) / 2
+            jog = self.LO_PITCH / 2 - abs(xs_p - xs_n) / 2
+            cap_half = max(abs(v[0]) + v[2] / 2 for v in self.fp(self._lo_part(syn, sp, "C"))["pads"].values())
+            y_mcap = tip_m + u * (self.LO_RUN + jog + 0.1 + cap_half)
+            y_scap = tip_s - u * (self.LO_RUN + jog + 0.1 + cap_half)
+            # the pair's corridor, pin row to pin row: no other part's courtyard within LO_CORRIDOR of the
+            # pair's centre line (R209 stood 0.1 mm from the N leg's line: build 18's first placement)
+            self.lo_corridors.append((xc - self.LO_CORRIDOR, min(tip_m, tip_s), xc + self.LO_CORRIDOR, max(tip_m, tip_s)))
+            for pin_s, pin_m, xs in ((sp, mp, xs_p), (sn, mn, xs_n)):
+                side = 1.0 if xs > xc else -1.0
+                x = xc + side * self.LO_PITCH / 2
+                snet, mnet = self.pin_net[(syn, pin_s)], self.pin_net[(mix, pin_m)]
+                scap, mcap = self._lo_part(syn, pin_s, "C"), self._lo_part(mix, pin_m, "C")
+                self._pin_two(scap, (x, y_scap), snet, (0.0, u))           # its synthesizer-side pad toward the synthesizer
+                self._pin_two(mcap, (x, y_mcap), mnet, (0.0, -u))          # its mixer-side pad toward the mixer
+                choke = self._lo_part(syn, pin_s, "L")
+                if choke:
+                    cpads = self.fp(choke)["pads"]
+                    c_half = max(abs(v[0]) for v in cpads.values())
+                    c_padw = max(v[2] for v in cpads.values()) / 2
+                    sx, sy = self.pad_xy(scap, next(n for n in self.fp(scap)["pads"] if self.pin_net.get((scap, n)) == snet))
+                    reach = 0.31 + self.LO_CHOKE_GAP + c_padw + c_half       # the block pad's half width (0.62 / 2), the gap, the choke pad, its centre
+                    self._pin_two(choke, (x + side * reach, sy), snet, (-side, 0.0))   # its line pad inward
+                self.lo_parts.update(p for p in (scap, mcap, choke) if p)
+
+    def _lo_part(self, chip, pin, kind):
+        """The one two-terminal part of `kind` ("C", "L") on the net at chip.pin (None if none)."""
+        net = self.pin_net.get((chip, pin))
+        found = [r for r, p in self.nets.get(net, []) if r != chip and r[0] == kind and len(self.fp(r)["pads"]) == 2]
+        assert len(found) <= 1, (chip, pin, kind, found)
+        return found[0] if found else None
+
+    def _pin_two(self, ref, xy, net, toward):
+        """Pin a two-terminal part at xy, turned so its pad on `net` points along `toward`."""
+        pads = self.fp(ref)["pads"]
+        sig = next(n for n in pads if self.pin_net.get((ref, n)) == net)
+        for rot in (0, 90, 180, 270):
+            px, py = place_pt(pads[sig][:2], at(xy[0], xy[1], rot))
+            if (px - xy[0]) * toward[0] + (py - xy[1]) * toward[1] > 0.1:
+                break
+        self.pos[ref] = at(xy[0], xy[1], rot)
+        self.want[ref] = toward
+        self.on_line.add(ref)
+        self.group[ref] = self.group.get(self._lo_owner(ref))
+
+    def _lo_owner(self, ref):
+        for syn, sp, sn, mix, mp, mn in self.LO_LINKS:
+            for chip, pin in ((syn, sp), (syn, sn), (mix, mp), (mix, mn)):
+                if ref in [r for r, p in self.nets.get(self.pin_net.get((chip, pin)), [])]:
+                    return chip
+        return None
 
     # ---- the rules ------------------------------------------------------------------------
     def anchors_on(self, net, exclude):
@@ -869,7 +927,7 @@ class Plan:
 
     # ---- pushing apart ---------------------------------------------------------------------
     def fixed(self, ref):
-        return ref in ANCHORS
+        return ref in ANCHORS or ref in getattr(self, "lo_parts", ())
 
     def blocked(self, ref, pos):
         """Why a part at `pos` cannot be there: another courtyard, the edge, the socket's pads."""
@@ -881,6 +939,9 @@ class Plan:
                 return "edge"
         if side == "F" and hit(b, SOCKET_KEEP, 0.0) and ref != "J302":
             return "socket"
+        for kb in MARK_KEEP:
+            if hit(b, kb, 0.0):
+                return "a fiducial or the layer marks"
         if side == "F" and ref not in ANCHORS:
             for owner, strip in self.strips:
                 if owner != ref and hit(b, strip, 0.0):
@@ -893,12 +954,16 @@ class Plan:
                 for c in CORRIDORS:
                     if hit(b, c, 0.0):
                         return "RF corridor"
+                for c in getattr(self, "lo_corridors", ()):
+                    if hit(b, c, 0.0) and ref not in self.lo_parts:
+                        return "LO corridor"
         for oref, opos in self.pos.items():
             if oref == ref:
                 continue
             if opos[3] != side and not (self.fp(oref)["tht"] or self.fp(ref)["tht"]):
                 continue
-            if hit(b, self.bbox(oref), GAP):
+            lo = getattr(self, "lo_parts", ())
+            if hit(b, self.bbox(oref), 0.0 if (ref in lo and oref in lo) else GAP):
                 return oref
             # a vendored courtyard can be smaller than its pads (the SMA's legs): test the pads too
             if self.fp(oref)["tht"]:

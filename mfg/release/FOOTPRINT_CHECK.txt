@@ -3,13 +3,13 @@ FOOTPRINT vs ORDERED PART -- does the part fit the copper?
 
 board  hardware/CostasLink-PYNQ-Z2.kicad_pcb
 BOM    release/BOM_JLCPCB.csv
-run    2026-10-10T20:01:54-07:00
-382 footprint(s) placed, 1191 drill(s) on the board
+run    2026-10-12T00:19:15-07:00
+383 footprint(s) placed, 1175 drill(s) on the board
 
   ok C1525       C_0402_1005Metric                            C0402              60 placement(s)
-  ok C11702      R_0402_1005Metric                            R0402              28 placement(s)
+  ok C11702      R_0402_1005Metric                            R0402              27 placement(s)
   ok C1552       C_0402_1005Metric                            C0402              22 placement(s)
-  ok C25744      R_0402_1005Metric                            R0402              21 placement(s)
+  ok C25744      R_0402_1005Metric                            R0402              22 placement(s)
   ok C52923      C_0402_1005Metric                            C0402              15 placement(s)
   ok C25741      R_0402_1005Metric                            R0402              14 placement(s)
   !! C88374      U.FL_Hirose_U.FL-R-SMT-1_Vertical            RF-SMD_FRF05002-JS 12 placement(s)
@@ -22,8 +22,6 @@ run    2026-10-10T20:01:54-07:00
   ok C882469     L_0402_1005Metric                            IND-SMD_L1.0-W0.6  8 placement(s)
   ok C5126227    R_0402_1005Metric                            R0402              6 placement(s)
   ok C25120      R_0402_1005Metric                            R0402              5 placement(s)
-  ok C25765      R_0402_1005Metric                            R0402              5 placement(s)
-  ok C25905      R_0402_1005Metric                            R0402              5 placement(s)
   !! C2937625    PinHeader_1x03_P2.54mm_Vertical              HDR-TH_3P-P2.54-V- 5 placement(s)
        datum their origin sits at (+0.000, +2.540) mm in our footprint; the JLCPCB CPL is moved there
   !! C5137198    MMCX_BWMMCX-KE_Vertical                      SMA-TH_BWMMCX-KE   5 placement(s)
@@ -31,7 +29,9 @@ run    2026-10-10T20:01:54-07:00
   ok C137968     R_0402_1005Metric                            R0402              4 placement(s)
   ok C1562       C_0402_1005Metric                            C0402              4 placement(s)
   ok C2058382    VQFN-16-1EP_3x3mm_P0.5mm_EP1.68x1.68mm       TQFN-16_L3.0-W3.0- 4 placement(s)
+  ok C25765      R_0402_1005Metric                            R0402              4 placement(s)
   ok C25879      R_0402_1005Metric                            R0402              4 placement(s)
+  ok C25905      R_0402_1005Metric                            R0402              4 placement(s)
   ok C2862740    SOT-23-5                                     SOT-23-5_L2.9-W1.6 4 placement(s)
   !! C2974371    SOT-353_SC-70-5                              SC-70-5_L2.0-W1.3- 4 placement(s)
        land  worst pad-centre miss 0.315 mm (pad 4) at 180 deg, 5 pad(s) matched by name
@@ -56,6 +56,7 @@ run    2026-10-10T20:01:54-07:00
   ok C2188753    C_0402_1005Metric                            C0402              2 placement(s)
   ok C2286       LED_0603_1608Metric                          LED-SMD_L1.6-W0.8- 2 placement(s)
   ok C25102      R_0402_1005Metric                            R0402              2 placement(s)
+  ok C25132      R_0402_1005Metric                            R0402              2 placement(s)
   ok C25135      R_0402_1005Metric                            R0402              2 placement(s)
   ok C282239     C_0402_1005Metric                            C0402              2 placement(s)
   ok C4109       R_0402_1005Metric                            R0402              2 placement(s)
@@ -71,11 +72,13 @@ run    2026-10-10T20:01:54-07:00
   ok C170182     C_1206_3216Metric                            C1206              1 placement(s)
   ok C17168      R_0402_1005Metric                            R0402              1 placement(s)
   ok C17271830   MSOP-8-1EP_3x3mm_P0.65mm_EP1.73x1.85mm       MSOP-8_L3.0-W3.0-P 1 placement(s)
+  !! C19270534   CP_Elec_5x5.9                                CAP-SMD_BD5.0-L5.3 1 placement(s)
+       land  worst pad-centre miss 0.300 mm (pad 1) at 0 deg, 2 pad(s) matched by name
   ok C2059281    VSSOP-8_3x3mm_P0.65mm                        VSSOP-8_L3.0-W3.0- 1 placement(s)
   ok C210262     SKY65404-31_QFN-6_1.5x1.5mm                  DFN-6_L1.5-W1.5-P0 1 placement(s)
   !! C23380874   SOT-23-5                                     SOT-23-5_L3.0-W1.7 1 placement(s)
        land  worst pad-centre miss 0.196 mm (pad 4) at 180 deg, 5 pad(s) matched by name
-  ok C25132      R_0402_1005Metric                            R0402              1 placement(s)
+  ok C25900      R_0402_1005Metric                            R0402              1 placement(s)
   ok C2837312    Balun_Johanson_5400BL15B050                  FILTER-SMD_0805-6P 1 placement(s)
   ok C285052     C_0402_1005Metric                            C0402              1 placement(s)
   ok C37593      TSSOP-10_3x3mm_P0.5mm                        MSOP-10_L3.0-W3.0- 1 placement(s)
@@ -93,7 +96,7 @@ run    2026-10-10T20:01:54-07:00
   ok C85840      L_0805_2012Metric                            L0805              1 placement(s)
   ok C95042      L_0402_1005Metric                            L0402-RD           1 placement(s)
 
-worth a look: datum x5, land x6, names x2, tab x1
+worth a look: datum x5, land x7, names x2, tab x1
   land  a pad centre out by less than half a millimetre
   datum the two libraries measure from different zeroes, and
         JLCPCB places THEIR zero where the CPL says: the JLCPCB

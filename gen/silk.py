@@ -120,6 +120,10 @@ class Silk:
             if ref == "J302":
                 continue                                   # the socket is on the back; its pins are pads above
             self.blocked[bot if back else top].append(body + ("%s body" % ref,))
+        for it in self.board.GetDrawings():              # the fiducials' mask openings, the layer numbers (gen/board.marks)
+            if it.GetLayer() in (pcbnew.F_Mask, pcbnew.F_Cu, pcbnew.B_Mask, pcbnew.B_Cu):
+                r = self.box(it.GetBoundingBox(), PAD_GAP)
+                self.blocked[top if it.GetLayer() in (pcbnew.F_Mask, pcbnew.F_Cu) else bot].append(r + ("a board mark",))
         for t in self.board.GetTracks():
             if t.Type() == pcbnew.PCB_VIA_T:
                 r = self.box(t.GetBoundingBox(), 0.05)

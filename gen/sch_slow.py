@@ -38,7 +38,7 @@ def build(S):
         S.hlabel(hp[0], hp[1], name + "_P", shape="input", rot=180)
         S.hlabel(lp[0], lp[1], name + "_N", shape="input", rot=180)
         p, n = B.arm(S, name + "s", ref, hp, lp, yrow + 5.08, x0 + 71.12, LV.VAL["slow_Rf"], rg_key=LV.VAL["slow_Rg"], shunts=False,
-                     out_rc=(LV.VAL["slow_Rrc"], LV.VAL["slow_Crc"]), trim=name + "_OFF")
+                     out_rc=(LV.VAL["slow_Rrc"], LV.VAL["slow_Crc"]), trim=name + "_OFF", out_tap=name + " SLOW MON")
         arms[name] = (p, n)
         sig(hp[0] + 2, yrow + 32, LV.txt("I_SLOW") if name == "I" else LV.txt("Q_SLOW"), cols=40)
     note(x0 + 71.12 + 70, 88.9 + 5.08 + 30, LV.SLOW_ARM_NOTE, cols=38)
@@ -51,10 +51,6 @@ def build(S):
     W(co, (co[0] + 5.08, co[1]))
     ra, rb = series("R 33R", co[0] + 8.89, co[1]); W(rb, (co[0] + 20.32, co[1]))
     S.hlabel(co[0] + 20.32, co[1], "CMP_I_S", shape="output", rot=0)
-    xi = ip[0] + 10.16
-    J(xi, ip[1])
-    W((xi, ip[1]), (xi, ip[1] - 15.24))
-    B.tap(xi, ip[1] - 15.24, "I SLOW MON")
     # the Q window: Q_sP > V_T2 and Q_sN > V_T2
     qp, qn = arms["Q"]
     cqp = B.comparator("U504", qp[0] + 38.1, qp[1] + 2.54)
@@ -62,8 +58,6 @@ def build(S):
     xq = qp[0] + 10.16
     W(qp, (xq, qp[1])); J(xq, qp[1])
     W((xq, qp[1]), (xq, cqp.pin("3")[1]), cqp.pin("3"))
-    W((xq, qp[1]), (xq, qp[1] - 15.24))
-    B.tap(xq, qp[1] - 15.24, "Q SLOW MON")
     xq2 = qn[0] + 5.08
     W(qn, (xq2, qn[1])); J(xq2, qn[1])
     W((xq2, qn[1]), (xq2, cqn.pin("3")[1]), cqn.pin("3"))

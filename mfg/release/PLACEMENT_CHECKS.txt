@@ -1,4 +1,4 @@
-CostasLink-PYNQ-Z2 rev A: PLACEMENT CHECKS for JLCPCB's preview (2026-10-10)
+CostasLink-PYNQ-Z2 rev A: PLACEMENT CHECKS for JLCPCB's preview (2026-10-12)
 
 The board is assembled on the top only (J302, on the back, is soldered at home: hand_solder_bom.csv).
 
@@ -43,7 +43,7 @@ into mfg/jlc_rotation.py.  Never turn or nudge a part in JLCPCB's viewer: the ne
 Placed as the CPL says, JLCPCB's own drawing lands pin for pin on our pads for 51 parts
 (make_release.py's simulation of their placement, both sides).
 
-NOT YET SEEN RIGHT in a preview (30 part numbers, 73 placements):
+NOT YET SEEN RIGHT in a preview (31 part numbers, 74 placements):
   C10425     74LVC1G17                  SOT-353_SC-70-5
       top:    U116 U205
       correction 180, predicted: JLCPCB's drawing turned 180 to lie on ours (top side, 5 pads by number, worst 0.32 mm)
@@ -60,6 +60,9 @@ NOT YET SEEN RIGHT in a preview (30 part numbers, 73 placements):
       top:    U401
       correction 270, predicted: JLCPCB's drawing turned 90 to lie on ours (top side, 9 pads by number, worst 0.03 mm)
       look for: pin 1 by the silk mark (the HMC536 switch)
+  C19270534  100uF                      CP_Elec_5x5.9
+      top:    C320
+      correction 0, NOT PREDICTED (two pads: polarity is a mark, not a pin number): look at it hardest
   C2058382   THS4541                    VQFN-16-1EP_3x3mm_P0.5mm_EP1.68x1.68mm
       top:    U105 U106 U501 U502
       correction 270, predicted: JLCPCB's drawing turned 90 to lie on ours (top side, 17 pads by number, worst 0.04 mm)

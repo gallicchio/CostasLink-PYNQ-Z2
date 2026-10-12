@@ -136,6 +136,46 @@ def outline(board):
         board.Add(s)
 
 
+def marks(board):
+    """The board's own marks (gen/placement.FIDUCIALS, LAYER_MARK; CLAUDE_PCB.md section 5): each
+    fiducial a filled copper disc in a larger mask opening, with a rule area round it that keeps the
+    ground pour off; each copper layer's number in copper at one spot.  Netless graphics, not
+    footprints: no symbol, no parity warning, no BOM or CPL row."""
+    def disc(layer, x, y, r):
+        s = pcbnew.PCB_SHAPE(board)
+        s.SetShape(pcbnew.SHAPE_T_CIRCLE)
+        s.SetCenter(P(x, y)); s.SetEnd(P(x + r, y))
+        s.SetFilled(True); s.SetWidth(0)
+        s.SetLayer(layer)
+        board.Add(s)
+    for x, y in PL.FIDUCIALS:
+        disc(pcbnew.F_Cu, x, y, PL.FID_COPPER)
+        disc(pcbnew.F_Mask, x, y, PL.FID_MASK)
+        z = pcbnew.ZONE(board)
+        z.SetIsRuleArea(True)
+        z.SetDoNotAllowZoneFills(True); z.SetDoNotAllowTracks(True); z.SetDoNotAllowVias(True)
+        z.SetDoNotAllowPads(False); z.SetDoNotAllowFootprints(False)
+        z.SetLayer(pcbnew.F_Cu)
+        z.SetZoneName("fiducial")
+        ol = z.Outline()
+        ol.NewOutline()
+        r = PL.FID_CLEAR
+        for k in range(16):
+            a = 2 * math.pi * k / 16
+            v = P(x + r * math.cos(a), y + r * math.sin(a))
+            ol.Append(v.x, v.y)
+        board.Add(z)
+    x, y = PL.LAYER_MARK
+    for n, layer in enumerate((pcbnew.F_Cu, pcbnew.In1_Cu, pcbnew.In2_Cu, pcbnew.B_Cu), 1):
+        t = pcbnew.PCB_TEXT(board)
+        t.SetText(str(n))
+        t.SetLayer(layer)
+        t.SetTextSize(pcbnew.VECTOR2I(mm(1.2), mm(1.2))); t.SetTextThickness(mm(0.2))
+        t.SetPosition(P(x, y))
+        t.SetMirrored(layer == pcbnew.B_Cu)        # read from the back
+        board.Add(t)
+
+
 def load_fp(fpid):
     lib, name = fpid.split(":", 1)
     fp = pcbnew.FootprintLoad(LIBDIR, name)
@@ -271,6 +311,109 @@ def label_check():
     sys.stdout.write(r.stdout)
 
 
+def refill_by_project():
+    """Refill the pours with the project's rules loaded: the board is built on an empty board that
+    has none, so the RF and LO lines' CPWG gap (gen/project.py's zone-clearance rule on their net
+    classes) holds only in a fill made after the project file names their nets.  In a process of
+    its own: in this one KiCad keeps the empty board's default project in memory, fills by it, and
+    saves it over the project file (build 18's first try: Default clearance 0.2, no net classes).
+    Returns the board as saved."""
+    import subprocess, kienv
+    import project
+    for _ in range(4):
+        r = subprocess.run(kienv.python() + [os.path.abspath(__file__), "--inside", "--refill"], cwd=ROOT)
+        if r.returncode != 3:
+            break
+    if r.returncode:
+        raise SystemExit("board: the refill failed")
+    project.write(HW)                         # whatever KiCad wrote over it
+    return pcbnew.LoadBoard(PCB)
+
+
+def refill_only():
+    board = pcbnew.LoadBoard(PCB)
+    pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    import tidy                              # a stub that ended in the first fill can dangle in this one
+    j, r = tidy.tidy(board)
+    if j or r:
+        print("refill: tidy joined %d, removed %d; filled again" % (j, r))
+        pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    board.Save(PCB)
+    n = drop_dangling_by_drc(board)          # then whatever KiCad's own DRC still calls dangling: one pass a
+    if n:                                    # process (KiCad's SWIG loses the connectivity's type on a second)
+        pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+        board.Save(PCB)
+        return 3                             # look again, in a fresh process
+    print("refill: the pours filled by %s's rules" % os.path.basename(BI.NAME + ".kicad_pro"))
+    return 0
+
+
+def drop_dangling_by_drc(board):
+    """A track KiCad's DRC calls dangling that the connectivity does not (build 18: a fan-out stub
+    whose via did not fit ended on the middle of the router's own track of the net, which joins it
+    for the connectivity and not for the DRC): ask kicad-cli, and remove each such track whose
+    removal leaves the board's unconnected count where it was.  Returns the number removed."""
+    import subprocess, tempfile, kienv
+    out = os.path.join(tempfile.mkdtemp(prefix="costaslink_drc_"), "drc.json")
+    subprocess.run(kienv.cli() + ["pcb", "drc", "--format", "json", "--severity-all", "--units", "mm", "-o", out, PCB],
+                   capture_output=True, text=True)
+    if not os.path.exists(out):
+        return 0
+    dang = [v for v in json.load(open(out)).get("violations", []) if v.get("type") == "track_dangling"]
+    board.BuildConnectivity()
+    before = board.GetConnectivity().GetUnconnectedCount(False)
+    removed = 0
+    for v in dang:
+        for it in v["items"]:
+            x, y = it["pos"]["x"], it["pos"]["y"]
+            for t in list(board.GetTracks()):
+                if t.Type() != pcbnew.PCB_TRACE_T:
+                    continue
+                ends = [(pcbnew.ToMM(p.x), pcbnew.ToMM(p.y)) for p in (t.GetStart(), t.GetEnd())]
+                if not any(abs(ex - x) < 0.005 and abs(ey - y) < 0.005 for ex, ey in ends) or \
+                        t.GetNetname() not in it["description"] or pcbnew.ToMM(t.GetLength()) > 3.0:
+                    continue
+                length, net = pcbnew.ToMM(t.GetLength()), t.GetNetname()
+                spare = t.Duplicate()            # a removed item is never put back itself (KiCad freed one twice)
+                board.Remove(t)
+                board.BuildConnectivity()
+                if board.GetConnectivity().GetUnconnectedCount(False) > before:
+                    board.Add(spare)             # it was the only way: keep it
+                    board.BuildConnectivity()
+                    continue
+                print("refill: removed a %.2f mm %s track the DRC called dangling at (%.2f, %.2f)"
+                      % (length, net, x - BI.ORIGIN[0], y - BI.ORIGIN[1]))
+                removed += 1
+                break
+    return removed
+
+
+LO_SKEW_MAX = 0.5                      # mm between the legs of an LO pair (CLAUDE_PCB.md section 5)
+
+
+def lo_skew(board):
+    """Each LO leg's copper length, synthesizer to mixer through its two DC blocks (its nets'
+    tracks, gen/routes.write_classes), and the gate: the legs of a pair within LO_SKEW_MAX.  KiCad's
+    skew rule cannot add a leg's three nets up; build 17's pairs were 10 mm against 44-46 mm and
+    nothing failed (the design review).  Returns {leg: mm}."""
+    import routes as RS
+    legs = json.load(open(RS.CLASSES_JSON))["lo_legs"]
+    length = {}
+    for t in board.GetTracks():
+        if t.Type() == pcbnew.PCB_TRACE_T:
+            length[t.GetNetname()] = length.get(t.GetNetname(), 0.0) + pcbnew.ToMM(t.GetLength())
+    out = {leg: round(sum(length.get(n, 0.0) for n in nets), 3) for leg, nets in legs.items()}
+    bad = []
+    for pair in ("RX LO", "TX LO"):
+        p, n = out.get(pair + " +"), out.get(pair + " -")
+        print("lo_skew: %s legs %.2f / %.2f mm (%.2f mm apart)" % (pair, p, n, abs(p - n)))
+        if abs(p - n) > LO_SKEW_MAX:
+            bad.append("%s: %.2f against %.2f mm" % (pair, p, n))
+    if bad:
+        raise SystemExit("board: LO pair skew over %.1f mm: %s" % (LO_SKEW_MAX, "; ".join(bad)))
+    return out
+
+
 def silk_only(t0):
     """The silk stage alone, on the copper the last full build saved before its silk stage: the same
     seed, so the result is the file a full build would write (the copper is deterministic)."""
@@ -286,6 +429,7 @@ def silk_only(t0):
     label_check()
     import project
     project.write(HW)
+    lo_skew(refill_by_project())
     print("board --silk: the silkscreen redone on %s -> %s (%.0f s)" % (os.path.relpath(PRE_SILK, ROOT), os.path.relpath(PCB, ROOT),
                                                                     time.time() - t0))
     return 0
@@ -296,12 +440,15 @@ def main():
     t0 = time.time()
     if "--silk" in args:
         return silk_only(t0)
+    if "--refill" in args:
+        return refill_only()
     pcbnew.KIID.SeedGenerator(488)
     comps, nets = read_netlist(NETLIST)
     plan = json.load(open(PLAN))["place"]
     board = pcbnew.CreateEmptyBoard()
     setup(board)
     outline(board)
+    marks(board)
     fps, netinfo, missing = place_parts(board, comps, nets, plan)
     probs = verify(fps)
     for p in probs:
@@ -340,6 +487,8 @@ def main():
         label_check()
     import project
     project.write(HW)
+    if "--place" not in args:
+        lo_skew(refill_by_project())
     print("board: %d footprints placed%s -> %s (%.0f s)" % (len(fps), ("; NOT IN THE PLAN: " + " ".join(missing)) if missing else "",
                                                            os.path.relpath(PCB, ROOT), time.time() - t0))
     return 0
