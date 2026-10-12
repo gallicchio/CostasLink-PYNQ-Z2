@@ -264,5 +264,45 @@
   "rx_rejects_adjacent_dB": 25.88715764923687,
   "tx_rejects_adjacent_dB": 25.92041416083642,
   "rx_rejects_2nd_adjacent_dB": 49.99240138097161
+ },
+ {
+  "interference_today": [
+   {
+    "INR_dB": 0,
+    "bench_window": 0.1424954414732746,
+    "bench row 3_ns": 9.180025424190003,
+    "bench row 4_ns": 2.5540724511669306,
+    "3 km + PA_window": 0.08529473532794353,
+    "3 km + PA row 3_ns": 9.016905018457098,
+    "3 km + PA row 4_ns": 2.3909520454340254
+   },
+   {
+    "INR_dB": 10,
+    "bench_window": 0.33418143219462204,
+    "bench row 3_ns": 9.697244380996187,
+    "bench row 4_ns": 3.071291407973115,
+    "3 km + PA_window": 0.20003388540607717,
+    "3 km + PA row 3_ns": 9.334301675349629,
+    "3 km + PA row 4_ns": 2.7083487023265564
+   },
+   {
+    "INR_dB": 20,
+    "bench_window": 1.0126203718341358,
+    "3 km + PA_window": 0.6061329801871278,
+    "3 km + PA row 3_ns": 10.626765511303777,
+    "3 km + PA row 4_ns": 4.000812538280705
+   },
+   {
+    "INR_dB": 30,
+    "bench_window": 3.187887685561091,
+    "3 km + PA_window": 1.9082016490060225
+   },
+   {
+    "INR_dB": 40,
+    "bench_window": 10.076453080262793,
+    "3 km + PA_window": 6.0315501298801335
+   }
+  ],
+  "noise_dBm_in_100MHz": -92.04412552828782
  }
 ]

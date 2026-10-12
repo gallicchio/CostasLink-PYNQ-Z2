@@ -113,7 +113,6 @@ def run_case(name, W, rx_f, tx_f, width):
 
 def main():
     res = [run_case(*c) for c in CASES]
-    base = res[0]
     for r in res:
         cells = []
         for case in SNR:
@@ -121,6 +120,30 @@ def main():
             cells.append("%s %s/%s" % (case, ("%5.1f" % c["row 3_ns"]) if "row 3_ns" in c else "  -  ", ("%5.1f" % c["row 4_ns"]) if "row 4_ns" in c else "  -  "))
         print("%-50s tx50 %5.2f ns  ENBW %5.1f MHz  rejects adj RX %4.1f dB TX %4.1f dB, 2nd adj RX %4.1f dB | %s" % (
             r["case"][:50], r["tx50_ns"]["row 3"], r["enbw_MHz"], r["rx_rejects_adjacent_dB"], r["tx_rejects_adjacent_dB"], r["rx_rejects_2nd_adjacent_dB"], "  ".join(cells)))
+    # interference in our band (Prompt 25): the window must sit above WiFi as well as the thermal noise.
+    # During a burst WiFi's OFDM is noise-like, so it adds to N0: the SNR falls by 10 log(1 + INR).
+    rx = cascade([DEM] + CASES[0][2])
+    g = step(rx)
+    enbw, nu0 = noise_terms(rx)
+    z = math.sqrt(2 * math.log(2 * nu0 / FA))
+    inr = []
+    for INR in (0, 10, 20, 30, 40):
+        row = dict(INR_dB=INR)
+        for case in ("bench", "3 km + PA"):
+            snr = SNR[case] - 10 * math.log10(1 + 10 ** (INR / 10))
+            th = z * math.sqrt(enbw / (10 ** (snr / 10) * 100e6))
+            row[case + "_window"] = th
+            if th < 0.9:
+                for k, fixed in FIXED.items():
+                    row[case + " " + k + "_ns"] = fixed + t_at(g, th) + res[0]["tx50_ns"][k]
+        inr.append(row)
+        print("INR %2d dB in our band: bench window %.2f a, row 3 %s, row 4 %s | 3 km + PA window %.2f a, row 4 %s" % (
+            INR, row["bench_window"], ("%.2f ns" % row["bench row 3_ns"]) if "bench row 3_ns" in row else "no fit",
+            ("%.2f ns" % row["bench row 4_ns"]) if "bench row 4_ns" in row else "no fit",
+            row["3 km + PA_window"], ("%.2f ns" % row["3 km + PA row 4_ns"]) if "3 km + PA row 4_ns" in row else "no fit"))
+    n100 = B["link_rows"][1][3] - B["link_rows"][1][4]                 # the receiver's noise in 100 MHz, dBm
+    print("the noise in 100 MHz is %.1f dBm: INR 10 dB is WiFi at %.0f dBm in our band, 20 dB at %.0f dBm" % (n100, n100 + 10, n100 + 20))
+    res.append(dict(interference_today=inr, noise_dBm_in_100MHz=n100))
     json.dump(res, open(os.path.join(ROOT, "build", "wifi_channels.json"), "w"), indent=1)
     # the plot: the turnaround against the channel, and the filters against the WiFi grid
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(12.5, 4.8), gridspec_kw=dict(width_ratios=[1.1, 1]))

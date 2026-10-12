@@ -1293,6 +1293,72 @@ and runs the decision model.
 - **Where narrowing would make sense:** a system whose budget is ~50-100 ns, sharing a crowded band
   with no directivity, as heralding over a campus might be.  That is not QPV's fast path.
 
+**Jason's frequency-agile plan (Prompt 25).**  Each node already has a slow Ethernet control link.
+So survey the band at each receiver, pick the quietest place, and tell the far transmitter over
+Ethernet.  Interference, not thermal noise, will set the real-world false-event rate.  The model
+agrees.
+
+- **What interference costs.**  The receiver's noise is −92 dBm in 100 MHz.  WiFi is noise-like
+  during a burst, so it raises N0, and the CFAR window must move up with it.
+
+  | WiFi in our band, continuous | the window, bench | row 3, bench | row 4, bench | row 4, 3 km + PA |
+  |---|---|---|---|---|
+  | none (thermal) | 0.10 a | 9.1 ns | 2.4 ns | 2.3 ns |
+  | −92 dBm (INR 0 dB) | 0.14 a | 9.2 | 2.55 | 2.4 |
+  | −82 dBm (INR 10 dB) | 0.33 a | 9.7 | 3.1 | 2.7 |
+  | −72 dBm (INR 20 dB) | 1.0 a: no fit | — | — | 4.0 |
+  | −62 dBm (INR 30 dB) | no fit | — | — | — |
+
+  - **One access point a room away (−60 to −75 dBm) is enough to stop the bench link,** if its
+    traffic were continuous.
+  - So Jason's suspicion holds: in a building, interference is the first-order term, and thermal
+    noise the second.
+- **Bursty interference costs rounds, not nanoseconds.**  WiFi transmits for a fraction of the time
+  (its airtime, often 1-30 %).
+  - With the window at its thermal place, a burst during a round's gate fakes events.  The
+    settled-vector check and the slow path's veto (section 18) catch them, so the round is
+    discarded rather than answered wrongly.
+  - The cost is a lost-round rate of about airtime × gate.  Only a continuous floor raises the
+    window and costs latency.
+  - So the survey needs two numbers per candidate frequency: **the continuous floor** (which sets
+    the latency) and **the burst airtime** (which sets the lost rounds).
+- **The best spectrum analyzer is the link's own receiver.**  It sees the interference through the
+  same antenna, pointing and filter, at the same thresholds.
+  - **The floor:** step the PLL and read the arm's power on the ADC with the far TX off.  That is
+    the RSSI path, `received_dBm()` (the DSA and the locked I arm).
+  - **The bursts:** count window crossings at the operating thresholds over a few seconds, with the
+    far TX off.  That count is the false-event rate the link would have at that frequency, measured
+    directly.
+  - That is gateware and driver work, not hardware.
+- **A WiFi card adds who and why:** which channels, how busy, and whether it is WiFi at all or radar,
+  a point-to-point link or a phone.  `iw dev <if> survey dump` on a USB adapter reports each channel's
+  busy time.
+  - **On the receive antenna, tap rather than switch.**  A 20 dB coupler costs ~0.2 dB and lets the
+    card listen while the link works.
+  - A switch costs 0.5-1 dB of noise figure.  On a transmit antenna it must also take the 2 W PA's
+    +33 dBm.
+  - The card's transmitter must stay off: its +20 dBm into our LNA is a hazard.
+  - A tinySA-class analyzer also works.  Check that it reaches 5.9 GHz with useful sensitivity.
+- **The protocol.**  Each direction is its own one-way link, so each receiver chooses its own
+  frequency and tells its transmitter over Ethernet.
+  - The score is the interference weighted by our receive filter, |H(f − f_c)|², not one WiFi
+    channel's busy time.  Today's ±94 MHz receiver hears four or five 20 MHz channels at once.
+  - Prefer, among equals, a carrier on WiFi's nulls (5775 MHz).
+  - Retuning costs the PLL's lock and the Costas loop's pull-in (3.8 ms to 0.38 s, section 3), so
+    choose between sessions, not between rounds.
+  - 5775 MHz is 231 × 25 MHz, a whole integer-N channel of the MAX2871 as the driver steps it
+    today, like 5800 MHz.
+  - Keep surveying between sessions.  The CFAR thresholds can then follow the measured false-event
+    rate (an adaptive CFAR) instead of the thermal calculation.
+- **How far it can move.**  The link is ~190 MHz wide on receive.
+  - Under Part 15 the ISM band (150 MHz) leaves almost no room to move.
+  - UNII-2C is quiet because WiFi must do radar detection (DFS) there, and so would we as a
+    Part 15 device.
+  - Under Part 97 the 5 cm amateur band, 5.650-5.925 GHz, gives 275 MHz with no DFS: room to slide
+    the carrier by ~±40 MHz.
+  - Real agility over the whole 4.9-6 GHz the parts cover needs an experimental licence.  Otherwise
+    the narrower filters above buy the room, at their price in ns.
+
 ### E-band (71-76 and 81-86 GHz)
 
 **E-band is 60 GHz's twin without the oxygen.**

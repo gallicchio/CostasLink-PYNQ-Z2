@@ -3090,7 +3090,7 @@ Keep going, but I was talking about the 100G ethernet on the RFSoC in addition t
 
 Also, if widening the RF bandwidth from 100 to 150 MHz doesn't help much at 5-6  GHz, does it make sense to narrow it a bit to 80 MHz or even 40 MHz to slot ourselves into the existing WiFi channel scheme to more easily avoid interference from (and interference to) WFi? What are the tradeoffs there?
 
-## Response 23 (2026-10-12 02:04 - 02:35)
+## Response 23 (2026-10-12 02:04 - 02:27)
 
 PLAN.md section 19 has four new subsections.  `sim/optics_roadmap.py` and `sim/wifi_channels.py` are
 new, and `sim/latency_roadmap.py` gained an E-band row and plots the optical rows with the RF ones.  The
@@ -3154,3 +3154,37 @@ web lookups covered:
 
 Lessons in CLAUDE_PCB.md section 14: selectivity costs delay; a SERDES buys throughput, not latency;
 pointing and the terminal's length are latency in optics.
+
+### Interjection (2026-10-12 02:27 PDT)
+
+Keep going, but I guess I was thinking that, since each node will have a slow Ethernet control link, each antenna could be switched between a WiFi card or a tiny spectrum analyzer and our low latency link. After some spectral monitoring and WiFi monitoring, the node could instruct the other node that will transmit to it which frequency is best. Then the Low latency communications can be on quiet WiFi channels. I suspect that interference will be a bigger real-world problem than the more easily estimated wire noise. 
+
+### Response (02:27 - 02:32)
+
+**PLAN.md section 19, "Jason's frequency-agile plan".**  `sim/wifi_channels.py` now prices interference
+too.
+
+**Interference is first-order.**  The receiver's noise is −92 dBm in 100 MHz.
+- Continuous WiFi at −82 dBm in our band moves the window from 0.10 a to 0.33 a.  Row 4 goes from 2.4
+  to 3.1 ns.
+- At −72 dBm (one access point a room away) the window no longer fits at the bench.
+
+**Bursty WiFi costs rounds, not ns.**  The settled-vector veto discards the rounds a burst fakes.  So
+each candidate frequency needs two numbers: the continuous floor (latency) and the burst airtime (lost
+rounds).
+
+**The best analyzer is the link's own receiver.**
+- The floor: step the PLL and read the RSSI path with the far TX off.
+- The bursts: count window crossings at the operating thresholds with the far TX off.
+- A WiFi card adds who and why (`iw survey dump`).  Tap it through a 20 dB coupler (~0.2 dB) rather
+  than switch it (0.5-1 dB, and 2 W on the TX side), with its transmitter off.
+
+**The protocol.**
+- Each receiver picks its own frequency and tells its transmitter over Ethernet.
+- The score is weighted by our ±94 MHz filter.
+- Prefer 5775 MHz among equals.  It is an integer-N channel.
+- Retune between sessions (pull-in 3.8 ms to 0.38 s).
+- Let the CFAR follow the measured false-event rate.
+
+**How far it can move.**  The ISM band leaves no room; UNII-2C needs DFS under Part 15; the amateur
+band gives ±40 MHz; an experimental licence would give the whole 4.9-6 GHz.
