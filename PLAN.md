@@ -1118,3 +1118,111 @@ is a rev B idea, worth it only if holds longer than a few ms matter.
 | A4 one bit, pilot at 45° | 31 m | 1.4 km | 10.9 km |
 | A3 two bits, the plan's corners | 22 m | 968 m | 7.7 km |
 | B2 two bits, pilot at 45° + corners | 29 m | 1.3 km | 10.4 km |
+
+## 19. Far future: how low the latency could go, and what it costs (Prompt 21)
+
+An exploration for a later project, not a plan for this board.  `sim/latency_roadmap.py` computes it
+(`build/latency_roadmap.json`, `docs/images/latency_vs_cost.png`), with the trajectory model of
+docs/TRAJECTORIES.md and the host terms of docs/HOSTS.md.
+
+**The figure of merit is the prover's turnaround.**
+- The clock starts when an ideal step arrives at the RX SMA (the verifier's own rise is the verifier's)
+  and stops at 50 % of the answer at the TX SMA.  That is what QPV bounds; the verifier's own TX and RX
+  delays are fixed and calibrated out.
+- Electronics only: add 3.34 ns per metre of air.
+- From step 1 on, the decision is B2's first edge, a window at its CFAR place (one false event an hour).
+
+**Two bounds no step can beat:**
+- **The energy bound.**  To clear a threshold z ≈ 7.5 σ from the idle, the receiver must collect
+  z²·N0 of energy, so no decision can come sooner than t ≥ z²·N0 / P (a sequential test at best).
+  With the board alone (+9.8 dBm) that is **85 ps at the bench but 3.1 ns at 3 km**.  With the 2 W
+  module at +30 dBm it is 31 ps at 3 km.
+  - **At range, transmitter power is a latency knob**, and the cheapest one: the PA module costs $29.
+  - **At the bench, the bound is far below everything else**, so there the hardware is the limit.
+- **The bandwidth bound.**  A filter of bandwidth B rises in about 0.35/B.  But the CFAR window
+  moves out as √B with the noise, so the time to the window falls only as 1/√B.  Widening the air
+  bandwidth is therefore a late knob.
+
+**What the time is spent on today:**
+- **Rev A's turnaround is dominated by its gateware, not its radio:** about 59 of its ~71 ns.  Rev A
+  has no receive-to-transmit path; the figure is what its registered decoder at 100 MHz would take: the
+  ISERDES word, the 4-sample decision delay, about five clocks of stages.
+- **Next in line:**
+  - the FPGA's own pin-to-pin path (~5 ns: input buffer, routing and a LUT, output buffer);
+  - the PYNQ's header RCs (2.7 ns);
+  - the TLV3601 (2.5 ns);
+  - the RF chips and lines (1.6 ns);
+  - the radio's filters (~1.5 ns).
+
+### The knobs, in the order they pay
+
+- **Passives on the rev A chips: about 0.5 ns of ~11.**
+  - The ladder's node at 100 Ω instead of 240 Ω: 0.33 ns.  It is the lowest the FPGA pins can drive
+    (~10 mA each); 50 Ω would save 0.47 ns but needs ~22 mA a pin.
+  - The arm at gain 2 (189 MHz): 0.09 ns at the bench, 0.04 ns worse at 3 km.  The CFAR window moves
+    out with the noise.
+  - The arm at gain 1: 0.14 ns.
+  - No arm at all: 0.35 ns at the bench, and no fit at 3 km.
+
+  **The current chips are not the limit; the FPGA path and the comparator are.**
+- **The first bottleneck is gateware:** a combinational fast path (the comparator pins through one
+  LUT to the ladder pins, a TDC time-stamping alongside) takes 71 to 13.6 ns for $0.
+- **The first chip bottlenecks are the FPGA's I/O and the TLV3601.**
+  - The PYNQ's 200 Ω go with a bare-pin host.
+  - LVDS comparators (TLV3604) come with a SYZYGY or on-board-FPGA rev B (docs/HOSTS.md).
+  - **Then the fast path should leave the FPGA:** SiGe comparators (ADI ADCMP572, 150 ps, CML out)
+    into a CML gate that computes the answer and drives the modulator's baseband directly.  The FPGA
+    only arms it, configures it and time-stamps it.  This is the step with the best value in the
+    table: **about 9 to 2.4 ns for ~$1-2k.**
+- **The next chip bottleneck is the ADL5380's 390 MHz baseband** (the ADL5375's 750 MHz follows it).
+  - It takes a wideband I/Q demodulator: a passive I/Q mixer and a GHz-class FDA, about 2 GHz on the
+    air.
+  - Neither 5.8 GHz's ISM band (150 MHz) nor the amateur 5 cm band (275 MHz) has that much; it means a
+    shielded lab or an experimental licence.
+  - It buys only ~0.7 ns, because the filters were never the big term.
+- **A higher centre frequency only for the spectrum.**  57-64 GHz is unlicensed, with 2 GHz channels.
+  - ADI's HMC6300 / HMC6301 chipset has 1.8 GHz of analog I/Q baseband, so the architecture carries over:
+    I/Q, windows, a Costas loop.
+  - At 60 GHz, oxygen absorbs ~15 dB/km, which limits it to hundreds of metres.  For kilometres with
+    GHz channels, 71-86 GHz (E-band, light-licensed in the US) is the band.
+  - Fixed-aperture antennas gain with frequency, so the link budget is not the problem; pointing is.
+- **Below about 1 ns, a different architecture.**  The RF chips' and lines' own delays (~0.7 ns
+  even at 60 GHz) and the modulator's rise become the floor.
+  - The way under it is optical: free-space lasers, 20-40 GHz photoreceivers and modulators, an InP or
+    SiGe gate (~20 ps) computing the answer.
+  - QPV's quantum half is optical already.
+  - The floor of electronics is then the energy bound plus a gate plus centimetres of line: about
+    0.2 ns.
+
+### The table: each row a lower turnaround
+
+Totals are rough, for a two-node link (two boards and their hosts; antennas, amplifiers and bench kit
+excluded).  Rev A's total is JLCPCB's order for 2 assembled boards, the consigned chips, and two
+PYNQ-Z2 at about $129 each.  Prices not checked are marked ≈; the HMC6300/6301, ADCMP572 and Brain-1
+prices were not found in public listings.
+
+| # | turnaround, bench | at 3 km (with the PA) | what changes | Δ$ (two nodes) | total $ |
+|---|---|---|---|---|---|
+| 0 | **~71 ns** | ~71 ns | rev A as built: PYNQ-Z2, header RCs, TLV3601, A3 through the registered decoder at 100 MHz (estimated: rev A has no RX-to-TX path) | — | ~$1.2-1.4k |
+| 1 | **13.6 ns** | 13.4 ns | gateware: B2's first edge through a combinational LUT path, pin to pin; a TDC time-stamps alongside | $0 | ~$1.2-1.4k |
+| 2 | **10.8 ns** | 10.7 ns | a bare-pin host (Icepi Zero, or any host without the 200 Ω) | −$120 to $0 | ~$1.1-1.4k |
+| 3 | **9.1 ns** | 8.9 ns | rev B: TLV3604 LVDS comparators over LVDS pairs (SYZYGY on the Brain-1, or an on-board ECP5) | ≈ +$1.5-2.5k | ≈ $2.6-3.9k |
+| 4 | **2.4 ns** | 2.3 ns | the fast path leaves the FPGA: ADCMP572-class SiGe comparators, a CML gate driving the modulator's baseband, the DSA out of the fast path; the FPGA arms and time-stamps | ≈ +$1-2k | ≈ $3.6-5.9k |
+| 5 | **1.7 ns** | 1.7 ns | ~1 GHz baseband: a wideband I/Q demodulator, arm and modulator, ~2 GHz on the air (a shielded lab or an experimental licence); the PA at range | ≈ +$2-5k | ≈ $6-11k |
+| 6 | **1.3 ns** | (hundreds of metres only) | 60 GHz: HMC6300 / HMC6301 (1.8 GHz I/Q), InP comparators (HMC674, 85 ps), a Rogers board, horns | ≈ +$15-30k | ≈ $20-40k |
+| 7 | **~0.2-0.5 ns** | — | a different architecture: free-space optical, 20-40 GHz photoreceivers and modulators, an InP / SiGe gate | ≈ +$50-100k | ≈ $70-140k |
+
+![latency against cost](docs/images/latency_vs_cost.png)
+
+### What it says
+
+- **Rows 0-2 cost nothing and take the turnaround from ~71 to ~11 ns**: gateware and a host.
+- **Row 4 is the step with the best value:** 3.8× for ~$1-2k.  The comparator-to-modulator path in
+  CML, outside the FPGA, is the architecture for a fast prover.
+- **Past row 4 the money balloons.**
+  - Each further step costs several times the one before (+$2-5k, then +$15-30k, then +$50-100k).
+  - Each buys less (0.7 ns, then 0.4 ns, then about 1 ns), because the filters, the energy bound and the
+    RF chips' own delays are all already within a factor of a few of each other.
+- **Widening the air bandwidth and raising the frequency come last, and pay least per dollar.**
+  - They matter only below ~2 ns.
+  - At range, power (the energy bound) matters before bandwidth.

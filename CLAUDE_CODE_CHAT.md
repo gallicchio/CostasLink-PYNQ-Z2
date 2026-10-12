@@ -2584,3 +2584,45 @@ register, at the bench and at 3 km.
 
 CLAUDE_PCB.md section 13 has the lesson: add up every term host by host, sampling included, before
 choosing a host.
+
+## Prompt 21 (2026-10-12 01:30 PDT)
+
+For a different, future project, if I wanted to push the latency even lower, what would be the knobs to change? How far could the current ICs be pushed by changing passives? Where is the first IC (or FPGA) bottleneck, and what would it be changed to? Would we widen the over-the-air bandwidth? Eventually would we need to change to a different (higher) center frequency? Go to a different architecture all together? As decision latency is lowered, how does cost balloon? Write up some results in PLAN.md as some far-future exploration. Make a table, where each row is a lower system latency. Columns include what would need to change and its approximate delta$ and total$. Show the table here too.
+
+## Response 21 (2026-10-12 01:30 - 01:40)
+
+**PLAN.md section 19.**  `sim/latency_roadmap.py` steps through the knobs with the trajectory model.  The
+figure of merit is the prover's turnaround: an ideal step at the RX SMA to 50 % of the answer at the TX
+SMA, electronics only (QPV bounds exactly this).
+
+| # | turnaround, bench | at 3 km (with the PA) | what changes | Δ$ (two nodes) | total $ |
+|---|---|---|---|---|---|
+| 0 | ~71 ns | ~71 ns | rev A as built (A3 through the registered decoder at 100 MHz; an estimate) | — | ~$1.2-1.4k |
+| 1 | 13.6 ns | 13.4 ns | gateware: B2's first edge through a combinational LUT path; a TDC alongside | $0 | ~$1.2-1.4k |
+| 2 | 10.8 ns | 10.7 ns | a bare-pin host (Icepi Zero) | −$120 to $0 | ~$1.1-1.4k |
+| 3 | 9.1 ns | 8.9 ns | rev B: TLV3604 LVDS comparators (SYZYGY or on-board ECP5) | ≈ +$1.5-2.5k | ≈ $2.6-3.9k |
+| 4 | 2.4 ns | 2.3 ns | the fast path leaves the FPGA: SiGe comparators (ADCMP572) into a CML gate driving the modulator | ≈ +$1-2k | ≈ $3.6-5.9k |
+| 5 | 1.7 ns | 1.7 ns | ~1 GHz baseband, ~2 GHz on the air (not in 5.8 GHz's ISM or amateur bands) | ≈ +$2-5k | ≈ $6-11k |
+| 6 | 1.3 ns | (hundreds of m) | 60 GHz: HMC6300 / HMC6301, InP comparators, horns | ≈ +$15-30k | ≈ $20-40k |
+| 7 | ~0.2-0.5 ns | — | optical free space, an InP / SiGe gate | ≈ +$50-100k | ≈ $70-140k |
+
+**The answers:**
+
+- **Passives on the current chips buy about 0.5 ns of ~11.**  The ladder node at 100 Ω saves 0.33 ns; the
+  arm at gain 2 or 1 saves 0.09-0.14 ns and loses at 3 km.
+- **The first bottleneck is gateware.**  Rev A's registered decoder would be ~59 of the ~71 ns.
+- **The first chip bottlenecks are the FPGA's pin-to-pin path (~5 ns) and the TLV3601 (2.5 ns).**  The
+  answer is LVDS comparators, then taking the fast path out of the FPGA into CML.  That last step has the
+  best value: 3.8× for ~$1-2k.
+- **The next bottleneck is the ADL5380's 390 MHz baseband.**
+- **Widen the air bandwidth: only late.**  It buys ~0.7 ns, and the 5.8 GHz bands cannot hold it.
+- **A higher centre frequency: only for the spectrum.**  60 GHz is short-range (oxygen at 15 dB/km);
+  E-band (71-86 GHz) for kilometres.
+- **A different architecture (optical) below ~1 ns.**
+- **The energy bound: no decision comes sooner than t ≥ z²·N0/P.**  That is 85 ps at the bench but 3.1 ns
+  at 3 km with the board alone.  So at range, power is a latency knob, and the $29 PA cuts the bound to
+  31 ps.
+- **Cost balloons after row 4:** each step costs several times the one before and buys less.
+
+The HMC6300/6301, ADCMP572 and Brain-1 prices were not found in public listings (≈ in the table).  A
+lesson went into CLAUDE_PCB.md section 14.

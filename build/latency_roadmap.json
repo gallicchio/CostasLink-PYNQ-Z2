@@ -1,0 +1,434 @@
+[
+ {
+  "step": "0",
+  "name": "rev A as built",
+  "what": "PYNQ-Z2, header RCs, TLV3601, rev A gateware (A3, registered decoder at 100 MHz)",
+  "delta": [
+   0,
+   0
+  ],
+  "total": [
+   1200,
+   1400
+  ],
+  "params": {
+   "rx_rf": 1.1,
+   "B_dem": 390,
+   "B_arm": 94.4,
+   "cmp": 2.5,
+   "link": 1.62,
+   "core": 59.4,
+   "fpga_io": 3.0,
+   "tx_tau": [
+    2.0,
+    0.72
+   ],
+   "B_mod": 750,
+   "tx_rf": 0.5
+  },
+  "bench": {
+   "window": 0.10069194866455851,
+   "z": 7.464582549235395,
+   "rise_ns": 0.4615227892687234,
+   "energy_ns": 0.08492522903618634,
+   "decide_ns": 0.4615227892687234,
+   "tx50_ns": 2.3871878199963152,
+   "turnaround_ns": 70.96871060926505
+  },
+  "bench_PA": {
+   "window": 0.010069194866455855,
+   "z": 7.464582549235395,
+   "rise_ns": 0.12230474719803915,
+   "energy_ns": 0.0008492522903618642,
+   "decide_ns": 0.12230474719803915,
+   "tx50_ns": 2.3871878199963152,
+   "turnaround_ns": 70.62949256719436
+  },
+  "3 km": {
+   "window": 0.6027205517735241,
+   "z": 7.464582549235395,
+   "rise_ns": 2.0108686963919005,
+   "energy_ns": 3.0428408376183493,
+   "decide_ns": 3.0428408376183493,
+   "tx50_ns": 2.3871878199963152,
+   "turnaround_ns": 73.55002865761466
+  },
+  "3 km_PA": {
+   "window": 0.060272055177352415,
+   "z": 7.464582549235395,
+   "rise_ns": 0.3365107350208524,
+   "energy_ns": 0.030428408376183498,
+   "decide_ns": 0.3365107350208524,
+   "tx50_ns": 2.3871878199963152,
+   "turnaround_ns": 70.84369855501717
+  }
+ },
+ {
+  "step": "1",
+  "name": "gateware fast path",
+  "what": "B2 scheme; comparator pins through one LUT level straight to the ladder pins, combinational (a TDC time-stamps alongside); no hardware change",
+  "delta": [
+   0,
+   0
+  ],
+  "total": [
+   1200,
+   1400
+  ],
+  "params": {
+   "rx_rf": 1.1,
+   "B_dem": 390,
+   "B_arm": 94.4,
+   "cmp": 2.5,
+   "link": 1.62,
+   "core": 2.0,
+   "fpga_io": 3.0,
+   "tx_tau": [
+    2.0,
+    0.72
+   ],
+   "B_mod": 750,
+   "tx_rf": 0.5
+  },
+  "bench": {
+   "window": 0.10069194866455851,
+   "z": 7.464582549235395,
+   "rise_ns": 0.4615227892687234,
+   "energy_ns": 0.08492522903618634,
+   "decide_ns": 0.4615227892687234,
+   "tx50_ns": 2.3871878199963152,
+   "turnaround_ns": 13.56871060926504
+  },
+  "bench_PA": {
+   "window": 0.010069194866455855,
+   "z": 7.464582549235395,
+   "rise_ns": 0.12230474719803915,
+   "energy_ns": 0.0008492522903618642,
+   "decide_ns": 0.12230474719803915,
+   "tx50_ns": 2.3871878199963152,
+   "turnaround_ns": 13.229492567194354
+  },
+  "3 km": {
+   "window": 0.6027205517735241,
+   "z": 7.464582549235395,
+   "rise_ns": 2.0108686963919005,
+   "energy_ns": 3.0428408376183493,
+   "decide_ns": 3.0428408376183493,
+   "tx50_ns": 2.3871878199963152,
+   "turnaround_ns": 16.150028657614666
+  },
+  "3 km_PA": {
+   "window": 0.060272055177352415,
+   "z": 7.464582549235395,
+   "rise_ns": 0.3365107350208524,
+   "energy_ns": 0.030428408376183498,
+   "decide_ns": 0.3365107350208524,
+   "tx50_ns": 2.3871878199963152,
+   "turnaround_ns": 13.443698555017168
+  }
+ },
+ {
+  "step": "2",
+  "name": "bare-pin host",
+  "what": "Icepi Zero (or any host without series resistors): the 200 ohm RCs gone both ways",
+  "delta": [
+   -120,
+   0
+  ],
+  "total": [
+   1080,
+   1400
+  ],
+  "params": {
+   "rx_rf": 1.1,
+   "B_dem": 390,
+   "B_arm": 94.4,
+   "cmp": 2.5,
+   "link": 0.23,
+   "core": 2.0,
+   "fpga_io": 3.0,
+   "tx_tau": [
+    0.3,
+    0.72
+   ],
+   "B_mod": 750,
+   "tx_rf": 0.5
+  },
+  "bench": {
+   "window": 0.10069194866455851,
+   "z": 7.464582549235395,
+   "rise_ns": 0.4615227892687234,
+   "energy_ns": 0.08492522903618634,
+   "decide_ns": 0.4615227892687234,
+   "tx50_ns": 1.0440830909732444,
+   "turnaround_ns": 10.835605880241967
+  },
+  "bench_PA": {
+   "window": 0.010069194866455855,
+   "z": 7.464582549235395,
+   "rise_ns": 0.12230474719803915,
+   "energy_ns": 0.0008492522903618642,
+   "decide_ns": 0.12230474719803915,
+   "tx50_ns": 1.0440830909732444,
+   "turnaround_ns": 10.496387838171284
+  },
+  "3 km": {
+   "window": 0.6027205517735241,
+   "z": 7.464582549235395,
+   "rise_ns": 2.0108686963919005,
+   "energy_ns": 3.0428408376183493,
+   "decide_ns": 3.0428408376183493,
+   "tx50_ns": 1.0440830909732444,
+   "turnaround_ns": 13.416923928591594
+  },
+  "3 km_PA": {
+   "window": 0.060272055177352415,
+   "z": 7.464582549235395,
+   "rise_ns": 0.3365107350208524,
+   "energy_ns": 0.030428408376183498,
+   "decide_ns": 0.3365107350208524,
+   "tx50_ns": 1.0440830909732444,
+   "turnaround_ns": 10.710593825994096
+  }
+ },
+ {
+  "step": "3",
+  "name": "LVDS comparators",
+  "what": "rev B on SYZYGY (Brain-1) or an on-board ECP5: TLV3604 (0.8 ns) over LVDS pairs",
+  "delta": [
+   1500,
+   2500
+  ],
+  "total": [
+   2580,
+   3900
+  ],
+  "params": {
+   "rx_rf": 1.1,
+   "B_dem": 390,
+   "B_arm": 94.4,
+   "cmp": 0.8,
+   "link": 0.15,
+   "core": 2.0,
+   "fpga_io": 3.0,
+   "tx_tau": [
+    0.3,
+    0.72
+   ],
+   "B_mod": 750,
+   "tx_rf": 0.5
+  },
+  "bench": {
+   "window": 0.10069194866455851,
+   "z": 7.464582549235395,
+   "rise_ns": 0.4615227892687234,
+   "energy_ns": 0.08492522903618634,
+   "decide_ns": 0.4615227892687234,
+   "tx50_ns": 1.0440830909732444,
+   "turnaround_ns": 9.05560588024197
+  },
+  "bench_PA": {
+   "window": 0.010069194866455855,
+   "z": 7.464582549235395,
+   "rise_ns": 0.12230474719803915,
+   "energy_ns": 0.0008492522903618642,
+   "decide_ns": 0.12230474719803915,
+   "tx50_ns": 1.0440830909732444,
+   "turnaround_ns": 8.716387838171284
+  },
+  "3 km": {
+   "window": 0.6027205517735241,
+   "z": 7.464582549235395,
+   "rise_ns": 2.0108686963919005,
+   "energy_ns": 3.0428408376183493,
+   "decide_ns": 3.0428408376183493,
+   "tx50_ns": 1.0440830909732444,
+   "turnaround_ns": 11.636923928591594
+  },
+  "3 km_PA": {
+   "window": 0.060272055177352415,
+   "z": 7.464582549235395,
+   "rise_ns": 0.3365107350208524,
+   "energy_ns": 0.030428408376183498,
+   "decide_ns": 0.3365107350208524,
+   "tx50_ns": 1.0440830909732444,
+   "turnaround_ns": 8.930593825994098
+  }
+ },
+ {
+  "step": "4",
+  "name": "fast path out of the FPGA",
+  "what": "SiGe comparators (ADCMP572, 150 ps, CML) into a CML gate that drives the modulator's baseband; the FPGA only arms, configures and time-stamps; the DSA leaves the fast path",
+  "delta": [
+   1000,
+   2000
+  ],
+  "total": [
+   3580,
+   5900
+  ],
+  "params": {
+   "rx_rf": 0.8,
+   "B_dem": 390,
+   "B_arm": 94.4,
+   "cmp": 0.15,
+   "link": 0.05,
+   "core": 0.25,
+   "fpga_io": 0.0,
+   "tx_tau": [
+    0.05,
+    0.1
+   ],
+   "B_mod": 750,
+   "tx_rf": 0.4
+  },
+  "bench": {
+   "window": 0.10069194866455851,
+   "z": 7.464582549235395,
+   "rise_ns": 0.4615227892687234,
+   "energy_ns": 0.08492522903618634,
+   "decide_ns": 0.4615227892687234,
+   "tx50_ns": 0.30311835507615986,
+   "turnaround_ns": 2.414641144344883
+  },
+  "bench_PA": {
+   "window": 0.010069194866455855,
+   "z": 7.464582549235395,
+   "rise_ns": 0.12230474719803915,
+   "energy_ns": 0.0008492522903618642,
+   "decide_ns": 0.12230474719803915,
+   "tx50_ns": 0.30311835507615986,
+   "turnaround_ns": 2.075423102274199
+  },
+  "3 km": {
+   "window": 0.6027205517735241,
+   "z": 7.464582549235395,
+   "rise_ns": 2.0108686963919005,
+   "energy_ns": 3.0428408376183493,
+   "decide_ns": 3.0428408376183493,
+   "tx50_ns": 0.30311835507615986,
+   "turnaround_ns": 4.995959192694509
+  },
+  "3 km_PA": {
+   "window": 0.060272055177352415,
+   "z": 7.464582549235395,
+   "rise_ns": 0.3365107350208524,
+   "energy_ns": 0.030428408376183498,
+   "decide_ns": 0.3365107350208524,
+   "tx50_ns": 0.30311835507615986,
+   "turnaround_ns": 2.289629090097012
+  }
+ },
+ {
+  "step": "5",
+  "name": "1 GHz baseband",
+  "what": "a wideband I/Q demodulator (a passive I/Q mixer and a GHz FDA) and arm, a wideband modulator: about 2 GHz on the air, which 5.8 GHz's ISM and amateur bands do not have (a shielded lab or an experimental licence); the PA at range",
+  "delta": [
+   2000,
+   5000
+  ],
+  "total": [
+   5580,
+   10900
+  ],
+  "params": {
+   "rx_rf": 0.6,
+   "B_dem": 2000,
+   "B_arm": 1000,
+   "cmp": 0.15,
+   "link": 0.05,
+   "core": 0.25,
+   "fpga_io": 0.0,
+   "tx_tau": [
+    0.05,
+    0.1
+   ],
+   "B_mod": 1500,
+   "tx_rf": 0.3
+  },
+  "bench": {
+   "window": 0.3091846509936523,
+   "z": 7.738902055004609,
+   "rise_ns": 0.12624439742693033,
+   "energy_ns": 0.09128183812869249,
+   "decide_ns": 0.12624439742693033,
+   "tx50_ns": 0.22107672210377455,
+   "turnaround_ns": 1.697321119530705
+  },
+  "bench_PA": {
+   "window": 0.03091846509936524,
+   "z": 7.738902055004609,
+   "rise_ns": 0.02779188127248695,
+   "energy_ns": 0.0009128183812869259,
+   "decide_ns": 0.02779188127248695,
+   "tx50_ns": 0.22107672210377455,
+   "turnaround_ns": 1.5988686033762616
+  },
+  "3 km": null,
+  "3 km_PA": {
+   "window": 0.185071344748332,
+   "z": 7.738902055004609,
+   "rise_ns": 0.08652615880094955,
+   "energy_ns": 0.03270595887030253,
+   "decide_ns": 0.08652615880094955,
+   "tx50_ns": 0.22107672210377455,
+   "turnaround_ns": 1.6576028809047243
+  }
+ },
+ {
+  "step": "6",
+  "name": "60 GHz",
+  "what": "57-64 GHz unlicensed (2 GHz channels): ADI's HMC6300 / HMC6301 with 1.8 GHz of I/Q baseband, InP comparators (HMC674, 85 ps), a Rogers board, horns; oxygen (15 dB/km) limits it to hundreds of metres",
+  "delta": [
+   15000,
+   30000
+  ],
+  "total": [
+   20580,
+   40900
+  ],
+  "params": {
+   "rx_rf": 0.4,
+   "B_dem": 900,
+   "B_arm": null,
+   "cmp": 0.085,
+   "link": 0.05,
+   "core": 0.15,
+   "fpga_io": 0.0,
+   "tx_tau": [
+    0.05,
+    0.05
+   ],
+   "B_mod": 900,
+   "tx_rf": 0.3
+  },
+  "bench": {
+   "window": 0.37273826477840893,
+   "z": 8.029939297337801,
+   "rise_ns": 0.08047815822444584,
+   "energy_ns": 0.09827661760288003,
+   "decide_ns": 0.09827661760288003,
+   "tx50_ns": 0.22669189081821284,
+   "turnaround_ns": 1.309968508421093
+  },
+  "bench_PA": {
+   "window": 0.037273826477840916,
+   "z": 8.029939297337801,
+   "rise_ns": 0.004720047793527951,
+   "energy_ns": 0.000982766176028801,
+   "decide_ns": 0.004720047793527951,
+   "tx50_ns": 0.22669189081821284,
+   "turnaround_ns": 1.2164119386117411
+  },
+  "3 km": null,
+  "3 km_PA": {
+   "window": 0.22311318391777551,
+   "z": 8.029939297337801,
+   "rise_ns": 0.04264730970730283,
+   "energy_ns": 0.035212163548905565,
+   "decide_ns": 0.04264730970730283,
+   "tx50_ns": 0.22669189081821284,
+   "turnaround_ns": 1.2543392005255158
+  }
+ }
+]
