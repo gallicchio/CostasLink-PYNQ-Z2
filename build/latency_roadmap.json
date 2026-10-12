@@ -651,5 +651,167 @@
    "tx50_ns": 0.22669189081821284,
    "turnaround_ns": 1.2543392005255158
   }
+ },
+ {
+  "step": "6E",
+  "name": "E-band, instead of 60 GHz",
+  "what": "71-76 GHz (light-licensed in the US): ADI's ADMV7310 upconverter and ADMV7410 downconverter, I/Q to 2 GHz, 25 dBm out, 5 dB noise figure; InP comparators; 43 dBi dishes (the FCC's minimum); oxygen 0.3-0.4 dB/km, so kilometres; heavy rain is the limit",
+  "delta": [
+   3660,
+   15960
+  ],
+  "total": [
+   5742,
+   19722
+  ],
+  "costs": [
+   [
+    "two rev B boards: rev A's, the TLV3601 swapped for 8 TLV3604 (est +$2-4 each, with duty)",
+    982,
+    1047
+   ],
+   [
+    "an ECP5 on each board: LFE5U-25F, flash, oscillator, USB-JTAG, regulators, their assembly lines and duty (est)",
+    150,
+    300
+   ],
+   [
+    "8 ADCMP572 at $30.18 (Digi-Key) for the 8 TLV3604",
+    210,
+    225
+   ],
+   [
+    "CML logic: the answer gate and a fan-out to the FPGA's TDC, about 4 gates a board at $15-60 (est)",
+    120,
+    480
+   ],
+   [
+    "their assembly lines and duty (est)",
+    100,
+    250
+   ],
+   [
+    "4 passive I/Q mixers (HMC525-class, IF to 3.5 GHz) for the ADL5380 and ADL5375-05, less the $64 of consigned chips (est)",
+    140,
+    260
+   ],
+   [
+    "GHz FDAs (LMH5401-class), 4 a board (est)",
+    120,
+    200
+   ],
+   [
+    "LO amplifiers for the passive mixers (est)",
+    40,
+    100
+   ],
+   [
+    "4 antennas for 4.8-6.8 GHz, Vivaldi or horn (est)",
+    120,
+    600
+   ],
+   [
+    "their assembly lines and duty (est)",
+    100,
+    200
+   ],
+   [
+    "an FCC Part 5 experimental licence (est)",
+    0,
+    100
+   ],
+   [
+    "2 ADMV7310 + 2 ADMV7410: no public price ('quote required'); the 81-86 GHz ADMV7420 shows ~$830 at an aggregator (est $300-900 each)",
+    1200,
+    3600
+   ],
+   [
+    "2 LO synthesizers at ~12 GHz (the chips multiply by 6) (est)",
+    100,
+    300
+   ],
+   [
+    "a board and machined waveguide back plates, WR-12 parts (est); ADI's evaluation boards instead are $2,606.81 (ADMV7310-EVALZ) and $2,053.22 (ADMV7410-EVALZ) at Richardson, $9,320 for two nodes",
+    1500,
+    4000
+   ],
+   [
+    "4 dishes of 43 dBi or more, ~30 cm (est; used backhaul dishes cost less)",
+    1200,
+    6000
+   ],
+   [
+    "the FCC's non-exclusive nationwide licence and a link registration with a database manager (their fees not found) (est)",
+    0,
+    1000
+   ],
+   [
+    "8 InP comparators (HMC674-class) for the ADCMP572 (est)",
+    560,
+    1360
+   ],
+   [
+    "less the 5.8 GHz chain: mixers, LO, LNA, DSA, gain blocks, antennas (est)",
+    -900,
+    -300
+   ]
+  ],
+  "params": {
+   "rx_rf": 0.4,
+   "B_dem": 2000,
+   "B_arm": null,
+   "cmp": 0.085,
+   "link": 0.05,
+   "core": 0.15,
+   "fpga_io": 0.0,
+   "tx_tau": [
+    0.05,
+    0.05
+   ],
+   "B_mod": 2000,
+   "tx_rf": 0.4,
+   "snr": {
+    "bench": 65.21946999643272,
+    "3 km": 51.58404490203949
+   }
+  },
+  "bench": {
+   "window": 0.024830771753389415,
+   "z": 8.079792564040378,
+   "rise_ns": 9.278428571056275e-07,
+   "energy_ns": 0.00019626977406526154,
+   "decide_ns": 0.00019626977406526154,
+   "tx50_ns": 0.15466494849349616,
+   "turnaround_ns": 1.2398612182675615
+  },
+  "bench_PA": {
+   "window": 0.024830771753389415,
+   "z": 8.079792564040378,
+   "rise_ns": 9.278428571056275e-07,
+   "energy_ns": 0.00019626977406526154,
+   "decide_ns": 0.00019626977406526154,
+   "tx50_ns": 0.15466494849349616,
+   "turnaround_ns": 1.2398612182675615
+  },
+  "bench_snr_dB": 65.21946999643272,
+  "3 km": {
+   "window": 0.11933325108208734,
+   "z": 8.079792564040378,
+   "rise_ns": 0.00811372378719444,
+   "energy_ns": 0.004533106599792065,
+   "decide_ns": 0.00811372378719444,
+   "tx50_ns": 0.15466494849349616,
+   "turnaround_ns": 1.2477786722806907
+  },
+  "3 km_PA": {
+   "window": 0.11933325108208734,
+   "z": 8.079792564040378,
+   "rise_ns": 0.00811372378719444,
+   "energy_ns": 0.004533106599792065,
+   "decide_ns": 0.00811372378719444,
+   "tx50_ns": 0.15466494849349616,
+   "turnaround_ns": 1.2477786722806907
+  },
+  "3 km_snr_dB": 51.58404490203949
  }
 ]

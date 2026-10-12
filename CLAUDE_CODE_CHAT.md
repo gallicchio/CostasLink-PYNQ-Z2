@@ -3073,3 +3073,84 @@ The ADCMP572's delay is now Digi-Key's 165 ps; row 4 is 2.43 ns.
 - **The shape stands:** past row 4 each step costs several times the one before and buys less.
 - **The ADCMP572 over the ADCMP580:** one 3.3 V supply instead of ±5 V, and 2 mV of offset instead of
   10 mV, for less money and 15 ps less delay.
+
+## Prompt 23 (2026-10-12 02:04 PDT)
+
+I want you to add information about E-band (71–86 GHz, light-licensed) and more detailed options for free-space optical. We've played with free-space optical for the quantum photons. I don't know if we did it in the best or most economical way, but I bought used 80-100mm William Optics telescopes ($2-3k) and used Rainbow Astro and iOptron HAE series mounts ($2-4k). We made a slow pointing feedback system with a 90/10 beam splitter to a ZWO ASI camera and a dichroic beam splitter to inject a beacon laser or a classical TX path. Random thorlabs optics, stages, and 30 mm Cage Cube hardware was another very big expense, even for this simple system. We had no fast tip/tilt and just used multimode fibers, though this would probably need to change at very low latencies. For classical comms, we were using slow 50 MHz LED-based plastic-fiber links that were probably meant for factory-floor links. We were eventually planning on upgrading to a better fiber transceiver modules, but had no great way of coupling them in and out of the telescopes. We switched to RF because it was cheaper for the range of latencies we actually needed for the first few QPV demonstrations, but eventually we'll want to do other quantum networking, which will require lower latency RF or optical free-space heralding and control signals. Feel free to start over to start here with our "used gear + Thorlabs stuff" system and improve it. Write an optics version of table, whose rows I'd like you to put on the same plot in the same way as before.
+
+### Interjection (02:07)
+
+While you are doing that, also look into fancier FPGAs  with fancier transceivers. I've done work with the RFSoC 4x2 board and the ZCU102. Would either of these help, or do the transceivers, even in the most "raw" mode, still benefit throughput more than latency?
+
+### Interjection (02:13)
+
+Keep going, but I was talking about the 100G ethernet on the RFSoC in addition to the higher latency RFDC on board
+
+### Interjection (02:20)
+
+Also, if widening the RF bandwidth from 100 to 150 MHz doesn't help much at 5-6  GHz, does it make sense to narrow it a bit to 80 MHz or even 40 MHz to slot ourselves into the existing WiFi channel scheme to more easily avoid interference from (and interference to) WFi? What are the tradeoffs there?
+
+## Response 23 (2026-10-12 02:04 - 02:35)
+
+PLAN.md section 19 has four new subsections.  `sim/optics_roadmap.py` and `sim/wifi_channels.py` are
+new, and `sim/latency_roadmap.py` gained an E-band row and plots the optical rows with the RF ones.  The
+web lookups covered:
+- the ADMV7310/7410 datasheets;
+- the FCC's E-band licensing;
+- QICK's RFSoC loopback;
+- FSM prices;
+- the ADMV evaluation boards at Richardson.
+
+**E-band (row 6E of the RF table): 1.24 ns at the bench, 1.25 ns at 3 km, ≈ $5.7-20k.**
+- ADMV7310 / ADMV7410: 71-76 GHz, I/Q to 2 GHz, 25 dBm P1dB, 5 dB NF.  The bare chips have no public
+  price.  The evaluation boards are $2,606.81 and $2,053.22 at Richardson.
+- Oxygen absorbs 0.3-0.4 dB/km.  The link budget is 51.6 dB in 100 MHz at 3 km with 43 dBi dishes.
+  Rain at ~5 dB/km gives 1.38 ns; heavy rain (~10 dB/km) loses the window.
+- The licence: a non-exclusive nationwide licence, then link registration with a database manager,
+  with antennas of at least 43 dBi.
+
+**The optical table, starting from the group's terminals, counted aperture to aperture.**
+
+| # | 100 m | 3 km | what changes | beyond the gear owned | total $ |
+|---|---|---|---|---|---|
+| O0 | ~91 ns | no link | as built: 50 MBd POF at the focal planes, a registered FPGA path, the refractors | $0 | ≈ $15-31k |
+| O1 | ~56 ns | no link | the FPGA path combinational | $0 | ≈ $15-31k |
+| O2 | 12.4 ns | 12.4 ns | 1550 nm DFB + ~1 GHz receiver on 20 cm of 105 µm fibre behind an f/2.3 relay | ≈ $3.7-8.8k | ≈ $19-39k |
+| O3 | 4.7 ns | 4.7 ns | CML fast path; a 10G PIN-TIA and a DFB at the focal planes; a booster SOA | ≈ $6-19k | ≈ $22-49k |
+| O4 | 1.7 ns | 1.7 ns | short dedicated apertures (3.7 → 0.7 ns) and a fast steering mirror | ≈ $14-49k | ≈ $30-79k |
+| O5 | 1.1 ns | 1.1 ns | 30 GHz receivers, InP logic, CW EDFA into a 40 GHz EAM | ≈ $28-87k | ≈ $44-117k |
+| O6 | 0.47 ns | 0.47 ns | one InP photonic chip at a 50 mm focus | ≈ $54-190k | ≈ $69-220k |
+
+**The optical physics:**
+- Pointing sets the field.  The field sets the detector's size by étendue, d = θ·D/NA.  The size sets
+  the bandwidth.
+- The 1 mm POF's 1.8 mrad beam closes only ~100 m.
+- The refractors' 0.55 m to focus is 3.7 ns in and out, the largest term from O3 on.
+- Fibre is 4.9 ns/m.
+- An EDFA after the modulation is 25-150 ns: amplify the CW light, or use an SOA.
+- Optics beats RF only below ~1.2 ns, at several times the money.
+
+**The RFSoC 4x2 and the ZCU102 are the verifiers' tools, not a faster prover.**
+- Transceivers work in words.  Raw, with the buffers bypassed, a decision costs ≈ 15-25 ns (est).
+- The CDR wants a running, balanced stream.
+- The 100G CMAC with its mandatory RS-FEC costs hundreds of ns.
+- The RFDC is 90-117 ns from DAC to ADC (QICK).
+- What they are good for:
+  - GTY receivers as 39 ps samplers;
+  - two GTY lanes as an I/Q challenge generator;
+  - the RF converters as a complete verifier radio;
+  - the QSFP28 and SFP+ cages for heralding and time-tag streams.
+- The ZCU102's LVDS pins save ~1-2 ns at row 3 only.
+
+**WiFi channels: don't narrow the filters; place the carrier.**
+- A real channel filter at both ends (4th-order Butterworth) costs ~17 ns for 80 MHz and ~33 ns for
+  40 MHz.  Row 4's 2.4 ns becomes 20-36 ns.
+- A one-pole filter costs 3-6 ns but rejects the neighbour by only 7.5 dB.
+- Narrowing never speeds the decision, even at range.
+- Immunity without latency comes from the panels (20-30 dB), the channel choice (UNII-2C), time gating
+  and the settled-vector decoder.
+- Interference to WiFi is the idle carrier.  Move it from 5800 to 5775 MHz, which should be a null in
+  every WiFi channelization of UNII-3 (to be checked against the tone plans).
+
+Lessons in CLAUDE_PCB.md section 14: selectivity costs delay; a SERDES buys throughput, not latency;
+pointing and the terminal's length are latency in optics.

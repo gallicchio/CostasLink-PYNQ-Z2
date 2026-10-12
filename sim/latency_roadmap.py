@@ -72,7 +72,22 @@ STEPS = [
      dict(rx_rf=0.6, B_dem=2000, B_arm=1000, cmp=0.165, link=0.05, core=0.25, fpga_io=0.0, tx_tau=[0.05, 0.1], B_mod=1500, tx_rf=0.3)),
     ("6", "60 GHz", "57-64 GHz unlicensed (2 GHz channels): ADI's HMC6300 / HMC6301 with 1.8 GHz of I/Q baseband, InP comparators (HMC674, 85 ps), a Rogers board, horns; oxygen (15 dB/km) limits it to hundreds of metres",
      dict(rx_rf=0.4, B_dem=900, B_arm=None, cmp=0.085, link=0.05, core=0.15, fpga_io=0.0, tx_tau=[0.05, 0.05], B_mod=900, tx_rf=0.3)),
+    ("6E", "E-band, instead of 60 GHz", "71-76 GHz (light-licensed in the US): ADI's ADMV7310 upconverter and ADMV7410 downconverter, I/Q to 2 GHz, 25 dBm out, 5 dB noise figure; InP comparators; 43 dBi dishes (the FCC's minimum); oxygen 0.3-0.4 dB/km, so kilometres; heavy rain is the limit",
+     dict(rx_rf=0.4, B_dem=2000, B_arm=None, cmp=0.085, link=0.05, core=0.15, fpga_io=0.0, tx_tau=[0.05, 0.05], B_mod=2000, tx_rf=0.4,
+          snr=None)),
 ]
+
+
+def eband_snr(L, G_dBi, rain_dB_km=0.0):
+    """SNR in 100 MHz: +20 dBm (5 dB under the ADMV7310's P1dB), two antennas, free space, oxygen and water
+    vapour 0.7 dB/km (est), the ADMV7410's 5 dB noise figure and 2 dB of waveguide"""
+    lam = 299792458.0 / 73.5e9
+    fspl = 20 * math.log10(4 * math.pi * L / lam)
+    p_rx = 20 + 2 * G_dBi - fspl - (0.7 + rain_dB_km) * L / 1000
+    return p_rx - (-174 + 80 + 5 + 2)
+
+
+STEPS[-1][3]["snr"] = {"bench": eband_snr(10, 24), "3 km": eband_snr(3000, 43)}
 
 # What each row's two-node link costs to build directly, line by line (antennas, amplifiers and bench kit
 # excluded, except antennas a row needs that rev A's cannot be).  Prices Jason gave from Digi-Key on
@@ -90,6 +105,13 @@ WIDE = [("4 passive I/Q mixers (HMC525-class, IF to 3.5 GHz) for the ADL5380 and
         ("4 antennas for 4.8-6.8 GHz, Vivaldi or horn (est)", 120, 600),
         ("their assembly lines and duty (est)", 100, 200),
         ("an FCC Part 5 experimental licence (est)", 0, 100)]
+EBAND = [("2 ADMV7310 + 2 ADMV7410: no public price ('quote required'); the 81-86 GHz ADMV7420 shows ~$830 at an aggregator (est $300-900 each)", 1200, 3600),
+         ("2 LO synthesizers at ~12 GHz (the chips multiply by 6) (est)", 100, 300),
+         ("a board and machined waveguide back plates, WR-12 parts (est); ADI's evaluation boards instead are $2,606.81 (ADMV7310-EVALZ) and $2,053.22 (ADMV7410-EVALZ) at Richardson, $9,320 for two nodes", 1500, 4000),
+         ("4 dishes of 43 dBi or more, ~30 cm (est; used backhaul dishes cost less)", 1200, 6000),
+         ("the FCC's non-exclusive nationwide licence and a link registration with a database manager (their fees not found) (est)", 0, 1000),
+         ("8 InP comparators (HMC674-class) for the ADCMP572 (est)", 560, 1360),
+         ("less the 5.8 GHz chain: mixers, LO, LNA, DSA, gain blocks, antennas (est)", -900, -300)]
 V60 = [("2 HMC6300 + 2 HMC6301 at $25.91 (Digi-Key)", 104, 104),
        ("a 60 GHz board: a Rogers or hybrid stack, eWLB BGA assembly at a prototype house (est); ADI's evaluation PCBs instead are $1,587.52 each, $6,350 for four", 2000, 6350),
        ("4 WR-15 horns and transitions, if the boards need them (est)", 1200, 2400),
@@ -103,10 +125,10 @@ COSTS = {
     "4": [REV_B, ECP5] + CML,
     "5": [REV_B, ECP5] + CML + WIDE,
     "6": [REV_B, ECP5] + CML + WIDE + V60,
+    "6E": [REV_B, ECP5] + CML + WIDE + EBAND,
 }
+PREV = {"6E": "5"}           # E-band is the alternative to row 6: its delta is from row 5
 ALT = {"3": ("two Brain-1 at $450 and a SYZYGY connector with its DNA chip a board, instead of the ECP5", 920 - 150, 950 - 300)}
-OPTICAL = (26e3, 80e3)       # row 7, estimated: a node is a laser and its controller, a 20-40 GHz modulator and its
-                             # driver, a photoreceiver, an EDFA, free-space optics, an InP / SiGe gate: $11-33k
 
 
 def run(p, snr_dB):
@@ -139,12 +161,18 @@ def main():
     plo, phi = None, None
     for key, name, what, p in STEPS:
         lo, hi = sum(c[1] for c in COSTS[key]), sum(c[2] for c in COSTS[key])
+        if key in PREV:
+            plo, phi = next(r["total"] for r in rows if r["step"] == PREV[key])
         dlo, dhi = (lo - plo, hi - phi) if plo is not None else (0, 0)
         plo, phi = lo, hi
         r = dict(step=key, name=name, what=what, delta=(dlo, dhi), total=(lo, hi), costs=COSTS[key], params=p)
         if key in ALT:
             r["alternative"] = dict(item=ALT[key][0], total=(lo + ALT[key][1], hi + ALT[key][2]))
         for case, snr in SNR.items():
+            if p.get("snr"):                                 # E-band: its own link budget, 25 dBm out already
+                r[case] = r[case + "_PA"] = run(p, p["snr"][case])
+                r[case + "_snr_dB"] = p["snr"][case]
+                continue
             r[case] = run(p, snr)
             r[case + "_PA"] = run(p, snr + 20.0)            # the 2 W module at +30 dBm: 20 dB more
         rows.append(r)
@@ -161,29 +189,45 @@ def main():
         print("%s total $%d-%d, delta $%+d to %+d%s" % (r["step"], r["total"][0], r["total"][1], r["delta"][0], r["delta"][1],
               ("   (alternative: $%d-%d)" % r["alternative"]["total"]) if "alternative" in r else ""))
     json.dump(rows, open(os.path.join(ROOT, "build", "latency_roadmap.json"), "w"), indent=1, default=float)
-    # the latency against the money
-    fig, ax = plt.subplots(figsize=(8.0, 5.4))
-    xs = [math.sqrt(r["total"][0] * r["total"][1]) for r in rows]
-    yb = [r["bench"]["turnaround_ns"] for r in rows]
-    yk = [r["3 km_PA"]["turnaround_ns"] for r in rows if r["step"] != "6"]      # 60 GHz: oxygen, 15 dB/km
-    ax.plot(xs, yb, "o-", color="#1f5fbf", label="the bench (10 m, whips)")
-    ax.plot(xs[:len(yk)], yk, "s--", color="#c8401a", label="3 km (panels, 10 m cables, the PA at +30 dBm)")
-    xo = math.sqrt(OPTICAL[0] * OPTICAL[1])
-    ax.plot([xo], [0.3], "o", mfc="none", mec="#1f5fbf", ms=8)
-    ax.errorbar([xo], [0.3], xerr=[[xo - OPTICAL[0]], [OPTICAL[1] - xo]],
-                yerr=[[0.1], [0.2]], fmt="none", ecolor="#1f5fbf", alpha=0.4, lw=1)
-    ax.annotate("7: optical (estimated, not modelled)", (xo, 0.3), xytext=(-150, 8),
-                textcoords="offset points", fontsize=7.5)
-    for r, x, y in zip(rows, xs, yb):
+    # the latency against the money: the RF rows, E-band, and the optical rows (sim/optics_roadmap.py)
+    import optics_roadmap as OR
+    orows = OR.rows()
+    json.dump(orows, open(os.path.join(ROOT, "build", "optics_roadmap.json"), "w"), indent=1, default=float)
+    gm = lambda t: math.sqrt(t[0] * t[1])
+    fig, ax = plt.subplots(figsize=(9.6, 6.4))
+    rf = [r for r in rows if r["step"] != "6E"]
+    eb = next(r for r in rows if r["step"] == "6E")
+    xs = [gm(r["total"]) for r in rf]
+    yb = [r["bench"]["turnaround_ns"] for r in rf]
+    k3 = [r for r in rf if r["step"] != "6"] + [eb]                              # 60 GHz: oxygen, 15 dB/km
+    ax.plot(xs, yb, "o-", color="#1f5fbf", label="RF, the bench (10 m, whips): SMA to SMA")
+    ax.plot([gm(r["total"]) for r in k3], [r["3 km_PA"]["turnaround_ns"] for r in k3], "s--", color="#c8401a",
+            label="RF, 3 km (the PA at +30 dBm; E-band its own budget)")
+    ax.plot([gm(eb["total"])], [eb["bench"]["turnaround_ns"]], "D", color="#1f5fbf", ms=7)
+    ax.annotate("6E: E-band", (gm(eb["total"]), eb["bench"]["turnaround_ns"]), xytext=(6, -11), textcoords="offset points", fontsize=7.5)
+    ox = [gm(r["total"]) for r in orows]
+    oy = [r["100 m"].get("turnaround_ns") for r in orows]
+    ax.plot(ox, oy, "o-", color="#2a8a3a", label="optics, 100 m: aperture to aperture (the terminals included)")
+    o3 = [(x, r["3 km"]["turnaround_ns"]) for x, r in zip(ox, orows) if "turnaround_ns" in r["3 km"]]
+    ax.plot([a_[0] for a_ in o3], [a_[1] for a_ in o3], "s--", color="#2a8a3a", alpha=0.7, label="optics, 3 km (where it closes)")
+    ob = [(gm(r["beyond_owned"]), r["100 m"]["turnaround_ns"]) for r in orows if r["beyond_owned"][0] > 0]
+    ax.plot([a_[0] for a_ in ob], [a_[1] for a_ in ob], "o:", color="#2a8a3a", mfc="none", alpha=0.8,
+            label="optics, the money beyond the gear already owned")
+    for r, x, y in zip(orows, ox, oy):
+        ax.annotate("%s: %s" % (r["step"], r["name"].split(":")[0] if r["step"] == "O0" else r["name"]), (x, y),
+                    xytext=(6, 4), textcoords="offset points", fontsize=7.2, color="#1d5e28")
+    ax.errorbar(ox, oy, xerr=[[x - r["total"][0] for x, r in zip(ox, orows)], [r["total"][1] - x for x, r in zip(ox, orows)]],
+                fmt="none", ecolor="#2a8a3a", alpha=0.35, lw=1)
+    for r, x, y in zip(rf, xs, yb):
         ax.annotate("%s: %s" % (r["step"], r["name"]), (x, y), xytext=(6, 4), textcoords="offset points", fontsize=7.5)
-    ax.errorbar(xs, yb, xerr=[[x - r["total"][0] for x, r in zip(xs, rows)], [r["total"][1] - x for x, r in zip(xs, rows)]],
+    ax.errorbar(xs, yb, xerr=[[x - r["total"][0] for x, r in zip(xs, rf)], [r["total"][1] - x for x, r in zip(xs, rf)]],
                 fmt="none", ecolor="#1f5fbf", alpha=0.4, lw=1)
     ax.set_xscale("log"); ax.set_yscale("log")
     ax.set_xlabel("a two-node link's hardware, $ (log; line items in PLAN.md section 19)")
-    ax.set_ylabel("the prover's turnaround, RX SMA to TX SMA, ns (log)")
-    ax.set_title("Latency against money: each step keeps the ones before it", fontsize=10)
+    ax.set_ylabel("the prover's turnaround, ns (log)")
+    ax.set_title("Latency against money, RF and optical: each step keeps the ones before it", fontsize=10)
     ax.grid(alpha=0.25, which="both")
-    ax.legend(fontsize=8)
+    ax.legend(fontsize=7.5, loc="lower left")
     fig.savefig(os.path.join(OUT, "latency_vs_cost.png"), dpi=130, bbox_inches="tight")
     plt.close(fig)
     print("wrote build/latency_roadmap.json, docs/images/latency_vs_cost.png")

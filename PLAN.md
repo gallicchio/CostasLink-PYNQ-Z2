@@ -151,7 +151,9 @@ stays the upgrade. One-antenna T/R also needs the reply carrier to be on frequen
 reply: the REF OUT → REF IN jumper makes the prover a coherent transponder. (2) The baseband bandwidth that gives
 10-ns-class latency is 100 MHz, so each link occupies ±100-200 MHz: the ISM band holds **one**
 such link per direction, not six; three links from a central station need the 5.15-5.85 GHz UNII
-bands as well (the parts cover 4.9-6 GHz), or 30 MHz arm filters (12 ns slower) spaced 70 MHz.
+bands as well (the parts cover 4.9-6 GHz), or 30 MHz arm filters (12 ns slower) spaced 70 MHz
+(but a one-pole filter rejects its neighbour by only ~7.5 dB, and a real channel filter at both ends
+costs ~17-33 ns: section 19, "Narrower instead").
 Every synthesizer frequency is software, so the frequency plan is a register write.
 
 ### PYNQ-Z2 or Brain-1?
@@ -749,7 +751,7 @@ from the transitions, integrates each symbol and descrambles. Compared:
 * *Interference:* no help from whitening (spreading gain is zero when chips = bits), and the stream
   is 200 MHz wide all the time, so *we* become the interferer of every WiFi channel we overlap.
   Robustness against the university's 5 GHz comes from the arm bandwidth (narrower = quieter =
-  slower), the panels' directivity (20-30 dB off-axis), the channel (scan first; UNII-2C 5.47-5.725
+  slower; section 19 prices it: ~17 ns for a real 80 MHz channel), the panels' directivity (20-30 dB off-axis), the channel (scan first; UNII-2C 5.47-5.725
   GHz is nearly empty indoors), and power. The Costas loop itself is untroubled: in its 3 kHz
   bandwidth a 20 MHz WiFi signal at −40 dBm is −118 dBm.
 * *Where the stream wins:* when the receiver is a conventional slotted detector that needs a clock
@@ -1121,9 +1123,10 @@ is a rev B idea, worth it only if holds longer than a few ms matter.
 
 ## 19. Far future: how low the latency could go, and what it costs (Prompt 21)
 
-An exploration for a later project, not a plan for this board.  `sim/latency_roadmap.py` computes it
-(`build/latency_roadmap.json`, `docs/images/latency_vs_cost.png`), with the trajectory model of
-docs/TRAJECTORIES.md and the host terms of docs/HOSTS.md.
+An exploration for a later project, not a plan for this board.  `sim/latency_roadmap.py` computes the
+RF rows and E-band (`build/latency_roadmap.json`) and `sim/optics_roadmap.py` the free-space optical rows
+(`build/optics_roadmap.json`); both go on `docs/images/latency_vs_cost.png`.  They use the trajectory
+model of docs/TRAJECTORIES.md and the host terms of docs/HOSTS.md.
 
 **The figure of merit is the prover's turnaround.**
 - The clock starts when an ideal step arrives at the RX SMA (the verifier's own rise is the verifier's)
@@ -1189,15 +1192,11 @@ docs/TRAJECTORIES.md and the host terms of docs/HOSTS.md.
     a transition to waveguide.  ADI's evaluation PCBs are $1,587.52 each (EV1HMC6300BG46,
     EV1HMC6301BG46), and the EK1HMC6350 kit (one of each, cables, a supply) is $6,385.19.
   - At 60 GHz, oxygen absorbs ~15 dB/km, which limits it to hundreds of metres.  For kilometres with
-    GHz channels, 71-86 GHz (E-band, light-licensed in the US) is the band.
+    GHz channels, 71-86 GHz (E-band, light-licensed in the US) is the band: see "E-band" below.
   - Fixed-aperture antennas gain with frequency, so the link budget is not the problem; pointing is.
 - **Below about 1 ns, a different architecture.**  The RF chips' and lines' own delays (~0.7 ns
-  even at 60 GHz) and the modulator's rise become the floor.
-  - The way under it is optical: free-space lasers, 20-40 GHz photoreceivers and modulators, an InP or
-    SiGe gate (~20 ps) computing the answer.
-  - QPV's quantum half is optical already.
-  - The floor of electronics is then the energy bound plus a gate plus centimetres of line: about
-    0.2 ns.
+  even at 60 GHz) and the modulator's rise become the floor.  The way under it is optical, with 30-40 GHz
+  photoreceivers and modulators and an InP gate; see "Free-space optics" below.
 
 ### The table: each row a lower turnaround
 
@@ -1222,9 +1221,222 @@ docs/TRAJECTORIES.md and the host terms of docs/HOSTS.md.
 | 4 | **2.4 ns** | 2.3 ns | the fast path leaves the FPGA: 8 ADCMP572 ($30.18), CML gates (≈ $15-60 each) driving the modulator's baseband, the DSA out of the fast path; the FPGA arms and time-stamps | ≈ +$430-960 | ≈ $1,560-2,300 |
 | 5 | **1.7 ns** | 1.7 ns | ~1 GHz baseband: passive I/Q mixers and GHz FDAs for the ADL5380 and ADL5375, LO amplifiers, 4.8-6.8 GHz antennas; ~2 GHz on the air (a shielded lab or an experimental licence); the PA at range | ≈ +$520-1,460 | ≈ $2,080-3,760 |
 | 6 | **1.3 ns** | (hundreds of metres only) | 60 GHz: 2 HMC6300 + 2 HMC6301 ($25.91 each), a Rogers board (≈ $2k) or ADI's four evaluation PCBs ($6,350), WR-15 horns (≈ $1.2-2.4k), InP comparators (HMC674-class) | ≈ +$3-10k | ≈ $5-14k |
-| 7 | **~0.2-0.5 ns** | — | a different architecture: free-space optical; each node a laser, a 20-40 GHz modulator and its driver, a photoreceiver, an EDFA, optics, an InP / SiGe gate (≈ $11-33k a node) | ≈ +$20-65k | ≈ $26-80k |
+| 6E | **1.24 ns** | **1.25 ns** (1.38 ns in ~5 dB/km of rain; fails in heavy rain) | instead of row 6, E-band: ADMV7310 / ADMV7410 (71-76 GHz, I/Q to 2 GHz, no public price; ≈ $300-900 each), LO synthesizers, a board with waveguide back plates (≈ $1.5-4k; ADI's evaluation boards are $2,606.81 and $2,053.22, $9,320 for two nodes), 43 dBi dishes (≈ $1.2-6k for four), the FCC's light licence | ≈ +$3.7-16k from row 5 | ≈ $5.7-20k |
+| 7 | | | below ~1 ns: free-space optics, its own table below | | |
 
 ![latency against cost](docs/images/latency_vs_cost.png)
+
+### Narrower instead: into a WiFi channel? (Prompt 24)
+
+Jason: if widening from 100 to 150 MHz buys little, should the link narrow to 80 or 40 MHz to fit
+the WiFi channel plan, and avoid interfering with WiFi and being interfered with?  `sim/wifi_channels.py`
+(`build/wifi_channels.json`, `docs/images/wifi_channels.png`) puts the same baseband filter at both ends
+and runs the decision model.
+- **A W-MHz RF channel is a baseband of ±W/2 on I and on Q.**  An 80 MHz channel means 40 MHz
+  filters and a 40 MHz channel 20 MHz filters.
+- **Today the board is ~190 MHz wide.**  The arm's one pole at 94.4 MHz is ±94 MHz at RF.  The
+  transmitter has no filter at all: its edges are the ladder's and the modulator's, hundreds of MHz.
+
+| filter at both ends | row 3 (TLV3604 + FPGA), bench | row 4 (CML), bench | 3 km, no PA (row 3 / 4) | rejects the next channel (RX / TX) | the one after |
+|---|---|---|---|---|---|
+| today: one pole at 94.4 MHz, none on TX | 9.1 ns | 2.4 ns | 11.6 / 5.0 ns | 0.8 / 0.2 dB (40 MHz away) | 2.5 dB |
+| 150 MHz (the ISM band), Butterworth-2 at 75 MHz | 13.1 | 6.4 | 15.2 / 8.5 | 13 / 15 dB | 26 dB |
+| 80 MHz, one pole at 38 MHz | 12.4 | 5.6 | 14.8 / 7.9 | 7.5 / 8 dB | 13 dB |
+| **80 MHz, Butterworth-4 at 38 MHz** | **26.3** | **19.6** | 30.9 / 24.1 | **26 / 27 dB** | **51 dB** |
+| 40 MHz, one pole at 19 MHz | 15.4 | 8.6 | 17.9 / 11.1 | 7.4 / 7.5 dB | 13 dB |
+| **40 MHz, Butterworth-4 at 19 MHz** | **42.4** | **35.7** | 50.1 / 43.3 | **26 / 26 dB** | **50 dB** |
+| 20 MHz, Butterworth-4 at 9.5 MHz | 73.7 | 67.0 | 86.8 / 80.1 | 26 / 26 dB | 50 dB |
+
+![WiFi channels](docs/images/wifi_channels.png)
+
+**What it says:**
+- **Selectivity costs delay at both ends, about order/(2π·f_c) each.**
+  - A 4th-order Butterworth that actually keeps an 80 MHz channel's neighbour out (26 dB, 51 dB the
+    one after) adds ~17 ns.  At 40 MHz it adds ~33 ns.
+  - So row 4's 2.4 ns becomes 20 or 36 ns: worse than rev A's gateware fix alone.
+  - The transmitter pays most of it, because the answer must reach 50 %: 12 ns at 80 MHz, 24 ns at
+    40 MHz.  The receiver only needs its low window, 5.8 and 10 ns.
+- **A one-pole "channel" is cheap, but it is not a channel.**  It costs +3 to +6 ns and rejects the
+  neighbour by only ~7.5 dB.
+- **Narrowing never makes the decision faster, even at range.**  At 3 km without the PA, every filter
+  in the table is slower than today's (11.6 ns).
+  - The energy bound does not depend on the bandwidth.
+  - The window moves in as √B, but the filter's rise slows as 1/B, so the crossing time grows as
+    1/√B.
+  - Narrowing pays only when the false events come from **interference** rather than thermal noise.
+    It is the trade of latency for immunity.
+- **The same immunity is available without the latency:**
+  - **Antennas.**  The panels' 20-30 dB off-axis is the same rejection as the 80 MHz Butterworth,
+    and it costs no time.
+  - **The channel.**  Scan first.  UNII-2C (5.47-5.725 GHz) is nearly empty indoors, and the parts
+    cover 4.9-6 GHz.  The ISM band holds one ~190 MHz link either way.
+  - **Time gating.**  The prover knows when a round's challenge can arrive.  Arm the windows only
+    then: a 1 µs gate at a 1 kHz round rate is a duty of 1e-3.  That cuts WiFi's chances to fake an
+    event a thousandfold, and lets z (and so the window) come down.
+  - **The decoder.**  WiFi's I/Q wanders like noise.  A challenge settles on a constellation point.
+    The settled-vector check and the slow path's veto (section 18) throw out what is not a vector.
+- **Interference to WiFi comes from the idle carrier, not the challenges.**
+  - The challenges are rare edges, tens of ns long, a few per round.  To a WiFi receiver they are a
+    nick in one 3.2-12.8 µs OFDM symbol, which its coding absorbs.
+  - The idle carrier is on all the time.  **Put the carrier, not the bandwidth, on WiFi's plan.**
+    5775 MHz should be a null in every WiFi channelization of UNII-3 (check against the 802.11ac/ax
+    tone plans):
+    - the gap between 20 MHz channels 153 and 157;
+    - the gap between 40 MHz channels 151 and 159;
+    - the DC null of 80 MHz channel 155;
+    - the DC null of the lower 80 MHz half of 160 MHz channel 163.
+    
+    5800 MHz, today's PLL setting, sits inside channel 161's occupied tones.  The synthesizer frequency
+    is a register write.
+  - A carrier above WiFi's energy-detect level (−62 dBm in 20 MHz) at an access point makes the AP
+    defer or move.  Below it, WiFi ignores us.  The DSA and the panels set that level.
+- **Where narrowing would make sense:** a system whose budget is ~50-100 ns, sharing a crowded band
+  with no directivity, as heralding over a campus might be.  That is not QPV's fast path.
+
+### E-band (71-76 and 81-86 GHz)
+
+**E-band is 60 GHz's twin without the oxygen.**
+- Oxygen absorbs 0.3-0.4 dB/km at 71-86 GHz against ~15 dB/km at 60 GHz; with water vapour, about
+  0.7 dB/km in all (est).  So the same GHz channels reach kilometres.
+- **The spectrum:** 5 GHz in each of 71-76 and 81-86 GHz, which is room for 2 GHz of I/Q.
+- **The chips carry the architecture over unchanged.**  ADI's ADMV7310 upconverts I/Q from dc to 2 GHz
+  to 71-76 GHz with 25 dBm at 1 dB compression; the ADMV7410 downconverts to I/Q, dc to 2 GHz, with a
+  5 dB noise figure.  Both multiply a ~12 GHz LO by 6 and sit in cavity LGAs with waveguide ports.  The
+  81-86 GHz pair is the ADMV7320 / ADMV7420.
+- **The link budget is generous in clear air.**  +20 dBm, two 43 dBi dishes, 3 km: −35 dBm at the
+  receiver, 51.6 dB in 100 MHz.
+  - That is 15 dB more than the 5.8 GHz board gets with its 2 W PA.
+  - The energy bound is ~10 ps, and the turnaround 1.25 ns.
+- **Rain is the limit.**  About 5 dB/km of rain (moderate) costs 15 dB at 3 km, and the turnaround
+  becomes 1.38 ns.  About 10 dB/km (heavy rain, ~25 mm/h) leaves 21.6 dB in 100 MHz, and the window no
+  longer fits in 2 GHz.
+- **The licence is "light", not none (47 CFR 101 subpart Q).**
+  - First a non-exclusive nationwide licence from the FCC, then each link registered with a
+    third-party database manager (Comsearch, Micronet, Frequency Finder), with an interference analysis.
+  - Each registration is good for 10 years.
+  - The antennas must have at least 43 dBi and at most 1.2° of beamwidth (101.115).  At 73 GHz that is
+    a ~30 cm dish, and the group's telescope mounts would point it easily.
+  - The managers' fees were not found.  For a short experiment, an FCC Part 5 experimental licence is
+    the other route.
+- **What it costs:** E-band costs about what 60 GHz does (≈ $5.7-20k against $5-14k).  The chips have
+  no public price.  The dishes and the waveguide are the money.
+
+### Free-space optics, starting from the group's terminals
+
+The group's free-space terminals for the quantum photons are the starting point.
+- **The terminals:** used 80-100 mm William Optics refractors ($2-3k each), used Rainbow Astro / iOptron
+  HAE mounts ($2-4k), a slow pointing loop through a 90/10 splitter to a ZWO ASI camera, a dichroic that
+  injects a beacon laser or the classical TX, and Thorlabs 30 mm cage optics and stages.
+- **The fibres:** multimode, with no fast tip/tilt.
+- **The classical channel:** 50 MBd LED plastic-fibre links.
+
+`sim/optics_roadmap.py` keeps those terminals and improves them one step at a time.  The time is
+counted **aperture to aperture**.  A terminal's own path, objective to focus and its fibres, is part of
+the prover, as an antenna's few millimetres are not.
+
+**The physics that sets every row:**
+- **Pointing sets the field the receiver must accept.**
+  - The slow camera loop and the mount leave ~25 µrad rms a axis (est).  The atmosphere adds its angle
+    of arrival: ~10 µrad at 3 km in moderate turbulence (Cn² = 1e-14), r0 4 cm at 1550 nm.
+  - So the receiver must take in ±130 µrad at 3 km.  A fast steering mirror (~3 µrad, and most of
+    the angle of arrival) brings that to ±42 µrad.
+- **The field sets the detector's size (étendue).**  A detector or fibre core of diameter d, fed by a
+  cone of numerical aperture NA, accepts θ = d·NA/D from an aperture D.
+  - At D = 90 mm, ±130 µrad needs d ≥ 47 µm at f/1.7 (NA 0.3).  At the refractors' own f/6, it
+    needs 140 µm.
+- **The detector's size sets its bandwidth.**  A photodiode's capacitance grows with its area: about
+  10 GHz × (40 µm / d)^1.6 (a fit to commercial InGaAs parts, est).
+  - 1 mm (the plastic fibre) is ~0.1 GHz, 105 µm 2 GHz, 50 µm 7 GHz, 20 µm 30 GHz.
+  - **So in free space, pointing is a latency knob:** a steadier beam allows a smaller, faster
+    detector.
+- **The transmitted beam must be wide enough to cover the pointing error and the beam wander.**  It is
+  set by the pointing, not by the aperture.
+  - **The plastic fibre's 1 mm core at a 550 mm focus throws 1.8 mrad.**  That is a 5.5 m spot at
+    3 km, 35 dB of capture loss.  The 50 MBd links close to ~100 m only, whatever their speed.
+  - A single-mode source defocused to the slow loop's needs throws ~260 µrad.  With the steering
+    mirror it is ~90-130 µrad, close to a 30 mm aperture's diffraction limit.
+- **The terminal's own length is a latency term.**
+  - A refractor's objective is ~0.55 m from its focus, so receiving and sending through two of them
+    costs 3.7 ns.  That is more than all the fast electronics after row O3.
+  - A metre of fibre is 4.9 ns.  The 50 MBd links' patch cords are about 10 ns.
+- **Optical power:**
+  - **Never amplify after the modulation with an EDFA.**  Its 5-30 m of erbium-doped fibre is
+    25-150 ns.  Amplify the CW light before a fast modulator, or use a booster SOA (a millimetre of
+    chip, +18-20 dBm).
+  - 1550 nm in a 90 mm beam is eye-safe at these powers: 0.2 W in 90 mm is ~30 W/m², far under the
+    ~1 kW/m² limit at 1.5 µm.
+  - With +18-23 dBm the received power at 3 km is −6 to −16 dBm.  The energy bound is a few ps.  At
+    100 m the receivers need attenuation.
+
+| # | turnaround, 100 m (aperture to aperture) | at 3 km | what changes | Δ$ (two nodes) | beyond the gear owned | total $ |
+|---|---|---|---|---|---|---|
+| O0 | **~91 ns** | no link (−39 dBm) | as built: 50 MBd LED POF links at the focal planes (~25 + ~12 ns, est), ~1 m of POF a side (10 ns), a registered FPGA path (~40 ns, est), the refractors (3.7 ns), the slow camera loop | — | $0 | ≈ $15-31k (the terminals: refractors $4-6k, mounts $4-8k, cameras, Thorlabs ≈ $6-12k) |
+| O1 | **~56 ns** | no link | gateware: the FPGA path combinational, pin to pin | $0 | $0 | ≈ $15-31k |
+| O2 | **12.4 ns** | 12.4 ns | 1550 nm, DC-coupled: a pigtailed DFB (+10 dBm) defocused to the pointing; a ~1 GHz InGaAs receiver on 20 cm of 105 µm fibre behind an f/2.3 relay (fibre ports in the cage); TLV3604 into the FPGA's combinational path | ≈ +$3.7-8.8k | ≈ $3.7-8.8k | ≈ $19-39k |
+| O3 | **4.7 ns** | 4.7 ns | the CML fast path, and no fibre: a 10G PIN-TIA (~50 µm, f/1.7) and a 10G DFB at the focal planes, CML gates between them; a booster SOA (+18 dBm) for range | ≈ +$2.4-10k | ≈ $6-19k | ≈ $22-49k |
+| O4 | **1.7 ns** | 1.7 ns | short optics and fast tip/tilt: the classical path gets its own short apertures on the same mount (a 75 mm off-axis parabola, f = 150 mm, to receive; a 30 mm collimator to send): 3.7 → 0.7 ns; a fast steering mirror loop (Newport's FSM-300 is ~$11-12k; a voice-coil one ≈ $3k) | ≈ +$8-30k | ≈ $14-49k | ≈ $30-79k |
+| O5 | **1.1 ns** | 1.1 ns | 30 GHz: 20 µm receivers (the steering mirror makes room for them), InP comparators and gates, a CW DFB through an EDFA (+23 dBm) into a 40 GHz electro-absorption modulator | ≈ +$14-38k | ≈ $28-87k | ≈ $44-117k |
+| O6 | **0.47 ns** | 0.47 ns | one InP photonic chip at the focus (photodiode, gate, modulator), one f = 50 mm aperture used both ways | ≈ +$25-100k | ≈ $54-190k | ≈ $69-220k |
+
+Everything in this table except the refractors' and mounts' prices is an estimate.  The 50 MBd modules'
+delays are not from their datasheet: Broadcom's AV02-4369EN would give them.
+
+**What the optical table says:**
+- **The first two steps are the same as in RF, and the plastic fibre is the reason for both.**  Gateware
+  (91 → 56 ns, free), then a real optical link (56 → 12 ns, ≈ $4-9k).  The 50 MBd modules and their
+  patch cords are ~45 of the 56 ns, and their 1 mm core is why the link stops at ~100 m.
+- **The coupling problem has a standard answer.**  A fibre port on an XY stage at a relayed f/2.3 focus,
+  into a 105 µm, NA 0.22 fibre, accepts ±257 µrad from 90 mm, twice what the slow loop needs at 3 km.
+  For the fast rows, the detector goes at the focus itself and no fibre at all.
+- **From row O3 on, the telescopes are the slowest part.**  Their 3.7 ns is three quarters of
+  O3's 4.7 ns.  Short dedicated apertures (O4) are the cheapest nanoseconds after that, but they need
+  the steering mirror to keep a small detector on the beam.
+- **Optics beats RF only below ~1.2 ns, and costs several times more on the way.**
+  - The RF rows reach 2.4 ns for ≈ $1.6-2.3k and 1.2-1.3 ns for $5-20k.  The optical rows reach 1.7 ns
+    for ≈ $30-79k ($14-49k beyond the gear owned) and 1.1 ns for ≈ $44-117k.
+  - What optics has that RF does not: no spectrum limit, no licence, and the classical beam
+    boresighted with the quantum one, so one pointing system serves both.
+- **For the quantum-networking work** (heralding and control), the optical rows O2-O3 are the natural
+  classical channel: the same telescopes, a dichroic, ≈ $4-19k beyond what is owned.  But at
+  4.7-12 ns, they are no faster than the 5.8 GHz board.
+
+### Fancier FPGAs: the RFSoC 4x2 and the ZCU102
+
+**Neither board shortens the prover's turnaround.  Transceivers, even raw, buy throughput and timing
+resolution, not latency.  Both boards are the right tools for the verifiers.**
+
+- **A transceiver works in words.**  The fabric sees the line only as parallel words.
+  - At 25.78 Gb/s (the RFSoC 4x2's QSFP28, four GTY lanes for 100G Ethernet) a 64-bit word is
+    2.5 ns.  At the ZCU102's GTH (to 16.3 Gb/s, its four SFP+ cages) a 32- or 40-bit word is 2-2.5 ns.
+  - In the rawest mode (no encoding, both buffers bypassed) a decision still waits for the receiving
+    word to fill, the receive pipeline, one registered clock in the fabric, the transmit pipeline and
+    the serializer.  That is about 6-10 word clocks, **≈ 15-25 ns (est)**, against ~5 ns for a
+    combinational LVDS pin path and ~0.5 ns for row 4's CML path.
+  - The receiver's CDR also needs a running, balanced stream.  So does the AC coupling of every SFP
+    and QSFP module.  A quiet line with one challenge edge is the wrong signal for it.
+  - These numbers are estimates.  The latency tables of UG576/UG578 and a loopback on the bench would
+    settle them.
+- **100G Ethernet is worse.**  The CMAC adds lane alignment and 64b/66b, and 100GBASE-SR4 requires
+  RS-FEC: hundreds of ns through a frame (est).  It is a throughput engine.
+- **The RFSoC's RF data converters are slower still.**  QICK measured 90 ns from DAC to ADC with
+  interpolation and decimation bypassed, half in each, and 113-117 ns with the mixers and filters.
+  Others measure 128-250 ns with more of the chain.
+- **Where the UltraScale+ fabric helps a little:** the ZCU102's FMC HPC LVDS pairs into combinational
+  logic, ≈ 3-4 ns pin to pin against the Zynq-7000's ~5 (est).  That saves ~1-2 ns at row 3, and
+  nothing from row 4 on, where the fast path has left the FPGA.
+- **Where they are the right tools: the verifiers, whose delays are calibrated out.**
+  - **A GTY receiver with its CDR held is a 1-bit sampler at 25.78 GS/s:** 39 ps bins with a fixed
+    latency, a time-stamper without a carry chain.
+  - **Two GTY transmit lanes are a challenge generator.**  The four challenge vectors are (±a, ±a), one
+    bit on I and one on Q, placed to 39 ps.
+  - **The RFSoC 4x2's converters can be a whole verifier radio.**  The 9.85 GS/s DACs synthesize
+    5.8 GHz directly in the second Nyquist zone.  The 5 GS/s ADCs sample it in the third and time the
+    answer by correlation to picoseconds.
+  - For quantum networking, the QSFP28 and SFP+ cages are the obvious way to move time-tag and
+    heralding streams at 10-100 Gb/s, where tens to hundreds of ns do not matter.
+- **The fast path in optics can still use the cheap modules.**  An SFP+ module's CML pins can drive
+  the CML logic directly, bypassing the FPGA.  A tap goes to a GTH lane for time-stamping.  The AC
+  coupling then needs a balanced idle pattern.
 
 ### What it says
 
@@ -1243,5 +1455,12 @@ docs/TRAJECTORIES.md and the host terms of docs/HOSTS.md.
 - **Widening the air bandwidth and raising the frequency come last, and pay least per dollar.**
   - They matter only below ~2 ns.
   - At range, power (the energy bound) matters before bandwidth.
+- **E-band is the RF band for kilometres below 2 ns:** 1.25 ns at 3 km in clear air for ≈ $5.7-20k.
+  Rain is its limit.
+- **Optics wins only below ~1.2 ns, and costs several times more on the way.**  Its first gains,
+  though, are the same free ones (gateware) and one cheap one (a real 1550 nm link instead of the
+  plastic fibre).
+- **Fancier FPGAs do not help the prover.**  Transceivers and RF converters work in words and
+  pipelines (15-25 ns raw, 90-250 ns through the RFSoC's converters).  They are the verifiers' tools.
 - **The 60 GHz chips are not the expense.**  Four of them are $104; the 60 GHz board and its horns
   are the cost, and ADI's evaluation PCBs ($6,350 for four) are the quick way to try it.

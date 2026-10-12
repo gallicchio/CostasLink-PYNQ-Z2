@@ -1,0 +1,962 @@
+[
+ {
+  "step": "O0",
+  "name": "as built: used gear + Thorlabs, 50 MBd POF",
+  "what": "50 MBd LED plastic-fibre links (650 nm, 1 mm core) at the focal planes; a registered FPGA path; the slow camera loop; multimode fibres",
+  "total": [
+   15400,
+   30500
+  ],
+  "beyond_owned": [
+   0,
+   0
+  ],
+  "delta": [
+   0,
+   0
+  ],
+  "costs": [
+   [
+    "2 used WO 80-100 mm refractors at $2-3k (Jason)",
+    4000,
+    6000
+   ],
+   [
+    "2 used Rainbow Astro / iOptron HAE mounts at $2-4k (Jason)",
+    4000,
+    8000
+   ],
+   [
+    "2 ZWO ASI cameras for the slow loop (est)",
+    600,
+    2000
+   ],
+   [
+    "Thorlabs 30 mm cage cubes, splitters, dichroics, stages, mounts, two terminals (est; 'a very big expense')",
+    6000,
+    12000
+   ],
+   [
+    "2 beacon lasers, multimode fibres, the 50 MBd POF links, two FPGA boards (est)",
+    800,
+    2500
+   ]
+  ],
+  "terminal": {
+   "D_rx": 0.09,
+   "D_tx": 0.09,
+   "path_rx": 0.55,
+   "path_tx": 0.55,
+   "sig": 2.5e-05,
+   "pof": true,
+   "fib_rx": 1.0,
+   "fib_tx": 1.0,
+   "P_tx": -5.0,
+   "d": 0.001,
+   "NA": 0.083,
+   "rx_mod": 25.0,
+   "tx_mod": 12.0,
+   "core": 40.0,
+   "sens": -23.0
+  },
+  "100 m": {
+   "P_rx_dBm": -19.87995052401095,
+   "tx_div_urad": 211.0664548524726,
+   "fov_need_urad": 121.27051464477661,
+   "fov_have_urad": 922.2222222222224,
+   "d_um": 1000.0,
+   "f_det_GHz": 0.057982373094215625,
+   "optics_ns": 3.669205047179673,
+   "fibre_ns": 9.940210036904931,
+   "electronics_ns": 77.0,
+   "turnaround_ns": 90.6094150840846
+  },
+  "3 km": {
+   "P_rx_dBm": -39.22388969346921,
+   "tx_div_urad": 260.61346954311745,
+   "fov_need_urad": 128.52129624624746,
+   "fov_have_urad": 922.2222222222224,
+   "d_um": 1000.0,
+   "f_det_GHz": 0.057982373094215625,
+   "optics_ns": 3.669205047179673,
+   "fibre_ns": 9.940210036904931,
+   "electronics_ns": 77.0,
+   "fails": "-39 dBm at the receiver, below its ~-23 dBm"
+  }
+ },
+ {
+  "step": "O1",
+  "name": "gateware fast path",
+  "what": "the FPGA path combinational, pin to pin (as the RF table's row 1)",
+  "total": [
+   15400,
+   30500
+  ],
+  "beyond_owned": [
+   0,
+   0
+  ],
+  "delta": [
+   0,
+   0
+  ],
+  "costs": [
+   [
+    "2 used WO 80-100 mm refractors at $2-3k (Jason)",
+    4000,
+    6000
+   ],
+   [
+    "2 used Rainbow Astro / iOptron HAE mounts at $2-4k (Jason)",
+    4000,
+    8000
+   ],
+   [
+    "2 ZWO ASI cameras for the slow loop (est)",
+    600,
+    2000
+   ],
+   [
+    "Thorlabs 30 mm cage cubes, splitters, dichroics, stages, mounts, two terminals (est; 'a very big expense')",
+    6000,
+    12000
+   ],
+   [
+    "2 beacon lasers, multimode fibres, the 50 MBd POF links, two FPGA boards (est)",
+    800,
+    2500
+   ]
+  ],
+  "terminal": {
+   "D_rx": 0.09,
+   "D_tx": 0.09,
+   "path_rx": 0.55,
+   "path_tx": 0.55,
+   "sig": 2.5e-05,
+   "pof": true,
+   "fib_rx": 1.0,
+   "fib_tx": 1.0,
+   "P_tx": -5.0,
+   "d": 0.001,
+   "NA": 0.083,
+   "rx_mod": 25.0,
+   "tx_mod": 12.0,
+   "core": 5.0,
+   "sens": -23.0
+  },
+  "100 m": {
+   "P_rx_dBm": -19.87995052401095,
+   "tx_div_urad": 211.0664548524726,
+   "fov_need_urad": 121.27051464477661,
+   "fov_have_urad": 922.2222222222224,
+   "d_um": 1000.0,
+   "f_det_GHz": 0.057982373094215625,
+   "optics_ns": 3.669205047179673,
+   "fibre_ns": 9.940210036904931,
+   "electronics_ns": 42.0,
+   "turnaround_ns": 55.6094150840846
+  },
+  "3 km": {
+   "P_rx_dBm": -39.22388969346921,
+   "tx_div_urad": 260.61346954311745,
+   "fov_need_urad": 128.52129624624746,
+   "fov_have_urad": 922.2222222222224,
+   "d_um": 1000.0,
+   "f_det_GHz": 0.057982373094215625,
+   "optics_ns": 3.669205047179673,
+   "fibre_ns": 9.940210036904931,
+   "electronics_ns": 42.0,
+   "fails": "-39 dBm at the receiver, below its ~-23 dBm"
+  }
+ },
+ {
+  "step": "O2",
+  "name": "1550 nm, 1 GHz, DC-coupled",
+  "what": "a pigtailed DFB (+10 dBm, defocused to the pointing) and a ~1 GHz InGaAs receiver on 20 cm of 105 um fibre behind an f/2.3 relay; TLV3604 into the FPGA's combinational path",
+  "total": [
+   19100,
+   39300
+  ],
+  "beyond_owned": [
+   3700,
+   8800
+  ],
+  "delta": [
+   3700,
+   8800
+  ],
+  "costs": [
+   [
+    "2 used WO 80-100 mm refractors at $2-3k (Jason)",
+    4000,
+    6000
+   ],
+   [
+    "2 used Rainbow Astro / iOptron HAE mounts at $2-4k (Jason)",
+    4000,
+    8000
+   ],
+   [
+    "2 ZWO ASI cameras for the slow loop (est)",
+    600,
+    2000
+   ],
+   [
+    "Thorlabs 30 mm cage cubes, splitters, dichroics, stages, mounts, two terminals (est; 'a very big expense')",
+    6000,
+    12000
+   ],
+   [
+    "2 beacon lasers, multimode fibres, the 50 MBd POF links, two FPGA boards (est)",
+    800,
+    2500
+   ],
+   [
+    "2 1550 nm DFBs, pigtailed, +10 dBm, with DC-coupled 2.5 Gb/s drivers (est)",
+    600,
+    1600
+   ],
+   [
+    "2 fibre-coupled ~1 GHz DC-coupled InGaAs photoreceivers (est)",
+    800,
+    2000
+   ],
+   [
+    "4 fibre ports (FiberPort-class) and 2 f/6 to f/2.3 relays for the 105 um fibre (est)",
+    1600,
+    3600
+   ],
+   [
+    "2 dichroics for 1550 nm (est)",
+    400,
+    1000
+   ],
+   [
+    "a comparator and LVDS board, rev B's (est)",
+    300,
+    600
+   ]
+  ],
+  "terminal": {
+   "D_rx": 0.09,
+   "D_tx": 0.09,
+   "path_rx": 0.55,
+   "path_tx": 0.55,
+   "sig": 2.5e-05,
+   "fib_rx": 0.2,
+   "fib_tx": 0.2,
+   "P_tx": 10.0,
+   "d": 0.000105,
+   "NA": 0.22,
+   "B_rx": 1000,
+   "tia": 0.3,
+   "cmp": 0.8,
+   "link": 0.15,
+   "core": 2.0,
+   "fpga_io": 3.0,
+   "tx_tau": [
+    0.15,
+    0.1
+   ],
+   "B_mod": 2500,
+   "tx_fix": 0.2
+  },
+  "100 m": {
+   "P_rx_dBm": -4.87995052401095,
+   "tx_div_urad": 211.0664548524726,
+   "fov_need_urad": 121.27051464477661,
+   "fov_have_urad": 256.6666666666667,
+   "d_um": 105.0,
+   "f_det_GHz": 2.1349765421232094,
+   "optics_ns": 3.669205047179673,
+   "fibre_ns": 1.9586883670035489,
+   "snr_100MHz_dB": 79.78252404637135,
+   "window": 0.0032658933165338184,
+   "z": 8.036577096121018,
+   "rise_ns": -0.0014769442016933853,
+   "energy_ns": 6.790313506835759e-06,
+   "decide_ns": 6.790313506835759e-06,
+   "tx50_ns": 0.270420760510246,
+   "turnaround_ns": 12.348320965006973
+  },
+  "3 km": {
+   "P_rx_dBm": -24.22388969346921,
+   "tx_div_urad": 260.61346954311745,
+   "fov_need_urad": 128.52129624624746,
+   "fov_have_urad": 256.6666666666667,
+   "d_um": 105.0,
+   "f_det_GHz": 2.1349765421232094,
+   "optics_ns": 3.669205047179673,
+   "fibre_ns": 1.9586883670035489,
+   "snr_100MHz_dB": 41.09464570745483,
+   "window": 0.2807992289609582,
+   "z": 8.036577096121018,
+   "rise_ns": 0.05046203998037084,
+   "energy_ns": 0.050196988137882106,
+   "decide_ns": 0.05046203998037084,
+   "tx50_ns": 0.270420760510246,
+   "turnaround_ns": 12.398776214673838
+  }
+ },
+ {
+  "step": "O3",
+  "name": "CML fast path, 10 GHz at the focus",
+  "what": "the receiver and the laser at the focal planes (no fibre); a 10G PIN-TIA (~50 um, f/1.7); ADCMP572 or the TIA's limiting output into CML gates into a 10G laser driver; a booster SOA (+18 dBm) for range, never an EDFA after the modulation",
+  "total": [
+   21500,
+   49300
+  ],
+  "beyond_owned": [
+   6100,
+   18800
+  ],
+  "delta": [
+   2400,
+   10000
+  ],
+  "costs": [
+   [
+    "2 used WO 80-100 mm refractors at $2-3k (Jason)",
+    4000,
+    6000
+   ],
+   [
+    "2 used Rainbow Astro / iOptron HAE mounts at $2-4k (Jason)",
+    4000,
+    8000
+   ],
+   [
+    "2 ZWO ASI cameras for the slow loop (est)",
+    600,
+    2000
+   ],
+   [
+    "Thorlabs 30 mm cage cubes, splitters, dichroics, stages, mounts, two terminals (est; 'a very big expense')",
+    6000,
+    12000
+   ],
+   [
+    "2 beacon lasers, multimode fibres, the 50 MBd POF links, two FPGA boards (est)",
+    800,
+    2500
+   ],
+   [
+    "2 1550 nm DFBs, pigtailed, +10 dBm, with DC-coupled 2.5 Gb/s drivers (est)",
+    600,
+    1600
+   ],
+   [
+    "2 fibre-coupled ~1 GHz DC-coupled InGaAs photoreceivers (est)",
+    800,
+    2000
+   ],
+   [
+    "4 fibre ports (FiberPort-class) and 2 f/6 to f/2.3 relays for the 105 um fibre (est)",
+    1600,
+    3600
+   ],
+   [
+    "2 dichroics for 1550 nm (est)",
+    400,
+    1000
+   ],
+   [
+    "a comparator and LVDS board, rev B's (est)",
+    300,
+    600
+   ],
+   [
+    "2 10G PIN-TIA receivers at the focal plane, ~50 um, behind f/1.7 relays (est)",
+    600,
+    5000
+   ],
+   [
+    "2 10G DFB TOSAs with drivers and 2 booster SOAs, +18 dBm (est)",
+    1400,
+    4000
+   ],
+   [
+    "the CML fast path: ADCMP572 ($30.18) or the TIA's limiting output into CML gates, 2 boards (est)",
+    400,
+    1000
+   ]
+  ],
+  "terminal": {
+   "D_rx": 0.09,
+   "D_tx": 0.09,
+   "path_rx": 0.55,
+   "path_tx": 0.55,
+   "sig": 2.5e-05,
+   "fib_rx": 0.0,
+   "fib_tx": 0.05,
+   "P_tx": 18.0,
+   "d": 5e-05,
+   "NA": 0.3,
+   "B_rx": 7000,
+   "tia": 0.15,
+   "cmp": 0.165,
+   "link": 0.05,
+   "core": 0.25,
+   "fpga_io": 0.0,
+   "tx_tau": [
+    0.03,
+    0.03
+   ],
+   "B_mod": 10000,
+   "tx_fix": 0.1
+  },
+  "100 m": {
+   "P_rx_dBm": 3.120049475989049,
+   "tx_div_urad": 211.0664548524726,
+   "fov_need_urad": 121.27051464477661,
+   "fov_have_urad": 166.66666666666669,
+   "d_um": 50.0,
+   "f_det_GHz": 6.997517273236981,
+   "optics_ns": 3.669205047179673,
+   "fibre_ns": 0.2448360458754436,
+   "snr_100MHz_dB": 83.95115148617177,
+   "window": 0.00542479764437797,
+   "z": 8.155904183957647,
+   "rise_ns": -0.0018711552008692219,
+   "energy_ns": 2.6781141333280285e-06,
+   "decide_ns": 2.6781141333280285e-06,
+   "tx50_ns": 0.06294729726588068,
+   "turnaround_ns": 4.69199106843513
+  },
+  "3 km": {
+   "P_rx_dBm": -16.22388969346921,
+   "tx_div_urad": 260.61346954311745,
+   "fov_need_urad": 128.52129624624746,
+   "fov_have_urad": 166.66666666666669,
+   "d_um": 50.0,
+   "f_det_GHz": 6.997517273236981,
+   "optics_ns": 3.669205047179673,
+   "fibre_ns": 0.2448360458754436,
+   "snr_100MHz_dB": 45.263273147255234,
+   "window": 0.4664203169463156,
+   "z": 8.155904183957647,
+   "rise_ns": 0.012292570600444449,
+   "energy_ns": 0.019797799210187976,
+   "decide_ns": 0.019797799210187976,
+   "tx50_ns": 0.06294729726588068,
+   "turnaround_ns": 4.7117861895311846
+  }
+ },
+ {
+  "step": "O4",
+  "name": "short optics + fast tip/tilt",
+  "what": "the classical path gets its own short apertures on the same mount: a 75 mm off-axis parabola (f = 150 mm) to receive, a 30 mm collimator (f = 50 mm) to send; a fast steering mirror loop",
+  "total": [
+   29700,
+   79300
+  ],
+  "beyond_owned": [
+   14300,
+   48800
+  ],
+  "delta": [
+   8200,
+   30000
+  ],
+  "costs": [
+   [
+    "2 used WO 80-100 mm refractors at $2-3k (Jason)",
+    4000,
+    6000
+   ],
+   [
+    "2 used Rainbow Astro / iOptron HAE mounts at $2-4k (Jason)",
+    4000,
+    8000
+   ],
+   [
+    "2 ZWO ASI cameras for the slow loop (est)",
+    600,
+    2000
+   ],
+   [
+    "Thorlabs 30 mm cage cubes, splitters, dichroics, stages, mounts, two terminals (est; 'a very big expense')",
+    6000,
+    12000
+   ],
+   [
+    "2 beacon lasers, multimode fibres, the 50 MBd POF links, two FPGA boards (est)",
+    800,
+    2500
+   ],
+   [
+    "2 1550 nm DFBs, pigtailed, +10 dBm, with DC-coupled 2.5 Gb/s drivers (est)",
+    600,
+    1600
+   ],
+   [
+    "2 fibre-coupled ~1 GHz DC-coupled InGaAs photoreceivers (est)",
+    800,
+    2000
+   ],
+   [
+    "4 fibre ports (FiberPort-class) and 2 f/6 to f/2.3 relays for the 105 um fibre (est)",
+    1600,
+    3600
+   ],
+   [
+    "2 dichroics for 1550 nm (est)",
+    400,
+    1000
+   ],
+   [
+    "a comparator and LVDS board, rev B's (est)",
+    300,
+    600
+   ],
+   [
+    "2 10G PIN-TIA receivers at the focal plane, ~50 um, behind f/1.7 relays (est)",
+    600,
+    5000
+   ],
+   [
+    "2 10G DFB TOSAs with drivers and 2 booster SOAs, +18 dBm (est)",
+    1400,
+    4000
+   ],
+   [
+    "the CML fast path: ADCMP572 ($30.18) or the TIA's limiting output into CML gates, 2 boards (est)",
+    400,
+    1000
+   ],
+   [
+    "2 fast steering mirrors with drivers (est; Newport FSM-300 ~$11-12k, a voice-coil DIY ~$3k)",
+    6000,
+    24000
+   ],
+   [
+    "2 quadrant detectors and loop controllers (est)",
+    1000,
+    3000
+   ],
+   [
+    "2 x 75 mm off-axis parabolas f = 150 mm and 30 mm TX collimators, boresighted mounts (est)",
+    1200,
+    3000
+   ]
+  ],
+  "terminal": {
+   "D_rx": 0.075,
+   "D_tx": 0.03,
+   "path_rx": 0.15,
+   "path_tx": 0.05,
+   "sig": 3e-06,
+   "fib_rx": 0.0,
+   "fib_tx": 0.05,
+   "P_tx": 18.0,
+   "d": 5e-05,
+   "NA": 0.3,
+   "B_rx": 7000,
+   "tia": 0.15,
+   "cmp": 0.165,
+   "link": 0.05,
+   "core": 0.25,
+   "fpga_io": 0.0,
+   "tx_tau": [
+    0.03,
+    0.03
+   ],
+   "B_mod": 10000,
+   "tx_fix": 0.1
+  },
+  "100 m": {
+   "P_rx_dBm": 4.949999999999999,
+   "tx_div_urad": 126.06666666666668,
+   "fov_need_urad": 37.41858910974833,
+   "fov_have_urad": 200.0,
+   "d_um": 50.0,
+   "f_det_GHz": 6.997517273236981,
+   "optics_ns": 0.6671281903963041,
+   "fibre_ns": 0.2448360458754436,
+   "snr_100MHz_dB": 87.61105253419366,
+   "window": 0.003559495845507558,
+   "z": 8.155904183957647,
+   "rise_ns": -0.0019154581318446087,
+   "energy_ns": 1.1530256711861015e-06,
+   "decide_ns": 1.1530256711861015e-06,
+   "tx50_ns": 0.06294729726588068,
+   "turnaround_ns": 1.6899126865632994
+  },
+  "3 km": {
+   "P_rx_dBm": -11.216234739767033,
+   "tx_div_urad": 126.06666666666668,
+   "fov_need_urad": 42.3319798052759,
+   "fov_have_urad": 200.0,
+   "d_um": 50.0,
+   "f_det_GHz": 6.997517273236981,
+   "optics_ns": 0.6671281903963041,
+   "fibre_ns": 0.2448360458754436,
+   "snr_100MHz_dB": 55.27858305465959,
+   "window": 0.14723530636650073,
+   "z": 8.155904183957647,
+   "rise_ns": 0.0016346455461572031,
+   "energy_ns": 0.001972813015874474,
+   "decide_ns": 0.001972813015874474,
+   "tx50_ns": 0.06294729726588068,
+   "turnaround_ns": 1.691884346553503
+  }
+ },
+ {
+  "step": "O5",
+  "name": "30 GHz",
+  "what": "20 um 30 GHz receivers (the steering mirror makes room for them); InP comparators and gates; a CW DFB through an EDFA (+23 dBm) into a 40 GHz electro-absorption modulator",
+  "total": [
+   43700,
+   117300
+  ],
+  "beyond_owned": [
+   28300,
+   86800
+  ],
+  "delta": [
+   14000,
+   38000
+  ],
+  "costs": [
+   [
+    "2 used WO 80-100 mm refractors at $2-3k (Jason)",
+    4000,
+    6000
+   ],
+   [
+    "2 used Rainbow Astro / iOptron HAE mounts at $2-4k (Jason)",
+    4000,
+    8000
+   ],
+   [
+    "2 ZWO ASI cameras for the slow loop (est)",
+    600,
+    2000
+   ],
+   [
+    "Thorlabs 30 mm cage cubes, splitters, dichroics, stages, mounts, two terminals (est; 'a very big expense')",
+    6000,
+    12000
+   ],
+   [
+    "2 beacon lasers, multimode fibres, the 50 MBd POF links, two FPGA boards (est)",
+    800,
+    2500
+   ],
+   [
+    "2 1550 nm DFBs, pigtailed, +10 dBm, with DC-coupled 2.5 Gb/s drivers (est)",
+    600,
+    1600
+   ],
+   [
+    "2 fibre-coupled ~1 GHz DC-coupled InGaAs photoreceivers (est)",
+    800,
+    2000
+   ],
+   [
+    "4 fibre ports (FiberPort-class) and 2 f/6 to f/2.3 relays for the 105 um fibre (est)",
+    1600,
+    3600
+   ],
+   [
+    "2 dichroics for 1550 nm (est)",
+    400,
+    1000
+   ],
+   [
+    "a comparator and LVDS board, rev B's (est)",
+    300,
+    600
+   ],
+   [
+    "2 10G PIN-TIA receivers at the focal plane, ~50 um, behind f/1.7 relays (est)",
+    600,
+    5000
+   ],
+   [
+    "2 10G DFB TOSAs with drivers and 2 booster SOAs, +18 dBm (est)",
+    1400,
+    4000
+   ],
+   [
+    "the CML fast path: ADCMP572 ($30.18) or the TIA's limiting output into CML gates, 2 boards (est)",
+    400,
+    1000
+   ],
+   [
+    "2 fast steering mirrors with drivers (est; Newport FSM-300 ~$11-12k, a voice-coil DIY ~$3k)",
+    6000,
+    24000
+   ],
+   [
+    "2 quadrant detectors and loop controllers (est)",
+    1000,
+    3000
+   ],
+   [
+    "2 x 75 mm off-axis parabolas f = 150 mm and 30 mm TX collimators, boresighted mounts (est)",
+    1200,
+    3000
+   ],
+   [
+    "2 30-40 GHz photoreceivers, 20 um (est)",
+    6000,
+    16000
+   ],
+   [
+    "2 CW DFBs into EDFAs (CW, so the doped fibre's 25-150 ns is out of the path) and 40 GHz EAM/EML modulators (est)",
+    6000,
+    16000
+   ],
+   [
+    "InP comparator and gate boards (HMC674-class, 85 ps; ~20 ps gates) (est)",
+    2000,
+    6000
+   ]
+  ],
+  "terminal": {
+   "D_rx": 0.075,
+   "D_tx": 0.03,
+   "path_rx": 0.15,
+   "path_tx": 0.05,
+   "sig": 3e-06,
+   "fib_rx": 0.0,
+   "fib_tx": 0.02,
+   "P_tx": 23.0,
+   "d": 2e-05,
+   "NA": 0.3,
+   "B_rx": 30000,
+   "tia": 0.08,
+   "cmp": 0.085,
+   "link": 0.02,
+   "core": 0.12,
+   "fpga_io": 0.0,
+   "tx_tau": [
+    0.015,
+    0.01
+   ],
+   "B_mod": 35000,
+   "tx_fix": 0.05
+  },
+  "100 m": {
+   "P_rx_dBm": 9.95,
+   "tx_div_urad": 126.06666666666668,
+   "fov_need_urad": 37.41858910974833,
+   "fov_have_urad": 80.0,
+   "d_um": 20.0,
+   "f_det_GHz": 30.314331330207967,
+   "optics_ns": 0.6671281903963041,
+   "fibre_ns": 0.09793441835017744,
+   "snr_100MHz_dB": 88.76272752831797,
+   "window": 0.006483004567116137,
+   "z": 8.2383988964842,
+   "rise_ns": -0.0019587172104239053,
+   "energy_ns": 9.024286605895609e-07,
+   "decide_ns": 9.024286605895609e-07,
+   "tx50_ns": 0.02167543351141808,
+   "turnaround_ns": 1.1417389446865602
+  },
+  "3 km": {
+   "P_rx_dBm": -6.2162347397670334,
+   "tx_div_urad": 126.06666666666668,
+   "fov_need_urad": 42.3319798052759,
+   "fov_have_urad": 80.0,
+   "d_um": 20.0,
+   "f_det_GHz": 30.314331330207967,
+   "optics_ns": 0.6671281903963041,
+   "fibre_ns": 0.09793441835017744,
+   "snr_100MHz_dB": 56.43025804878391,
+   "window": 0.2681635841265207,
+   "z": 8.2383988964842,
+   "rise_ns": -0.0002923749781698126,
+   "energy_ns": 0.0015440445533860985,
+   "decide_ns": 0.0015440445533860985,
+   "tx50_ns": 0.02167543351141808,
+   "turnaround_ns": 1.1432820868112856
+  }
+ },
+ {
+  "step": "O6",
+  "name": "one photonic chip at the focus",
+  "what": "the photodiode, the gate and the modulator on one InP chip at a single short focus (f = 50 mm) used both ways; the CW light from the EDFA (+23 dBm) into its modulator",
+  "total": [
+   69100,
+   218300
+  ],
+  "beyond_owned": [
+   53700,
+   187800
+  ],
+  "delta": [
+   25400,
+   101000
+  ],
+  "costs": [
+   [
+    "2 used WO 80-100 mm refractors at $2-3k (Jason)",
+    4000,
+    6000
+   ],
+   [
+    "2 used Rainbow Astro / iOptron HAE mounts at $2-4k (Jason)",
+    4000,
+    8000
+   ],
+   [
+    "2 ZWO ASI cameras for the slow loop (est)",
+    600,
+    2000
+   ],
+   [
+    "Thorlabs 30 mm cage cubes, splitters, dichroics, stages, mounts, two terminals (est; 'a very big expense')",
+    6000,
+    12000
+   ],
+   [
+    "2 beacon lasers, multimode fibres, the 50 MBd POF links, two FPGA boards (est)",
+    800,
+    2500
+   ],
+   [
+    "2 1550 nm DFBs, pigtailed, +10 dBm, with DC-coupled 2.5 Gb/s drivers (est)",
+    600,
+    1600
+   ],
+   [
+    "2 fibre-coupled ~1 GHz DC-coupled InGaAs photoreceivers (est)",
+    800,
+    2000
+   ],
+   [
+    "4 fibre ports (FiberPort-class) and 2 f/6 to f/2.3 relays for the 105 um fibre (est)",
+    1600,
+    3600
+   ],
+   [
+    "2 dichroics for 1550 nm (est)",
+    400,
+    1000
+   ],
+   [
+    "a comparator and LVDS board, rev B's (est)",
+    300,
+    600
+   ],
+   [
+    "2 10G PIN-TIA receivers at the focal plane, ~50 um, behind f/1.7 relays (est)",
+    600,
+    5000
+   ],
+   [
+    "2 10G DFB TOSAs with drivers and 2 booster SOAs, +18 dBm (est)",
+    1400,
+    4000
+   ],
+   [
+    "the CML fast path: ADCMP572 ($30.18) or the TIA's limiting output into CML gates, 2 boards (est)",
+    400,
+    1000
+   ],
+   [
+    "2 fast steering mirrors with drivers (est; Newport FSM-300 ~$11-12k, a voice-coil DIY ~$3k)",
+    6000,
+    24000
+   ],
+   [
+    "2 quadrant detectors and loop controllers (est)",
+    1000,
+    3000
+   ],
+   [
+    "2 x 75 mm off-axis parabolas f = 150 mm and 30 mm TX collimators, boresighted mounts (est)",
+    1200,
+    3000
+   ],
+   [
+    "2 30-40 GHz photoreceivers, 20 um (est)",
+    6000,
+    16000
+   ],
+   [
+    "2 CW DFBs into EDFAs (CW, so the doped fibre's 25-150 ns is out of the path) and 40 GHz EAM/EML modulators (est)",
+    6000,
+    16000
+   ],
+   [
+    "InP comparator and gate boards (HMC674-class, 85 ps; ~20 ps gates) (est)",
+    2000,
+    6000
+   ],
+   [
+    "a monolithic InP photonic chip: photodiode, gate, modulator at one focal plane (an MPW run, design, packaging) (est)",
+    25000,
+    100000
+   ],
+   [
+    "2 f = 50 mm apertures used both ways (est)",
+    400,
+    1000
+   ]
+  ],
+  "terminal": {
+   "D_rx": 0.05,
+   "D_tx": 0.05,
+   "path_rx": 0.05,
+   "path_tx": 0.05,
+   "sig": 3e-06,
+   "fib_rx": 0.0,
+   "fib_tx": 0.0,
+   "P_tx": 23.0,
+   "d": 1.5e-05,
+   "NA": 0.35,
+   "B_rx": 40000,
+   "tia": 0.03,
+   "cmp": 0.03,
+   "link": 0.01,
+   "core": 0.03,
+   "fpga_io": 0.0,
+   "tx_tau": [
+    0.01,
+    0.005
+   ],
+   "B_mod": 40000,
+   "tx_fix": 0.02
+  },
+  "100 m": {
+   "P_rx_dBm": 8.726380796449934,
+   "tx_div_urad": 75.64,
+   "fov_need_urad": 50.054673996077284,
+   "fov_have_urad": 104.99999999999999,
+   "d_um": 15.0,
+   "f_det_GHz": 48.03413470295516,
+   "optics_ns": 0.33356409519815206,
+   "fibre_ns": 0.0,
+   "snr_100MHz_dB": 84.56634680870165,
+   "window": 0.012102739634653019,
+   "z": 8.253097083617451,
+   "rise_ns": -0.0019387323167867163,
+   "energy_ns": 2.380122045142142e-06,
+   "decide_ns": 2.380122045142142e-06,
+   "tx50_ns": 0.01262140875712802,
+   "turnaround_ns": 0.4661878840773252
+  },
+  "3 km": {
+   "P_rx_dBm": -7.692704361005763,
+   "tx_div_urad": 90.85202415958857,
+   "fov_need_urad": 55.557458490682635,
+   "fov_have_urad": 104.99999999999999,
+   "d_um": 15.0,
+   "f_det_GHz": 48.03413470295516,
+   "optics_ns": 0.33356409519815206,
+   "fibre_ns": 0.0,
+   "snr_100MHz_dB": 51.728176493790244,
+   "window": 0.5306304964606148,
+   "z": 8.253097083617451,
+   "rise_ns": 0.0011343767265299667,
+   "energy_ns": 0.0045752650509784925,
+   "decide_ns": 0.0045752650509784925,
+   "tx50_ns": 0.01262140875712802,
+   "turnaround_ns": 0.4707607690062586
+  }
+ }
+]
