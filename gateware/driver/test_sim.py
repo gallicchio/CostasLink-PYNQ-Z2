@@ -7,6 +7,7 @@ constants tb_engines.v proves on the RTL.  TestOnRtl runs costaslink.py's operat
 PipeBus against tb_pipe.v (the core, SER = 8 as on the PYNQ-Z2, and the loopback model: the pins come
 back on the fast comparators 13 samples later, on the slow ones 40), the way BRINGUP.md's stages use them.
 """
+import math
 import os
 import sys
 import unittest
@@ -88,6 +89,59 @@ class TestReceivedLevel(unittest.TestCase):
             db, r = cl.agc()
             self.assertAlmostEqual(r, p_ant, delta=0.3)
             self.assertAlmostEqual(db, max(0.0, min(31.75, p_ant + 59.2)), delta=0.6)
+
+
+class TestSurvey(unittest.TestCase):
+    """the interference survey (Prompt 26) against a model of the slow window comparator: Gaussian noise
+    of a known level at each frequency, and WiFi's bursts at one of them"""
+
+    def test_survey_recovers_levels_and_bursts(self):
+        import costaslink as CLM
+        from statistics import NormalDist
+        nd = NormalDist()
+        p_ant = {5745: -95.0, 5775: -101.0, 5800: -101.0}        # dBm at RX ANT in the slow path's 7.5 MHz
+        burst = {5800: 0.05}                                     # 5 % of the time, 20 dB above the rest
+
+        class Bus:
+            def read(self, reg):
+                return 0
+            def write(self, reg, value):
+                pass
+        cl = CostasLink(Bus(), check=False)
+        cl.wait_s = lambda s_: None
+        cl.dsa(0.0)
+        state = {"f": None, "vt2": None}
+        cl.pll_tune = lambda which, f, f_pfd=25.0, cp=None: state.update(f=f)
+
+        def dac(which=CLM.DAC1, **ch):
+            if "V_T2" in ch:
+                state["vt2"] = ch["V_T2"]
+            return []
+        cl.dac = dac
+
+        def leg_sigma(dbm):
+            # sigma_to_dbm() inverted
+            p_dem = dbm + CLM.RX_GAIN_DB - cl._dsa_db
+            sigma_diff = CLM.A_REG_V * 10 ** ((p_dem - CLM.DEM_REG_DBM) / 20.0) / math.sqrt(2.0)
+            return sigma_diff * CLM.G_SLOW / 2.0
+
+        def gate(seconds=None, inputs=()):
+            f, v = state["f"], state["vt2"]
+            s0 = leg_sigma(p_ant[f])
+            d = 1.0 - nd.cdf((v - CLM.V_MID - 0.002) / s0)      # a 2 mV offset on the leg
+            if f in burst:
+                d = (1 - burst[f]) * d + burst[f] * (1.0 - nd.cdf((v - CLM.V_MID - 0.002) / (10 * s0)))
+            return {inputs[0]: {"duty": d}}
+        cl.gate = gate
+        res = {r["f_mhz"]: r for r in cl.survey([5745, 5775, 5800])}
+        self.assertAlmostEqual(res[5745]["dbm"], -95.0, delta=0.3)
+        self.assertAlmostEqual(res[5775]["dbm"], -101.0, delta=0.3)
+        self.assertAlmostEqual(res[5775]["v0"], CLM.V_MID + 0.002, delta=0.0005)
+        self.assertAlmostEqual(res[5775]["inr_db"], -101.0 - cl.thermal_dbm("slow"), delta=0.3)
+        self.assertLess(res[5745]["tail"], 1e-3)                # Gaussian past 4 sigma
+        self.assertGreater(res[5800]["tail"], 0.005)            # the bursts show: 0.05 x P(burst > 4 sigma) ~ 0.017
+        self.assertAlmostEqual(res[5800]["dbm"], -101.0, delta=1.5)  # and barely moves the fit
+        self.assertEqual(state["vt2"] is not None, True)
 
 
 class TestOnRtl(unittest.TestCase):

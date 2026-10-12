@@ -36,9 +36,15 @@ def field(word, hi, lo, value):
     return (word & ~mask) | (value << lo)
 
 
-def regs(f_mhz, rfb_en=False, f_pfd=F_PFD_MHZ, mute_until_lock=False):
-    """The six 32-bit words for RFOUTA = f_mhz (3000-6000 MHz, no output divider)."""
+def regs(f_mhz, rfb_en=False, f_pfd=F_PFD_MHZ, mute_until_lock=False, cp=CP_CODE):
+    """The six 32-bit words for RFOUTA = f_mhz (3000-6000 MHz, no output divider).  f_pfd = 25 MHz / R:
+    the default R = 1 gives 25 MHz channels; the interference survey's R = 5 gives 5 MHz ones, every WiFi
+    centre (PLAN.md section 19, Prompt 26), with the charge pump raised (cp = 15, 5.1 mA) because N is
+    five times larger: the loop then slows to roughly 30-40 kHz (est), which a survey does not mind."""
     assert 3000.0 <= f_mhz <= 6000.0, "the VCO covers 3-6 GHz without the output divider"
+    R = int(round(F_REF_MHZ / f_pfd))
+    assert 1 <= R <= 1023 and abs(F_REF_MHZ / R - f_pfd) < 1e-9, "f_pfd must be 25 MHz / R"
+    assert 0 <= cp <= 15
     n_exact = f_mhz / f_pfd
     N = int(round(n_exact))
     assert abs(N - n_exact) < 1e-9, "%.3f MHz is not a multiple of the %.3f MHz PFD: use the fractional mode" % (f_mhz, f_pfd)
@@ -57,9 +63,9 @@ def regs(f_mhz, rfb_en=False, f_pfd=F_PFD_MHZ, mute_until_lock=False):
     r2 = field(r2, 28, 26, 0b110)            # MUX[2:0] with MUX[3] = 0: digital lock detect on the MUX pin
     r2 = field(r2, 25, 25, 0)                # DBR
     r2 = field(r2, 24, 24, 0)                # RDIV2
-    r2 = field(r2, 23, 14, 1)                # R = 1
+    r2 = field(r2, 23, 14, R)                # R (1 for the link)
     r2 = field(r2, 13, 13, 0)                # REG4DB
-    r2 = field(r2, 12, 9, CP_CODE)
+    r2 = field(r2, 12, 9, cp)
     r2 = field(r2, 8, 8, 1)                  # LDF: integer-N lock detect
     r2 = field(r2, 7, 7, 0)                  # LDP 10 ns
     r2 = field(r2, 6, 6, 1)                  # PDP positive: a passive (non-inverting) loop filter

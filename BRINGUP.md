@@ -189,6 +189,10 @@ the switch block cabled in and time division (stage 4.4).
    verifier's carrier (the verifier's loop holds through the exchange and is still locked after).
 5. Interference: a 5 GHz WiFi scan at the bench (the laptop); the loop's 3 kHz bandwidth should not
    notice a -40 dBm WiFi channel, the fast comparators will (false flags vetoed by the slow path).
+   Then the board's own survey with both far transmitters off (PLAN.md section 19, Prompt 26):
+   `cl.survey(range(5650, 5926, 5))`, the slow window's noise fit at 5 MHz steps, beside the laptop's
+   scan and an SDR on RX MON.  Calibrate its `cal_db` against a known carrier (`received_dBm()` locked,
+   then the same level from a generator with the loop held).
 6. The schemes against each other (PLAN.md section 18), each edge on the scope at both ends and its
    jitter over 10^4 events: the BPSK flip decided by sign(I) against the same flip decided by IN set
    beside the idle; the plan's corners (QP/QN and CMP I); the pilot at 45 degrees with the four corners

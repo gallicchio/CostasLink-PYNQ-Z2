@@ -1324,12 +1324,13 @@ agrees.
     the latency) and **the burst airtime** (which sets the lost rounds).
 - **The best spectrum analyzer is the link's own receiver.**  It sees the interference through the
   same antenna, pointing and filter, at the same thresholds.
-  - **The floor:** step the PLL and read the arm's power on the ADC with the far TX off.  That is
-    the RSSI path, `received_dBm()` (the DSA and the locked I arm).
+  - **The floor:** step the PLL and fit the window comparator's duty against its threshold, with the
+    far TX off: `survey()` (below).  Not the RSSI path: `received_dBm()` needs the loop locked
+    (corrected in Prompt 26).
   - **The bursts:** count window crossings at the operating thresholds over a few seconds, with the
     far TX off.  That count is the false-event rate the link would have at that frequency, measured
     directly.
-  - That is gateware and driver work, not hardware.
+  - That is driver work, not hardware: see "What rev A can survey" below.
 - **A WiFi card adds who and why:** which channels, how busy, and whether it is WiFi at all or radar,
   a point-to-point link or a phone.  `iw dev <if> survey dump` on a USB adapter reports each channel's
   busy time.
@@ -1358,6 +1359,81 @@ agrees.
     the carrier by ~±40 MHz.
   - Real agility over the whole 4.9-6 GHz the parts cover needs an experimental licence.  Otherwise
     the narrower filters above buy the room, at their price in ns.
+
+**What rev A can survey, with no lock and no new hardware (Prompt 26).**  Jason: "I thought we didn't
+have signal strength information without a lock."  Right: Response 25 named the wrong path.
+- **Why the RSSI path needs a carrier.**
+  - `received_dBm()` reads the I arm on the ADS1115.  The ADS1115 is a delta-sigma converter that
+    averages each reading over ~1.2 ms (860 SPS).
+  - Locked, I is the carrier's amplitude, a DC level, and the average is the level.  Unlocked,
+    interference is a zero-mean wander on I and Q, and its average is zero, whatever its power.
+  - The board has no detector chip.  The AD8318 was left off in section 4, on the reasoning that
+    "I² + Q² from the ADC gives the power once locked".
+- **What does measure power without a lock: the window comparators, by statistics.**
+  - A comparator's duty against its threshold traces the arm's amplitude distribution:
+    duty = Q((V_T − v0)/σ) for noise-like interference.
+  - The gateware's counting gate already counts every comparator's high samples (stage 3.7), and the
+    thresholds are DACs.  So stepping a threshold and fitting the probit line gives σ.  That is the rms
+    of the noise plus interference on that arm, and the arm's gain turns it into dBm at RX ANT.
+  - New in the driver: `noise_scan()`, `probit_fit()`, `sigma_to_dbm()`, `survey()`.  `pll_tune()`
+    and `max2871_regs.regs()` now take a 5 MHz PFD (R = 5) for the survey.  `driver/test_sim.py`
+    `TestSurvey` checks it against a model of the comparator.
+- **The slow path is the instrument.**
+  - Its gain is 80 from the demodulator, behind a 4.8 MHz pole, so it looks at ~10 MHz of RF around
+    the LO.  A neighbour 12.5 MHz off is down 9 dB, 20 MHz off 12.6 dB.  That resolves 20 MHz WiFi
+    channels.
+  - It is noise-limited (sim/budget.py asserts it).  The receiver's own noise, −103.3 dBm in 7.5 MHz
+    at RX ANT, is an ~11 mV σ on the comparator's leg with the DSA at 0 dB, against the threshold
+    DAC's (V_T2, MCP4728) 0.8 mV steps.
+  - Its range runs ~30 dB from that floor until the arm clips.  The DSA's 31.75 dB stretches that to
+    ~60 dB.
+  - The fast path's window (CMP_QP, the 16-bit V_TQP) scores the link's whole ±94 MHz band.  Its
+    comparators see only above ~−81 dBm (budget.py's fast floor), which is INR ≳ 10 dB, where the
+    latency starts to suffer anyway.
+- **The grid and the time.**
+  - With R = 5 the RX synthesizer steps 5 MHz in integer-N, landing on every WiFi centre.  The
+    charge pump at its maximum (5.1 mA) halves the loss of loop gain from the 5× larger N.  The loop
+    slows to roughly 30-40 kHz (est), which a survey does not mind.
+  - The link's own 25 MHz grid also works, with up to 9 dB of scalloping between steps.
+  - 25 thresholds × 5 ms plus settling is ~0.14 s a frequency.  The 5 cm amateur band at 5 MHz steps
+    takes ~8 s, and 4.9-6.0 GHz ~30 s.
+- **The bursts.**
+  - `survey()` reports the duty past 4σ (the "tail"): 3e-5 for noise.  WiFi's bursts lift it by their
+    airtime × the chance a burst is out there, a lower bound on the airtime.
+  - Burst lengths need time: the counting gate in short repeated windows (driver only), or the 40 µs
+    capture buffer.  A per-µs histogram would be a small gateware addition.
+- **The limits.**
+  - I alone sums LO + Δ and LO − Δ.  Scanning the LO still places an interferer, at the 10 MHz
+    resolution.
+  - A carrier within kHz of the LO is a DC offset that the fit takes as v0.  WiFi's OFDM has no DC
+    term, so it is unaffected.
+  - The survey borrows the comparators from the link, so it runs between sessions.
+  - The far transmitter must be off: ask it over Ethernet.
+  - The dBm uses the budget's gains.  Calibrate once against a known carrier (`cal_db`).
+- **With no board change, an external analyzer:** RX MON (U.FL, the −20 dB coupler after the gain
+  blocks) carries the antenna's signal +19 dB (DSA at 0 dB) through the link's own antenna and LNA.
+  - An SDR or analyzer that reaches 6 GHz gives kHz resolution there.  A HackRF or a Pluto does;
+    check any tinySA model's upper limit.
+  - A splitter can share RX MON with a WiFi card in monitor mode, transmitter off, to identify what
+    is on air.
+- **More hardware, in order of value (rev B):**
+  1. **A baseband power detector on the slow I and Q:** an RMS-to-DC converter (LTC1968-class,
+     15 MHz) or a log amp (AD8307-class), ≈ $10-15 each, into a second ADS1115 (≈ $2, its own address;
+     the first one's four inputs are taken).
+     - It gives the power on the operating channel continuously, during operation, without borrowing
+       the comparators.
+     - About $25-35 and a dozen passives a board.
+  2. **Its output on a comparator into the FPGA:** a "busy" flag that blanks the rounds a burst
+     overlaps, within µs.
+     - Rev A's header has no pin to spare (28 used since Response 14), so this belongs to rev B's host.
+  3. **A real FFT analyzer:** a dual 12-bit 65-125 MS/s ADC on the I/Q (≈ $20-40) and an FFT in the
+     FPGA.
+     - That is 100+ MHz of span at kHz resolution, the two sidebands told apart (I + jQ), and WiFi's
+       preambles recognised.
+     - It needs the lanes of rev B's host (SYZYGY, or the ECP5 on the board: row 3 of the table).
+  4. **Not an RF detector at the input** (the AD8318 of section 4).  It sees everything the LNA
+     passes, from DC to 8 GHz, with no channel selection.  It is good only for overload and total
+     power.
 
 ### E-band (71-76 and 81-86 GHz)
 

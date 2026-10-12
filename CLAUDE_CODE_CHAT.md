@@ -3188,3 +3188,44 @@ rounds).
 
 **How far it can move.**  The ISM band leaves no room; UNII-2C needs DFS under Part 15; the amateur
 band gives ±40 MHz; an experimental licence would give the whole 4.9-6 GHz.
+
+## Prompt 26 (2026-10-12 04:04 PDT)
+
+You say "read the signal-strength path while stepping the frequency, to get the steady interference floor;" but I thought we didn't have signal strength information without a lock. Do we have a way of doing this spectrum analysis with the hardware on revA? How much more hardware would it take to do this?
+
+## Response 26 (2026-10-12 04:04 - 04:20)
+
+**Response 25 named the wrong path, and PLAN.md is corrected.**  `received_dBm()` needs the lock.
+- The ADS1115 averages each reading over ~1.2 ms.  Unlocked interference is zero-mean on I and Q, so
+  its average is zero whatever its power.
+- There is no detector chip: the AD8318 was left off in section 4.
+
+**Rev A can still survey, with no lock and no new hardware: the window comparators measure by
+statistics.**
+- A comparator's duty against its threshold traces the arm's amplitude distribution.  The counting
+  gate already counts high samples, and the thresholds are DACs.
+- So stepping the threshold and fitting the probit line gives the rms of the noise plus interference,
+  and the arm's gain turns it into dBm at RX ANT.
+- The slow path is the instrument: ~10 MHz of RF resolution (a 4.8 MHz pole, gain 80).  It is
+  noise-limited (−103.3 dBm in 7.5 MHz ≈ 11 mV σ on the leg, against 0.8 mV DAC steps), with ~30 dB of
+  range plus the DSA's 31.75 dB.
+- The fast window scores the whole ±94 MHz band, above ~−81 dBm only.
+- The RX synthesizer can step 5 MHz in integer-N with R = 5 (every WiFi centre).  ~0.14 s a frequency:
+  the amateur band in ~8 s, 4.9-6.0 GHz in ~30 s.
+- The duty past 4σ flags bursts (3e-5 for noise; a lower bound on WiFi's airtime).
+
+**Code:** `noise_scan()`, `probit_fit()`, `sigma_to_dbm()`, `thermal_dbm()` and `survey()` in the
+driver.  `pll_tune(f_pfd=5)` and `max2871_regs.regs(f_pfd, cp)`, with the 5800 MHz words unchanged.
+`TestSurvey`; the driver's 18 tests pass.  BRINGUP.md stage 4.5 runs the survey beside the laptop's scan
+and an SDR on RX MON.
+
+**Without touching the board:** an SDR that reaches 6 GHz on RX MON (U.FL, antenna +19 dB), split
+with a WiFi card in monitor mode.
+
+**More hardware for rev B, in order of value:**
+1. An RMS or log detector on the slow I and Q into a second ADS1115 (≈ $25-35 a board): power on the
+   operating channel during operation.
+2. A comparator on it into the FPGA as a burst "busy" flag.  It needs a pin, and rev A has none.
+3. A dual 65-125 MS/s ADC and an FFT (≈ $20-40, rev B's LVDS host): kHz resolution, the sidebands
+   told apart, WiFi recognised.
+4. Not an RF detector at the input: it is broadband.

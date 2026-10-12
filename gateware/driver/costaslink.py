@@ -27,6 +27,7 @@ thresholds), the MCP4728s at 0x60 and 0x61 (TX references, trims, V_T2) and the 
 """
 import math
 import os
+import statistics
 import sys
 import time
 
@@ -68,6 +69,12 @@ RX_GAIN_DB = 39.2           # RX ANT to the demodulator's input, the DSA at 0 dB
 DEM_REG_DBM = -20.0         # the demodulator's input at the regulated level ...
 A_REG_V = 0.249             # ... where the fast arm's peak a, differential at the comparators, is 249 mV
 DSA_POWER_UP_DB = 31.75     # the PE43711 starts at its maximum in serial mode (its datasheet, "Power-up control")
+# the interference survey (Prompt 26): no carrier, no lock; a window comparator against its threshold is the
+# detector.  sim/budget.py sections 3 and 7b; ENBW "fast" from sim/wifi_channels.py (the ADL5380 and the arm)
+G_SLOW = 20.0               # the slow stage after the fast arm
+NF_CHAIN_DB = 1.96          # the receiver's noise figure at RX ANT
+SURVEY_ENBW_HZ = {"slow": 7.5e6, "fast": 119.4e6}
+SURVEY_LADDER_V = (0.0,) + tuple(0.0005 * 1.35 ** k for k in range(24))     # above V_MID: 0.5 mV to 0.5 V
 
 # the transmitter's ladders: a level per axis -> its two bits (tx_symbol.v: 00 = -a, 01 / 10 = 0, 11 = +a)
 LEVEL_CODE = {1: 0b11, 0: 0b01, -1: 0b00}
@@ -396,11 +403,13 @@ class CostasLink:
         self._wait("PLL_INIT", 0x1, timeout)
         return bool(self.rd("PLL_INIT") & 2)
 
-    def pll_tune(self, which, f_mhz):
-        """retune one synthesizer (0 TX, 1 RX) to f_mhz: the six words, register 5 first (a 25 MHz step:
-        integer-N from the 25 MHz reference)"""
+    def pll_tune(self, which, f_mhz, f_pfd=25.0, cp=None):
+        """retune one synthesizer (0 TX, 1 RX) to f_mhz: the six words, register 5 first.  Integer-N from
+        the 25 MHz reference: f_pfd 25 MHz (R = 1, the link's 25 MHz channels), or 5 MHz (R = 5, every WiFi
+        centre, for the survey; cp 15 holds the loop's gain)"""
         import max2871_regs
-        for w in max2871_regs.regs(f_mhz):
+        kw = {} if cp is None else {"cp": cp}
+        for w in max2871_regs.regs(f_mhz, f_pfd=f_pfd, **kw):
             self.spi(which, w)
 
     def dsa(self, db):
@@ -906,6 +915,100 @@ class CostasLink:
                     lo = mid
             res[dac_ch] = (lo + hi) // 2
         return res
+
+    # ---- the interference survey (PLAN.md section 19, Prompt 26): no carrier, no lock ----
+    def noise_scan(self, path="slow", volts=None, seconds=0.005):
+        """With no carrier, step one window threshold and read its comparator's duty (the gate's high
+        samples): [(volts, duty)].  'slow' steps V_T2 against CMP_QP_S: the slow arm, a ~10 MHz wide view
+        of RF that its own noise limits.  'fast' steps V_TQP against CMP_QP: the fast arm, ~190 MHz wide,
+        whose comparator's floor is near -81 dBm at RX ANT (sim/budget.py)."""
+        if volts is None:
+            volts = [V_MID + d for d in SURVEY_LADDER_V]
+        name = "CMP_QP_S" if path == "slow" else "CMP_QP"
+        out = []
+        for v in volts:
+            if path == "slow":
+                self.dac(DAC2, V_T2=v)
+            else:
+                self.threshold("QP", v)
+            out.append((v, self.gate(seconds=seconds, inputs=(name,))[name]["duty"]))
+        return out
+
+    @staticmethod
+    def probit_fit(points, lo=0.1, hi=0.9):
+        """fit duty = Q((v - v0) / sigma), Gaussian noise past a threshold, to [(volts, duty)], using the
+        duties between lo and hi (the central +-1.3 sigma, where bursts of a few per cent of the time
+        barely move it): returns (v0, sigma).  A burst-free band is a line in (v, probit); WiFi's bursts
+        lift the duty far past the line (survey()'s 'tail')"""
+        nd = statistics.NormalDist()
+        pts = [(v, nd.inv_cdf(1.0 - d)) for v, d in points if lo < d < hi]
+        if len(pts) < 2 or len(set(round(z, 9) for _, z in pts)) < 2:
+            raise ValueError("fewer than two thresholds inside the noise")
+        n = len(pts)
+        mz = sum(z for _, z in pts) / n
+        mv = sum(v for v, _ in pts) / n
+        szz = sum((z - mz) ** 2 for _, z in pts)
+        szv = sum((z - mz) * (v - mv) for v, z in pts)
+        sigma = szv / szz
+        if sigma <= 0:
+            raise ValueError("the duty does not fall with the threshold")
+        return mv - sigma * mz, sigma
+
+    def sigma_to_dbm(self, sigma_leg, path="slow"):
+        """the noise and interference at RX ANT, dBm in the path's noise bandwidth, behind a comparator
+        leg's sigma (volts): the leg is V_MID + x / 2 of the differential arm (as threshold_at()), power
+        splits evenly between I and Q, the slow arm has G_SLOW more gain, and the DSA's setting is added
+        back.  The gains are the budget's: calibrate once against a known carrier (survey's cal_db)."""
+        g = G_SLOW if path == "slow" else 1.0
+        sigma_diff = 2.0 * sigma_leg / g                       # at the fast arm, differential
+        p_dem = DEM_REG_DBM + 20 * math.log10(math.sqrt(2.0) * sigma_diff / A_REG_V)
+        return p_dem - RX_GAIN_DB + self._dsa_db
+
+    @staticmethod
+    def thermal_dbm(path="slow"):
+        """the receiver's own noise at RX ANT in the path's noise bandwidth"""
+        return -174.0 + 10 * math.log10(SURVEY_ENBW_HZ[path]) + NF_CHAIN_DB
+
+    def survey(self, f_mhz, path="slow", seconds=0.005, f_pfd=5.0, settle_s=0.005, cal_db=0.0, restore_mhz=None):
+        """The interference at each LO frequency, with no carrier and no lock (Jason, Prompt 26).  Ask the far
+        transmitter to stop first (over Ethernet): this end's TX is disabled and the loop held (the VCXO at
+        VC_OFF) during the scan, and both are restored after, with V_T2 and, given restore_mhz, the RX
+        synthesizer.  Each frequency: retune the RX synthesizer (5 MHz steps by default), scan the window
+        threshold, fit the leg's Gaussian.  One dict a frequency:
+          sigma   volts at the comparator's leg (None when the scan did not resolve the noise)
+          v0      the leg's centre (V_MID plus the offsets)
+          dbm     at RX ANT in the path's noise bandwidth (7.5 MHz slow, 119 MHz fast), + cal_db
+          inr_db  over the receiver's own noise in that bandwidth: what the CFAR window pays for
+          tail    the duty at the first threshold past 4 sigma: ~3e-5 for noise alone; with bursts, their
+                  share of the time times the chance a burst is out there, so a lower bound on the airtime
+                  (bursts cost lost rounds, not ns: PLAN.md section 19)
+        A strong band clips the arm: raise the DSA (dsa()) and survey again; dbm adds it back."""
+        ctrl0 = self.rd("CTRL")
+        vt2 = self._dac[DAC2][DAC2_CH["V_T2"]]
+        self.ctrl(tx_dis=1, loop_hold=1)
+        out = []
+        try:
+            for f in f_mhz:
+                self.pll_tune(1, f, f_pfd=f_pfd, cp=15 if f_pfd < 25.0 else None)
+                self.wait_s(settle_s)
+                locked = bool(self.status()["mux_rx"])                 # the RX synthesizer's MUX: lock detect
+                pts = self.noise_scan(path, seconds=seconds)
+                row = dict(f_mhz=f, locked=locked, sigma=None, v0=None, dbm=None, inr_db=None, tail=None, points=pts)
+                try:
+                    v0, sigma = self.probit_fit(pts)
+                except ValueError:
+                    out.append(row)
+                    continue
+                dbm = self.sigma_to_dbm(sigma, path) + cal_db
+                past = [d for v, d in pts if v > v0 + 4.0 * sigma]
+                row.update(sigma=sigma, v0=v0, dbm=dbm, inr_db=dbm - self.thermal_dbm(path), tail=past[0] if past else None)
+                out.append(row)
+        finally:
+            self.ctrl(tx_dis=ctrl0 >> self.CTRL_BITS["tx_dis"] & 1, loop_hold=ctrl0 >> self.CTRL_BITS["loop_hold"] & 1)
+            self.dac(DAC2, code_V_T2=vt2)
+            if restore_mhz is not None:
+                self.pll_tune(1, restore_mhz)
+        return out
 
     def loopback_latency(self, scheme="A1", period=2000, count=1000, first_edge=False, **kw):
         """stage 3.4-3.5: events through the loop, every reference this board's TX event; the latency
