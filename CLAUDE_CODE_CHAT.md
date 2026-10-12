@@ -3229,3 +3229,59 @@ with a WiFi card in monitor mode.
 3. A dual 65-125 MS/s ADC and an FFT (≈ $20-40, rev B's LVDS host): kHz resolution, the sidebands
    told apart, WiFi recognised.
 4. Not an RF detector at the input: it is broadband.
+
+## Prompt 27 (2026-10-12 04:28 PDT)
+
+Keep going. You hinted at different setups for the prover and the verifies. On the prover, we have not talked at all about how the incoming information from the 2 or 3 verifies needs to be hashed (or at least XORed) together to make a single measurement 1-of-N basis. This needs to go to BME Pockells Cells, whose driver and specs may be in the Syzygy Driver project's datasheets. Then the quantum photon needs to be detected with APDs or some fast SNSPD detector at 1550. And the "click in output A, click in output B, or no click" needs to be sent back (changing the prover transmitter's state from idle to one of these). This all has latency that I'd like you to look up or estimate. This means that for revA and this experiment, squeezing every last nanosecond is not as important as reliability and robustness to interference.  The push for the absolute lowest latency is for other quantum networking experiments. My goal with revA is to be as low latency as reasonably achievable while being reliable. I don't want the RF link to be what drives up the overall latency budget, and I don't want the deployed system on the roof to be flaky. Do a system analysis with all of this in mind and see if you can suggest improvements before we send revA off to JLCPCB.
+
+Perhaps separately, discuss options for the verifies. One option is to use more copies of the same type of board (probably a revB with LVDS on a SYZYGY, three of which can be plugged into the three non-transceiver SYZYGY ports on a Brain-1.) If we do three or more verifies, all but one are pure RF. Those could be copies of the same Brain+PCB, or they could be something else involving RFSoC or ZCU102. The one we are calling Verifier0 needs optical detector inputs and, in some protocols, Pockells Cell outputs. All of these need to be synchronized while on the roof, with only an ethernet or 2.4 GHz WiFi. NTP can't get to Nanoseconds, and GPS's PPS is also probably not accurate enough to synchronize the experiment. This pushed us toward having these low-latency RF links from each of the Verifiers not only to the prover (who cannot be trusted with synchronization), but also back to Verifier0. The synchronization and the "a photon is coming down the slow coiled fiber, so get ready everyone" signals would all be handled over these links. This again pushed us towards multiple copies of the same Brain up to 3 SYZYGY PCBs. This can fit in a box on the roof behind the antenna, and would not be as expensive as an RFSoC board with enough DAC and ADC channels to be relevant. If the RF-only provers are best done with another FOGA platform, spell thst out in detail. If the Brain+revB SYZYGY boards are still the best way to do synchronization to Verifier0 and the whole QPV protocol, should we make any changes to revA to make sure we are testing everything that is relevant, such that revA can evolve into a board that can fulfill roles in a all links?
+
+### Interjection (04:37)
+
+Tp be clear, I'm not asking you to add the detector input and Pockells output to the Costas revA board. Thsr would be for revB. I just wanted you to survey the latency of doing this and factor it in as part of the "off board" latency budget, along with cables to the antennas on the roof and actual speed of light travel time. Here we'll still mostl focus on the on-board numbers, but they should be put into context. If a BME driver driving a Leysop Pockells cell takes 10s of Nanoseconds to switch anf settle into a new basis measurement state, neither revA nor revB need to go to heroic efforts to shave off an extra nanosecond.
+
+## Response 27 (2026-10-12 04:28 - 04:50)
+
+**docs/SYSTEM.md (new), `sim/system_budget.py`, PLAN.md section 20, BRINGUP.md stage 4.8.**
+- The BME manual is in SyzygyRadioDrivers: 4-7 ns edges, ≥ 3 V (better 4 V) into 50 Ω, 50 ns minimum
+  On-to-Off, four trigger lines; no trigger-to-output delay.
+- The Leysop RTP-4-20 is 6 pF.
+- Detector latencies are not published (ID Qube) or are assembled from parts (SNSPD readout).
+- An agent summarized a colleague's SyzygyRadioBoard: OOK into an ADL5511, four BME outputs (SN74ACT04 ×6,
+  15 Ω, 3.2-3.7 V into 50 Ω), four LVTTL detector inputs, GPS PPS and 10 MHz to the FPGA only, no clock
+  on SYZYGY's P2C pins.
+
+**The prover's turnaround, antennas to antennas, air excluded:**
+
+| | total | the RF link's share |
+|---|---|---|
+| A: rev A's gateware as planned, InGaAs | 156-267 ns | 27-40 % |
+| **B: rev A with a robust fast path (first edge, slow-path veto, "invalid")** | **113-225 ns** | **17-20 %** |
+| C: rev B on a Brain-1, SNSPDs | 71-137 ns | 7-9 % |
+
+- The BME and cell (25-55 ns) and the detector (10-60 ns) dominate.  No heroics.
+- The prover's antenna cables are the biggest avoidable term: 8 ns at 1 m each way, 78 ns at 10 m.
+- The photon's coil is 13-23 m.
+- The answer is four messages (B2's alphabet), released at a constant time.
+
+**For rev A:** configuration B in gateware, plus gating, the survey, lock watching and re-trims.  The
+roof's protection goes around the board: a cavity BPF, a limiter, a DC-grounded antenna with an
+arrestor, fibre Ethernet, no 2.4 GHz radio inside the box.
+
+**The verifiers:**
+- Only the prover links are latency-critical.  The V0 ↔ Vk links need precision, and a herald's µs
+  waits in a 1 km coil for 0.2 dB.
+- Frequency comes from the carrier lock, time from two-way exchanges (~10 ps statistical).
+- Rev A tests it with a REF OUT → TRIG IN lead (BRINGUP 4.8).
+- The frequency plan is the real constraint: up to 10 one-way links against 275 MHz.  80 MHz prover
+  channels (+17 ns, ~10 %), time division, spatial reuse, narrow synchronization links, or a Part 5
+  licence.
+
+**The platform:**
+- One universal rev B radio (the coherent core plus the SyzygyRadioBoard's field I/O, the clock to
+  P2C_CLK) on Brain-1s: 10 radios and 4 Brain-1s.
+- The RFSoC 4x2 is the lab's reference verifier and timing monitor.  The ZCU102 is a lab host.
+- A colleague's boards: their I/O now, their RF only where the band is quiet.
+
+**Before the order:** rev A as it is.  Optionally an RF ESD/DC shunt at the antenna jacks, or the same
+outside the board; channel-filter footprints only for a 5 cm-band deployment.

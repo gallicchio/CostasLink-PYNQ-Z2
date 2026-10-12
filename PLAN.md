@@ -1606,3 +1606,42 @@ resolution, not latency.  Both boards are the right tools for the verifiers.**
   pipelines (15-25 ns raw, 90-250 ns through the RFSoC's converters).  They are the verifiers' tools.
 - **The 60 GHz chips are not the expense.**  Four of them are $104; the 60 GHz board and its horns
   are the cost, and ADI's evaluation PCBs ($6,350 for four) are the quick way to try it.
+
+## 20. The system around the radio (Prompt 27): docs/SYSTEM.md
+
+Jason: the prover XORs or hashes the 2-3 verifiers' challenges into a basis, drives a BME Pockels
+cell, measures the photon with SPADs or SNSPDs, and answers "A, B, or no click".  So rev A should be
+reliable before it is heroic.  docs/SYSTEM.md, with `sim/system_budget.py`, covers:
+
+- **The prover's turnaround (antennas to antennas, air excluded).**
+  - 156-267 ns with rev A's gateware as planned, where the RF link is 27-40 %.
+  - **113-225 ns with a robust fast gateware path,** where it is 17-20 %.
+  - 71-137 ns with rev B and SNSPDs, where it is 7-9 %.
+  - The BME driver and cell (25-55 ns, the trigger delay estimated) and the detector (10-60 ns)
+    dominate.
+  - The largest avoidable term is the prover's antenna cables: 8 ns at 1 m each way, 78 ns at 10 m.
+- **Rev A's job:** configuration B, held on a roof.
+  - First edge, slow-path veto, an "invalid" answer, receiver gating, survey and carrier placement,
+    lock watching, re-trims between sessions.
+  - The roof's protection is in the cable and the box: a cavity band-pass filter, a limiter, a
+    DC-grounded antenna with a bulkhead arrestor, fibre Ethernet, no 2.4 GHz radio inside the box.
+- **The verifiers.**
+  - Only the 2N prover links are latency-critical.  The V0 ↔ Vk links need precision, not speed, and
+    a herald's microseconds cost a 1 km coil 0.2 dB.
+  - Frequency comes from the Costas carrier lock, time from two-way exchanges over the same links:
+    ~10 ps statistical with a TDC.
+  - Rev A tests it with a REF OUT → TRIG IN lead (pin 26 is clock-capable).  BRINGUP.md stage 4.8 is
+    added.
+  - The deployment's real constraint is the frequency plan: up to 10 one-way links against the 5 cm
+    band's 275 MHz.  Time division, spatial reuse, narrow synchronization links, and 80 MHz prover
+    channels (+17 ns, ~10 % of the chain) make it fit.  A Part 5 licence would also open 4.9-6 GHz.
+- **The platform.**  One universal rev B radio on SYZYGY, with two or three on each Brain-1: 10 radios
+  and 4 Brain-1s for P, V0, V1, V2.
+  - Rev B is the coherent core plus the SyzygyRadioBoard's field I/O: 4 BME outputs, comparator
+    detector inputs, GPS, the locked clock to SYZYGY's P2C_CLK.
+  - The RFSoC 4x2 is the lab's reference verifier and timing monitor, not a roof node.  The ZCU102 is
+    a lab host.
+- **Before the order:** rev A can go as it is.  Optionally:
+  - an RF ESD/DC shunt inductor at the antenna jacks (or the same protection outside the board);
+  - unfitted baseband channel-filter footprints, only if the deployment will live in the 5 cm band.
+

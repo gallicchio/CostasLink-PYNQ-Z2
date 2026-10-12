@@ -202,6 +202,15 @@ the switch block cabled in and time division (stage 4.4).
    on the far board is the radio link's own latency.  With JP202 fitted (50 ohm at the jack) set the
    generator's load to 50 ohm and its amplitude to 3.3 V there: in Hi-Z mode it delivers half, 1.65 V,
    under the Schmitt buffer's 2.19 V upper threshold (the design review).
+8. The FPGA on the link's clock, and two-way time transfer (docs/SYSTEM.md section 4, Prompt 27): a
+   REF OUT (MMCX) to TRIG IN (SMA) lead on each board, TRIG IN's 50 ohm jumper off, puts its VCXO's 25 MHz
+   on header pin 26, clock-capable on both hosts; the gateware's MMCM makes the fabric clock from it.
+   Board B transponds (REF OUT -> REF IN), so both fabrics run at board A's TCXO frequency once both
+   loops lock: a counter on each, compared over Ethernet, must not drift.  Then A sends an event at t1,
+   B time-stamps it (t2, CMP_I on clock-capable pin 18) and answers at t3, A time-stamps the answer (t4):
+   offset = ((t2 - t1) - (t4 - t3)) / 2.  Repeat at 3, 10, 30 m: the offset must not move with the
+   distance (the air cancels), and its scatter over 100 exchanges is the synchronization's precision.
+   Calibrate the boards' own asymmetry side by side with a 1 m cable and a 30 dB pad first.
    *Pass:* the latency line's intercept within 2 ns of the budget at both ends; BPSK quiet at 30 m
    with 20 dB in the lead; the T/R exchange works at 10 m.
    *Retires:* own-transmitter leakage (DOA 6: at the bench level), the switch (DOA 10's HMC536), the
