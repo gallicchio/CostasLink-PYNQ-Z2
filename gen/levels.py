@@ -122,7 +122,7 @@ T = {
     "TX_MON": "TX MON: %s (-20 dB)" % lvl(B["tx_out_dBm"] - 20),
     "LO_TX": "LO 5.8 GHz = 232 x 25 MHz | 0 dBm differential (27 nH to 3.3 V, 1.5 pF blocks) | +-14.5 kHz from the TCXO's +-%.1f ppm" % P["tcxo_ppm"],
     "REF_TX": "25 MHz +-%.1f ppm, 3.3 V CMOS square | or REF IN / REF OUT by JP201 (10-210 MHz, 0.7 V p-p min)" % P["tcxo_ppm"],
-    "TRIG_OUT": "TRIG A / B: 0 / 3.3 V through 33 ohm = 2 V into 50 ohm, 2.2 ns | the FPGA marks the symbol sent or decoded",
+    "TRIG_OUT": "TRIG A / B: 0 / 3.3 V through 33 ohm = about 1.7 V into 50 ohm (the LVC's 32 mA), 2.2 ns | the FPGA marks the symbol sent or decoded",
     "TRIG_IN": "TRIG IN: a 3.3 V logic pulse (1k series; JP202 = 50 ohm) | Schmitt-buffered to the FPGA",
     # ---- switch -------------------------------------------------------------------------------
     "ANT": "%s | out: %+.1f dBm (TX less %.1f dB) | in: whatever arrives, less %.1f dB | ABS MAX +%.0f dBm at the switch (the LNA behind SW RX: +1)"
@@ -173,8 +173,8 @@ LIMITS = {
     "ERR MON": ("1.65 V +-%.0f mV, 1k" % (vpk * 1e3), "ERR MON: the loop error sign(I) x Q through 1k: 1.65 V at lock, +-%s off lock." % mv(vpk)),
     "VC MON": ("%.1f-%.1f V, 1k" % (P["vcxo_vc_V"][0], P["vcxo_vc_V"][1]), "VC MON: the VCXO's control voltage through 1k: %.1f-%.1f V, 1.65 V at the VCXO's centre." % (P["vcxo_vc_V"][0], P["vcxo_vc_V"][1])),
     "CMP I MON": (TAP_SHORT, "CMP I MON: the fast comparator's output through %s: %s, the data" % (TAP_R, TAP_DIV) + " as it goes to the FPGA."),
-    "TRIG A": ("3.3 V, 2 V/50R", "TRIG A: 0 / 3.3 V through 33 ohm (2 V into 50 ohm), 2.2 ns: the FPGA marks the symbol it sent."),
-    "TRIG B": ("3.3 V, 2 V/50R", "TRIG B: 0 / 3.3 V through 33 ohm (2 V into 50 ohm), 2.2 ns: the FPGA marks the symbol it decoded."),
+    "TRIG A": ("3.3 V, 1.7 V/50R", "TRIG A: 0 / 3.3 V through 33 ohm (about 1.7 V into 50 ohm: the LVC's 32 mA), 2.2 ns: the FPGA marks the symbol it sent."),
+    "TRIG B": ("3.3 V, 1.7 V/50R", "TRIG B: 0 / 3.3 V through 33 ohm (about 1.7 V into 50 ohm: the LVC's 32 mA), 2.2 ns: the FPGA marks the symbol it decoded."),
     "IP MON": (TAP_SHORT, "IP MON: the I window's + comparator through %s, %s" % (TAP_R, TAP_DIV) + ": for the scope, beside its line to the FPGA."),
     "IN MON": (TAP_SHORT, "IN MON: the I window's - comparator through %s, %s" % (TAP_R, TAP_DIV) + ": for the scope, beside its line to the FPGA."),
     "QP MON": (TAP_SHORT, "QP MON: the Q window's + comparator through %s, %s" % (TAP_R, TAP_DIV) + ": for the scope, beside its line to the FPGA."),

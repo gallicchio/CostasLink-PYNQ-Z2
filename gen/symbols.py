@@ -301,7 +301,7 @@ def tcxo():
 
 
 # Johanson 5400BL15B050 balun (datasheet "Terminal Configuration"): 1 unbalanced, 2 GND,
-# 3 balanced, 4 balanced, 5 GND, 6 NC.
+# 3 balanced, 4 balanced, 5 GND, 6 NC.  Not fitted since Prompt 31 (the TDK below is); kept for the record.
 def balun_5400():
     name = "Balun_5400"
     out = _hdr(name, "T", "5400BL15B050", 7.62, keywords="Johanson 5400BL15B050 1:1 balun 4.9-5.875 GHz, 0805")
@@ -315,6 +315,23 @@ def balun_5400():
     out.append(_pin("2", "GND", -2.54, -8.89, 90, 3.81, PA))
     out.append(_pin("5", "GND", 2.54, -8.89, 90, 3.81, PA))
     out.append(_pin("6", "NC", 0, 8.89, 270, 3.81, NC))
+    out.append(')')
+    return _close(out), dict(hw=5.08, hh=5.08)
+
+
+# TDK HHM1907B1 balun (datasheet "Terminal functions", rf_balun_hhm1907b1_en): 1 unbalanced, 2 balanced,
+# 3 balanced, 4 GND; no DC feed, no NC.  The same pin shape as the Johanson's so the sheet reads alike.
+def balun_hhm1907():
+    name = "Balun_HHM1907"
+    out = _hdr(name, "T", "HHM1907B1", 7.62, keywords="TDK HHM1907B1 1:1 balun 4.9-5.95 GHz, 0402")
+    out.append('(symbol "%s_0_1"' % name)
+    out.append(_rect(-5.08, 5.08, 5.08, -5.08))
+    out.append(')')
+    out.append('(symbol "%s_1_1"' % name)
+    out.append(_pin("1", "UNBAL", -8.89, 0, 0, 3.81, PA))
+    out.append(_pin("2", "BAL1", 8.89, 2.54, 180, 3.81, PA))
+    out.append(_pin("3", "BAL2", 8.89, -2.54, 180, 3.81, PA))
+    out.append(_pin("4", "GND", 0, -8.89, 90, 3.81, PA))
     out.append(')')
     return _close(out), dict(hw=5.08, hh=5.08)
 
@@ -361,7 +378,7 @@ def coupler():
 
 CUSTOM = {"MAX2871": max2871, "Coupler_20dB": coupler, "ADL5380": adl5380, "ADL5375": adl5375, "PE43711": pe43711, "ADL5611": adl5611,
           "SKY65404-31": sky65404, "THS4541": ths4541, "TLV3601": tlv3601, "TLV3603": tlv3603, "AD5696R": ad5696r, "SN74LVC1G3157": lvc1g3157,
-          "TS5A3159DCK": ts5a3159, "VCXO_3225": vcxo, "TCXO_3225": tcxo, "Balun_5400": balun_5400, "HMC536MS8G": hmc536,
+          "TS5A3159DCK": ts5a3159, "VCXO_3225": vcxo, "TCXO_3225": tcxo, "Balun_5400": balun_5400, "Balun_HHM1907": balun_hhm1907, "HMC536MS8G": hmc536,
           "RPi_Header_40": rpi_header, "AD8310": ad8310, "LTC1968": ltc1968}
 
 # KiCad's own symbols, by our name (gen/library.py vendors them, flattened)

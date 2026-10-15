@@ -3492,3 +3492,168 @@ DRC 0 / 0 / 0.
 - **The order:** buy the Digi-Key cart, register the three LCSC codes under Consigned Parts, post the
   parts, then upload the zip, the BOM and `*_cpl_jlcpcb_upload.csv` with ORDER_SETTINGS.md's 11
   non-default fields.
+
+## Prompt 31
+
+I have started the consignment process, but I have run into some issues. First, the two Analog Devices parts are in stock at JLCPCB, although with low quantities. If I can get it from them, it's cheaper than ordering 2 extras from digikey just for the consignment for the 2 test boards. I will almost certainly not use these extra ones. This means that the 5400BL15B0050001E is the only part that I'd need to consign. If there is a substitute balun that can save me an entire consignment order, I'd prefer to use that, even if it's slightly more expensive. In general, when you check if it's worth ordering from JLCPCB or digikey in terms of cost, factor in the spare "attrition on consigned parts", which I will probably not use. If I order more than 2 prototype boards, I'd be more willing to consign than just for the initial 2 quick prototypes.
+
+Your digikey part numbers are wrong:
+
+BALUN	5400BL15B0050001E   has the wrong digikey part number: 712-1363-1-ND is wrong. The correct part number is 
+:DigiKey Part Number
+712-5400BL15B0050001ETR-ND - Tape & Reel (TR)
+712-5400BL15B0050001ECT-ND - Cut Tape (CT)
+712-5400BL15B0050001EDKR-ND - Digi-Reel®
+
+ADL5375-05ACPZ-R7
+DigiKey Part Number
+505-ADL5375-05ACPZ-R7TR-ND - Tape & Reel (TR)
+505-ADL5375-05ACPZ-R7CT-ND - Cut Tape (CT)
+505-ADL5375-05ACPZ-R7DKR-ND - Digi-Reel®
+
+
+ADL5380ACPZ-R7
+DigiKey Part Number
+505-ADL5380ACPZ-R7TR-ND - Tape & Reel (TR)
+505-ADL5380ACPZ-R7CT-ND - Cut Tape (CT)
+505-ADL5380ACPZ-R7DKR-ND - Digi-Reel®
+Manufacturer
+
+
+
+## Response 31 (2026-10-14 16:30 - 18:45)
+
+**The consignment is gone.**  Your Digi-Key numbers were already the ones in the tree (Response 30 had
+fixed them: `712-5400BL15B0050001ECT-ND`, `505-ADL5380ACPZ-R7CT-ND`, `505-ADL5375-05ACPZ-R7CT-ND`; the
+`712-1363-1-ND` you saw is in the older CONSIGNMENT.md copies under `design_review_*/repo/`).  What changed:
+
+- **The balun is now a JLCPCB part.**  A sweep of JLCPCB's whole "balun" category (the earlier searches had
+  tried three part numbers) found the **TDK HHM1907B1** (C531388, 7,884 in stock, $0.10): 50:50, 4.9-5.95 GHz,
+  0.8 dB max loss, 10 dB return loss, 180 +-10 deg, +-2.5 dB; the Johanson 5400BL15B0050001E it replaces is
+  1.0 dB, 9.5 dB, +-10 deg, 2 dB, 4.9-5.875 GHz.  Same ratio, same band, better on paper; 0402 with four
+  0.30 x 0.35 pads (new symbol, footprint from TDK's land pattern, placed at 270 so pin 1 sits on the RX line).
+  Mini-Circuits' 50:50 parts to 6 GHz were 1 and 5 in stock at $2-4; every other 5 GHz balun JLCPCB stocks is
+  50:100.  The band is now the LNA's, 4.9-5.9 GHz.
+- **The ADI chips come from JLCPCB's shelf** (18 ADL5380 at $21.62, 4 ADL5375-05 at $16.40 on 2026-10-14) and
+  keep their Digi-Key numbers as a **fallback**: `gen/parts.py` has `consign=` beside `lcsc=`, and
+  `mfg/make_release.py` consigns a line only when JLCPCB's live stock cannot cover the order on the day; the
+  BOM then flags it and CONSIGNMENT.md says what to buy.  With nothing short, CONSIGNMENT.md says so.
+- **Your rule, with the number:** a consignment's true cost is the pieces at Digi-Key plus two spares a line
+  that are never used, tax, Digi-Key's shipping and the parcel to Shenzhen.  For the two ADI chips on two
+  boards that is about $100 over buying the same four pieces on the shelf
+  (`mfg/cost_estimate.py consignment_cost`; CONSIGNMENT.md prints it from the day's stock), so a shelf part
+  up to about that much dearer wins, and the number shrinks with more boards.  CLAUDE_PCB.md section 3 has
+  it, with your words.
+- **Cost:** JLCPCB $943-958 (the ADI chips' $76 and two feeders moved onto its line with their duty), Digi-Key $0,
+  no parcel; everything $1,085-1,230 against $1,177-1,346 before.  Thin lines on the order day: ADL5375-05 (4),
+  HMC536 (5), AD5696R (2 against 2).
+
+**A fresh look, by three independent reviews** (schematic against the datasheets, the board and the package,
+the system; each wrote only to its own scratch directory; their findings are reconciled in REVA_CHANGES.md
+rows 32-36).  Formed on build 33 before any of them read the earlier rounds.
+
+1. **BLOCKING, and nobody had seen it: both ADS1115 input filters were drawn capacitor-first.**  The sheet's
+   blue box said "10 k / 100 nF (160 Hz)", and the netlist had the 100 nF hanging from the source's end of each
+   line and the 10 k between it and the ADC pin: **C154 and C155 (100 nF) sat straight on the fast I and Q
+   arms' outputs** (I_P, Q_P: the THS4541 cannot drive 100 nF; the 100 MHz arms would have been shorted above
+   a few kHz, with the comparators and the Costas error wrong), C156 on the VCXO's control line at the
+   OPA2388's output, C157 on the loop error at the sign switch, and on sheet 6 C524 on the AD8310's output and
+   C525 on the peak hold's.  **As committed, the receiver would not have worked.**  Five reviewers and I
+   missed it in two rounds.  Fixed in one helper (`gen/sch_blocks.adc_inputs`: resistor between source and
+   capacitor, capacitor at the pin, each line on its own vertical so nothing crosses), used by both sheets;
+   the references did not move.  The netlist now has every 100 nF on its ADC pin's net.
+2. **SERIOUS: no DC blocks between the balun and the ADL5380's RFIP/RFIN.**  The datasheet: "both the LO and
+   RF ports should be ac-coupled"; its Figure 81 and evaluation board put 100 pF there; a lattice balun's
+   balanced terminals have a DC path to its ground terminal, which would have pulled the demodulator's biased
+   inputs to 0 V.  This was true of the Johanson too.  Two 1.5 pF blocks (the LO legs' part), C159/C160,
+   drawn last on the sheet so no hand-anchored reference shifts; on the board the balun sits at y 55.0, the
+   blocks at 57.2, the demodulator moved to 61.3 and the RX synthesizer to 77.3 for the room; the two legs
+   are planned lines through the blocks (`routes.PAIR_PATHS` "RF +"/"RF -").
+3. **The SMA launches** kept the centre pin's 2.0 mm pad ring on In1, In2 and B.Cu, where nothing connects
+   to it, against 2.5 mm antipads: 0.41 pF excess, a 66 ohm shunt at 5.8 GHz, 9 dB return loss, 0.6 dB a
+   launch.  Now `remove_unused_layers` on pin 1 and a design rule keeping the inner and back planes 1.35 mm
+   from the hole (a 4 mm antipad): about 12 % reflection instead of 35 %.
+4. **The budget was wrong in four places** (review C, each checked against the datasheet lines):
+   - the own-transmitter rejection used two poles at 100 MHz (31 dB at 600 MHz); the real poles are the
+     demodulator's 390 MHz and the arm's 94 MHz (21 dB), and the compression limit counted one of the two
+     gain blocks with the ADL5380's 900 MHz IP1dB (11.6 dBm; 8.2 at 5.8 GHz).  **FDD needs 52 dB of
+     antenna isolation, not 42**; two panels on one mast (30-40) are short; two whips on the board's own SMAs
+     put the own transmitter at the LNA's P1dB.  Remedies already there: the switch block, a pad in the TX
+     lead on the bench, cross-polarised panels, 3-5 m between masts.
+   - the static phase error from the ADL5380's offset divided a one-leg offset by the differential slope:
+     9.1 deg, not 4.6 (section 18's table redone); the trim still covers it.
+   - the oscillators' phase noise was never integrated: two x232 synthesizers plus the references give
+     1.3-1.8 deg rms outside the loop (the VCXO's datasheet has no phase-noise figure at all), two to
+     two-and-a-half times the bench's thermal phase noise; the bench CFAR windows will sit near 0.2 a, not
+     0.1 a (a nanosecond), and the slow Q window at 0.1 a will chatter.  No effect on lock or range.
+   - "the loop is untroubled by WiFi in its 3 kHz" described a linear detector; sign(I) x Q is captured
+     once an interferer dominates the arms: a lost lock, not a false event.  The survey and the channel
+     choice are the remedies.
+   Also: the slow I stage idles 1.7x overdriven and the THS4541's 20 ns overdrive recovery is not in the
+   trajectory model (start the confirm delay at 80 ns); the 30 dB loopback pad leaves the receiver 7 dB above
+   its regulated range (BRINGUP says 40 dB now); the trigger outputs give about 1.7 V into 50 ohm, not 2
+   (the LVC's 32 mA); a DNP 10 k on the TCXO's "E/D or N.C." pad.
+5. **Left for rev B (REVA_CHANGES 35):** the whole 5 V current crosses a single 0.25 mm via three times in
+   series (works: 15 mV, under 1 K; one plating void opens the RF rail), and no decoupling capacitor is
+   within 2.5 mm of any RF chip's supply pin because the placer's fan band keeps them out (expect spurs,
+   not a dead board).  Both are the router's and the placer's structure, not a day's change.
+6. **Checked and right** by the three: every hand-drawn symbol pin by pin, the control senses and safe
+   idles, the RF levels against the absolute maxima, the MAX2871 filter (robust from Kvco 40 to 130 MHz/V),
+   the Costas loop as fitted (fn 2.9 kHz, zeta 0.69, 46 deg of margin with the VCXO's 15 kHz pole; the PLL
+   inside the loop costs 3-4 deg), the power ORing and LDOs, I2C addresses, the header; every net one copper
+   cluster, the LO legs 0.00 mm apart, the couplers lambda/4, the CPWG gap 0.250 everywhere, BOM = CPL =
+   board, the gerber set, ORDER_SETTINGS against the form.
+
+**The board, after that.**  The new netlist (the balun's four pads, the two blocks, eight filter parts moved to
+the ADC pins, the DNP pull-up) changed the router's luck: build 33's first pass left 3 nets in pieces and
+crashed KiCad's refill (a SWIG quirk: one removal a process now); six route seeds side by side in scratch
+copies all failed the same two nets, which is a placement fault, not luck: the shunt-at-pin rule had put the
+four 100 nF hard against the ADS1115s' pins, boxing the resistors' far pads and the slow ADC's SCL pin.  With
+the sixteen filter parts anchored a few millimetres out the board routed whole; one more pass fixed a
+reference shift (drawing the TCXO's pull-up beside it had renumbered R220-R227 and the anchors then placed
+the wrong parts: now drawn last, like the blocks) and taught the refill to drop a half-millimetre sliver the
+widening leaves against a via.  **Build 34: 421 parts, 4,116 tracks, 1,110 vias, every net one piece, DRC
+0 / 0 / 0, the LO legs 0.00 mm apart, labels 0, the schematic 0 overlaps on all seven sheets, the document
+check 42 claims and 3 tables with 0 stale.  The release (`mfg/release/`, 2026-10-14) passes every gate: 80
+BOM lines, 0 consigned, 386 placements a board, 52 Extended codes; JLCPCB $943-958 all in, Digi-Key $0.**
+Bare-board rules and sources: `CLAUDE_PCB.md` sections 3, 4, 5 and 11 gained this round's lessons.
+
+**My honest estimate** (my own numbers, with review C's beside them where they differ):
+
+| | event | mine | review C | why |
+|---|---|---|---|---|
+| a | powers up, every rail right, nothing hot | **0.85** | 0.85 | the power path has now been audited three times by the numbers (ORing, LDOs, 1.37 A, 5.10 V at the plug); 349 placed parts from a pipeline whose symbols were checked pin by pin.  The 15 %: a pin figure misread somewhere nobody looked, a QFN rotation, a part that is not what its LCSC code says.  Today's blocking find (the ADC filters) is exactly the kind of drawing error that survives reviews, and there is no reason to think it was the last one |
+| b | both synthesizers lock | **0.75** | 0.75 | register words from the datasheet's example; a loop filter stable from Kvco 40 to 130 MHz/V; 3.3 V CMOS into REF_IN.  Lock-detect polarity, the VCO band select on a first write, a dead LO pair |
+| c | the Costas loop locks over a cable | **0.6** | 0.65 | textbook structure, the sign is a jumper, Kd follows the DSA.  The chain is 39 dB of gain in a row with a balun, two couplers and LO pairs never built; the FDA summing nodes have 61 mV of margin; the LO-pair blocks cost 0.5 dB nobody budgeted |
+| d | a bit through on the bench, latency within 3 ns of 23.5 | **0.5** | 0.55 | the comparators and the gateware are simulated against the RTL; the header's 10 pF, the comparator's overdrive and the oscillators' phase noise each cost about a nanosecond, and the slow confirmation needs the 80 ns delay first |
+| e | across a room, two antennas | **0.4** | 0.45 | the two things that fail here are set-up and channel: 52 dB of isolation for FDD (two whips on the board's own SMAs is a dead LNA waiting for a corner symbol; use the switch block or a pad) and WiFi inside +-94 MHz capturing sign(I) |
+| f | 100 m line of sight | **0.3** | 0.35 | panels make the SNR trivial; the isolation (48 dB), the logistics, the licence |
+| g | the rev A measurement programme yields useful data whatever (c)-(f) do | **0.9** | 0.9 | the comparator statistics on muted-carrier noise, the arms on the ADC, the loop's step response through VC_OFF, latency histograms and constellations in a cabled loopback survive anything short of (a) failing; even an unlocked loop leaves the open-loop beat, which measures I/Q balance, the offsets and the chain's gain |
+
+**What is most likely to fail, in order, and what you still measure:**
+
+1. **Own-transmitter leak in FDD** (0.6 that the first two-antenna test shows it): a 600 MHz tone within 10 dB
+   of the wanted at the arms, or a compressed demodulator.  Not a board defect: TDD with the HMC536 block, a
+   10-20 dB pad in the TX lead, 3 m between whips, cross-polarised panels.
+2. **WiFi inside the arms' +-94 MHz** (0.5 across a room on an unsurveyed channel): a lost lock.  The survey,
+   UNII-2C or the 5775 MHz null; the detectors measure the interference, which is a result.
+3. **The oscillators' phase noise sets the bench windows** (0.7): CFAR at 0.2 a, the slow Q window chattering,
+   a nanosecond later than TRAJECTORIES.  The servo finds it; ERR MON measures it; the VCXO is swappable.
+4. **The slow path's saturation recovery and offsets** (0.5): a register and a trim.
+5. **A loop sign wrong on the first try** (0.3; no lock with either jumper 0.05): minutes.
+6. **DC offset beyond the Q_OFF_F trim at 5.8 GHz** (0.2): the ADC reads it; constellations with a known
+   rotation are still constellations.
+7. **A distorted arm from the THS4541's common mode** (0.25): the DNP 1.5 k on ADJ, at the cost of heat and gain.
+8. **The RF chain oscillating or low** (0.15): the DSA between the stages, the four monitors, the TX side alone.
+9. **Power source sag** (0.3 that someone powers it from the wrong thing once): V5_MON; a bench supply at 5.2 V.
+10. **A wrong part or placement** (0.2): the switch block is separable, the TX and RX chains are separate.
+And two that are now gone but would have been first: the ADC filters shorting the fast arms (a dead receiver),
+and the balun's DC path into the demodulator's inputs (no gain).  That both lived through two review rounds is
+the strongest argument for ordering now and measuring, rather than another round on paper: the next such fault,
+if there is one, will be found in an afternoon on the bench with the monitors this board carries, and the
+boards are $945 for two.
+
+**What I would do before clicking order:** nothing on the copper.  Register nothing, consign nothing; buy the
+J302 sockets and shunts anywhere.  On the day, run `mfg/make_release.py --refresh` (it reads the shelf and decides
+the ADL5375-05 fallback: 4 in stock), look at the preview against PLACEMENT_CHECKS.txt, and order 5 boards with 2
+assembled.

@@ -179,7 +179,7 @@ gateware and driver work, none of it hardware:
     "Narrower instead"): **about 10 % of configuration B's chain, and it fits three prover links in the
     5 cm band**.  With a 150 ns chain, this is the one place where the radio's latency should yield to
     the channel plan.
-  - **A Part 5 experimental licence for 4.9-5.875 GHz,** which rev A's LNA and balun cover (6 GHz needs another balun).
+  - **A Part 5 experimental licence for 4.9-5.9 GHz,** which rev A's LNA covers (the balun reaches 5.95; 6 GHz needs another LNA).
 
 ## 5. Platforms
 
@@ -193,7 +193,7 @@ gateware and driver work, none of it hardware:
 
 - That is 10 radios and 4 Brain-1s ($1,800).
 - At JLCPCB a 10-12-board order costs ~$250-400 a radio (est).  The two-board order of section 17 is
-  ~$520-540 each.
+  ~$470-480 each.
 - One board, one gateware and one driver serve every role, and any spare fits any node.
 - A Brain-1 and three radios fit a roof box behind the antennas.
 

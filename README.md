@@ -33,11 +33,17 @@ crossed and are now straight and equal.  Prompts 26-29 added the interference su
 (`survey()`, from the window comparators' statistics), the system analysis around the radio
 ([`docs/SYSTEM.md`](docs/SYSTEM.md)), sheet 6's interference detectors (an AD8310 log amp on the fast Q
 arm and its peak hold, +5V_RF and the board's temperature, read by a second ADS1115 at 0x49), and 6.8 nH
-ESD / DC shunts at the three antenna jacks; rev A covers 4.9-5.875 GHz (the LNA and the balun).  Prompt 30
+ESD / DC shunts at the three antenna jacks; rev A covers 4.9-5.9 GHz (the LNA's band; the balun reaches 5.95).  Prompt 30
 put every value in one place (`sim/budget.py`, `gen/parts.py`, `gen/pins.py`), the driver's constants in a
-generated module, and a check of every number these documents quote against the build.  **The board
-routes completely: DRC 0, and the release in `mfg/release/` passes every gate (2026-10-12).**  Left for the order day: the CPL rotations,
-read off JLCPCB's preview, and the three consigned parts.  Nothing ordered.
+generated module, and a check of every number these documents quote against the build.  Prompt 31 (2026-10-14, a fresh instance's overall look with three independent reviews, `design_review_Claude_Prompt31/`) found
+and fixed two faults that would have killed the receiver (both ADC input filters drawn capacitor-first, 100 nF on the fast
+arms' outputs; no DC blocks between the balun and the ADL5380's RF inputs), the SMA launches' inner-layer rings, and four
+errors in the budget (own-transmitter rejection 21 dB not 31, FDD needs 52 dB of isolation; the ADL5380's 5.8 GHz IP1dB;
+the static phase error 9.1° not 4.6°; WiFi captures sign(I) x Q) — REVA_CHANGES.md rows 30-36.  **The board
+routes completely: DRC 0, and the release in `mfg/release/` passes every gate (2026-10-14).**  Left for the order day: the CPL rotations,
+read off JLCPCB's preview.  Prompt 31 (2026-10-14) took the consignment out of the order: the balun is the TDK HHM1907B1 from
+JLCPCB's shelf (the ADL5380 sheet's Johanson 5400 has none there), and the two ADI chips come from JLCPCB's shelf with a
+Digi-Key fallback that the release applies only if the shelf is short on the day (`mfg/release/CONSIGNMENT.md`).  Nothing ordered.
 
 * [`PLAN.md`](PLAN.md): the idea, the numbers, the antenna question, the parts with the reasons and
   the rejected alternatives, the header pin map, power, the board, bring-up, what could go wrong.
@@ -86,7 +92,7 @@ read off JLCPCB's preview, and the three consigned parts.  Nothing ordered.
 * `mfg/cost_estimate.py`: what "5 PCBs, 2 assembled" costs at JLCPCB, Digi-Key and elsewhere, from
   JLCPCB's live prices and the calibrated fees (`build/COST_ESTIMATE.md`); `mfg/make_release.py`:
   the upload folder `mfg/release/` (gerbers, BOM, the two CPLs, `PLACEMENT_CHECKS.txt`,
-  `FOOTPRINT_CHECK.txt`, `CONSIGNMENT.md` for the three Digi-Key parts, `ORDER_SETTINGS.md` in the
+  `FOOTPRINT_CHECK.txt`, `CONSIGNMENT.md` (what is consigned, if anything, and what the fallback costs), `ORDER_SETTINGS.md` in the
   order form's own order with every non-default value marked, `COST_ESTIMATE.md`), behind the gates
   of `CLAUDE_PCB.md` section 10: every code's JLCPCB description checked against the parts table,
   stock, the land patterns fitted, DRC clean, the CPL simulated, relative paths only.

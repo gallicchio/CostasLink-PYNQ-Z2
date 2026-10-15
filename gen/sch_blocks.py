@@ -121,6 +121,29 @@ def pullup_top(pl, pin, key, rail, text="right"):
     up(key, x, y, rail, text=text, rise=G)
 
 
+def adc_inputs(adc, lines, rkey="R 10k", ckey="C 100nF"):
+    """An ADS1115's four RC input filters on its 2.54-pitch pins, the resistor between the source and the
+    capacitor and the capacitor at the PIN: the resistor isolates the source from the 100 nF.  Review A of
+    Prompt 31 found both ADCs drawn the other way round, the capacitor hanging from the source's end of the
+    line, which put 100 nF straight on the fast arms' outputs (I_P, Q_P), on the VCXO's control line and on
+    the loop error, and 100 nF on the log amp's and the peak hold's outputs: the fast arms shorted above a
+    few kHz.  Each line now comes up from below on its own vertical, the bottom pin's nearest the chip, so no
+    capacitor crosses another line: pin <- horizontal with the capacitor hanging from it <- vertical with the
+    resistor standing in it <- the net label at its foot.  `lines` is ((pin, name), ...) top to bottom."""
+    n = len(lines)
+    y_r = adc.pin(lines[-1][0])[1] + 19.05                # the resistors in a row under the capacitors' ground flags
+    for k, (pin, name) in enumerate(lines):
+        px, py = adc.pin(pin)
+        xk = px - 12.7 - 10.16 * (n - 1 - k)
+        W((px, py), (xk, py))
+        r = nref("R")                                     # the resistor's reference before the capacitor's: the
+        J(xk + 2.54, py); down(ckey, xk + 2.54, py, text="right")   # same order as before, so no reference moves
+        t, b = vpart(rkey, r, xk, y_r, text="right")
+        W((xk, py), t)
+        W(b, (xk, b[1] + 2.54))
+        label(xk, b[1] + 2.54, name, size=1.0)
+
+
 def dcblock(x0, y, x1, key="C 1.5pF", above=True):
     """A DC-blocking capacitor on a horizontal RF line from x0 to x1; returns (x1, y)."""
     xc = (x0 + x1) / 2.0

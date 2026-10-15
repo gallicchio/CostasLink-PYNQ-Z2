@@ -328,7 +328,8 @@
 		(size 2 2)
 		(drill 1.300022)
 		(layers "*.Cu" "*.Mask")
-		(remove_unused_layers no)
+		(remove_unused_layers yes)
+		(keep_end_layers yes)
 		(uuid "5bd8904c-6528-5e6b-ad0b-6ec8affc6727")
 	)
 	(pad "2" thru_hole circle

@@ -127,15 +127,18 @@ and the receiver now has two ADL5611 gain blocks.
 
 Simultaneous transmit and receive on one antenna needs the local transmitter's leakage to stay
 below the wanted signal minus 10 dB *at the demodulator*, because nothing before the demodulator is
-frequency selective (the LNA, DSA and gain block are 0.1-6 GHz parts) and the arm filter rejects a
-TX-to-RX offset of Δf by only 10·2·log10(1+(Δf/100 MHz)²) dB:
+frequency selective (the LNA, DSA and gain blocks are 0.1-6 GHz parts) and what rejects a TX-to-RX offset
+of Δf is only the demodulator's 390 MHz baseband pole and the arm amplifier's 94 MHz pole (Prompt 31's
+review C: an earlier model of "two poles at 100 MHz" gave 31 dB at 600 MHz where the real pair gives 21,
+and the compression limit had counted one of the two gain blocks and the ADL5380's 900 MHz IP1dB, 11.6 dBm,
+where its 5.8 GHz figure is 8.2):
 
 | TX/RX spacing | arm filter rejection | isolation needed at the antenna port (10 m, +10 dBm TX) |
 |---|---|---|
-| 25 MHz | 0.5 dB | 73 dB |
-| 100 MHz | 6 dB | 68 dB |
-| 200 MHz | 14 dB | 60 dB |
-| 600 MHz (5.2 GHz UNII vs 5.8 GHz ISM) | 31 dB | 42 dB |
+| 25 MHz | 0.3 dB | 73 dB |
+| 100 MHz | 3.5 dB | 70 dB |
+| 200 MHz | 8.4 dB | 65 dB |
+| 600 MHz (5.2 GHz UNII vs 5.8 GHz ISM) | 21 dB | 52 dB |
 
 A Wilkinson splitter gives 3 dB, a circulator about 20 dB (and only until the antenna's own
 reflection, S11 ≈ −10 dB, is counted), two patches side by side 30-40 dB. **So frequency-division
@@ -195,15 +198,22 @@ Stock and prices are JLCPCB's parts API on 2026-10-09 00:36-00:57 PDT (cached wi
 all Extended. Digi-Key/Mouser figures are from aggregator snapshots (Digi-Key refuses scripts); they
 are the two parts to confirm in a browser before ordering.
 
-### Consigned (not deep enough at JLCPCB)
+### The ADI chips and the balun (JLCPCB's shelf; the chips with a Digi-Key fallback)
+
+Until Prompt 31 these three were consigned: bought at Digi-Key and posted to JLCPCB.  Jason (2026-10-14): JLCPCB had
+both ADI chips, and a consignment's true cost is its shipping, a week, and the spares JLCPCB asks for ("attrition on
+consigned parts", two a line that are never used), so for two boards the shelf wins even a few dollars dearer; the
+balun was the only part that would have forced a consignment, and the TDK HHM1907B1 replaces it from the shelf.  The
+two ADI chips keep their Digi-Key numbers as a fallback that `mfg/make_release.py` applies only when JLCPCB's live
+stock cannot cover the order (`mfg/release/CONSIGNMENT.md` says what, if anything, to buy).
 
 | part | role | JLCPCB | elsewhere | why this one | rejected |
 |---|---|---|---|---|---|
-| **ADL5380ACPZ-R7** | IQ demodulator, 400 MHz-6 GHz | C579152: **8** in stock, $23.6 | **Digi-Key 4,512 at $17.96** (1-9; 505-ADL5380ACPZ-R7CT-ND, 2026-10-12); Newark 1746 ($7.6-12.4), ADI direct 2522, Rochester 1257, Richardson 450 ($10.9) | the only integrated IQ demodulator with 390 MHz baseband bandwidth that reaches 5.8 GHz at this price; its outputs are DC-coupled buffered emitter followers (25 Ω each), exactly what a Costas loop needs | LTC5586 ($31-40, 3 at JLCPCB, 430 mA, has a DSA and VGA we do not need); LTC5594 ($48); HMC8193 passive IQ mixer ($75-125, needs baseband amplifiers); two mixers plus a PCB hybrid (cheaper in parts, worse in balance, more layout risk) |
-| **ADL5375-05ACPZ-R7** | IQ modulator, 400 MHz-6 GHz | C579150: **6**, $16.0 | **Digi-Key 5,829 at $17.26** (1-9; 505-ADL5375-05ACPZ-R7CT-ND, 2026-10-12; an aggregator had said $14.12), Mouser 726 ($14.31), Newark 1828, ADI 7169 | 750 MHz baseband bandwidth, high-impedance baseband inputs biased at 0.5 V that a resistor ladder from 3.3 V logic can drive directly; the -05 (0.5 V bias) version keeps the ladder inside 0-1 V | HMC495LP3E (3.5-7 GHz, not stocked); LTC5588-1 (not stocked, $16); a bi-phase mixer modulator (BPSK only: no QPSK, no FSK); ADL5375-15 (1.5 V bias needs a level shifter) |
-| **Johanson 5400BL15B0050001E** (legacy 5400BL15B050E) | 1:1 balun, 4.9-5.875 GHz, at the ADL5380 RF input | C2837312: 0, $0.33 | **Digi-Key 6,874 at $0.69** (712-5400BL15B0050001ECT-ND, 2026-10-12); Avnet 4000 of the K variant | the ADL5380's 5.8 GHz data are taken with this balun; single-ended drive is possible but unbalanced at 5.8 GHz | TCW4-582+ (not stocked, $4.30); no balun (RFIN AC-grounded: the datasheet's low-band option) |
+| **ADL5380ACPZ-R7** | IQ demodulator, 400 MHz-6 GHz | **C579152: 18 in stock, $21.62** (2026-10-14; the source) | **Digi-Key 4,512 at $17.96** (1-9; 505-ADL5380ACPZ-R7CT-ND, 2026-10-12); Newark 1746 ($7.6-12.4), ADI direct 2522, Rochester 1257, Richardson 450 ($10.9) | the only integrated IQ demodulator with 390 MHz baseband bandwidth that reaches 5.8 GHz at this price; its outputs are DC-coupled buffered emitter followers (25 Ω each), exactly what a Costas loop needs | LTC5586 ($31-40, 3 at JLCPCB, 430 mA, has a DSA and VGA we do not need); LTC5594 ($48); HMC8193 passive IQ mixer ($75-125, needs baseband amplifiers); two mixers plus a PCB hybrid (cheaper in parts, worse in balance, more layout risk) |
+| **ADL5375-05ACPZ-R7** | IQ modulator, 400 MHz-6 GHz | **C579150: 4 in stock, $16.40** (2026-10-14; the source, thin: the fallback if it runs out) | **Digi-Key 5,829 at $17.26** (1-9; 505-ADL5375-05ACPZ-R7CT-ND, 2026-10-12; an aggregator had said $14.12), Mouser 726 ($14.31), Newark 1828, ADI 7169 | 750 MHz baseband bandwidth, high-impedance baseband inputs biased at 0.5 V that a resistor ladder from 3.3 V logic can drive directly; the -05 (0.5 V bias) version keeps the ladder inside 0-1 V | HMC495LP3E (3.5-7 GHz, not stocked); LTC5588-1 (not stocked, $16); a bi-phase mixer modulator (BPSK only: no QPSK, no FSK); ADL5375-15 (1.5 V bias needs a level shifter) |
+| **TDK HHM1907B1** (Prompt 31) | 1:1 balun, 4.9-5.95 GHz, 0402, at the ADL5380 RF input | **C531388: 7,884 in stock, $0.10** (2026-10-14; the source) | a distributor is not needed (Digi-Key and Mouser list it; numbers to read on their pages if ever consigned) | the same ratio (50:50) and band as the Johanson 5400 the ADL5380's sheet uses, and better on paper: 0.8 dB max loss (1.0), 10 dB return loss (9.5), 180 +-10 deg (same), +-2.5 dB amplitude (2 dB); four pads, no DC-feed pin; TDK rf_balun_hhm1907b1_en | Johanson 5400BL15B0050001E (4.9-5.875 GHz; Digi-Key 6,874 at $0.69, 712-5400BL15B0050001ECT-ND, 2026-10-12; 0 at JLCPCB, so a consignment on its own); Mini-Circuits NCS1-63+ and TCW1-6000+ (50:50 to 6 GHz, 1 and 5 at JLCPCB, $2-4); TDK HHM1732B1 / HHM1562B and Pulse BLN1608LL01R5000A (50:100: a 2:1 mismatch into the ADL5380's 50 ohm pair); TCW4-582+ (not stocked); no balun (RFIN AC-grounded: the datasheet's low-band option) |
 
-Three consigned lines, about $30 a board. The LO inputs of both IQ chips need no balun: the
+No consigned line (Prompt 31).  The LO inputs of both IQ chips need no balun: the
 MAX2871's outputs are differential and drive them directly.
 
 ### Placed by JLCPCB
@@ -456,11 +466,27 @@ number in a table.
    and the lock-detect polarity are software), a loop filter computed with a 60 MHz/V Kvco that the
    part only promises as 40-80, 0 dBm differential into the IQ chips that could be 3 dB low.
    Guards: MUX = lock detect on both PLLs; LO MON taps; every register is a write.
-6. **Own transmitter into own receiver.** With two antennas 600 MHz apart the fast arm rejects the
-   leak by 31 dB and the budget asks 42 dB of antenna-to-antenna isolation (section 3): two panels
-   side by side give about 40; closer, or with a PA, the demodulator compresses and the fast
-   comparators chatter. Guards: the DSA; the switch block (time division) instead; the slow path
-   vetoes the chatter but cannot restore a compressed demodulator.
+6. **Own transmitter into own receiver.** With two antennas 600 MHz apart the demodulator's and the
+   arm's poles reject the leak by 21 dB and the budget asks 52 dB of antenna-to-antenna isolation
+   (section 3; 48-58 across the scenarios): two panels side by side give about 30-40, so FDD on one
+   mast is 10-20 dB short; closer, or with a PA, the demodulator compresses (its 5.8 GHz IP1dB is
+   8.2 dBm) and the fast comparators chatter.  Two whips on the board's own SMAs (32 mm apart,
+   about 14 dB) put the own transmitter at the LNA's P1dB, 5 dB from its absolute maximum.  Guards:
+   the DSA; the switch block (time division) instead; cross-polarised panels or 3-5 m between masts;
+   a 10-20 dB pad in the TX lead on the bench; the slow path vetoes the chatter but cannot restore a
+   compressed demodulator (Prompt 31's review C).
+6b. **The oscillators' phase noise at the bench (Prompt 31's review C).** Two x232 synthesizers
+   (the MAX2871's 6 GHz VCO outside its 80 kHz loop: about 0.8° rms each), the TCXO (0.13°) and the
+   VCXO, whose datasheet gives no phase-noise figure at all (0.4-1.3° guessed), add to 1.3-1.8° rms
+   outside the Costas loop's 3 kHz: two to two-and-a-half times the thermal phase noise of the Q arm
+   at the bench (0.7°).  No effect on lock or on range; at the bench the CFAR windows settle near
+   0.2 a rather than docs/TRAJECTORIES.md's 0.1 a (about a nanosecond of event time), and the slow Q
+   window at 0.1 a chatters with nothing sent.  Guards: the threshold servo finds the window; ERR MON
+   and the ADC measure the phase noise (a result); the VCXO is a 3225 footprint, swappable for a
+   specified one.
+6c. **The slow I stage idles 1.7x overdriven** (20 x 249 mV against a 2.9 V swing), and the THS4541's
+   20 ns overdrive recovery is not in sim/trajectories.py: the 37 ns confirmation is 55 ns or more.
+   Guard: RX_TIMING's confirm delay is a register; start at 80 ns and shorten it from the measurement.
 7. **Heat.** 1.37 A from 5 V is 6.8 W on a 120 × 100 mm board: ADL5380 1.2 W, ADL5375 1 W, three
    ADL5611 1.9 W, two MAX2871 1.3 W, the LDOs. Exposed pads need their vias; JLCPCB's 1 oz copper.
    Guards: the PLL LDOs' series 2.2 Ω; the DSOP pin and the DSA to idle parts; a measurement in
@@ -475,10 +501,11 @@ number in a table.
    (−15 dBc) adds a fixed vector. Guards: VR_I/VR_Q null the feedthrough and centre the ladders;
    the loop and the comparators care about sign, not shape.
 10. **Parts and the order.** The HMC536 has five at JLCPCB and none at Digi-Key until 2027; the
-    three consigned ADI lines must arrive at JLCPCB with the right labels; MCP4728 and MCP4728A1 are
+    ADL5375-05's shelf is thin (4 on 2026-10-14; if it is short on the day that line is consigned from Digi-Key
+    and must arrive at JLCPCB with the right label); MCP4728 and MCP4728A1 are
     the same package at different addresses; a JLCPCB rotation on the SOT-89, QFN and SC-70 parts.
-    Guards: PLACEMENT_CHECKS.txt and the preview; order the consigned parts the day the PCB is
-    ordered; a second source for the switch is the HMC427A at $62.
+    Guards: PLACEMENT_CHECKS.txt and the preview; run the release the day of the order (it reads the
+    live stock and decides the fallback); a second source for the switch is the HMC427A at $62.
 11. **The Icepi Zero.** No I2C pull-ups on its header (now DNP 4.7 k on this board), 5 V from its own
     USB-C, and MUX_RX and TRIG_A (no fast input) on its bank 0.
 12. **The generated symbols.** Audited pin by pin against the datasheet texts (Response 8,
@@ -759,8 +786,14 @@ from the transitions, integrates each symbol and descrambles. Compared:
   is 200 MHz wide all the time, so *we* become the interferer of every WiFi channel we overlap.
   Robustness against the university's 5 GHz comes from the arm bandwidth (narrower = quieter =
   slower; section 19 prices it: ~17 ns for a real 80 MHz channel), the panels' directivity (20-30 dB off-axis), the channel (scan first; UNII-2C 5.47-5.725
-  GHz is nearly empty indoors), and power. The Costas loop itself is untroubled: in its 3 kHz
-  bandwidth a 20 MHz WiFi signal at −40 dBm is −78 dBm.
+  GHz is nearly empty indoors), and power. The Costas loop is not protected by its 3 kHz bandwidth
+  (Prompt 31's review C): the detector is sign(I) x Q, and once an interferer dominates the arms
+  sign(I) is the interferer's, the product's mean no longer holds the carrier and the loop drifts
+  open.  A WiFi access point on channels 149-165 (5735-5835 MHz, inside the arms' ±94 MHz of a
+  5.8 GHz carrier) is −40 dBm or more within 10 m indoors, against a carrier of −54 dBm at 10 m
+  with whips: a lost lock, not a false event; and a 100 µs frame outlasts the 60 ns veto, so the
+  slow path does not help.  The survey (Prompt 26), the channel choice (UNII-2C, the 5775 MHz null)
+  and the panels' directivity are the remedies.
 * *Where the stream wins:* when the receiver is a conventional slotted detector that needs a clock
   (an SDR, a BERT), and for a continuous link-quality estimate. **It is an experiment on this
   hardware, not a design decision**: the FPGA drives the ladders either way.
@@ -841,8 +874,8 @@ so it went to **4.8 MHz** (11 dB of reach over the fast path, 25 dB over the old
 floor, 37 ns later; 100 pF instead of 33 pF makes it 1.6 MHz for another 5 dB and 110 ns). The fast
 path looked like it should go faster too, and Response 6 took it to gain 2 / 180 MHz for 1.7 ns.
 Response 7's audit took that back: the fast arm's roll-off is also the receiver's only frequency
-selectivity, and at 170 MHz it rejects the own transmitter 600 MHz away by 23 dB instead of 31, so the
-two-antenna full-duplex arrangement would have needed 51 dB of antenna isolation instead of 42
+selectivity, and at 170 MHz it rejects the own transmitter 600 MHz away by 17 dB instead of 21, so the
+two-antenna full-duplex arrangement would have needed 57 dB of antenna isolation instead of 52
 (section 3). **The fast path stays at gain 4 / 100 MHz**, where its comparator floor (−81 dBm) and its
 noise (−81) are also balanced; R_f 2 k is the ~0.6 ns option if a test ever wants it. Both knobs are
 0402 parts JLCPCB solders.
@@ -941,24 +974,26 @@ ECP5 cart of 2026-10-09 for the fees (`build/COST_ESTIMATE.md` has every line):
 | where | what | cost |
 |---|---|--:|
 | JLCPCB | 5 boards 120 × 100 mm, 4 layers, ENIG (a model: $28-65) | $47 |
-| | assembly on the top only, Standard PCBA (the SMAs and headers are through-hole): setup, stencil, fixture, 49 Extended codes' feeders, 1100 SMT pads and 93 through-hole joints a board; the 2x20 socket on the back soldered at home (Response 15); depanelled | $200 |
-| | their parts: 77 BOM lines (80 with the three consigned), with attrition | $353 |
-| | US duty at 35 % under DDP | $210 |
+| | assembly on the top only, Standard PCBA (the SMAs and headers are through-hole): setup, stencil, fixture, 52 Extended codes' feeders, 1102 SMT pads and 93 through-hole joints a board; the 2x20 socket on the back soldered at home (Response 15); depanelled | $208 |
+| | their parts: 80 BOM lines, with attrition (the two ADI chips and the balun among them since Prompt 31) | $425 |
+| | US duty at 35 % under DDP | $238 |
 | | shipping | $25-40 |
-| | **JLCPCB total** | **$835-850** |
-| Digi-Key | the three consigned lines, 4 + 4 + 4 pieces, with tax and shipping (CONSIGNMENT.md) | **$165** |
-| | shipping the consignment to JLCPCB | $35-60 |
+| | **JLCPCB total** | **$944-959** |
+| Digi-Key | nothing consigned (Prompt 31: the ADI chips from JLCPCB's shelf while it covers the order, the balun replaced by a shelf part) | **$0** |
+| | shipping a consignment to JLCPCB | $0-0 (none to ship) |
 | other | attenuators, pigtails, MMCX leads, whips, leads, two PD power banks, standoffs, a heatsink; a second PA and LNA module when the far end needs them | **$142-271** |
-| | **everything** | **$1,177-1,346** |
+| | **everything** | **$1,085-1,230** |
 
 Prompt 28's interference detectors (the AD8310, its peak hold, the second ADS1115, the NTC, the +5V_RF
 monitor) added $50 to the order, $25 a board: three Extended codes' feeders, 53 more pads, $28 of parts,
 and their duty.  The three antenna shunts (Prompt 29) add $4.66 more.
 The duty is a third of JLCPCB's line and nothing lowers it truthfully. The 49 Extended parts are
-what they are (every chip is Extended). Buying the ADL5380 and ADL5375-05 from JLCPCB's own stock
-(8 and 6 on 2026-10-09, at $23.60 and $16.00) instead of consigning would cost $9 more in parts and save the chips'
-consignment handling, but the balun (0 everywhere at JLCPCB) must be consigned anyway, so the
-shipment to Shenzhen happens either way. The HMC536 is the thin line: 5 in stock, 2 needed, and Digi-Key has none until 500 arrive on 2026-12-24; every other line has at least three times the order in stock (2026-10-12). Response 14's measurement package (sheet 7, the hold rewiring, the trims, the bypass) added about $109 to JLCPCB's line, about 10 % of the whole order.  Response 15 took the 2x20 socket J302 off JLCPCB's order (Jason: "if it costs more than a few dollars to have JLCPCB solder the raspberry pi connectors, I'll do that myself"): it was the only part on the back, so fitting it cost a second setup and stencil, its feeder and its joints, $38 before duty and $52 with it; it comes loose (LCSC C2977589) with the jumper shunts (`mfg/release/hand_solder_bom.csv`).  The same response's TX_EN inverter and six pull-downs (REVA_CHANGES.md 2-3) are Basic parts but one, the 74LVC1G04, already on the order.
+what they are (every chip is Extended). Prompt 31 took the consignment out of the order: the two ADI chips are
+bought from JLCPCB's shelf (18 ADL5380 at $21.62 and 4 ADL5375-05 at $16.40 on 2026-10-14) with their Digi-Key
+numbers kept as a fallback the release applies only if the shelf is short on the day, and the balun is the TDK
+HHM1907B1 from the shelf (section 4).  Counted Jason's way (two spares a line never used, tax, Digi-Key's shipping
+and the parcel to Shenzhen), consigning the two chips would have cost about $100 more than the shelf for two
+boards (`mfg/release/CONSIGNMENT.md` has the number from the day's stock). The HMC536 is the thin line: 5 in stock, 2 needed, and Digi-Key has none until 500 arrive on 2026-12-24; every other line has at least three times the order in stock (2026-10-12). Response 14's measurement package (sheet 7, the hold rewiring, the trims, the bypass) added about $109 to JLCPCB's line, about 10 % of the whole order.  Response 15 took the 2x20 socket J302 off JLCPCB's order (Jason: "if it costs more than a few dollars to have JLCPCB solder the raspberry pi connectors, I'll do that myself"): it was the only part on the back, so fitting it cost a second setup and stencil, its feeder and its joints, $38 before duty and $52 with it; it comes loose (LCSC C2977589) with the jumper shunts (`mfg/release/hand_solder_bom.csv`).  The same response's TX_EN inverter and six pull-downs (REVA_CHANGES.md 2-3) are Basic parts but one, the 74LVC1G04, already on the order.
 
 ## 18. Idle plus N messages: the constellation from first principles (Response 10)
 
@@ -1054,13 +1089,17 @@ the pilot's slope; the ADL5380's ±10 mV is ±20 mV at one arm output). Decoding
 gateware time-stamps every edge) tolerates 19° whatever the SNR; decoding the settled states
 tolerates only 1.9° in the lab, where a corner is 120 σ from the pilot.
 
-| pilot | slope at the arm | static phase error, 20 mV offset | feedthrough nulled below | cost on one corner |
+| pilot | slope on one leg (the loop holds one leg of Q against V_MID: a/2) | static phase error, 20 mV offset on that leg | feedthrough nulled below | cost on one corner |
 |---|---|---|---|---|
-| −26 dBc | 12 mV/rad | 58° | −47 dBc | 0.3 dB |
-| −20 dBc | 25 mV/rad | 39° | −41 dBc | 0.6 dB |
-| −14 dBc | 50 mV/rad | 22° | −35 dBc | 1.3 dB |
-| −10.5 dBc | 75 mV/rad | 15° | −32 dBc | 2.1 dB |
-| the plan's full idle (A3) | 249 mV/rad | 4.6° | (no pilot to turn) | — |
+| −26 dBc | 6 mV/rad | 73° | −47 dBc | 0.3 dB |
+| −20 dBc | 12 mV/rad | 58° | −41 dBc | 0.6 dB |
+| −14 dBc | 25 mV/rad | 39° | −35 dBc | 1.3 dB |
+| −10.5 dBc | 37 mV/rad | 28° | −32 dBc | 2.1 dB |
+| the plan's full idle (A3) | 124 mV/rad | 9.1° | (no pilot to turn) | — |
+
+(Prompt 31's review C: the table had divided the one-leg offset by the differential slope, which halved
+every entry.  The THS4541's common-mode offset adds up to 2.7°; the worst-case sum, 13°, is inside the
+Q_OFF_F trim's ±15° reach, and BRINGUP.md stage 3.2 trims it.)
 
 So a weak pilot is fragile on this hardware unless the Q arm's offset is trimmed: B2 wants the pilot
 at about −14 dBc, the carrier feedthrough nulled to −35 dBc (the VR_I / VR_Q trims), first-edge
@@ -1218,18 +1257,17 @@ model of docs/TRAJECTORIES.md and the host terms of docs/HOSTS.md.
 - **The sources:**
   - Jason's Digi-Key prices of 2026-10-12, 1-9 pieces, are exact: the Brain-1 $450, the ADCMP572
     $30.18, the HMC6300 and HMC6301 $25.91, the evaluation PCBs $1,587.52, the EK1HMC6350 $6,385.19.
-  - Rev A's boards are section 17's $1,035-1,075: JLCPCB $835-850, the consigned chips $165, shipping
-    them $35-60.
+  - Rev A's boards are section 17's $944-959: JLCPCB $944-959, nothing consigned (Prompt 31).
   - The rest are estimates (≈); `build/latency_roadmap.json` lists every line.
 
 | # | turnaround, bench | at 3 km (with the PA) | what changes | Δ$ (two nodes) | total $ |
 |---|---|---|---|---|---|
-| 0 | **~71 ns** | ~71 ns | rev A as built: PYNQ-Z2, header RCs, TLV3601, A3 through the registered decoder at 100 MHz (estimated: rev A has no RX-to-TX path) | — | $1,290-1,330 |
-| 1 | **13.6 ns** | 13.4 ns | gateware: B2's first edge through a combinational LUT path, pin to pin; a TDC time-stamps alongside | $0 | $1,290-1,330 |
-| 2 | **10.8 ns** | 10.7 ns | a bare-pin host (Icepi Zero, ≈ $69-129, or any host without the 200 Ω) | ≈ −$120 to $0 | ≈ $1,170-1,330 |
-| 3 | **9.1 ns** | 8.9 ns | rev B: TLV3604 LVDS comparators over LVDS pairs into an ECP5 on the board (≈ $150-300 for two); or on SYZYGY, two Brain-1 at $450, for $1,900-2,000 in all | ≈ +$30-90 | ≈ $1,200-1,420 |
-| 4 | **2.4 ns** | 2.3 ns | the fast path leaves the FPGA: 8 ADCMP572 ($30.18), CML gates (≈ $15-60 each) driving the modulator's baseband, the DSA out of the fast path; the FPGA arms and time-stamps | ≈ +$430-960 | ≈ $1,640-2,380 |
-| 5 | **1.7 ns** | 1.7 ns | ~1 GHz baseband: passive I/Q mixers and GHz FDAs for the ADL5380 and ADL5375, LO amplifiers, 4.8-6.8 GHz antennas; ~2 GHz on the air (a shielded lab or an experimental licence); the PA at range | ≈ +$520-1,460 | ≈ $2,160-3,840 |
+| 0 | **~71 ns** | ~71 ns | rev A as built: PYNQ-Z2, header RCs, TLV3601, A3 through the registered decoder at 100 MHz (estimated: rev A has no RX-to-TX path) | — | $1,200-1,220 |
+| 1 | **13.6 ns** | 13.4 ns | gateware: B2's first edge through a combinational LUT path, pin to pin; a TDC time-stamps alongside | $0 | $1,200-1,220 |
+| 2 | **10.8 ns** | 10.7 ns | a bare-pin host (Icepi Zero, ≈ $69-129, or any host without the 200 Ω) | ≈ −$120 to $0 | ≈ $1,080-1,220 |
+| 3 | **9.1 ns** | 8.9 ns | rev B: TLV3604 LVDS comparators over LVDS pairs into an ECP5 on the board (≈ $150-300 for two); or on SYZYGY, two Brain-1 at $450, for $1,900-2,000 in all | ≈ +$30-90 | ≈ $1,110-1,300 |
+| 4 | **2.4 ns** | 2.3 ns | the fast path leaves the FPGA: 8 ADCMP572 ($30.18), CML gates (≈ $15-60 each) driving the modulator's baseband, the DSA out of the fast path; the FPGA arms and time-stamps | ≈ +$430-960 | ≈ $1,540-2,260 |
+| 5 | **1.7 ns** | 1.7 ns | ~1 GHz baseband: passive I/Q mixers and GHz FDAs for the ADL5380 and ADL5375, LO amplifiers, 4.8-6.8 GHz antennas; ~2 GHz on the air (a shielded lab or an experimental licence); the PA at range | ≈ +$520-1,460 | ≈ $2,060-3,720 |
 | 6 | **1.3 ns** | (hundreds of metres only) | 60 GHz: 2 HMC6300 + 2 HMC6301 ($25.91 each), a Rogers board (≈ $2k) or ADI's four evaluation PCBs ($6,350), WR-15 horns (≈ $1.2-2.4k), InP comparators (HMC674-class) | ≈ +$3-10k | ≈ $5-14k |
 | 6E | **1.24 ns** | **1.25 ns** (1.38 ns in ~5 dB/km of rain; fails in heavy rain) | instead of row 6, E-band: ADMV7310 / ADMV7410 (71-76 GHz, I/Q to 2 GHz, no public price; ≈ $300-900 each), LO synthesizers, a board with waveguide back plates (≈ $1.5-4k; ADI's evaluation boards are $2,606.81 and $2,053.22, $9,320 for two nodes), 43 dBi dishes (≈ $1.2-6k for four), the FCC's light licence | ≈ +$3.7-16k from row 5 | ≈ $5.8-20k |
 | 7 | | | below ~1 ns: free-space optics, its own table below | | |
@@ -1491,12 +1529,12 @@ the Q arm (the RMS converter beside the slow Q stage it reads):
 - Fitted (Prompt 29: "worth taking the very small hit"): $4.66 an order with the feeder and duty.
 - Each sits as near its line as the placer's rules allow, a 1-1.6 mm stub (0.05 of a wavelength).
 
-**The band rev A covers as it is: 4.9-5.875 GHz, set by two parts.**
+**The band rev A covers as it is: 4.9-5.9 GHz, set by the LNA (Prompt 31: the balun now reaches 5.95).**
 
 | part | rated |
 |---|---|
 | **SKY65404-31 LNA** | **4.9-5.9 GHz** |
-| **Johanson 5400BL15B0050001E balun** (the ADL5380's input) | **4.9-5.875 GHz** (≤ 1 dB loss, ≥ 9.5 dB return loss; the legacy 5400BL15B050's sheet said 5.9) |
+| TDK HHM1907B1 balun (the ADL5380's input; Prompt 31) | 4.9-5.95 GHz (≤ 0.8 dB loss, ≥ 10 dB return loss; the Johanson 5400BL15B0050001E it replaced stopped at 5.875) |
 | MAX2871 synthesizers | 3-6 GHz on the fundamental VCO |
 | ADL5380, ADL5375-05 | 0.4-6 GHz |
 | ADL5611 gain blocks | 30 MHz-6 GHz |
@@ -1505,11 +1543,11 @@ the Q arm (the RMS converter beside the slow Q stage it reads):
 | the 1.5 pF DC blocks | series-resonant at 6.1 GHz: ~8 Ω at 4.9 GHz |
 | the −20 dB couplers | a quarter wave at 5.8 GHz: within 0.3 dB of −20 dB across 4.9-6 GHz |
 
-- **The carrier:** 4.9-5.875 GHz in spec, on the 25 MHz integer-N grid (5 MHz with R = 5).
+- **The carrier:** 4.9-5.9 GHz in spec, on the 25 MHz integer-N grid (5 MHz with R = 5).
 - **The receive band (±94 MHz) inside the spec:** carriers of 5.0-5.78 GHz.
-- **5.875-6.0 GHz:** the balun, then the LNA, run out of their rated bands.  Expect some dB of gain and a
+- **5.9-6.0 GHz:** the LNA (5.9), then the balun (5.95), run out of their rated bands.  Expect some dB of gain and a
   worse I/Q balance there; measure before relying on it.
-- **Both edges are the LNA's and the balun's (Prompt 29).**  Both start at 4.9 GHz; the balun stops at 5.875 (Prompt 30: the sheet of the number Digi-Key sells), the LNA at 5.9.
+- **Both edges are the LNA's (Prompts 29-31).**  The LNA and the balun both start at 4.9 GHz; the LNA stops at 5.9, the TDK balun at 5.95 (the Johanson it replaced stopped at 5.875, which was the edge until Prompt 31).
   - Their plots go a little wider: the SKY65404's S-parameters from 4.8 GHz, the balun's loss and return
     loss from 4.4 GHz.  So 4.8-4.9 GHz is in their data but out of their guarantee.
   - Below 4.8 GHz the board has no data at all.

@@ -118,7 +118,7 @@ def build(S):
     for n in ("6", "7", "13", "15"):
         S.nc(*mod.pin(n))
     note(mod.pin("2")[0] - 4, y + 46, "ADL5375-05: 400 MHz-6 GHz quadrature modulator; -4.5 dBm out at 5.8 GHz with this drive, carrier feedthrough -19.5 dBm.  "
-         "LO 0 dBm differential from the synthesizer below.  CONSIGNED.", cols=40)
+         "LO 0 dBm differential from the synthesizer below.  JLCPCB C579150; consigned from Digi-Key only if their shelf is short on the day.", cols=40)
     # RF out: DC block, gain block, bias tee, pi pad, coupler, SMA
     rfo = mod.pin("16")
     yr = rfo[1]
@@ -160,8 +160,11 @@ def build(S):
     W((xv, yv - 2.54), (xv + 7.62, yv - 2.54)); J(xv, yv - 2.54)
     down("C 100nF", xv + 7.62, yv - 2.54, text="right")
     gx, gy = tc.pin("2"); W((gx, gy), (gx, gy + G)); gnd(gx, gy + G)
-    S.nc(*tc.pin("1"))
-    note(tc.pin("1")[0] - 10, ys + 14, "25 MHz TCXO +-2.5 ppm (TC32H4, LVCMOS): the TX reference.  Two boards' carriers then differ by at most 29 kHz.", cols=30)
+    # pad 1 is "E/D or N.C." on the TC32H4 drawing, read as an enable with an internal pull-up (the first review round);
+    # a DNP 10 k to the rail is the fix if a unit ever needs it driven (review A, Prompt 31): a part, not a wire
+    tcxo_pin1 = tc                                # its DNP pull-up is drawn at the end of the sheet (tcxo_pullup): the
+    note(tc.pin("1")[0] - 10, ys + 14, "25 MHz TCXO +-2.5 ppm (TC32H4, LVCMOS): the TX reference.  Two boards' carriers then differ by at most 29 kHz.  "
+         "Pad 1 (E/D or N.C.) floats; the DNP 10 k pulls it up if a unit wants it.", cols=30)
     tout = tc.pin("3")
     # reference selector: TCXO (pin 1) or REF IN (pin 3); pin 2 to the synthesizer
     jr = part("HDR1x3", "JP201", tout[0] + 17.78, ys - 10.16, rot=90, value="REF", text="hide")
@@ -256,4 +259,14 @@ def build(S):
          "starts the FPGA's latency counter.  TRIG A / B: the FPGA marks the symbol it sent or the one it decoded; "
          "board-to-board latency is TRIG A here against TRIG B there on the scope.", cols=40)
     box(xt - 56, yt - 36, 150, 140)
+    tcxo_pullup(tcxo_pin1)
     return S
+
+
+def tcxo_pullup(tc):
+    """The DNP 10 k from the TCXO's pad 1 (E/D or N.C.) to its rail (review A, Prompt 31), drawn last so it takes
+    the sheet's last reference: drawing it beside the TCXO renumbered R220-R227 and gen/placement.py's anchors
+    then moved the wrong parts (a 49.9 ohm into a jack's leg)."""
+    e1 = stub(tc, "1", dx=-5.08)
+    rt, rb = vpart("R 10k", nref("R"), e1[0], e1[1] - G - 3.81, dnp=True, value="DNP 10k", text="right", fsize=1.0)
+    W(e1, rb); W(rt, (rt[0], rt[1] - G)); flag("+3V3_OSC", rt[0], rt[1] - G)

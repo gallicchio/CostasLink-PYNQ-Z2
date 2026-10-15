@@ -3,13 +3,13 @@ FOOTPRINT vs ORDERED PART -- does the part fit the copper?
 
 board  hardware/CostasLink-PYNQ-Z2.kicad_pcb
 BOM    release/BOM_JLCPCB.csv
-run    2026-10-12T10:31:12-07:00
-418 footprint(s) placed, 1227 drill(s) on the board
+run    2026-10-14T18:37:57-07:00
+421 footprint(s) placed, 1250 drill(s) on the board
 
   ok C1525       C_0402_1005Metric                            C0402              68 placement(s)
   ok C25744      R_0402_1005Metric                            R0402              30 placement(s)
   ok C11702      R_0402_1005Metric                            R0402              29 placement(s)
-  ok C1552       C_0402_1005Metric                            C0402              22 placement(s)
+  ok C1552       C_0402_1005Metric                            C0402              24 placement(s)
   ok C52923      C_0402_1005Metric                            C0402              15 placement(s)
   ok C25741      R_0402_1005Metric                            R0402              14 placement(s)
   !! C88374      U.FL_Hirose_U.FL-R-SMT-1_Vertical            RF-SMD_FRF05002-JS 12 placement(s)
@@ -84,7 +84,6 @@ run    2026-10-12T10:31:12-07:00
   !! C23380874   SOT-23-5                                     SOT-23-5_L3.0-W1.7 1 placement(s)
        land  worst pad-centre miss 0.196 mm (pad 4) at 180 deg, 5 pad(s) matched by name
   ok C25900      R_0402_1005Metric                            R0402              1 placement(s)
-  ok C2837312    Balun_Johanson_5400BL15B050                  FILTER-SMD_0805-6P 1 placement(s)
   ok C285052     C_0402_1005Metric                            C0402              1 placement(s)
   ok C38663      SOT-363_SC-70-6                              SC-70-6_L2.2-W1.3- 1 placement(s)
   !! C42711      MSOP-8_3x3mm_P0.65mm                         MSOP-8_L3.0-W3.0-P 1 placement(s)
@@ -95,6 +94,7 @@ run    2026-10-12T10:31:12-07:00
   ok C478093     MSOP-10_3x3mm_P0.5mm                         MSOP-10_L3.0-W3.0- 1 placement(s)
   ok C5119013    Crystal_SMD_3225-4Pin_3.2x2.5mm              OSC-SMD_4P-L3.2-W2 1 placement(s)
   ok C5179998    Crystal_SMD_3225-4Pin_3.2x2.5mm              OSC-SMD_4P-L3.2-W2 1 placement(s)
+  ok C531388     Balun_TDK_HHM1907B1                          FILTER-SMD_4P-L1.0 1 placement(s)
   ok C579150     QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm          QFN-24_L4.0-W4.0-P 1 placement(s)
   ok C579152     QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm          LFCSP-24_L4.0-W4.0 1 placement(s)
   ok C627342     MSOP-10_3x3mm_P0.5mm                         MSOP-10_L3.0-W3.0- 1 placement(s)

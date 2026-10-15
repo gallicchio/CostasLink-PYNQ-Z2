@@ -1,6 +1,6 @@
 # CostasLink-PYNQ-Z2 rev A: JLCPCB order settings
 
-Written by `mfg/make_release.py` on 2026-10-12.  On jlcpcb.com, **Order now**, upload `CostasLink-PYNQ-Z2_gerbers.zip`, then set the form top to bottom; the fields are in the form's own order (as of 2026-10-09, CLAUDE_PCB.md section 8).  **A row marked `>>` with its value in bold is NOT JLCPCB's default: change it, and do not leave the default named beside it.**  11 fields differ from the defaults.  Every dialog the form raises has its own row.
+Written by `mfg/make_release.py` on 2026-10-14.  On jlcpcb.com, **Order now**, upload `CostasLink-PYNQ-Z2_gerbers.zip`, then set the form top to bottom; the fields are in the form's own order (as of 2026-10-09, CLAUDE_PCB.md section 8).  **A row marked `>>` with its value in bold is NOT JLCPCB's default: change it, and do not leave the default named beside it.**  11 fields differ from the defaults.  Every dialog the form raises has its own row.
 
 ## The PCB
 
@@ -58,14 +58,14 @@ Written by `mfg/make_release.py` on 2026-10-12.  On jlcpcb.com, **Order now**, u
 | field | choose | JLCPCB's default | why |
 |---|---|---|---|
 | >> PCB Assembly | **On** | Off |  |
-| >> PCBA Type | **Standard** | Economic | the through-hole parts (the SMAs, the 2.54 mm headers) and the consigned ones: Economic takes neither |
+| >> PCBA Type | **Standard** | Economic | the through-hole parts (the SMAs, the 2.54 mm headers), and any consigned ones: Economic takes neither |
 | Assembly Side | Top Side | Top Side | every part on one side |
 | >> PCBA Qty | **2** | 5 | of the 5 boards; the other 3 are bare spares |
 | Edge Rails/Fiducials | Added by JLCPCB | Added by JLCPCB | the board carries no rails of its own; its 3 fiducials (1 mm copper in 2 mm mask openings, at (11.0, 11.0), (115.5, 15.0), (116.5, 87.5) mm from the top-left corner) sit inside the outline; JLCPCB adds two rails with its fiducials, and Depanel below takes them off.  Parts hang over the edge (J101, J202, J401, J402, J403 4.6 mm past the top edge; J203, J301 1.7/4.6 mm past the right edge; J205, J206, J207 4.6 mm past the left edge): the Assembly remark below says so |
 | >> Confirm Parts Placement | **Yes** | No | free: the placement preview, read against PLACEMENT_CHECKS.txt (33 part numbers have predicted, unseen rotations) |
 | Stencil Storage | No | No |  |
 | Fixture Storage | No | No |  |
-| Parts Selection | By Customer (Self-Service) | By Customer (Self-Service) | the BOM carries every LCSC code; the 3 consigned lines are matched to the consigned stock registered beforehand (CONSIGNMENT.md) |
+| Parts Selection | By Customer (Self-Service) | By Customer (Self-Service) | the BOM carries every LCSC code and every line matches JLCPCB's shelf (nothing is consigned) |
 
 ### Advanced Options
 
@@ -97,16 +97,16 @@ Written by `mfg/make_release.py` on 2026-10-12.  On jlcpcb.com, **Order now**, u
 | BOM | BOM_JLCPCB.csv |  | one line per LCSC code; the Note column flags the consigned lines |
 | CPL | CostasLink-PYNQ-Z2_cpl_jlcpcb_upload.csv |  | not CostasLink-PYNQ-Z2_cpl_kicad_native.csv, which is KiCad's own numbers for reference |
 
-Then upload `BOM_JLCPCB.csv` and `CostasLink-PYNQ-Z2_cpl_jlcpcb_upload.csv` (not `CostasLink-PYNQ-Z2_cpl_kicad_native.csv`).  Every BOM line carries its LCSC code; the 3 consigned lines (Note column) must match the consigned stock registered beforehand (CONSIGNMENT.md), the rest JLCPCB's shelf stock; nothing should be left unmatched.  In the placement preview, go through `PLACEMENT_CHECKS.txt` before confirming.
+Then upload `BOM_JLCPCB.csv` and `CostasLink-PYNQ-Z2_cpl_jlcpcb_upload.csv` (not `CostasLink-PYNQ-Z2_cpl_kicad_native.csv`).  Every BOM line carries its LCSC code; every line matches JLCPCB's shelf stock (nothing is consigned); nothing should be left unmatched.  In the placement preview, go through `PLACEMENT_CHECKS.txt` before confirming.
 
-**Shipping:** UPS Express Saver (DDP): a US individual must ship DDP, and JLCPCB collects the duty (35 % of the PCBs and assembly).  Lead time: 4-layer PCBs 2-5 days, Standard assembly at least 4 more (+1 for the through-hole parts), the consignment's post before that, then 4-5 business days to the door.
+**Shipping:** UPS Express Saver (DDP): a US individual must ship DDP, and JLCPCB collects the duty (35 % of the PCBs and assembly).  Lead time: 4-layer PCBs 2-5 days, Standard assembly at least 4 more (+1 for the through-hole parts), then 4-5 business days to the door.
 
 ## Numbers behind the choices
 
-- Board 120.0 x 100.0 mm, 4 copper layers, 1.6 mm; smallest track 0.150 mm; 1088 vias, all 0.45/0.25 mm.
-- Assembly: 384 placements a board on 80 BOM lines (49 Extended, 3 consigned), 1100 SMD pads and 93 through-hole joints a board, on top.
+- Board 120.0 x 100.0 mm, 4 copper layers, 1.6 mm; smallest track 0.150 mm; 1111 vias, all 0.45/0.25 mm.
+- Assembly: 386 placements a board on 80 BOM lines (52 Extended, 0 consigned), 1102 SMD pads and 93 through-hole joints a board, on top.
 - Mounting holes: H301 3.2 mm at (5.0, 5.0), H302 3.2 mm at (115.0, 5.0), H303 3.2 mm at (115.0, 94.0), H304 3.2 mm at (61.3, 93.3).
-- Estimate: $600.06 of goods before duty and shipping, JLCPCB $835.08-$850.08 all in, Digi-Key $165.29 (COST_ESTIMATE.md).
-- Checks passed: DRC 0 violations, 0 unconnected, 0 parity; the connectors' labels 38 connectors, 22 rows, 0 violations; 2 limit(s) left off on record; 213 filled zone polygons; every netlist part on the board; every code matched (gen/parts.py's words, the value, the package, the MPN) and in stock; no ordered part wants a hole; every part of three or more pads has a read or predicted rotation; the CPL agrees with KiCad's position export, and JLCPCB's drawings placed by it land on our pads (54 parts, top side).
+- Estimate: $680.23 of goods before duty and shipping, JLCPCB $943.31-$958.31 all in, Digi-Key $0.00 (COST_ESTIMATE.md).
+- Checks passed: DRC 0 violations, 0 unconnected, 0 parity; the connectors' labels 38 connectors, 22 rows, 0 violations; 2 limit(s) left off on record; 228 filled zone polygons; every netlist part on the board; every code matched (gen/parts.py's words, the value, the package, the MPN) and in stock; no ordered part wants a hole; every part of three or more pads has a read or predicted rotation; the CPL agrees with KiCad's position export, and JLCPCB's drawings placed by it land on our pads (54 parts, top side).
 
 Sources: the ECP5-2ADC-2DAC order of 2026-10-09 (the form's fields and defaults, its cart's fees), jlcpcb.com/help/article/pcb-assembly-price, /capabilities/pcb-assembly-capabilities, /help/article/How-to-mark-on-PCB (2026-05-22), /help/article/us-tariff-policy-faq (2026-09-09).  The form changes; when a screenshot shows it has, update the lists in mfg/make_release.py and this date.

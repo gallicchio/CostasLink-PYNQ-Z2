@@ -11,6 +11,7 @@ R210,DNP,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in th
 R211,DNP,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
 R214,DNP,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
 R226,DNP 0R,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
+R228,DNP 10k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
 R312,DNP 4.7k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
 R313,DNP 4.7k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
 R601,DNP 150k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic

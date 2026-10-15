@@ -511,18 +511,22 @@ def tolerances(snr_lab, snr_need_b2):
         out["settled_" + tag] = e_set
     out["first_edge_deg"] = e_fe
     off_mV = 20.0                         # ADL5380 +-10 mV differential output offset x 4 = +-20 mV on one arm output
-    print("   the pilot's size against the loop's static phase error (a %.0f mV Q-arm offset: the ADL5380's +-10 mV x 4, one side)" % off_mV)
+    # The loop holds ONE leg of Q against V_MID, so the slope the offset works against is half the differential
+    # amplitude (the budget's Kd = a/2 per leg); review C of Prompt 31 caught the differential slope used here before,
+    # which halved every static error (A3: 4.6 deg where it is 9.2).
+    print("   the pilot's size against the loop's static phase error (a %.0f mV Q-arm offset: the ADL5380's +-10 mV x 4, one side, "
+          "against half the pilot's amplitude: one leg)" % off_mV)
     print("   and against the modulator's feedthrough (the residual that turns the pilot by 5 deg):")
     rows = []
     for rho in (0.05, 0.1, 0.2, 0.3):
         pilot_mV = rho * VPK_CMP * 1e3
-        e_loop = math.degrees(math.atan(off_mV / pilot_mV))
+        e_loop = math.degrees(math.atan(off_mV / (pilot_mV / 2)))
         ft_dBc = 20 * math.log10(rho * math.sin(math.radians(5.0)))
         cost = 20 * math.log10(math.sqrt(2) / (math.sqrt(2) - rho))
         rows.append(dict(rho=rho, pilot_dBc=20 * math.log10(rho), e_loop=e_loop, ft_dBc=ft_dBc, cost_dB=cost))
-        print("     pilot %5.1f dBc: slope %3.0f mV/rad, static error %4.1f deg; feedthrough nulled below %5.1f dBc; costs %.1f dB on the corner it points at"
-              % (20 * math.log10(rho), pilot_mV, e_loop, ft_dBc, cost))
-    a3 = math.degrees(math.atan(off_mV / (VPK_CMP * 1e3)))
+        print("     pilot %5.1f dBc: slope %3.0f mV/rad on one leg, static error %4.1f deg; feedthrough nulled below %5.1f dBc; costs %.1f dB on the corner it points at"
+              % (20 * math.log10(rho), pilot_mV / 2, e_loop, ft_dBc, cost))
+    a3 = math.degrees(math.atan(off_mV / (VPK_CMP * 1e3 / 2)))
     print("   (the plan's full idle, A3: static error %.1f deg; sign(I) tolerates 45, and the false-event count absorbs the Q offset)" % a3)
     out["pilot_rows"] = rows
     out["a3_static_deg"] = a3

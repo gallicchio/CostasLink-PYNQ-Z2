@@ -37,10 +37,10 @@ PARTS = dict(
     gb_p1db_dBm=12.8,                  # the 5800 MHz row (Grok4.7 / KimiK3 review: 16.0 was the 6 GHz band's figure)
     gb_nf_dB=6.0,                      # the 5800 MHz row (was 3.5, the 3.5 GHz figure)
     gb_I_mA=124.0,                     # max
-    # the band rev A works over as built (PLAN.md section 19, Prompt 29): the SKY65404-31 is rated 4.9-5.9 GHz (Table 3);
-    # the Johanson balun 4.9-5.875 GHz under the number Digi-Key sells, 5400BL15B0050001E (docs/datasheets/txt; the
-    # legacy 5400BL15B050E's sheet said 5.9); the other RF parts reach further
-    band_GHz=(4.9, 5.875),
+    # the band rev A works over as built (PLAN.md section 19, Prompts 29-31): the SKY65404-31 is rated 4.9-5.9 GHz
+    # (Table 3); the TDK HHM1907B1 balun 4.9-5.95 GHz (Prompt 31; the Johanson 5400BL15B0050001E it replaced stopped at
+    # 5.875); the other RF parts reach further.  So the band is the LNA's.
+    band_GHz=(4.9, 5.9),
     # SKY65404-31 (201512O, Table 4, 4.9-5.9 GHz)
     lna_gain_dB=13.0,
     lna_nf_dB=1.0,
@@ -53,7 +53,7 @@ PARTS = dict(
     dsa_switch_ns=275.0,
     # ADL5380 at 5800 MHz, ADJ open (ADL5380 Rev. B, "DYNAMIC PERFORMANCE at RF = 5800 MHz")
     dem_gain_dB=5.8,                   # voltage conversion gain into 450 ohm differential
-    dem_ip1db_dBm=11.6,                # input 1 dB compression (5.8 GHz column)
+    dem_ip1db_dBm=8.2,                 # input 1 dB compression, the 5800 MHz row (11.6 was the 900 MHz row: review C, Prompt 31)
     dem_nf_dB=15.0,                    # noise figure at 5.8 GHz (figure 7 region; conservative)
     dem_bw_MHz=390.0,
     dem_out_cm_V=3.8,                  # Table 1: VS - 1.2 V with ADJ open (Table 4 says 3.2; the review took the worse, Response 9)
@@ -207,6 +207,7 @@ assert abs(bias_VN - vp_centre) < 0.010, bias_VN
 section("2. Link budget")
 f = 5.8e9
 B_MHz = 100.0                              # the fast arm's bandwidth (THS4541 at gain 4, section 7): noise, latency AND selectivity (section 4)
+ARM_RG, ARM_RF, ARM_RS = 1000.0, 4000.0, 1000.0   # the fast arm (section 7): Rg from the demodulator, Rf feedback, Rs summing node to ground
 def friis(stages):
     """Cascade noise figure (dB) of [(gain_dB, nf_dB), ...]."""
     F, G = 1.0, 1.0
@@ -363,13 +364,18 @@ assert floor_fast < noise_dBm + 11.4 + 8, "the fast path should be within 8 dB o
 section("4. One antenna?  TX-to-RX isolation needed for frequency-division duplex")
 # The leakage lands on the demodulator at the offset df and is only filtered AFTER the
 # demodulator.  It must stay (a) below the demodulator's IP1dB - 10 dB and (b) below the
-# wanted signal minus 10 dB after the arm filter's rejection at df.
-def lp_reject_dB(df_MHz, poles=2, fc_MHz=B_MHz):
-    return 10 * poles * math.log10(1 + (df_MHz / fc_MHz) ** 2)
-print("arm filter %.0f MHz, 2 poles; the wanted signal at 10 m is %.1f dBm" % (B_MHz, pr10))
-def iso_needed(df, fc_MHz=B_MHz):
+# wanted signal minus 10 dB after the arm filter's rejection at df.  The rejection is the two real poles in
+# the way, the demodulator's baseband (dem_bw_MHz) and the arm amplifier's (its gain-bandwidth over the noise
+# gain, as sim/trajectories.py has them), not two poles at B_MHz (review C, Prompt 31: that gave 31 dB at
+# 600 MHz where the real pair gives 21); and the chain in front of the demodulator has both gain blocks.
+def lp_reject_dB(df_MHz, fc_MHz=None):
+    fc = fc_MHz or P["fda_gbw_MHz"] / (1 + ARM_RF / (ARM_RG * ARM_RS / (ARM_RG + ARM_RS)))   # the arm's pole: GBW over the noise gain (section 7 computes the same)
+    return 10 * math.log10(1 + (df_MHz / P["dem_bw_MHz"]) ** 2) + 10 * math.log10(1 + (df_MHz / fc) ** 2)
+print("the demodulator's %.0f MHz pole and the arm's %.1f MHz pole; the wanted signal at 10 m is %.1f dBm"
+      % (P["dem_bw_MHz"], P["fda_gbw_MHz"] / (1 + ARM_RF / (ARM_RG * ARM_RS / (ARM_RG + ARM_RS))), pr10))
+def iso_needed(df, fc_MHz=None):
     rej = lp_reject_dB(df, fc_MHz=fc_MHz)
-    leak_max_at_rx = min(pr10 - 10 + rej, (P["dem_ip1db_dBm"] - 10) - (P["lna_gain_dB"] - P["dsa_il_dB"] - dsa_set + P["gb_gain_dB"]))
+    leak_max_at_rx = min(pr10 - 10 + rej, (P["dem_ip1db_dBm"] - 10) - (P["lna_gain_dB"] - P["dsa_il_dB"] - dsa_set + N_GB * P["gb_gain_dB"]))
     return rej, leak_max_at_rx, tx_out_dBm - leak_max_at_rx
 R["iso_table"] = []
 for df in (25.0, 50.0, 100.0, 200.0, 600.0):
@@ -383,7 +389,7 @@ rej_g2, _, iso_g2 = iso_needed(600.0, fc_MHz=bw_g2)
 R["gain2"] = dict(bw_MHz=bw_g2, reject600_dB=rej_g2, iso600_dB=iso_g2)
 print("  at gain 2 the arms would run at %.0f MHz: %.1f dB of rejection 600 MHz away instead of %.1f, %.0f dB of isolation instead of %.0f"
       % (bw_g2, rej_g2, lp_reject_dB(600.0), iso_g2, iso_needed(600.0)[2]))
-R["iso_200MHz_dB"] = tx_out_dBm - min(pr10 - 10 + lp_reject_dB(200.0), (P["dem_ip1db_dBm"] - 10) - (P["lna_gain_dB"] - P["dsa_il_dB"] - dsa_set + P["gb_gain_dB"]))
+R["iso_200MHz_dB"] = iso_needed(200.0)[2]
 print("  a splitter gives 3 dB, a circulator about 20 dB, two patches side by side 30-40 dB: FDD on one antenna does not work in-band;")
 print("  separate TX and RX antennas, or time-division with a switch (the protocol is half duplex anyway).")
 
@@ -452,7 +458,7 @@ assert fn_Hz * 10 < 80e3, "Costas loop must be well inside the PLL's loop bandwi
 
 # ---------------------------------------------------------------------------
 section("7. FDA level shift (ADL5380 outputs sit at %.1f V; THS4541 on 3.3 V accepts inputs to %.1f V, guaranteed)" % (P["dem_out_cm_V"], 3.3 - P["fda_cm_headroom_V"]))
-Rg, Rf, Rs = 1000.0, 4000.0, 1000.0            # Rg from the demodulator, Rf feedback, Rs from the summing node to ground (1.2 k until the review: 2.02 V at 3.8 V)
+Rg, Rf, Rs = ARM_RG, ARM_RF, ARM_RS            # (1.2 k until the review: 2.02 V at 3.8 V)
 Vocm = 1.65                                    # the arms' output common mode, V_MID: half of +3V3_ANA
 Vn = (P["dem_out_cm_V"] / Rg + Vocm / Rf) / (1 / Rg + 1 / Rf + 1 / Rs)
 gain = Rf / Rg

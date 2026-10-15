@@ -51,7 +51,7 @@ FENCE_OFF = RF_W / 2 + RF_GAP + 0.45   # the fence's centre line from the track'
 BB_W = 0.2                             # baseband pairs
 # the PAIR_PATHS that carry 5.8 GHz: the LO pairs and the couplers' ports, 50 ohm lines like the RF chains
 # (they were BB_W, 57-60 ohm: the design review)
-RF_PAIRS = ("RX LO +", "RX LO -", "TX LO +", "TX LO -", "RX MON", "TX MON", "RX ISO", "TX ISO")
+RF_PAIRS = ("RX LO +", "RX LO -", "TX LO +", "TX LO -", "RF +", "RF -", "RX MON", "TX MON", "RX ISO", "TX ISO")
 LO_PAIRS = ("RX LO +", "RX LO -", "TX LO +", "TX LO -")
 SIG_W = 0.15
 FAN_W = 0.15                           # a fan-out line
@@ -104,6 +104,7 @@ PAIR_PATHS = [
     ("Q hi", ("U104", "16"), ("U106", "2")), ("Q lo", ("U104", "15"), ("U106", "3")),
     ("I slow +", ("U105", "10"), ("U501", "2")), ("I slow -", ("U105", "11"), ("U501", "3")),
     ("Q slow +", ("U106", "10"), ("U502", "2")), ("Q slow -", ("U106", "11"), ("U502", "3")),
+    ("RF +", ("T101", "2"), ("U104", "22")), ("RF -", ("T101", "3"), ("U104", "21")),      # the balun's pair, through a DC block each (Prompt 31)
     ("RX MON", ("CP101", "3"), ("J102", "1")), ("TX MON", ("CP201", "3"), ("J201", "1")),
     ("RX ISO", ("CP101", "4"), ("R103", "1")), ("TX ISO", ("CP201", "4"), ("R213", "1")),
 ]
@@ -947,7 +948,7 @@ def chip_keepout(R, pads, ref, inset=0.9):
 # what the router does with each net
 RF_PINS = {("J101", "1"), ("J202", "1"), ("J401", "1"), ("J402", "1"), ("J403", "1"),
            ("U104", "9"), ("U104", "10"), ("U201", "3"), ("U201", "4"), ("U115", "12"), ("U115", "13"),
-           ("U203", "12"), ("U203", "13"), ("T101", "3"), ("T101", "4"), ("U104", "21"), ("U104", "22"),
+           ("U203", "12"), ("U203", "13"), ("T101", "2"), ("T101", "3"), ("U104", "21"), ("U104", "22"),
            ("J109", "1"), ("J204", "1"), ("J102", "1"), ("J201", "1"), ("CP101", "3"), ("CP201", "3")}
 BB_PINS = {("U104", "3"), ("U104", "4"), ("U104", "15"), ("U104", "16"), ("U105", "10"), ("U105", "11"), ("U106", "10"), ("U106", "11"),
            ("U501", "10"), ("U501", "11"), ("U502", "10"), ("U502", "11")}

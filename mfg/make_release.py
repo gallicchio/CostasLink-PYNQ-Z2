@@ -9,11 +9,12 @@ cached within the last 24 hours (tools/jlc_api.py).
 
 One board, 120 x 100 mm, 4 layers (JLC04161H-7628), 1.6 mm, ENIG, green; assembled on ONE side, the
 top: the 2x20 socket J302, alone on the back, is soldered at home (HAND_SOLDER below: fitting it made the
-order two-sided, about $38 before duty); Standard PCBA for the top's through-hole parts; no panel.  Three parts are CONSIGNED (gen/parts.py: the ADL5380, the ADL5375-05
-and the Johanson balun): they stay in the BOM, under the LCSC code JLCPCB's consigned-parts
-process files them by, flagged in the Note column, and CONSIGNMENT.md says what to buy at
-Digi-Key and send to JLCPCB's consignment warehouse.  Through-hole parts on the top (the SMAs, the
-2.54 mm headers) are fitted by JLCPCB; their joints are counted for the fee.
+order two-sided, about $38 before duty); Standard PCBA for the top's through-hole parts; no panel.  Nothing is consigned
+unless JLCPCB's shelf is short on the day (Prompt 31): the two ADI chips have a Digi-Key fallback (gen/parts.py
+consign=), and parts_report() consigns one only when JLCPCB's live stock cannot cover the order; such a line
+stays in the BOM under its LCSC code, flagged CONSIGNED in the Note column, and CONSIGNMENT.md says what to buy
+at Digi-Key and send to JLCPCB's consignment warehouse (with none, it says so).  Through-hole parts on the top
+(the SMAs, the 2.54 mm headers) are fitted by JLCPCB; their joints are counted for the fee.
 
 Writes mfg/release/:
     CostasLink-PYNQ-Z2_gerbers.zip   Gerbers (4 copper layers, both masks, both silks, both
@@ -87,7 +88,7 @@ import board_info as BI                       # noqa: E402
 import placement as PL                        # noqa: E402
 import cost_estimate as CE                    # noqa: E402  (the calibrated fees, the PCB model, the consigned prices)
 import rf_lines as RF                         # noqa: E402  (the 50 ohm line geometry the order form quotes)
-from parts import PARTS, consigned            # noqa: E402
+from parts import PARTS, consigned, fallback  # noqa: E402
 from sexp import parse, kids, kid, val        # noqa: E402
 
 NAME = BI.NAME
@@ -180,8 +181,9 @@ def refkey(ref):
     return (m.group(1), int(m.group(2) or 0)) if m else (ref, 0)
 
 
-CONSIGNED = consigned()                                    # key -> gen/parts.py entry
+CONSIGNED = consigned()                                    # key -> gen/parts.py entry (consignment-only parts: none since Prompt 31)
 CONSIGNED_BY_MPN = {p["mpn"]: k for k, p in CONSIGNED.items()}
+FALLBACK_BY_CODE = {p["lcsc"]: k for k, p in fallback().items()}   # shelf parts consigned only when JLCPCB's stock is short
 
 
 def not_a_part(c):
@@ -309,7 +311,9 @@ def check_code(code, comps, p):
 def parts_report(fitted, assembled, refresh):
     """Ask JLCPCB about every code JLCPCB places, supplied or consigned; return (rows by code,
     failures, thin stock).  A consigned code is checked for its description (it names the part
-    in the BOM) but not for stock: we send the parts."""
+    in the BOM) but not for stock: we send the parts.  A shelf part with a Digi-Key fallback
+    (gen/parts.py consign=) whose live stock cannot cover the order is turned into a consigned
+    one here, and the row says so (`short`)."""
     by = collections.OrderedDict()
     for c in sorted(fitted, key=lambda c: refkey(c["ref"])):
         by.setdefault(c["lcsc"], []).append(c)
@@ -329,6 +333,13 @@ def parts_report(fitted, assembled, refresh):
         need = n * assembled
         order = jlc_api.order_qty(p, need)
         stock = int(p.get("stockCount") or 0)
+        short = ""
+        if not cons and code in FALLBACK_BY_CODE and stock < order:
+            cons = FALLBACK_BY_CODE[code]
+            for c in comps:
+                c["consign"], c["cls"] = cons, "consigned"
+            short = ("%s %s: %d in stock, the order needs %d: consigned from Digi-Key instead (gen/parts.py's fallback)"
+                     % (code, p.get("componentModelEn"), stock, order))
         if not cons:
             if stock < order:
                 bad.append("%s %s: %d in stock, the order needs %d (%d a board x %d boards, plus %d attrition)"
@@ -336,7 +347,7 @@ def parts_report(fitted, assembled, refresh):
             elif stock < max(3 * order, 20):
                 thin.append(code)
         rows.append(dict(code=code, comps=comps, n=n, need=need, order=order if not cons else need + SPARES_EACH,
-                         stock=stock, part=p, asked=ts, consigned=cons,
+                         stock=stock, part=p, asked=ts, consigned=cons, short=short,
                          lib=jlc_api.library_type(p) if not cons else "consigned",
                          unit=jlc_api.unit_price(p, order) if not cons else 0.0,
                          model=p.get("componentModelEn") or "", pkg=p.get("componentSpecificationEn") or ""))
@@ -398,12 +409,54 @@ def consignment_lines(rows, assembled):
     return out
 
 
-def write_consignment(lines, assembled, out):
+def home_rows(assembled):
+    """The loose parts for home (hand_solder_bom.csv), with their Digi-Key numbers."""
+    out = ["| part | MPN | Digi-Key | buy | unit | why |", "|---|---|---|--:|--:|---|"]
+    for key, n_board in (("J302", 1), ("C5305", 6)):
+        mpn, dk, unit, why = DIGIKEY_LOOSE[key]
+        buy = n_board * assembled + (1 if n_board == 1 else 8)
+        out.append("| %s | %s | %s | %d | %s | %s |" % ("J302, the PYNQ-Z2 socket" if key == "J302" else "jumper shunts",
+                                                         mpn, dk, buy, money(unit), why))
+    return out
+
+
+def fallback_text(assembled, rows):
+    """The ADI chips' fallback and what a consignment really costs against the shelf (Jason, Prompt 31)."""
+    fb = fallback()
+    lo, hi, shelf = CE.consignment_cost(list(fb), assembled)
+    seen = {r["code"]: r for r in rows}
+    today = "; ".join("%s %s: JLCPCB %s in stock at %s" % (k, p["lcsc"], "{:,}".format(seen[p["lcsc"]]["stock"]) if p["lcsc"] in seen else "?",
+                                                          money(seen[p["lcsc"]]["unit"]) if p["lcsc"] in seen and seen[p["lcsc"]]["unit"] else "?")
+                      for k, p in fb.items())
+    return ["**The fallback** (gen/parts.py consign=): %s.  Each is bought from JLCPCB's shelf while the shelf covers the "
+            "order; if it is short on the day, mfg/make_release.py consigns that line and this file says what to buy.  "
+            "Consigning both would mean %d pieces at Digi-Key, %d of them the spares JLCPCB asks for as attrition and never "
+            "used, plus tax, Digi-Key's shipping and the shipment to Shenzhen: %s-%s against %s on the shelf for the %d "
+            "pieces the boards need.  So for %d boards a shelf part up to %s-%s dearer than Digi-Key's price is still the "
+            "cheaper buy, and with more boards the spares and the shipment are spread thinner (CLAUDE_PCB.md section 3)."
+            % (today, len(fb) * (assembled + SPARES_EACH), len(fb) * SPARES_EACH, money(lo), money(hi), money(shelf),
+               len(fb) * assembled, assembled, money(lo - shelf), money(hi - shelf))]
+
+
+def write_consignment(lines, assembled, out, rows=()):
+    if not lines:
+        L = ["# %s rev %s: the consigned parts%s" % (BI.TITLE, BI.REV, " (DRAFT)" if draft() else ""), "",
+             "Written by `mfg/make_release.py` on %s for %d assembled boards.  **Nothing is consigned on this order:** every "
+             "part JLCPCB places is on its shelf, deep enough for the order (COST_ESTIMATE.md).  The balun is the TDK HHM1907B1 "
+             "from JLCPCB's stock (Prompt 31; the Johanson 5400 the ADL5380's sheet uses has 0 there), and the two ADI chips "
+             "are bought from JLCPCB's shelf.  No Parts Manager registration, no parcel to Shenzhen, no week of waiting."
+             % (datetime.date.today(), assembled), ""]
+        L += fallback_text(assembled, rows)
+        L += ["", "**For home** (hand_solder_bom.csv; any distributor, or the drawer):", ""] + home_rows(assembled)
+        open(os.path.join(out, "CONSIGNMENT.md"), "w", encoding="utf-8").write("\n".join(L) + "\n")
+        return
     L = ["# %s rev %s: the consigned parts%s" % (BI.TITLE, BI.REV, " (DRAFT)" if draft() else ""), "",
-         "Written by `mfg/make_release.py` on %s for %d assembled boards.  Three parts are not deep enough at JLCPCB "
-         "to order from their stock (PLAN.md section 4), so they are bought at Digi-Key and sent to JLCPCB, who fit "
-         "them like any other part.  In `BOM_JLCPCB.csv` each sits under the LCSC code JLCPCB's consigned-parts process "
-         "files it by, with CONSIGNED in its Note column." % (datetime.date.today(), assembled), "",
+         "Written by `mfg/make_release.py` on %s for %d assembled boards.  %d part%s JLCPCB's shelf could not cover on the "
+         "day this release was written (the stock seen is in COST_ESTIMATE.md), so %s bought at Digi-Key and sent to "
+         "JLCPCB, who fit %s like any other part (gen/parts.py's fallback, Prompt 31).  In `BOM_JLCPCB.csv` each sits "
+         "under the LCSC code JLCPCB's consigned-parts process files it by, with CONSIGNED in its Note column."
+         % (datetime.date.today(), assembled, len(lines), "s" if len(lines) != 1 else "",
+            "they are" if len(lines) != 1 else "it is", "them" if len(lines) != 1 else "it"), "",
          "## What to buy", "",
          "| part | MPN | Digi-Key | Mouser | refs | a board | **send** | unit | line | stock seen |",
          "|---|---|---|---|---|--:|--:|--:|--:|---|"]
@@ -418,13 +471,7 @@ def write_consignment(lines, assembled, out):
           "shipping: about %s (mfg/cost_estimate.py's Digi-Key bucket)."
           % (assembled, SPARES_EACH, money(total), CE.DIGIKEY_TAX * 100, money(CE.DIGIKEY_SHIPPING),
              money(total * (1 + CE.DIGIKEY_TAX) + CE.DIGIKEY_SHIPPING)), ""]
-    L += ["**For home, in the same cart** (hand_solder_bom.csv; these stay with you, they do not go to JLCPCB):", "",
-          "| part | MPN | Digi-Key | buy | unit | why |", "|---|---|---|--:|--:|---|"]
-    for key, n_board in (("J302", 1), ("C5305", 6)):
-        mpn, dk, unit, why = DIGIKEY_LOOSE[key]
-        buy = n_board * assembled + (1 if n_board == 1 else 8)
-        L.append("| %s | %s | %s | %d | %s | %s |" % ("J302, the PYNQ-Z2 socket" if key == "J302" else "jumper shunts",
-                                                       mpn, dk, buy, money(unit), why))
+    L += ["**For home, in the same cart** (hand_solder_bom.csv; these stay with you, they do not go to JLCPCB):", ""] + home_rows(assembled)
     L += ["", "## How JLCPCB takes them", "",
           "1. Before the order, on jlcpcb.com under **Parts Manager > Consigned Parts** (their name for parts the "
           "customer supplies), register each part by its LCSC code below so the BOM line matches it:", ""]
@@ -433,16 +480,17 @@ def write_consignment(lines, assembled, out):
             c["code"], c["mpn"], c["jlc_model"], "; the maker's new number is %s" % c["mpn"] if c["legacy"] else "",
             c["qty"], ", ".join(c["refs"])))
     L += ["", "2. JLCPCB gives the consignment a shipping label and the address of its consignment warehouse in Shenzhen "
-          "(the Consigned Parts page shows both); send the three reels' cut tape in one padded envelope, each bag labelled "
+          "(the Consigned Parts page shows both); send the reels' cut tape in one padded envelope, each bag labelled "
           "with its LCSC code and the order number (USPS Priority Mail International or FedEx: %s-%s, the estimate's range)."
           % (money(CE.CONSIGN_SHIP[0]), money(CE.CONSIGN_SHIP[1])),
           "3. In the order's BOM matching step, each of these lines must show the consigned stock as its source, not "
-          "JLCPCB's shelf stock (JLCPCB had %s when this release was written: too few, or none, to rely on)."
+          "JLCPCB's shelf stock (JLCPCB had %s when this release was written: too few to cover the order)."
           % ", ".join("%d of %s" % (c["jlc_stock"], c["code"]) for c in lines),
           "4. Assembly starts when the parts have arrived and been counted; allow a week for the post.", "",
           "The parts, and why (gen/parts.py):", ""]
     for c in lines:
         L.append("- **%s** (%s): %s" % (c["key"], " ".join(c["refs"]), c["note"]))
+    L += [""] + fallback_text(assembled, rows)
     L.append("")
     open(os.path.join(out, "CONSIGNMENT.md"), "w", encoding="utf-8").write("\n".join(L) + "\n")
 
@@ -948,7 +996,8 @@ def cost_md(out, rows, fps, boards, assembled, dims, thin, cons_lines):
     duty = F["duty"] * goods
     jlc = (goods + duty + CE.SHIPPING[0], goods + duty + CE.SHIPPING[1])
     dk_parts = sum(c["line"] for c in cons_lines)
-    dk_total = dk_parts * (1 + CE.DIGIKEY_TAX) + CE.DIGIKEY_SHIPPING
+    dk_total = dk_parts * (1 + CE.DIGIKEY_TAX) + CE.DIGIKEY_SHIPPING if cons_lines else 0.0
+    consign_ship = CE.CONSIGN_SHIP if cons_lines else (0.0, 0.0)
     other = (sum(o[1] for o in CE.OTHER), sum(o[2] for o in CE.OTHER))
     L = ["# %s rev %s: cost estimate%s" % (BI.TITLE, BI.REV, " (DRAFT)" if draft() else ""), "",
          "Written by `mfg/make_release.py` on %s.  Parts: JLCPCB's live prices and stock (their parts API, asked at the "
@@ -956,12 +1005,12 @@ def cost_md(out, rows, fps, boards, assembled, dims, thin, cons_lines):
          "cart on the ECP5-2ADC-2DAC order of 2026-10-09 (`mfg/cost_estimate.py` FEES, CLAUDE_PCB.md section 8).  The "
          "bare boards: a model with a range until the cart gives the number." % (datetime.date.today(), F["parts_markup"]), "",
          "**The order:** %d bare boards of %.1f x %.1f mm, 4 layers, 1.6 mm, green, ENIG, %s; **%d of them assembled "
-         "on %s** (Standard PCBA), %s; %d consigned parts bought at Digi-Key and sent to JLCPCB "
-         "(CONSIGNMENT.md)." % (boards, w, h, STACKUP, assembled, "both sides" if len(sides) == 2 else "one side",
-                                 ("%s soldered at home (hand_solder_bom.csv: the part to order loose, and the "
-                                  "jumper shunts)" % ", ".join(sorted(HAND_SOLDER, key=refkey))) if HAND_SOLDER
-                                 else "nothing hand-soldered",
-                                 sum(c["n"] for c in cons_lines)), "",
+         "on %s** (Standard PCBA), %s; %s (CONSIGNMENT.md)."
+         % (boards, w, h, STACKUP, assembled, "both sides" if len(sides) == 2 else "one side",
+            ("%s soldered at home (hand_solder_bom.csv: the part to order loose, and the "
+             "jumper shunts)" % ", ".join(sorted(HAND_SOLDER, key=refkey))) if HAND_SOLDER else "nothing hand-soldered",
+            ("%d consigned part(s) bought at Digi-Key and sent to JLCPCB" % sum(c["n"] for c in cons_lines)) if cons_lines
+            else "nothing consigned: every part from JLCPCB's shelf"), "",
          "## The three buckets", "",
          "| where | what | cost |", "|---|---|--:|",
          "| **JLCPCB** | %d bare boards: %s | %s |" % (boards, pcb_how, money(pcb)),
@@ -974,14 +1023,16 @@ def cost_md(out, rows, fps, boards, assembled, dims, thin, cons_lines):
           "| | US duty, %.0f %% of the goods, collected under DDP | %s |" % (F["duty"] * 100, money(duty)),
           "| | shipping, UPS Express Saver DDP | %s-%s |" % (money(CE.SHIPPING[0]), money(CE.SHIPPING[1])),
           "| | **JLCPCB total** | **%s-%s** |" % (money(jlc[0]), money(jlc[1])),
-          "| **Digi-Key** | the consigned parts (CONSIGNMENT.md): %s, plus %.1f %% tax and %s shipping | **%s** |"
-          % (money(dk_parts), CE.DIGIKEY_TAX * 100, money(CE.DIGIKEY_SHIPPING), money(dk_total)),
-          "| | shipping the consignment to JLCPCB | %s-%s |" % (money(CE.CONSIGN_SHIP[0]), money(CE.CONSIGN_SHIP[1])),
+          ("| **Digi-Key** | the consigned parts (CONSIGNMENT.md): %s, plus %.1f %% tax and %s shipping | **%s** |"
+           % (money(dk_parts), CE.DIGIKEY_TAX * 100, money(CE.DIGIKEY_SHIPPING), money(dk_total))) if cons_lines
+          else "| **Digi-Key** | nothing consigned (CONSIGNMENT.md): every part is on JLCPCB's shelf | **%s** |" % money(0.0),
+          "| | shipping a consignment to JLCPCB | %s-%s |" % (money(consign_ship[0]), money(consign_ship[1])),
           "| **other** | the bench and the field (mfg/cost_estimate.py's list) | **%s-%s** |" % (money(other[0]), money(other[1])),
-          "| | **everything** | **%s-%s** |" % (money(jlc[0] + dk_total + CE.CONSIGN_SHIP[0] + other[0]),
-                                                 money(jlc[1] + dk_total + CE.CONSIGN_SHIP[1] + other[1])), "",
-          "An assembled board: about %s of the JLCPCB goods, plus its share of the consignment.  The range on the bare "
-          "boards moves the goods from %s to %s." % (money(goods / assembled), money(goods - pcb + pcb_lo), money(goods - pcb + pcb_hi)), ""]
+          "| | **everything** | **%s-%s** |" % (money(jlc[0] + dk_total + consign_ship[0] + other[0]),
+                                                 money(jlc[1] + dk_total + consign_ship[1] + other[1])), "",
+          "An assembled board: about %s of the JLCPCB goods%s.  The range on the bare "
+          "boards moves the goods from %s to %s." % (money(goods / assembled), ", plus its share of the consignment" if cons_lines else "",
+                                                     money(goods - pcb + pcb_lo), money(goods - pcb + pcb_hi)), ""]
     L += ["## Per-part fees: Basic, Preferred, Extended", "",
           "| library | distinct parts | placements a board |", "|---|--:|--:|",
           "| Basic | %d | %d |" % (len(basic), sum(r["n"] for r in basic)),
@@ -1001,12 +1052,10 @@ def cost_md(out, rows, fps, boards, assembled, dims, thin, cons_lines):
         r = next(r for r in rows if r["code"] == code)
         flags.append("**%s %s**: %d in stock against %d for this order: order soon, or it may run out"
                      % (code, r["model"], r["stock"], r["order"]))
-    extra = CE.shelf_extra(assembled)
-    flags.append("JLCPCB had %s: buying the two ADI chips there and consigning only the balun would cost "
-                 "about %s %s on parts and save their consignment handling; the consignment shipment is needed either "
-                 "way for the balun (gen/parts.py's consign prices)"
-                 % (", ".join("%d of %s" % (c["jlc_stock"], c["code"]) for c in cons_lines if c["key"] != "BALUN"),
-                    money(abs(extra)), "more" if extra > 0 else "less"))
+    for r in rows:
+        if r.get("short"):
+            flags.append("**" + r["short"] + "**")
+    flags += fallback_text(assembled, rows)
     flags.append("Not in the total: baking the moisture-sensitive parts (the QFNs are MSL 3; about $7.50 if ticked), "
                  "shipping, and duty beyond the 35 %")
     L += ["## What to look at", ""] + ["- " + f for f in flags] + [""]
@@ -1079,14 +1128,14 @@ JLC_PCB_FORM = [
 ]
 JLC_PCBA_FORM = [
     ("PCB Assembly", "PCB Assembly", "On", ""),
-    ("PCB Assembly", "PCBA Type", "Standard", "the through-hole parts (the SMAs, the 2.54 mm headers) and the consigned ones: Economic takes neither"),
+    ("PCB Assembly", "PCBA Type", "Standard", "the through-hole parts (the SMAs, the 2.54 mm headers), and any consigned ones: Economic takes neither"),
     ("PCB Assembly", "Assembly Side", "<sides>", "<sides_why>"),
     ("PCB Assembly", "PCBA Qty", "<assembled>", "of the <boards> boards; the other <spares> are bare spares"),
     ("PCB Assembly", "Edge Rails/Fiducials", "Added by JLCPCB", "the board carries no rails of its own<fiducials>; JLCPCB adds two rails with its fiducials, and Depanel below takes them off<overhang>"),
     ("PCB Assembly", "Confirm Parts Placement", "Yes", "free: the placement preview, read against PLACEMENT_CHECKS.txt (<unread> part numbers have predicted, unseen rotations)"),
     ("PCB Assembly", "Stencil Storage", "No", ""),
     ("PCB Assembly", "Fixture Storage", "No", ""),
-    ("PCB Assembly", "Parts Selection", "By Customer (Self-Service)", "the BOM carries every LCSC code; the <ncons> consigned lines are matched to the consigned stock registered beforehand (CONSIGNMENT.md)"),
+    ("PCB Assembly", "Parts Selection", "By Customer (Self-Service)", "the BOM carries every LCSC code<ncons_how>"),
     ("Advanced Options", "Bake Components", "No", "the QFNs are MSL 3 and JLCPCB's parts come from its own dry storage; about $7.50 if ticked"),
     ("Advanced Options", "Photo Confirmation", "No", ""),
     ("Advanced Options", "Board Cleaning", "No", ""),
@@ -1162,6 +1211,7 @@ def order_md(out, dims, boards, assembled, feat, B, cost, checks, n_unread, cons
                             % (len(feat["fiducials"]), ", ".join(feat["fiducials"]))) if feat["fiducials"] else ", nor fiducials",
             "<overhang>": (".  Parts hang over the edge (%s): the Assembly remark below says so" % over_txt) if over_txt else "",
             "<unread>": str(n_unread), "<ncons>": str(len(cons_lines)),
+            "<ncons_how>": ("; the %d consigned lines are matched to the consigned stock registered beforehand (CONSIGNMENT.md)" % len(cons_lines)) if cons_lines else " and every line matches JLCPCB's shelf (nothing is consigned)",
             "<jlctext>": ("; this board still carries it: take it off" if feat["jlc_text"] else "; this board carries none"),
             "<remark>": remark or "No", "<remark_why>": ("the parts over the edge (PLACEMENT_CHECKS.txt)" if remark else "")}
 
@@ -1197,12 +1247,13 @@ def order_md(out, dims, boards, assembled, feat, B, cost, checks, n_unread, cons
           % (datetime.date.today(), NAME, n_change), ""]
     L += tables
     L += ["Then upload `BOM_JLCPCB.csv` and `" + CPL_UPLOAD + "` (not `" + CPL_NATIVE + "`).  Every BOM line carries its "
-          "LCSC code; the %d consigned lines (Note column) must match the consigned stock registered beforehand "
-          "(CONSIGNMENT.md), the rest JLCPCB's shelf stock; nothing should be left unmatched.  In the placement preview, "
-          "go through `PLACEMENT_CHECKS.txt` before confirming." % len(cons_lines), "",
+          "LCSC code; %s; nothing should be left unmatched.  In the placement preview, "
+          "go through `PLACEMENT_CHECKS.txt` before confirming."
+          % (("the %d consigned lines (Note column) must match the consigned stock registered beforehand (CONSIGNMENT.md), "
+              "the rest JLCPCB's shelf stock" % len(cons_lines)) if cons_lines else "every line matches JLCPCB's shelf stock (nothing is consigned)"), "",
           "**Shipping:** UPS Express Saver (DDP): a US individual must ship DDP, and JLCPCB collects the duty (35 %% of "
           "the PCBs and assembly).  Lead time: 4-layer PCBs 2-5 days, Standard assembly at least 4 more (+1 for the "
-          "through-hole parts), the consignment's post before that, then 4-5 business days to the door." % (), ""]
+          "through-hole parts)%s, then 4-5 business days to the door." % (", the consignment's post before that" if cons_lines else ""), ""]
     L += ["## Numbers behind the choices", "",
           "- Board %.1f x %.1f mm, %d copper layers, %.1f mm; smallest track %s; %d vias%s."
           % (w, h, len(B["copper"]), B["thickness"] or 0.0, ("%.3f mm" % min(B["widths"])) if B["widths"] else "(none)",
@@ -1447,7 +1498,7 @@ def main(argv=None):
 
     # ---- the rest of the folder ----------------------------------------------------------------
     write_excluded(comps, extra, stage)
-    write_consignment(cons_lines, a.assembled, stage)
+    write_consignment(cons_lines, a.assembled, stage, rows)
     cost = cost_md(stage, rows, fps, a.boards, a.assembled, dims, thin, cons_lines)
     cost.update(n_place=len(fitted), bottom=sorted((c["ref"] for c in fitted if cpl[c["ref"]]["jlc"]["side"] == "bottom"), key=refkey))
     checks = ["- Checks passed: DRC %s; the connectors' labels %s; %d filled zone polygons; every netlist part on the board; every code matched "
@@ -1478,7 +1529,7 @@ def finish(failures, stage, a, test, rows=None, cost=None, moved=(), n_unread=0,
     print("  %d SMD pads and %d through-hole joints a board; DRC %s" % (cost["smd"], cost["tht"], drc))
     print("  CPL: %d placement(s) moved to JLCPCB's origin%s; %d part number(s) with rotations not yet seen in a preview "
           "(PLACEMENT_CHECKS.txt)" % (len(moved), " (%s)" % ", ".join(r for r, _, _ in moved) if moved else "", n_unread))
-    print("  consigned (CONSIGNMENT.md): %s" % "; ".join("%s x%d" % (c["mpn"], c["qty"]) for c in cons_lines))
+    print("  consigned (CONSIGNMENT.md): %s" % ("; ".join("%s x%d" % (c["mpn"], c["qty"]) for c in cons_lines) or "nothing"))
     print("  estimate: JLCPCB goods %s (boards %s, assembly %s, parts %s), %s-%s with duty and shipping; Digi-Key %s "
           "(COST_ESTIMATE.md)" % (money(cost["total"]), money(cost["pcb"]), money(cost["asm"] + CE.FEES["confirm_production"]),
                                   money(cost["parts"]), money(cost["jlc"][0]), money(cost["jlc"][1]), money(cost["dk"])))

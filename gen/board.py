@@ -325,7 +325,7 @@ def refill_by_project():
     import project
     if os.path.exists(RESCUED):
         os.remove(RESCUED)
-    for _ in range(6):
+    for _ in range(12):                       # one rescue, then one dangling track a pass
         r = subprocess.run(kienv.python() + [os.path.abspath(__file__), "--inside", "--refill"], cwd=ROOT)
         if r.returncode != 3:
             break
@@ -432,6 +432,13 @@ def ground_rescue(board, island=60, reach=3.0, clear=0.2):
     return added
 
 
+def _desc_len_mm(desc):
+    """The length KiCad prints in a track item's description ("..., length 0.2000 mm"), or a large number."""
+    import re
+    m = re.search(r"length ([\d.]+) mm", desc)
+    return float(m.group(1)) if m else 1e9
+
+
 def drop_dangling_by_drc(board):
     """A track KiCad's DRC calls dangling that the connectivity does not (build 18: a fan-out stub
     whose via did not fit ended on the middle of the router's own track of the net, which joins it
@@ -443,7 +450,12 @@ def drop_dangling_by_drc(board):
                    capture_output=True, text=True)
     if not os.path.exists(out):
         return 0
-    dang = [v for v in json.load(open(out)).get("violations", []) if v.get("type") == "track_dangling"]
+    viol = json.load(open(out)).get("violations", [])
+    dang = [v for v in viol if v.get("type") == "track_dangling"]
+    # a sliver the widening or the tidy left (a track of half a millimetre or less) too close to a via of another
+    # net: dropped like a dangling one when the copper stays joined (Prompt 31's build: a 0.20 mm +3V3_DIG stub)
+    dang += [v for v in viol if v.get("type") == "clearance" and any(it.get("description", "").startswith("Track")
+             and it.get("description", "").endswith(" mm") and _desc_len_mm(it["description"]) <= 0.5 for it in v.get("items", []))]
     board.BuildConnectivity()
     before = board.GetConnectivity().GetUnconnectedCount(False)
     removed = 0
@@ -454,7 +466,9 @@ def drop_dangling_by_drc(board):
                 if t.Type() != pcbnew.PCB_TRACE_T:
                     continue
                 ends = [(pcbnew.ToMM(p.x), pcbnew.ToMM(p.y)) for p in (t.GetStart(), t.GetEnd())]
-                if not any(abs(ex - x) < 0.005 and abs(ey - y) < 0.005 for ex, ey in ends) or \
+                ends.append(((ends[0][0] + ends[1][0]) / 2, (ends[0][1] + ends[1][1]) / 2))
+                tol = 0.3 if pcbnew.ToMM(t.GetLength()) <= 0.5 else 0.005   # a sliver: the DRC's point may be its middle
+                if not any(abs(ex - x) < tol and abs(ey - y) < tol for ex, ey in ends) or \
                         t.GetNetname() not in it["description"] or pcbnew.ToMM(t.GetLength()) > 3.0:
                     continue
                 length, net = pcbnew.ToMM(t.GetLength()), t.GetNetname()
@@ -468,6 +482,9 @@ def drop_dangling_by_drc(board):
                 print("refill: removed a %.2f mm %s track the DRC called dangling at (%.2f, %.2f)"
                       % (length, net, x - BI.ORIGIN[0], y - BI.ORIGIN[1]))
                 removed += 1
+                return removed               # one removal a process: after Remove/Add and a connectivity rebuild,
+                                             # KiCad 10's SWIG hands back opaque VECTOR2I (no .x) for the next
+                                             # track's ends (Prompt 31's build); the caller runs this again fresh
                 break
     return removed
 

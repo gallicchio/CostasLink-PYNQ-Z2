@@ -8,3 +8,14 @@
 (rule "CPWG gap"
     (constraint clearance (min 0.25mm))
     (condition "(A.NetClass == 'RF' || A.NetClass == 'LO') && B.Type == 'Zone'"))
+# The SMA launches (review B, Prompt 31): the centre pin keeps no copper ring on the inner and back layers
+# (gen/footprints.sma), and the planes there stay 1.35 mm from its 1.3 mm hole, a 4 mm antipad, so the
+# pin's capacitance to ground through the board is a small fraction of what a 2.5 mm antipad allowed.
+(rule "SMA launch antipad, inner"
+    (constraint hole_clearance (min 1.35mm))
+    (condition "A.Pad_Name == '1' && A.Footprint_Name == 'SMA_BWSMA-KWE-Z001' && B.Type == 'Zone'")
+    (layer inner))
+(rule "SMA launch antipad, back"
+    (constraint hole_clearance (min 1.35mm))
+    (condition "A.Pad_Name == '1' && A.Footprint_Name == 'SMA_BWSMA-KWE-Z001' && B.Type == 'Zone'")
+    (layer "B.Cu"))

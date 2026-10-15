@@ -8,14 +8,14 @@
    0
   ],
   "total": [
-   1293,
-   1333
+   1202,
+   1217
   ],
   "costs": [
    [
-    "two rev A boards, assembled: JLCPCB $835-850, the consigned chips $165, shipping them $35-60 (section 17)",
-    1035,
-    1075
+    "two rev A boards, assembled: JLCPCB $944-959, nothing consigned (section 17)",
+    944,
+    959
    ],
    [
     "two PYNQ-Z2",
@@ -84,14 +84,14 @@
    0
   ],
   "total": [
-   1293,
-   1333
+   1202,
+   1217
   ],
   "costs": [
    [
-    "two rev A boards, assembled: JLCPCB $835-850, the consigned chips $165, shipping them $35-60 (section 17)",
-    1035,
-    1075
+    "two rev A boards, assembled: JLCPCB $944-959, nothing consigned (section 17)",
+    944,
+    959
    ],
    [
     "two PYNQ-Z2",
@@ -160,14 +160,14 @@
    0
   ],
   "total": [
-   1173,
-   1333
+   1082,
+   1217
   ],
   "costs": [
    [
-    "two rev A boards, assembled: JLCPCB $835-850, the consigned chips $165, shipping them $35-60 (section 17)",
-    1035,
-    1075
+    "two rev A boards, assembled: JLCPCB $944-959, nothing consigned (section 17)",
+    944,
+    959
    ],
    [
     "two Icepi Zero (est $69-129 each)",
@@ -236,14 +236,14 @@
    87
   ],
   "total": [
-   1205,
-   1420
+   1114,
+   1304
   ],
   "costs": [
    [
     "two rev B boards: rev A's, the TLV3601 swapped for 8 TLV3604 (est +$2-4 each, with duty)",
-    1055,
-    1120
+    964,
+    1004
    ],
    [
     "an ECP5 on each board: LFE5U-25F, flash, oscillator, USB-JTAG, regulators, their assembly lines and duty (est)",
@@ -269,8 +269,8 @@
   "alternative": {
    "item": "two Brain-1 at $450 and a SYZYGY connector with its DNA chip a board, instead of the ECP5",
    "total": [
-    1975,
-    2070
+    1884,
+    1954
    ]
   },
   "bench": {
@@ -319,14 +319,14 @@
    955
   ],
   "total": [
-   1635,
-   2375
+   1544,
+   2259
   ],
   "costs": [
    [
     "two rev B boards: rev A's, the TLV3601 swapped for 8 TLV3604 (est +$2-4 each, with duty)",
-    1055,
-    1120
+    964,
+    1004
    ],
    [
     "an ECP5 on each board: LFE5U-25F, flash, oscillator, USB-JTAG, regulators, their assembly lines and duty (est)",
@@ -410,14 +410,14 @@
    1460
   ],
   "total": [
-   2155,
-   3835
+   2064,
+   3719
   ],
   "costs": [
    [
     "two rev B boards: rev A's, the TLV3601 swapped for 8 TLV3604 (est +$2-4 each, with duty)",
-    1055,
-    1120
+    964,
+    1004
    ],
    [
     "an ECP5 on each board: LFE5U-25F, flash, oscillator, USB-JTAG, regulators, their assembly lines and duty (est)",
@@ -523,14 +523,14 @@
    9914
   ],
   "total": [
-   5119,
-   13749
+   5028,
+   13633
   ],
   "costs": [
    [
     "two rev B boards: rev A's, the TLV3601 swapped for 8 TLV3604 (est +$2-4 each, with duty)",
-    1055,
-    1120
+    964,
+    1004
    ],
    [
     "an ECP5 on each board: LFE5U-25F, flash, oscillator, USB-JTAG, regulators, their assembly lines and duty (est)",
@@ -661,14 +661,14 @@
    15960
   ],
   "total": [
-   5815,
-   19795
+   5724,
+   19679
   ],
   "costs": [
    [
     "two rev B boards: rev A's, the TLV3601 swapped for 8 TLV3604 (est +$2-4 each, with duty)",
-    1055,
-    1120
+    964,
+    1004
    ],
    [
     "an ECP5 on each board: LFE5U-25F, flash, oscillator, USB-JTAG, regulators, their assembly lines and duty (est)",

@@ -21,7 +21,7 @@ for p in (os.path.join(ROOT, "tools"), os.path.join(ROOT, "gen")):
 import jlc_api
 import board_info as BI
 import placement as PL
-from parts import PARTS, consigned
+from parts import PARTS, consigned, fallback
 from sexp import parse, kids, kid, val
 
 FEES = dict(                                   # ECP5's cart, 2026-10-09 (CLAUDE_PCB.md section 8)
@@ -36,17 +36,25 @@ FEES = dict(                                   # ECP5's cart, 2026-10-09 (CLAUDE
 PCB_MODEL = dict(ref_price=24.80, ref_area_cm2=15.3, ref_boards=5, per_m2_low=70.6, per_m2_high=350.0, enig_extra=(0.0, 20.0))
 SHIPPING = (25.0, 40.0)                        # UPS Express Saver DDP to California, one parcel
 
-# the consigned parts: Digi-Key, prices as seen (PLAN.md section 4); the quantity is the placements on
-# the assembled boards plus one spare each for JLCPCB's attrition and one for the bench
-DIGIKEY = {k: dict(unit=p["consign"]["dk_unit"], seen=p["consign"]["seen"]) for k, p in consigned().items()}
+# The parts with a Digi-Key consignment (gen/parts.py consign=): since Prompt 31 all of them are JLCPCB shelf
+# parts first, consigned only when the shelf cannot cover the order on the day (make_release.py decides on the
+# live stock; this estimate decides the same way).  A consigned line is the placements on the assembled boards
+# plus CONSIGN_SPARES: JLCPCB's "attrition on consigned parts" and one for the bench, pieces that are never
+# used, so they are part of a consignment's true cost (Jason, Prompt 31), with the shipment to Shenzhen.
+DIGIKEY = {k: dict(unit=p["consign"]["dk_unit"], seen=p["consign"]["seen"]) for k, p in {**consigned(), **fallback()}.items()}
 CONSIGN_SPARES = 2                             # per line: JLCPCB's attrition and one for the bench (Jason)
-
-
-def shelf_extra(assembled):
-    """What buying the consigned chips from JLCPCB's own shelf instead would add on parts (jlc_unit against dk_unit)."""
-    return sum((p["consign"]["jlc_unit"] - p["consign"]["dk_unit"]) * assembled
-               for p in consigned().values() if p["consign"].get("jlc_unit") is not None)
 DIGIKEY_SHIPPING, DIGIKEY_TAX, CONSIGN_SHIP = 8.0, 0.095, (35.0, 60.0)     # CA sales tax; USPS Priority International to FedEx
+
+
+def consignment_cost(lines, assembled):
+    """What a consignment of these gen/parts.py keys really costs over buying the same parts on JLCPCB's shelf
+    (Jason, Prompt 31): the pieces for the boards at Digi-Key's price, the CONSIGN_SPARES a line that are never
+    used, tax and Digi-Key's shipping, and the shipment to Shenzhen; against the shelf's price for the pieces
+    alone (JLCPCB's attrition on its own parts is 0 for these chips).  Returns (consign_lo, consign_hi, shelf)."""
+    dk = sum(DIGIKEY[k]["unit"] * (assembled + CONSIGN_SPARES) for k in lines)
+    shelf = sum((PARTS[k]["consign"].get("jlc_unit") or 0.0) * assembled for k in lines)
+    cons = dk * (1 + DIGIKEY_TAX) + DIGIKEY_SHIPPING
+    return cons + CONSIGN_SHIP[0], cons + CONSIGN_SHIP[1], shelf
 
 OTHER = [
     ("SMA attenuators: 30 dB (loopback), 20 dB x 2 (in front of the PA modules)", 30.0, 50.0),
@@ -111,6 +119,7 @@ def main(argv=None):
     comps = read_netlist()
     fps = PL.load_footprints()
     consign_keys = {p["mpn"]: k for k, p in consigned().items()}
+    fallback_keys = {p["lcsc"]: k for k, p in fallback().items()}
     placed = {r: c for r, c in comps.items() if c["lcsc"] and not c["dnp"] and r not in HAND_SOLDER_REFS}
     # the sides JLCPCB assembles: from the placement (build/placement.json), per placed part
     import json
@@ -122,12 +131,18 @@ def main(argv=None):
         by_code[c["lcsc"]].append(r)
     rows = []
     thin = []
+    shelf_short = []                            # fallback parts JLCPCB's shelf cannot cover: consigned instead
     for code, refs in sorted(by_code.items()):
         part, asked = jlc_api.by_code(code, refresh=a.refresh)
         if not part:
             rows.append(dict(code=code, refs=refs, n=len(refs), order=0, unit=0.0, line=0.0, lib="?", stock=0, model=comps[refs[0]]["value"], asked=asked or ""))
             continue
         need = len(refs) * a.assembled
+        if code in fallback_keys and int(part.get("stockCount") or 0) < jlc_api.order_qty(part, need):
+            shelf_short.append((fallback_keys[code], code, int(part.get("stockCount") or 0), jlc_api.order_qty(part, need)))
+            for r in refs:
+                cons[r] = comps[r]
+            continue
         order = jlc_api.order_qty(part, need)
         unit = jlc_api.unit_price(part, order)
         lib = jlc_api.library_type(part)
@@ -167,13 +182,16 @@ def main(argv=None):
     jlc_total = (jlc_goods + duty + SHIPPING[0], jlc_goods + duty + SHIPPING[1])
     # Digi-Key
     dk_lines = []
-    for key, p in consigned().items():
+    for key, p in {**consigned(), **fallback()}.items():
         refs = [r for r, c in cons.items() if c["mpn"] == p["mpn"]]
+        if not refs:
+            continue
         qty = len(refs) * a.assembled + CONSIGN_SPARES
         unit = DIGIKEY[key]["unit"]
         dk_lines.append((key, p["mpn"], p["consign"].get("digikey", ""), len(refs), qty, unit, qty * unit, DIGIKEY[key]["seen"]))
     dk_parts = sum(l[6] for l in dk_lines)
-    dk_total = dk_parts * (1 + DIGIKEY_TAX) + DIGIKEY_SHIPPING
+    dk_total = dk_parts * (1 + DIGIKEY_TAX) + DIGIKEY_SHIPPING if dk_lines else 0.0
+    consign_ship = CONSIGN_SHIP if dk_lines else (0.0, 0.0)
     other_lo, other_hi = sum(o[1] for o in OTHER), sum(o[2] for o in OTHER)
     # the report
     L = ["# %s rev %s: what the first order costs" % (BI.TITLE, BI.REV), "",
@@ -192,21 +210,34 @@ def main(argv=None):
          "| | US duty, 35 %% of the above, collected under DDP | %s |" % money(duty),
          "| | shipping, UPS Express Saver DDP | %s-%s |" % (money(SHIPPING[0]), money(SHIPPING[1])),
          "| | **JLCPCB total** | **%s-%s** |" % (money(jlc_total[0]), money(jlc_total[1])),
-         "| **Digi-Key** | the consigned parts (table below): %s, plus %.1f %% tax and %s shipping | **%s** |" % (money(dk_parts), DIGIKEY_TAX * 100, money(DIGIKEY_SHIPPING), money(dk_total)),
-         "| | shipping the consignment to JLCPCB (USPS Priority International to FedEx) | %s-%s |" % (money(CONSIGN_SHIP[0]), money(CONSIGN_SHIP[1])),
+         ("| **Digi-Key** | the consigned parts (table below): %s, plus %.1f %% tax and %s shipping | **%s** |" % (money(dk_parts), DIGIKEY_TAX * 100, money(DIGIKEY_SHIPPING), money(dk_total)))
+         if dk_lines else "| **Digi-Key** | nothing consigned: every part is on JLCPCB's shelf (the ADI chips' fallback below is unused) | **%s** |" % money(0.0),
+         "| | shipping the consignment to JLCPCB (USPS Priority International to FedEx) | %s-%s |" % (money(consign_ship[0]), money(consign_ship[1])),
          "| **other** | the bench and the field (table below) | **%s-%s** |" % (money(other_lo), money(other_hi)),
-         "| | **everything** | **%s-%s** |" % (money(jlc_total[0] + dk_total + CONSIGN_SHIP[0] + other_lo), money(jlc_total[1] + dk_total + CONSIGN_SHIP[1] + other_hi)), ""]
-    L += ["## Digi-Key: the consigned parts", "",
-          "| key | MPN | Digi-Key number | a board | order | unit | line | seen |", "|---|---|---|--:|--:|--:|--:|---|"]
-    for key, mpn, dk, n, qty, unit, line, seen in dk_lines:
-        L.append("| %s | %s | %s | %d | %d | %s | %s | %s |" % (key, mpn, dk, n, qty, money(unit), money(line), seen))
-    shelf = {k: p["consign"]["jlc_unit"] for k, p in consigned().items() if p["consign"].get("jlc_unit") is not None}
-    L += ["", "The order is the placements on the assembled boards plus %d spares a line: JLCPCB's attrition and one for the bench.  "
-          "JLCPCB had 8 ADL5380 and 6 ADL5375-05 in stock on 2026-10-09 at %s: buying those two from their stock and consigning "
-          "only the balun (none in stock anywhere at JLCPCB: 5400BL15B050E, HHM1595A1, TCW4-582+ all 0) saves the chips' consignment handling but "
-          "costs %s %s on the parts; the consignment shipment is needed either way for the balun."
-          % (CONSIGN_SPARES, " and ".join(money(v) for v in shelf.values()), money(abs(shelf_extra(a.assembled))),
-             "more" if shelf_extra(a.assembled) > 0 else "less"), ""]
+         "| | **everything** | **%s-%s** |" % (money(jlc_total[0] + dk_total + consign_ship[0] + other_lo), money(jlc_total[1] + dk_total + consign_ship[1] + other_hi)), ""]
+    L += ["## Digi-Key: the consigned parts", ""]
+    if dk_lines:
+        L += ["| key | MPN | Digi-Key number | a board | order | unit | line | seen |", "|---|---|---|--:|--:|--:|--:|---|"]
+        for key, mpn, dk, n, qty, unit, line, seen in dk_lines:
+            L.append("| %s | %s | %s | %d | %d | %s | %s | %s |" % (key, mpn, dk, n, qty, money(unit), money(line), seen))
+        L += ["", "The order is the placements on the assembled boards plus %d spares a line: JLCPCB's attrition and one for the bench." % CONSIGN_SPARES]
+    else:
+        L += ["None.  The balun is the TDK HHM1907B1 from JLCPCB's shelf (Prompt 31; the Johanson 5400 the ADL5380's sheet uses "
+              "has 0 there), and the two ADI chips are bought from their shelf while it covers the order."]
+    fb = fallback()
+    lo, hi, shelf = consignment_cost(list(fb), a.assembled)
+    L += ["", "**The ADI chips' fallback** (gen/parts.py consign=): %s.  If either shelf cannot cover the order on the day, "
+          "that line is consigned (CONSIGNMENT.md then says what to buy).  What that costs, Jason's way of counting it "
+          "(Prompt 31): consigning both means %d pieces at Digi-Key, %d of them spares that are never used, plus tax, "
+          "Digi-Key's shipping and the shipment to Shenzhen: %s-%s against %s on JLCPCB's shelf for the %d pieces the "
+          "boards need; so the shelf wins by %s-%s for %d boards, and a shelf part is worth buying up to that much "
+          "dearer than Digi-Key's price.  With more boards assembled the spares and the shipment are spread thinner."
+          % ("; ".join("%s %s, %s" % (k, p["consign"]["lcsc"], p["consign"].get("jlc_seen", "")) for k, p in fb.items()),
+             len(fb) * (a.assembled + CONSIGN_SPARES), len(fb) * CONSIGN_SPARES, money(lo), money(hi), money(shelf),
+             len(fb) * a.assembled, money(lo - shelf), money(hi - shelf), a.assembled)]
+    if shelf_short:
+        L += ["", "**Short today:** " + "; ".join("%s (%s): %d in stock, the order needs %d, so it is consigned above" % s for s in shelf_short)]
+    L += [""]
     L += ["## Other: the bench and the field", "", "| item | low | high |", "|---|--:|--:|"]
     for what, lo, hi in OTHER:
         L.append("| %s | %s | %s |" % (what, money(lo), money(hi)))
@@ -228,12 +259,12 @@ def main(argv=None):
     out = os.path.join(ROOT, "build", "COST_ESTIMATE.md")
     open(out, "w", encoding="utf-8").write("\n".join(L) + "\n")
     summary = dict(pcb=(pcb_lo, pcb, pcb_hi), assembly=asm_total, parts=parts_cost, duty=duty, jlc=jlc_total, digikey=dk_total,
-                   consign_ship=CONSIGN_SHIP, other=(other_lo, other_hi), ext=len(ext), lines=len(rows), smt_pads=smt_pads, tht_joints=tht_joints, thin=thin)
+                   consign_ship=consign_ship, other=(other_lo, other_hi), ext=len(ext), lines=len(rows), smt_pads=smt_pads, tht_joints=tht_joints, thin=thin)
     json.dump(summary, open(os.path.join(ROOT, "build", "cost.json"), "w"), indent=1)
     print("cost: JLCPCB %s-%s (boards %s, assembly %s, parts %s on %d lines / %d Extended, duty %s); Digi-Key %s + %s-%s to ship the "
-          "consignment; other %s-%s -> build/COST_ESTIMATE.md"
+          "consignment (none when nothing is consigned); other %s-%s -> build/COST_ESTIMATE.md"
           % (money(jlc_total[0]), money(jlc_total[1]), money(pcb), money(asm_total), money(parts_cost), len(rows), len(ext), money(duty),
-             money(dk_total), money(CONSIGN_SHIP[0]), money(CONSIGN_SHIP[1]), money(other_lo), money(other_hi)))
+             money(dk_total), money(consign_ship[0]), money(consign_ship[1]), money(other_lo), money(other_hi)))
     for code, model, stock, order in thin:
         print("   thin: %s %s: %d in stock, %d wanted" % (code, model, stock, order))
     return 0

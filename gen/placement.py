@@ -115,8 +115,10 @@ ANCHORS = {
     "U117": at(RX_X + 1.95, 40.0, 0),        # gain block 2
     "CP101": at(RX_X, 49.6, 270),            # coupler: IN (1) up, OUT (2) down, coupled port to the right
     "J102": at(31.5, 47.5, 0),               # RX MON
-    "T101": at(RX_X + 0.6, 55.6, 90),        # balun: unbalanced in at the top, the pair out below
-    "U104": at(RX_X + 0.85, 60.0, 0),        # ADL5380: RF up (21/22), I left (3/4), Q right (15/16), LO below (9/10)
+    "T101": at(RX_X + 0.275, 55.0, 270),     # balun (TDK 0402, four pads): at 270 pin 1 (unbalanced) is top left on the line, GND top right, the pair 2/3 below
+    "C159": at(RX_X - 0.2, 57.2, 270),       # the pair's DC blocks (Prompt 31): pin 1 (the balun's side) up; 1.5 mm apart (their courtyards and the gap), each leg jogs to its ADL5380 pin
+    "C160": at(RX_X + 1.3, 57.2, 270),
+    "U104": at(RX_X + 0.85, 61.3, 0),        # ADL5380: RF up (21/22), I left (3/4), Q right (15/16), LO below (9/10); 61 since the pair's DC blocks (Prompt 31)
     "U105": at(12.5, 60.0, 180),             # I arm FDA: inputs face the demodulator
     "U106": at(37.0, 60.0, 0),               # Q arm FDA
     # The arm amplifiers' resistors at their pins (Response 10: the rules had put U105's 4.02 k feedback
@@ -135,7 +137,15 @@ ANCHORS = {
     "R112": at(30.3, 59.51, 0), "R114": at(30.3, 60.99, 0),     # Rg from QHI and QLO
     "J104": at(5.0, 62.5, 0),                # I MON
     "J105": at(44.0, 53.0, 0),               # Q MON
-    "U115": at(RX_X + 0.85, 76.0, 180),      # RX synthesizer: RFOUTA (12/13) on its top face, up into the LO pins
+    "U115": at(RX_X + 0.85, 77.3, 180),
+    "R228": at(62.5, 55.0, 90),
+    # The two ADCs' RC input filters (Prompt 31: the capacitors moved to the ADC pins' nets, and the shunt-at-pin
+    # rule then walled the resistors' far pads and the slow ADC's SCL pin; the 160 Hz filter does not care where
+    # its parts sit).  U114 (85, 81): the I_P / Q_P pair to its left, VC / ERR above its right; the I2C pins'
+    # side (right, upper) kept clear.  U510 (35, 19.5): V5_MON / TEMP below its right, clear of SCL/SDA.
+    "C154": at(80.0, 78.8, 0), "C155": at(80.0, 84.5, 0), "R141": at(77.0, 80.3, 0), "R142": at(77.0, 82.7, 0),
+    "C156": at(90.0, 77.8, 0), "C157": at(92.5, 77.8, 0), "R143": at(95.0, 77.8, 0), "R144": at(97.5, 77.8, 0),
+    "C526": at(40.5, 21.5, 0), "C527": at(40.5, 23.5, 0), "R532": at(43.5, 23.5, 0), "R533": at(46.0, 23.5, 0),              # the TCXO's DNP pad-1 pull-up (Prompt 31), beside Y201, not where the rules dropped it (28, 97)      # RX synthesizer: RFOUTA (12/13) on its top face, up into the LO pins
     "J109": at(18.5, 66.0, 90),              # LO RX MON
     "Y101": at(RX_X + 0.85, 86.0, 0),        # VCXO under the synthesizer (REF_IN is on the synthesizer's bottom face)
     "U116": at(32.0, 86.0, 0),               # REF OUT buffer

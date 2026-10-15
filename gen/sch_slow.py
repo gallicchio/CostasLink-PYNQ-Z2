@@ -187,13 +187,8 @@ def detectors(S):
         e = stub(adc, n, dx=12.7); S.hlabel(e[0], e[1], name, shape="bidirectional", rot=0)
     e = stub(adc, "1", dx=5.08); W(e, (e[0], e[1] + 5.08)); flag("+3V3_DIG", e[0], e[1] + 5.08, rot=180)
     S.nc(*adc.pin("2"))
-    for k, (n, name) in enumerate((("4", "LOG_Q"), ("5", "PEAK_Q"), ("6", "V5_MON"), ("7", "TEMP"))):
-        px, py = adc.pin(n)
-        ra, rb = series(V["det_Radc"], px - 10.16 - 10.16 * (3 - k), py); W(rb, (px, py))
-        x0 = px - 55.88 + 10.16 * k
-        W((x0, py), ra)
-        label(x0, py, name, size=1.0)
-        J(x0 + 2.54, py); down(V["det_Cadc"], x0 + 2.54, py, text="right")
+    # the resistor between the source and the capacitor, the capacitor at the pin (sch_blocks.adc_inputs, Prompt 31)
+    B.adc_inputs(adc, (("4", "LOG_Q"), ("5", "PEAK_Q"), ("6", "V5_MON"), ("7", "TEMP")), rkey=V["det_Radc"], ckey=V["det_Cadc"])
     B.supply_bar(adc, ["8"], "+3V3_DIG", dy=10.16)
     B.bottom_gnd(adc, ["3"])
     # the board's temperature: ntc_Rtop from 3.3 V over a 10 k NTC (B 3380): D["ntc_V25"] at 25 C, D["ntc_V60"] at 60 C

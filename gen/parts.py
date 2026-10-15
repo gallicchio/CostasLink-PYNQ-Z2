@@ -35,31 +35,43 @@ def P(sym, fp, fp_src, lcsc, mpn, value, match, note="", consign=None):
     return d
 
 
-# Consigned parts: not placed from JLCPCB's stock but bought at a distributor and shipped to
-# JLCPCB (Jason, Prompt 1).  `consign` names the distributor part numbers; stock seen 2026-10-09.
-# consign=: where each consigned part is bought (the Digi-Key cut-tape number, its price and when it was seen) and
-# what JLCPCB's own shelf asked for it on 2026-10-09 (jlc_unit; None: not stocked).  The estimate, the release's
-# CONSIGNMENT.md and its cost table all read these (mfg/cost_estimate.py DIGIKEY).
-CONSIGN_NOTE = "CONSIGNED: bought at Digi-Key/Mouser, shipped to JLCPCB (PLAN.md section 4)"
+# Sourcing (Prompt 31, CLAUDE_PCB.md section 3).  A part with an LCSC code is bought from JLCPCB's shelf.  A part
+# with `consign` as well has a Digi-Key fallback: mfg/make_release.py consigns it ONLY when JLCPCB's live stock
+# cannot cover the order on the day (the BOM line then carries CONSIGNED and CONSIGNMENT.md says what to buy and
+# send).  A part with `consign` and no code would always be consigned; since Prompt 31 there is none: the balun
+# became a JLCPCB part (the TDK HHM1907B1 in place of the ADL5380 sheet's Johanson 5400, which JLCPCB does not
+# stock), so a two-board order needs no consignment at all.  Jason's rule: a consignment's true cost is its
+# shipping to Shenzhen ($35-60), a week, and the spares JLCPCB asks for ("attrition on consigned parts", two a
+# line that are never used), so a shelf part a few dollars dearer wins for a two-board order; with more boards
+# the spares matter less and consigning the better part is back on the table.
+# consign=: the Digi-Key cut-tape number, its price and when it was seen (both read on Digi-Key's own page), the
+# Mouser number, the LCSC code JLCPCB's consignment files it under, and what JLCPCB's shelf asked (jlc_unit).
+FALLBACK_NOTE = "JLCPCB's shelf first; consigned from Digi-Key only if its shelf cannot cover the order on the day (gen/parts.py consign=)"
 
 PARTS = {
     # --- the RF chips ------------------------------------------------------------------
-    "ADL5380": P("ADL5380", "QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm", STOCK + "Package_DFN_QFN", None,
+    "ADL5380": P("ADL5380", "QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm", STOCK + "Package_DFN_QFN", "C579152",
                  "ADL5380ACPZ-R7", "ADL5380",
-                 ["ADL5380"], "IQ demodulator 0.4-6 GHz, 390 MHz baseband, DC-coupled outputs: the Costas loop's phase detector. " + CONSIGN_NOTE,
+                 ["ADL5380"], "IQ demodulator 0.4-6 GHz, 390 MHz baseband, DC-coupled outputs: the Costas loop's phase detector. " + FALLBACK_NOTE,
                  consign=dict(digikey="505-ADL5380ACPZ-R7CT-ND", mouser="584-ADL5380ACPZ-R7", lcsc="C579152",
                               dk_unit=17.96, seen="Digi-Key 4,512 at $17.96 (1-9), its product page 2026-10-12",
-                              jlc_unit=23.60)),
-    "ADL5375": P("ADL5375", "QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm", STOCK + "Package_DFN_QFN", None,
+                              jlc_unit=21.62, jlc_seen="JLCPCB 18 at $21.62 (1-9), its parts API 2026-10-14")),
+    "ADL5375": P("ADL5375", "QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm", STOCK + "Package_DFN_QFN", "C579150",
                  "ADL5375-05ACPZ-R7", "ADL5375-05",
-                 ["ADL5375-05"], "IQ modulator 0.4-6 GHz, 0.5 V baseband bias: the transmitter. " + CONSIGN_NOTE,
+                 ["ADL5375-05"], "IQ modulator 0.4-6 GHz, 0.5 V baseband bias: the transmitter. " + FALLBACK_NOTE,
                  consign=dict(digikey="505-ADL5375-05ACPZ-R7CT-ND", mouser="584-ADL5375-05ACPZR7", lcsc="C579150",
                               dk_unit=17.26, seen="Digi-Key 5,829 at $17.26 (1-9), its product page 2026-10-12",
-                              jlc_unit=16.00)),
-    "BALUN": P("Balun_5400", "Balun_Johanson_5400BL15B050", "gen", None, "5400BL15B0050001E", "5400BL15B050",
-               ["5400BL15B050"], "1:1 balun 4.9-5.875 GHz at the ADL5380's RF input (the datasheet's 5.8 GHz circuit). " + CONSIGN_NOTE,
-               consign=dict(digikey="712-5400BL15B0050001ECT-ND", mouser="609-5400BL15B0050001E", lcsc="C2837312", legacy="5400BL15B050E",
-                            dk_unit=0.69, seen="Digi-Key 6,874 at $0.69 (1-9), its search 2026-10-12", jlc_unit=None)),
+                              jlc_unit=16.40, jlc_seen="JLCPCB 4 at $16.40 (1-9), its parts API 2026-10-14")),
+    # The ADL5380's sheet takes its 5.8 GHz data through a Johanson 5400 balun (5400BL15B0050001E: 4.9-5.875 GHz,
+    # 50:50, 1.0 dB max loss, 9.5 dB return loss, +-10 deg, 2 dB; Digi-Key 712-5400BL15B0050001ECT-ND $0.69, JLCPCB
+    # C2837312 with 0), which made it a consigned part until Prompt 31.  The TDK HHM1907B1 is the same thing in
+    # JLCPCB's stock (7,884 on 2026-10-14): 4.9-5.95 GHz, 50:50, 0.8 dB max loss, 10 dB return loss, 180 +-10 deg,
+    # +-2.5 dB amplitude (TDK rf_balun_hhm1907b1_en, datasheets/).  Two-port balanced side, no DC feed pin, 0402
+    # with four 0.30 x 0.35 pads (gen/footprints.py).  Mini-Circuits' NCS1-63+ and TCW1-6000+ (50:50, to 6 GHz)
+    # were 1 and 5 in stock at $2-4; the other 5 GHz baluns JLCPCB stocks are 50:100 (TDK HHM1732B1, HHM1562B).
+    "BALUN": P("Balun_HHM1907", "Balun_TDK_HHM1907B1", "gen", "C531388", "HHM1907B1", "HHM1907B1",
+               ["HHM1907B1"], "1:1 balun 4.9-5.95 GHz (TDK, 0402) at the ADL5380's RF input, in place of its datasheet's Johanson 5400 "
+               "(same ratio and band, 0.8 dB max loss; JLCPCB does not stock the Johanson)"),
     "MAX2871": P("MAX2871", "QFN-32-1EP_5x5mm_P0.5mm_EP3.1x3.1mm", STOCK + "Package_DFN_QFN", "C7458627",
                  "MAX2871ETJ+T", "MAX2871", ["MAX2871ETJ+T"],
                  "23.5 MHz-6 GHz fractional-N synthesizer with VCO, 3.3 V, SPI (ADF4351 register map); one for the TX LO, one for the RX LO"),
@@ -235,7 +247,13 @@ for _v, (_code, _mpn, _match) in RES.items():
 
 
 def consigned():
-    return {k: p for k, p in PARTS.items() if p.get("consign")}
+    """Parts whose only source is a consignment (a `consign` entry and no LCSC code): none since Prompt 31."""
+    return {k: p for k, p in PARTS.items() if p.get("consign") and not p.get("lcsc")}
+
+
+def fallback():
+    """Parts bought from JLCPCB's shelf that have a Digi-Key consignment to fall back on when the shelf is short."""
+    return {k: p for k, p in PARTS.items() if p.get("consign") and p.get("lcsc")}
 
 
 # The stocked value nearest to one the arithmetic chose: the schematic draws it (gen/levels.py VAL) and
@@ -269,5 +287,5 @@ def nearest_cap(value, c0g=False, tol=1.1):
 
 if __name__ == "__main__":
     n = sum(1 for p in PARTS.values() if p.get("lcsc"))
-    print("%d part kinds, %d with LCSC codes, %d consigned, %d not parts"
-          % (len(PARTS), n, len(consigned()), sum(1 for p in PARTS.values() if not p.get("lcsc") and not p.get("consign"))))
+    print("%d part kinds, %d with LCSC codes, %d consigned, %d with a consignment fallback, %d not parts"
+          % (len(PARTS), n, len(consigned()), len(fallback()), sum(1 for p in PARTS.values() if not p.get("lcsc") and not p.get("consign"))))

@@ -502,7 +502,7 @@ L 255.11811 1564.724409
    <g id="text_12">
     <text style="fill: #222222; font: 8.5px 'DejaVu Sans'" transform="translate(1698.431213 536.975314)">ADL5380</text>
     <text style="fill: #222222; font: 8.5px 'DejaVu Sans'" transform="translate(1653.294221 546.816388)">0.4-6 GHz, 390 MHz baseband</text>
-    <text style="fill: #222222; font: 8.5px 'DejaVu Sans'" transform="translate(1629.676174 556.657462)">gain 5.8 dB into 450 Ω, IP1dB +11.6 dBm</text>
+    <text style="fill: #222222; font: 8.5px 'DejaVu Sans'" transform="translate(1632.380237 556.657462)">gain 5.8 dB into 450 Ω, IP1dB +8.2 dBm</text>
    </g>
    <g id="text_13">
     <text style="font: 700 20px 'DejaVu Sans'; text-anchor: middle" x="2165.669291" y="423.385851" transform="rotate(-0, 2165.669291, 423.385851)">Fast arms</text>
@@ -532,20 +532,20 @@ L 255.11811 1564.724409
    </g>
    <g id="text_19">
     <g id="patch_35">
-     <path d="M 208.76916 383.34252 
-L 392.175722 383.34252 
-Q 395.675722 383.34252 395.675722 379.84252 
-L 395.675722 347.956754 
-Q 395.675722 344.456754 392.175722 344.456754 
-L 208.76916 344.456754 
-Q 205.26916 344.456754 205.26916 347.956754 
-L 205.26916 379.84252 
-Q 205.26916 383.34252 208.76916 383.34252 
+     <path d="M 213.22291 383.34252 
+L 387.721972 383.34252 
+Q 391.221972 383.34252 391.221972 379.84252 
+L 391.221972 347.956754 
+Q 391.221972 344.456754 387.721972 344.456754 
+L 213.22291 344.456754 
+Q 209.72291 344.456754 209.72291 347.956754 
+L 209.72291 379.84252 
+Q 209.72291 383.34252 213.22291 383.34252 
 z
 " style="fill: #fffbe6; stroke: #999988; stroke-width: 0.6; stroke-linejoin: miter"/>
     </g>
     <text style="font: 7px 'DejaVu Sans'" transform="translate(220.163847 353.27566)">5.8 GHz carrier, -53.9 dBm (1 mV p-p in 50 Ω)</text>
-    <text style="font: 7px 'DejaVu Sans'" transform="translate(208.76916 361.64602)">band 4.9-5.875 GHz in spec (the LNA and the balun)</text>
+    <text style="font: 7px 'DejaVu Sans'" transform="translate(213.22291 361.64602)">band 4.9-5.9 GHz in spec (the LNA and the balun)</text>
     <text style="font: 7px 'DejaVu Sans'" transform="translate(216.09291 370.016379)">bandwidth: a CW line, flips add ±100 MHz skirts</text>
     <text style="font: 7px 'DejaVu Sans'" transform="translate(259.154394 378.386738)">DC: none (1.5 pF block)</text>
    </g>
@@ -596,20 +596,20 @@ z
    </g>
    <g id="text_25">
     <g id="patch_38">
-     <path d="M 1381.447149 610.952414 
-L 1577.92293 610.952414 
-Q 1581.42293 610.952414 1581.42293 607.452414 
-L 1581.42293 583.937008 
-Q 1581.42293 580.437008 1577.92293 580.437008 
-L 1381.447149 580.437008 
-Q 1377.947149 580.437008 1377.947149 583.937008 
-L 1377.947149 607.452414 
-Q 1377.947149 610.952414 1381.447149 610.952414 
+     <path d="M 1383.674024 610.952414 
+L 1575.696055 610.952414 
+Q 1579.196055 610.952414 1579.196055 607.452414 
+L 1579.196055 583.937008 
+Q 1579.196055 580.437008 1575.696055 580.437008 
+L 1383.674024 580.437008 
+Q 1380.174024 580.437008 1380.174024 583.937008 
+L 1380.174024 607.452414 
+Q 1380.174024 610.952414 1383.674024 610.952414 
 z
 " style="fill: #fffbe6; stroke: #999988; stroke-width: 0.6; stroke-linejoin: miter"/>
     </g>
     <text style="font: 7px 'DejaVu Sans'" transform="translate(1425.796524 589.255914)">-19.9 dBm (64 mV p-p in 50 Ω)</text>
-    <text style="font: 7px 'DejaVu Sans'" transform="translate(1381.447149 597.626273)">(IP1dB +11.6 dBm: 32 dB headroom; the DSA holds this</text>
+    <text style="font: 7px 'DejaVu Sans'" transform="translate(1383.674024 597.626273)">(IP1dB +8.2 dBm: 28 dB headroom; the DSA holds this</text>
     <text style="font: 7px 'DejaVu Sans'" transform="translate(1413.561289 605.996633)">at -20 dBm from 3 m to about 300 m)</text>
    </g>
    <g id="text_26">

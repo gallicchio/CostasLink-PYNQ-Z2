@@ -2,7 +2,7 @@
 	(version "E")
 	(design
 		(source "../CostasLink-PYNQ-Z2.kicad_sch")
-		(date "2026-10-12T10:34:49")
+		(date "2026-10-14T18:26:04")
 		(tool "Eeschema 10.0.6")
 		(textvar
 			(name "DATE") "2026-10-09")
@@ -5758,7 +5758,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "eced2994-dce6-773f-4643-ad01e53aa933")
+			(tstamps "07143fbf-9278-5d8d-2690-3e54ea9dde28")
 			(units
 				(unit
 					(name "A")
@@ -5824,7 +5824,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "45bc33bf-94c6-60ce-f72a-db032394a7f8")
+			(tstamps "35114577-cb9d-3407-8ddc-07de7ef91f65")
 			(units
 				(unit
 					(name "A")
@@ -5890,7 +5890,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "a920bd33-82d0-336b-ef8e-476bcf13e350")
+			(tstamps "054828b0-b2ac-8858-ad7e-91ab8e8c2f06")
 			(units
 				(unit
 					(name "A")
@@ -5956,7 +5956,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "e43e9a49-f6b7-9573-7a9b-b07acc8e3a66")
+			(tstamps "0b804903-b89e-ee6a-14a0-40ffa8b4142d")
 			(units
 				(unit
 					(name "A")
@@ -6022,7 +6022,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "41263f84-2c05-b154-482b-311cde00279e")
+			(tstamps "eac932bb-af35-6405-c6c3-24397deb3037")
 			(units
 				(unit
 					(name "A")
@@ -6088,7 +6088,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "7e127cfe-dda1-82d6-5cef-5850889b20b3")
+			(tstamps "8e7b2398-cd43-7d66-1fcb-3ad883f48108")
 			(units
 				(unit
 					(name "A")
@@ -6154,7 +6154,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "b808f61e-ac71-17fe-5cb4-049c36a700d8")
+			(tstamps "eeb65e92-f226-4deb-2115-949da750e002")
 			(units
 				(unit
 					(name "A")
@@ -6220,7 +6220,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "f148e7cd-a648-4535-5963-9afe09f34887")
+			(tstamps "c0b8e91c-af0d-af2a-fb7c-a9595b79e8c3")
 			(units
 				(unit
 					(name "A")
@@ -6286,7 +6286,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "81fbdc05-96e9-b828-123f-a4e630407fbd")
+			(tstamps "6a4febc9-74ba-9bbe-832c-6390a6351b17")
 			(units
 				(unit
 					(name "A")
@@ -6352,7 +6352,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "732d4aa6-eecb-25f0-0193-d9e7a2291ab3")
+			(tstamps "7e17e702-fa68-1c6b-2152-03e7d622b5be")
 			(units
 				(unit
 					(name "A")
@@ -6418,7 +6418,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "f301708a-6a8d-c8f1-89c9-769643e473f2")
+			(tstamps "b5ae28e1-8c47-1eb0-0be3-cd626c309ecf")
 			(units
 				(unit
 					(name "A")
@@ -6484,7 +6484,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "16f37d98-f1d4-874f-bc5a-b4bb756de855")
+			(tstamps "7fe498ca-294a-9be8-18ca-65abd7354b18")
 			(units
 				(unit
 					(name "A")
@@ -6550,7 +6550,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "8ab2532f-01ae-feff-79d0-7baff2a52f36")
+			(tstamps "a43001aa-1e11-e3f9-eb5c-6757bee8a54e")
 			(units
 				(unit
 					(name "A")
@@ -6616,7 +6616,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "246317f1-630f-388b-0530-a977dcb4ce2b")
+			(tstamps "5429e7ea-1466-7592-64a2-1c40ab40d41f")
 			(units
 				(unit
 					(name "A")
@@ -6682,7 +6682,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "18de3391-0657-c70e-7fec-7e8529a99050")
+			(tstamps "4d8ccb33-232c-1c90-b12e-05e2e5a85def")
 			(units
 				(unit
 					(name "A")
@@ -6748,7 +6748,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "3b3fb4fb-5f7e-c8e8-c6a0-c1b2fd1d0ed6")
+			(tstamps "3a86badc-73f1-fcb2-d937-eee89d7c516f")
 			(units
 				(unit
 					(name "A")
@@ -6814,7 +6814,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "06172579-140f-3573-44bf-f336a9dfc303")
+			(tstamps "d2060cc8-400d-a480-5715-44ce7d13fd2f")
 			(units
 				(unit
 					(name "A")
@@ -6880,7 +6880,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "da6760b5-ce3a-6bed-d463-5e79dfa3f5e6")
+			(tstamps "68a02633-04c1-5fa0-7b2e-e168d5b70436")
 			(units
 				(unit
 					(name "A")
@@ -6946,7 +6946,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "3c456230-781d-cbb6-8c2b-b42a1903c798")
+			(tstamps "f0fbaefb-e6ca-9186-bbe6-5bf52d4ab5e3")
 			(units
 				(unit
 					(name "A")
@@ -7012,7 +7012,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "ac4098ac-2dda-a2a0-0564-b2449b56f642")
+			(tstamps "b568a40d-5575-adfb-6977-44ea54853a43")
 			(units
 				(unit
 					(name "A")
@@ -7078,7 +7078,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "42fafac3-e918-5fee-ea5a-7194321196e3")
+			(tstamps "429eba52-a8ad-b18b-709a-3d7324db1136")
 			(units
 				(unit
 					(name "A")
@@ -7144,7 +7144,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "d5f74beb-2e3a-50ad-c516-93f1a216760b")
+			(tstamps "7cb2f033-96c5-4c1c-4a8b-06a40722803a")
 			(units
 				(unit
 					(name "A")
@@ -7210,7 +7210,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "6883de1a-af55-a10a-5a9d-f0c9dde2e851")
+			(tstamps "dfc449b0-d155-7c64-5739-400c6ad34512")
 			(units
 				(unit
 					(name "A")
@@ -7276,7 +7276,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "1db40c67-b8d0-d152-ee21-e6271d51d995")
+			(tstamps "b385494e-98e1-8ab2-6f6a-24cce4cae5e4")
 			(units
 				(unit
 					(name "A")
@@ -7342,7 +7342,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "d4057b88-9998-c356-3663-3f43ce17c2f9")
+			(tstamps "b5109536-0800-1766-3d15-ae5ad3aee91a")
 			(units
 				(unit
 					(name "A")
@@ -7408,7 +7408,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "6f41043c-ba83-98eb-ff52-373ad9203834")
+			(tstamps "93d414ca-970c-9048-1ae3-781f99f4c310")
 			(units
 				(unit
 					(name "A")
@@ -7474,7 +7474,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "146f12a7-e1cb-f4b9-a396-070e1a838999")
+			(tstamps "37d6ce37-2003-b967-e1ce-e692f07ce63e")
 			(units
 				(unit
 					(name "A")
@@ -7540,7 +7540,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "34969126-19c3-0069-0809-f9ce4ac8f40d")
+			(tstamps "84900eba-319f-175d-20fa-31a902f7a9f0")
 			(units
 				(unit
 					(name "A")
@@ -7606,7 +7606,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "f827b29b-25bd-3658-3233-f7b549a48854")
+			(tstamps "d706a9cc-17bb-d0d0-618f-9bdbf996e118")
 			(units
 				(unit
 					(name "A")
@@ -7672,7 +7672,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "7b13b753-bf58-0916-f1cc-ac6be0c3f4ec")
+			(tstamps "a2100168-93b7-190c-fb8d-11376e17d3d8")
 			(units
 				(unit
 					(name "A")
@@ -7738,7 +7738,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "bdb4bca6-ff8c-6930-a82a-524a129913c8")
+			(tstamps "8a3da043-d93f-3b96-e037-f81c9fd4d436")
 			(units
 				(unit
 					(name "A")
@@ -7804,7 +7804,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "f747c3a4-06d3-9a8a-4f3e-d3fde20e34d7")
+			(tstamps "90bbfa8e-c26d-d7c0-5790-67f521356728")
 			(units
 				(unit
 					(name "A")
@@ -7870,7 +7870,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "ee0f96ce-006f-bf8a-ac1b-7138e5afa2b4")
+			(tstamps "c3265b3d-e0a7-ffa5-66d3-640c41a53ac4")
 			(units
 				(unit
 					(name "A")
@@ -7936,7 +7936,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "a59f7a32-01c5-129a-357d-36a16dd9c95d")
+			(tstamps "b9f61e8d-822e-b00e-1c9a-0ceeb300622c")
 			(units
 				(unit
 					(name "A")
@@ -8002,7 +8002,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "c8275e6c-000b-2a5b-d0c1-f37b365c062a")
+			(tstamps "2f69c263-526d-d9aa-59e0-aeb726b2a6e4")
 			(units
 				(unit
 					(name "A")
@@ -8068,7 +8068,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "4ee1d3cf-4d23-0ad0-b8d8-a715cc068828")
+			(tstamps "f34a4fb0-b6af-c91e-f258-087ed2517ba2")
 			(units
 				(unit
 					(name "A")
@@ -8134,7 +8134,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "ded6c24b-9e0d-ae8c-a6eb-9e8a733e7c5d")
+			(tstamps "09e66fd9-087a-5a4b-26a6-58bac22b5ed3")
 			(units
 				(unit
 					(name "A")
@@ -8200,7 +8200,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "e1001570-7288-28d2-6c11-b794f7cfa602")
+			(tstamps "75eca8bb-4a4d-5be7-dcfe-944f999e938e")
 			(units
 				(unit
 					(name "A")
@@ -8266,7 +8266,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "b02b68bd-7440-96ca-30ac-7b3ce69befbb")
+			(tstamps "8a307e2d-2ab4-ec53-a11f-cb27d4af5ec2")
 			(units
 				(unit
 					(name "A")
@@ -8332,7 +8332,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "666a0648-67cf-4d2e-c9ed-bba4a073a7c9")
+			(tstamps "52711a82-6a44-0684-70e7-52415e8ed62f")
 			(units
 				(unit
 					(name "A")
@@ -8398,7 +8398,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "73518fe3-cec8-9937-5385-4e068f55fe13")
+			(tstamps "4d6409cc-adfc-2828-5f9e-cdcbaff33c68")
 			(units
 				(unit
 					(name "A")
@@ -8464,7 +8464,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "f03310c5-b495-1b38-8ad6-05a09acb805d")
+			(tstamps "eab10706-541b-9b36-ea9c-5182cad1402a")
 			(units
 				(unit
 					(name "A")
@@ -8530,7 +8530,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "60b17964-6ca8-6503-6b75-55420e1d55c2")
+			(tstamps "bd95848c-b07d-31f3-6b85-5ef7a59a9939")
 			(units
 				(unit
 					(name "A")
@@ -8596,7 +8596,139 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "bd6b040c-6d59-67e3-3ba2-43e66ecfeaac")
+			(tstamps "c715f92f-2cec-5b1a-911f-53cd48880a3f")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "C159")
+			(value "1.5pF")
+			(footprint "CostasLink:C_0402_1005Metric")
+			(fields
+				(field
+					(name "LCSC") "C1552")
+				(field
+					(name "MPN") "0402CG1R5C500NT")
+				(field
+					(name "Footprint") "CostasLink:C_0402_1005Metric")
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "CostasLink")
+				(part "C")
+				(description "Unpolarized capacitor")
+			)
+			(property
+				(name "LCSC")
+				(value "C1552")
+			)
+			(property
+				(name "MPN")
+				(value "0402CG1R5C500NT")
+			)
+			(property
+				(name "Sheetname")
+				(value "Receiver and Costas loop")
+			)
+			(property
+				(name "Sheetfile")
+				(value "rx.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "cap capacitor")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "C_*")
+			)
+			(sheetpath
+				(names "/Receiver and Costas loop/")
+				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
+			)
+			(tstamps "ac4c559c-a3e0-1b19-a691-11bf5182fa75")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "C160")
+			(value "1.5pF")
+			(footprint "CostasLink:C_0402_1005Metric")
+			(fields
+				(field
+					(name "LCSC") "C1552")
+				(field
+					(name "MPN") "0402CG1R5C500NT")
+				(field
+					(name "Footprint") "CostasLink:C_0402_1005Metric")
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "CostasLink")
+				(part "C")
+				(description "Unpolarized capacitor")
+			)
+			(property
+				(name "LCSC")
+				(value "C1552")
+			)
+			(property
+				(name "MPN")
+				(value "0402CG1R5C500NT")
+			)
+			(property
+				(name "Sheetname")
+				(value "Receiver and Costas loop")
+			)
+			(property
+				(name "Sheetfile")
+				(value "rx.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "cap capacitor")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "C_*")
+			)
+			(sheetpath
+				(names "/Receiver and Costas loop/")
+				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
+			)
+			(tstamps "dbb723b8-2ffa-7080-99c6-f876d67e43e8")
 			(units
 				(unit
 					(name "A")
@@ -8849,7 +8981,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "48c05f8d-c26e-901b-ea97-3074136bdc2b")
+			(tstamps "13f62a70-590a-e9c8-4da3-2f73ac0dce99")
 			(units
 				(unit
 					(name "A")
@@ -8915,7 +9047,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "9111fcfd-e8ec-bce7-0bed-ea429cc1526a")
+			(tstamps "3784d63d-1065-6ec3-4b05-95ca3c41efa2")
 			(units
 				(unit
 					(name "A")
@@ -8981,7 +9113,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "d80c7c46-ee09-888f-3228-ca6f57a43aba")
+			(tstamps "5da74525-c736-04da-e975-c94b076bb23a")
 			(units
 				(unit
 					(name "A")
@@ -9047,7 +9179,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "81930f2a-a05c-795d-358a-466b5e6a832c")
+			(tstamps "5fe7de4c-0e16-bbde-7939-2407aa0867d9")
 			(units
 				(unit
 					(name "A")
@@ -9113,7 +9245,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "f3c85991-2b09-b265-3a72-ef462822746a")
+			(tstamps "19bed1d6-ffff-d7fc-5d87-eecb8dadc7a9")
 			(units
 				(unit
 					(name "A")
@@ -9179,7 +9311,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "c6418325-b824-71c9-7b18-5f6871642fd2")
+			(tstamps "60064e3f-a179-404d-626f-f19a5e9009c2")
 			(units
 				(unit
 					(name "A")
@@ -9245,7 +9377,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "c4f6cc6a-c37e-7f96-9431-4231bfb36df7")
+			(tstamps "d80a559a-b0eb-1833-44b4-ef3246809cfc")
 			(units
 				(unit
 					(name "A")
@@ -9311,7 +9443,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "737800e9-6649-6660-489b-416e7c8fc007")
+			(tstamps "fafef62c-eb0e-1c01-df77-0d0ecb019cd7")
 			(units
 				(unit
 					(name "A")
@@ -9380,7 +9512,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "2d271e43-bc93-3543-5118-8c0533aef918")
+			(tstamps "a77f47af-7eaa-97fa-7e6b-d4874c376633")
 			(units
 				(unit
 					(name "A")
@@ -9449,7 +9581,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "22613bb9-992b-01a3-cb01-4bbbab2bf0ac")
+			(tstamps "5a4db159-d5ed-2889-6230-166633e32cbd")
 			(units
 				(unit
 					(name "A")
@@ -9782,7 +9914,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "caefc390-4570-ef5a-b265-d21119899b83")
+			(tstamps "5ce63677-3ee6-b011-b447-b306c5a626dd")
 			(units
 				(unit
 					(name "A")
@@ -9848,7 +9980,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "6a47e64a-2104-74da-96e0-25dd477f0103")
+			(tstamps "83f7d902-e6b4-fc8e-db65-992c7a537bff")
 			(units
 				(unit
 					(name "A")
@@ -9914,7 +10046,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "e5b75899-1fea-b5f9-94fe-06e1f431f073")
+			(tstamps "66b81d09-19ee-ca94-6788-709a7972f637")
 			(units
 				(unit
 					(name "A")
@@ -9980,7 +10112,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "338bb486-d692-ba82-f082-cb4d3ddf616f")
+			(tstamps "23229b61-cd04-27ed-5bbb-3d910d654561")
 			(units
 				(unit
 					(name "A")
@@ -10247,7 +10379,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "d0b9d992-f8ea-b502-5968-471bec2cc6da")
+			(tstamps "ead0e3a1-d8db-55b0-7016-ebc8201fb833")
 			(units
 				(unit
 					(name "A")
@@ -10313,7 +10445,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "0429cdd0-15cb-fb75-a7bf-5b5e9433f82d")
+			(tstamps "e1ba0073-2a5e-3330-dfe4-346ef71dd558")
 			(units
 				(unit
 					(name "A")
@@ -10379,7 +10511,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "1d54e6be-9d86-5989-a485-563785a2d7a7")
+			(tstamps "0849b9ba-f9c1-a690-2321-5134e265904d")
 			(units
 				(unit
 					(name "A")
@@ -10445,7 +10577,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "91c64a06-7c77-a669-f955-989b22bdd298")
+			(tstamps "fb17b0c2-6d9a-acd3-0dc1-9c1a9bced158")
 			(units
 				(unit
 					(name "A")
@@ -10511,7 +10643,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "7c5e0819-5bf9-793f-5e79-a8fdfc7765cc")
+			(tstamps "262824ea-dc68-a550-b55c-8c6f3d41e226")
 			(units
 				(unit
 					(name "A")
@@ -10577,7 +10709,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "97eb3b79-4e47-b7a8-424d-aa5553998dbf")
+			(tstamps "e0613b98-52b4-c6ef-9fbb-3afd5c864079")
 			(units
 				(unit
 					(name "A")
@@ -10643,7 +10775,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "255a6928-5856-fed2-d91e-597387760530")
+			(tstamps "45ae08c8-917b-0069-8f3f-b4f88013861e")
 			(units
 				(unit
 					(name "A")
@@ -10709,7 +10841,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "86b91c62-92f2-1322-185c-13636bae1911")
+			(tstamps "5ab2d429-7378-f79b-f61a-7078b9d0962d")
 			(units
 				(unit
 					(name "A")
@@ -10775,7 +10907,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "a59811ff-8aaf-6c9f-1b0e-e1d3272e80ee")
+			(tstamps "05d7edf9-cb2c-8b19-211b-45c545005769")
 			(units
 				(unit
 					(name "A")
@@ -10841,7 +10973,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "affd3bb8-1cf9-7fd8-de89-6166df5dcf46")
+			(tstamps "f5bf5bb9-6a96-21fd-c637-759ec2201d25")
 			(units
 				(unit
 					(name "A")
@@ -10907,7 +11039,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "82c5e611-713d-357a-c540-f36bd62fcafe")
+			(tstamps "2c0edc7b-c084-1f2f-bd03-76bea5f7ae6e")
 			(units
 				(unit
 					(name "A")
@@ -10973,7 +11105,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "4939cb2b-2165-0992-3108-2f35aca1dd82")
+			(tstamps "5e165bf1-5708-ced5-6a9e-11286c0add1d")
 			(units
 				(unit
 					(name "A")
@@ -11039,7 +11171,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "48384426-8e2e-c5b5-63c5-80e3143daaab")
+			(tstamps "f868ca9f-b8a9-587b-c9de-b271d3c516a0")
 			(units
 				(unit
 					(name "A")
@@ -11105,7 +11237,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "f8516e01-7440-8329-376e-88d81f8f53d5")
+			(tstamps "0744da30-d5ee-c286-db53-650f75d3fbeb")
 			(units
 				(unit
 					(name "A")
@@ -11171,7 +11303,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "1025ab8f-a52c-2241-a7fa-1e46196f0584")
+			(tstamps "2fe3de6d-14aa-66ca-cf61-e36899d06355")
 			(units
 				(unit
 					(name "A")
@@ -11237,7 +11369,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "33bc48ef-e05e-a6e0-b7ab-01e95eab9393")
+			(tstamps "2f00386c-0efe-3a7c-38e3-32942d150be2")
 			(units
 				(unit
 					(name "A")
@@ -11303,7 +11435,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "15f404e2-6d5b-2efa-3f02-91c656e2b7a3")
+			(tstamps "4ce8f41c-a02e-e0b1-5241-b007ef0e1201")
 			(units
 				(unit
 					(name "A")
@@ -11369,7 +11501,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "dcea2231-f7ee-b135-a9a7-fd45477631cf")
+			(tstamps "3f41fdf4-30bc-302c-a3aa-9e48ebde086f")
 			(units
 				(unit
 					(name "A")
@@ -11435,7 +11567,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "d52c7773-4098-b73f-27cb-f872a0fe93ee")
+			(tstamps "0da82ac0-a549-254d-8d2c-8e7f46b0163b")
 			(units
 				(unit
 					(name "A")
@@ -11501,7 +11633,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "396b2f1c-65b9-6847-1bc3-5fba65f8dcb8")
+			(tstamps "c155163a-d2a4-168c-9d8b-2f056aeb7787")
 			(units
 				(unit
 					(name "A")
@@ -11567,7 +11699,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "e76163c2-0227-59ed-ec09-49c4d4902234")
+			(tstamps "01ee260e-cd58-22f0-8743-6deb4e58d980")
 			(units
 				(unit
 					(name "A")
@@ -11633,7 +11765,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "00b60e6e-5241-6627-7570-14dc569ec3f9")
+			(tstamps "fc310e99-50cb-cfde-01f6-4e5c93cd1068")
 			(units
 				(unit
 					(name "A")
@@ -11699,7 +11831,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "9a39f918-aef1-17a5-0a0c-a762100fcc3a")
+			(tstamps "67d7c8cc-eb2d-8ff6-de4c-e60edd93980f")
 			(units
 				(unit
 					(name "A")
@@ -11765,7 +11897,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "98e97c6e-29db-5238-5d25-f205cd2d0e8f")
+			(tstamps "d6849a38-a27e-7278-a84a-29b0df7981fd")
 			(units
 				(unit
 					(name "A")
@@ -11831,7 +11963,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "21d17d2f-fad3-c123-bdbc-70d9e9dcc087")
+			(tstamps "e442383c-bac8-ae8a-a3dc-74401be206e9")
 			(units
 				(unit
 					(name "A")
@@ -11897,7 +12029,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "58de3bf2-aa67-731f-1c6f-1c4932056e76")
+			(tstamps "21bad4ac-116e-cf5a-962e-e27a692e7262")
 			(units
 				(unit
 					(name "A")
@@ -11963,7 +12095,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "069e3ba5-c40a-46f6-7b92-ca197002e54a")
+			(tstamps "2e67b560-81d8-24d6-1f2a-35d55bc359fa")
 			(units
 				(unit
 					(name "A")
@@ -12029,7 +12161,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "5dc60e1a-93af-8d6e-1579-aa381cc05bb3")
+			(tstamps "d0950a7d-69a0-74ca-a5d0-9e203cde356e")
 			(units
 				(unit
 					(name "A")
@@ -12095,7 +12227,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "c26f8b03-c50c-0e22-59a7-3019180b5ec7")
+			(tstamps "370457fa-1dbf-408c-f198-26b1dee00678")
 			(units
 				(unit
 					(name "A")
@@ -12161,7 +12293,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "fd97a9c4-06f0-722c-cec1-c0d23298a5a4")
+			(tstamps "2a05888b-ec15-7449-b8ba-8b1246af634c")
 			(units
 				(unit
 					(name "A")
@@ -12227,7 +12359,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "d6f1a62d-0c00-c26f-2336-10afaaa0e0a9")
+			(tstamps "cf163881-d76f-2087-f5df-4106eb3db5eb")
 			(units
 				(unit
 					(name "A")
@@ -12293,7 +12425,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "3f9634f8-463a-b355-d253-8bbe11887212")
+			(tstamps "8a36bf35-0587-eb2c-93e6-0419aff1274f")
 			(units
 				(unit
 					(name "A")
@@ -12359,7 +12491,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "121ce1c0-7e29-3aae-3322-4c8b9269b667")
+			(tstamps "2c56db8c-05cf-ba13-44cd-7457b021bd16")
 			(units
 				(unit
 					(name "A")
@@ -12425,7 +12557,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "08c4e2a2-7855-aa67-9d49-29e209a86b76")
+			(tstamps "61057189-0580-8a70-bd14-041f91c1ddfa")
 			(units
 				(unit
 					(name "A")
@@ -12491,7 +12623,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "40427c63-28c4-bc99-2c2f-9c5cef39fe04")
+			(tstamps "0c38a2c7-0e3f-c62e-9dd1-5f5310d4fb77")
 			(units
 				(unit
 					(name "A")
@@ -12557,7 +12689,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "206be211-d43a-0412-eb73-be11bac1da3b")
+			(tstamps "31eb84f3-3341-0e6c-e644-6af4614e2b9c")
 			(units
 				(unit
 					(name "A")
@@ -12623,7 +12755,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "2016b29f-ced8-3bfd-1326-3d076194464b")
+			(tstamps "50b829db-99ab-4872-cfe2-b7b28e99bed5")
 			(units
 				(unit
 					(name "A")
@@ -12689,7 +12821,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "f01643d0-2729-e305-3c4e-f4027c782bfe")
+			(tstamps "212d6700-89ed-e5e0-284d-309f725695d7")
 			(units
 				(unit
 					(name "A")
@@ -12755,7 +12887,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "a70fadf9-42b4-bc01-4de2-652fa94baedf")
+			(tstamps "59058616-db32-cd96-2719-bc74f392742b")
 			(units
 				(unit
 					(name "A")
@@ -12821,7 +12953,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "0c2bf3de-215d-a246-b419-ba71dbf11f5e")
+			(tstamps "3cbeb97d-4419-7899-3155-e82eb77ddd8f")
 			(units
 				(unit
 					(name "A")
@@ -12887,7 +13019,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "6e31343c-5705-b102-b462-385be0be8ea1")
+			(tstamps "e864a28d-e879-077f-628d-23cf75189925")
 			(units
 				(unit
 					(name "A")
@@ -12904,13 +13036,15 @@
 		)
 		(comp
 			(ref "T101")
-			(value "5400BL15B050")
-			(footprint "CostasLink:Balun_Johanson_5400BL15B050")
+			(value "HHM1907B1")
+			(footprint "CostasLink:Balun_TDK_HHM1907B1")
 			(fields
 				(field
-					(name "MPN") "5400BL15B0050001E")
+					(name "LCSC") "C531388")
 				(field
-					(name "Footprint") "CostasLink:Balun_Johanson_5400BL15B050")
+					(name "MPN") "HHM1907B1")
+				(field
+					(name "Footprint") "CostasLink:Balun_TDK_HHM1907B1")
 				(field
 					(name "Datasheet")
 				)
@@ -12920,12 +13054,16 @@
 			)
 			(libsource
 				(lib "CostasLink")
-				(part "Balun_5400")
-				(description "Johanson 5400BL15B050 1:1 balun 4.9-5.875 GHz, 0805")
+				(part "Balun_HHM1907")
+				(description "TDK HHM1907B1 1:1 balun 4.9-5.95 GHz, 0402")
+			)
+			(property
+				(name "LCSC")
+				(value "C531388")
 			)
 			(property
 				(name "MPN")
-				(value "5400BL15B0050001E")
+				(value "HHM1907B1")
 			)
 			(property
 				(name "Sheetname")
@@ -12948,19 +13086,13 @@
 							(num "1")
 						)
 						(pin
+							(num "4")
+						)
+						(pin
 							(num "2")
 						)
 						(pin
-							(num "6")
-						)
-						(pin
-							(num "5")
-						)
-						(pin
 							(num "3")
-						)
-						(pin
-							(num "4")
 						)
 					)
 				)
@@ -13005,7 +13137,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "82b1fc47-623e-a2a8-593d-3ebb50492c1a")
+			(tstamps "22c5263e-60a8-6ce1-ceb8-527842fd8759")
 			(units
 				(unit
 					(name "A")
@@ -13284,6 +13416,8 @@
 			(footprint "CostasLink:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm")
 			(fields
 				(field
+					(name "LCSC") "C579152")
+				(field
 					(name "MPN") "ADL5380ACPZ-R7")
 				(field
 					(name "Footprint") "CostasLink:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm")
@@ -13298,6 +13432,10 @@
 				(lib "CostasLink")
 				(part "ADL5380")
 				(description "ADI ADL5380 400 MHz to 6 GHz quadrature demodulator, LFCSP-24")
+			)
+			(property
+				(name "LCSC")
+				(value "C579152")
 			)
 			(property
 				(name "MPN")
@@ -13315,7 +13453,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "98d1ef83-bece-113d-d346-2efdec8e6f41")
+			(tstamps "5490b06e-1346-a1c4-2204-b7a234741540")
 			(units
 				(unit
 					(name "A")
@@ -13442,7 +13580,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "a0bc482d-bd6b-7ffb-b59e-8e84b09eaab1")
+			(tstamps "ba3772f8-c5b2-81eb-168b-3289f20984a7")
 			(units
 				(unit
 					(name "A")
@@ -13545,7 +13683,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "e2f30485-561d-f08a-813a-7eec9e30324e")
+			(tstamps "11e23e76-bef5-eb55-b6f8-a2f45c5be6b3")
 			(units
 				(unit
 					(name "A")
@@ -13648,7 +13786,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "92e568a7-6283-b438-d150-1597e3bf0754")
+			(tstamps "11b25d6e-798f-51a9-b97d-4f6c473f47e7")
 			(units
 				(unit
 					(name "A")
@@ -13715,7 +13853,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "e4a1084a-9e6c-bd82-389b-c9a117ba12cd")
+			(tstamps "08666337-7de7-708b-a288-7cfc3905820f")
 			(units
 				(unit
 					(name "A")
@@ -13785,7 +13923,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "bd8f9f18-0432-5890-f3cc-ef1592348517")
+			(tstamps "4156d378-0c40-fe0c-dc3d-e7988e18810b")
 			(units
 				(unit
 					(name "A")
@@ -13863,8 +14001,8 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "6bb7b6c1-38a2-17c6-6eec-ff2907959101" "7e8638c3-66b9-761a-40bf-874d76361394"
-				"5de22b49-7977-31d7-b40d-412f9fb605d1"
+			(tstamps "fed8cfb0-2c30-2a52-fc2a-3cd7a14fc6f0" "c5e22597-160b-e30e-d32a-a9ef8a487e9c"
+				"3d86f7df-309c-4326-5428-8ae4e75a2c06"
 			)
 			(units
 				(unit
@@ -13959,7 +14097,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "b056890d-a44e-645c-82cf-6135dfc6a901")
+			(tstamps "1b256f9c-92f7-41e0-d8ac-390caabd64da")
 			(units
 				(unit
 					(name "A")
@@ -14049,7 +14187,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "14238054-66df-8b3a-97ad-dfff9ddd53a2")
+			(tstamps "fc391240-46ca-6b9a-1211-16d09a90e48d")
 			(units
 				(unit
 					(name "A")
@@ -14131,7 +14269,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "61f2a20b-9edc-40d6-3620-06fc1ea89994")
+			(tstamps "35b68e51-ca4c-fb25-b2cc-33de9826e9a3")
 			(units
 				(unit
 					(name "A")
@@ -14290,7 +14428,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "19b8d85b-b835-722f-195b-fa84edbc925d")
+			(tstamps "65ae8e15-082d-1a90-7f71-2010a3b8340a")
 			(units
 				(unit
 					(name "A")
@@ -14418,7 +14556,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "3c83dce9-d6ed-019f-f151-df3e12358779")
+			(tstamps "75ee45d7-255f-31eb-1c5c-12c6d3f32da5")
 			(units
 				(unit
 					(name "A")
@@ -15414,7 +15552,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "bdc6e6f4-978f-b9e2-ec4b-7f4d22a329df")
+			(tstamps "a38b87a2-8b69-c647-cfd1-b3f180b20fce")
 			(units
 				(unit
 					(name "A")
@@ -15480,7 +15618,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "70ffd1bb-6e7f-e7bd-dc55-cd2114facc55")
+			(tstamps "93d8d2d9-394c-706e-b324-fa8adf22288e")
 			(units
 				(unit
 					(name "A")
@@ -15546,7 +15684,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "a7610c38-89a6-3453-551e-362ddd859ad8")
+			(tstamps "db24d018-810d-6cd2-3db3-8129fc63d283")
 			(units
 				(unit
 					(name "A")
@@ -15612,7 +15750,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "2088fedb-700e-1f20-37b4-c3668040371c")
+			(tstamps "86576d70-0c0f-0fcf-1e77-f1ddf8b5662d")
 			(units
 				(unit
 					(name "A")
@@ -15678,7 +15816,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "bd9c5a30-938d-6109-b3ef-b747ba40f362")
+			(tstamps "99887eeb-3f32-a763-a91f-6a11989ba739")
 			(units
 				(unit
 					(name "A")
@@ -15744,7 +15882,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "9d17efb0-5077-1007-6802-eac27e6a55a6")
+			(tstamps "92fc5a7a-f6c9-37f1-b3ba-dee554876b0f")
 			(units
 				(unit
 					(name "A")
@@ -15810,7 +15948,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "5e29e368-ac45-3b41-fd62-1dc523508691")
+			(tstamps "fb400016-68c4-7d0d-191a-533bc3b24687")
 			(units
 				(unit
 					(name "A")
@@ -15876,7 +16014,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "898bf4f3-42de-fce5-b603-270e70b6d067")
+			(tstamps "6bc686a9-e5af-8633-b246-a9a4138baf27")
 			(units
 				(unit
 					(name "A")
@@ -15942,7 +16080,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "79336665-56c6-a3f1-b7e7-e6b1827cdac4")
+			(tstamps "1c31496b-1e56-faa2-dc8b-5ff7b2b01a98")
 			(units
 				(unit
 					(name "A")
@@ -16008,7 +16146,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "a3b38e58-5473-9def-cef0-162d2e61b7bb")
+			(tstamps "50705cff-e9e1-fda2-ed6f-33efe2c23491")
 			(units
 				(unit
 					(name "A")
@@ -16074,7 +16212,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "7d2ab064-7690-ee93-e8c4-bb0255a01f1f")
+			(tstamps "1d46fcc5-8cd9-f0da-be03-6af8bb49fddf")
 			(units
 				(unit
 					(name "A")
@@ -16140,7 +16278,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "72d752ac-ff13-34af-e99a-cf3f2eaf5f1b")
+			(tstamps "c2f7481b-27a0-9f18-7d6a-b2ccaf540731")
 			(units
 				(unit
 					(name "A")
@@ -16206,7 +16344,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "bdb0fbac-c6ab-7d7e-b4b2-09b202875629")
+			(tstamps "056a2440-1b24-84ed-c2a7-9081b23f967f")
 			(units
 				(unit
 					(name "A")
@@ -16272,7 +16410,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "6d5085f9-7a76-a197-4f9f-be81ec448a18")
+			(tstamps "ae22c524-6a40-b12f-8636-b4090b4a5eea")
 			(units
 				(unit
 					(name "A")
@@ -16338,7 +16476,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "501ada69-2e3a-3f56-5f9c-024ddad4f93f")
+			(tstamps "621b4e06-6a00-3ec8-7723-bae9709b7657")
 			(units
 				(unit
 					(name "A")
@@ -16404,7 +16542,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "2c5351a6-c1b9-b855-7bbb-67447cafaea6")
+			(tstamps "2ff0e349-9c35-9e4b-7740-6b83fca145b4")
 			(units
 				(unit
 					(name "A")
@@ -16470,7 +16608,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "5ad50128-6c6a-43ff-df12-68dc26f0495f")
+			(tstamps "630d3ccd-88eb-29ac-0634-e41f30d1279f")
 			(units
 				(unit
 					(name "A")
@@ -16536,7 +16674,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "3ff19983-86f5-8103-d4f8-6eddd8ddcb51")
+			(tstamps "4fea54e1-8522-eeff-2840-72475fa379c6")
 			(units
 				(unit
 					(name "A")
@@ -16602,7 +16740,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "d957a201-618e-6694-4478-686adf13522e")
+			(tstamps "edf534dd-5975-ce2e-2a8c-64b97bdc7c12")
 			(units
 				(unit
 					(name "A")
@@ -16668,7 +16806,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "d7843ac7-5826-6be7-4caa-7efc0798e8e5")
+			(tstamps "8781e433-b20f-21cd-ccf8-baec0ed22565")
 			(units
 				(unit
 					(name "A")
@@ -16987,7 +17125,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "f59ad832-1b23-7594-4f06-a525f86ba429")
+			(tstamps "38b2bb41-2bd2-79d9-d013-5d9559af7b72")
 			(units
 				(unit
 					(name "A")
@@ -17053,7 +17191,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "af1a8855-5777-2da0-3e36-c1f079da5624")
+			(tstamps "67f89b95-f22b-6c0c-3be8-c5f61133ffe4")
 			(units
 				(unit
 					(name "A")
@@ -17119,7 +17257,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "3ffe9bb9-211e-98a5-51be-d3f311772c77")
+			(tstamps "fc35be6a-8880-fed8-c8c4-6b9522b4f4c8")
 			(units
 				(unit
 					(name "A")
@@ -17185,7 +17323,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "cc5aab9d-5a18-fcd6-4d89-ead7c6b1bb89")
+			(tstamps "90845aaa-3138-994c-d460-ebd83202549b")
 			(units
 				(unit
 					(name "A")
@@ -17251,7 +17389,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "57cdd36b-6947-08ab-514f-7a027a6b8af2")
+			(tstamps "76b98782-0162-bc6e-5bda-ea7f0081bff6")
 			(units
 				(unit
 					(name "A")
@@ -17317,7 +17455,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "5cf711b9-369a-8265-2fe3-33842a6a2813")
+			(tstamps "b12ba696-eee3-7abc-c380-b412373de7a8")
 			(units
 				(unit
 					(name "A")
@@ -17383,7 +17521,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "50e34ea4-8294-1fa8-f6b0-bb8355b5da35")
+			(tstamps "f673eec3-b55d-1bcd-2b5f-e42d788f060e")
 			(units
 				(unit
 					(name "A")
@@ -17452,7 +17590,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "4a7588cf-3249-5041-7065-97c684bc1859")
+			(tstamps "53ac2130-eb91-03cd-3b94-163646f2d06c")
 			(units
 				(unit
 					(name "A")
@@ -17650,7 +17788,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "c27d6a42-1570-1c55-5cd9-3b4c4772e1b9")
+			(tstamps "0918f7f0-7f51-c311-9df5-3355a075a4c5")
 			(units
 				(unit
 					(name "A")
@@ -17716,7 +17854,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "8c07ba8c-ecc5-2743-bb56-5539319d3efb")
+			(tstamps "c563a3e2-5b03-9fef-237d-25e3a545641e")
 			(units
 				(unit
 					(name "A")
@@ -17782,7 +17920,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "1a8b03d5-639d-86a6-7941-873e7444ca75")
+			(tstamps "b29a5f3b-f935-0ea7-8187-5a98a5ca16aa")
 			(units
 				(unit
 					(name "A")
@@ -17848,7 +17986,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "3d821a89-19c9-e5d7-d473-46eed005be1f")
+			(tstamps "cdd15e7b-f639-c772-6f19-6e5046fa7d6f")
 			(units
 				(unit
 					(name "A")
@@ -18781,7 +18919,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "fed38179-bffb-fcac-b3e7-92a49f62eb47")
+			(tstamps "a517aeb7-4b4b-9b38-57d8-811195fd0a34")
 			(units
 				(unit
 					(name "A")
@@ -18847,7 +18985,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "815942ae-e648-52d4-f2c3-4a0aa91f2897")
+			(tstamps "7915e2ed-e43c-e374-6ec0-f836f990c6b6")
 			(units
 				(unit
 					(name "A")
@@ -18913,7 +19051,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "c0f00436-886f-0065-7b62-5f3596b044ac")
+			(tstamps "0b63e88c-0564-41fd-19f6-43a39d0a0768")
 			(units
 				(unit
 					(name "A")
@@ -18979,7 +19117,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "10a85bf5-7b9e-0cf8-61b3-d4ecbe26e6e4")
+			(tstamps "4eb73801-32e8-4e01-6e47-737c0d0af841")
 			(units
 				(unit
 					(name "A")
@@ -19045,7 +19183,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "bc2b8788-b2fd-33f4-65fd-db1f6515a0de")
+			(tstamps "e9141ed3-88c6-52de-873c-a895534a7412")
 			(units
 				(unit
 					(name "A")
@@ -19111,7 +19249,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "65a1f7d6-c9bc-9f33-6d1e-a8fcd83eb71f")
+			(tstamps "6a6e601b-a931-4096-779a-66d98b6b9d0d")
 			(units
 				(unit
 					(name "A")
@@ -19177,7 +19315,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "dd05929f-1e1d-6d93-feb2-8ec94839b560")
+			(tstamps "9acc8a76-c35e-4e84-9711-c9502ddd6518")
 			(units
 				(unit
 					(name "A")
@@ -19243,7 +19381,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "34002c9a-5b20-bcec-5576-cb5682a02e97")
+			(tstamps "643e7fa8-974a-1894-0bff-6b3a16d3939f")
 			(units
 				(unit
 					(name "A")
@@ -19309,7 +19447,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "72c850e3-a3e9-95a5-0993-ad1b7cc82880")
+			(tstamps "20ffbdb4-9ecb-773c-af98-1c8624b26447")
 			(units
 				(unit
 					(name "A")
@@ -19375,7 +19513,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "c6dd6f1b-719a-552d-fc81-208bf7556713")
+			(tstamps "faa41371-d22d-7bac-1165-6aca3e5c93f3")
 			(units
 				(unit
 					(name "A")
@@ -19441,7 +19579,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "a6f69a50-52ae-77a1-a7ae-d642170bb370")
+			(tstamps "41c6db38-9db5-9fb2-afeb-842f9606d5a6")
 			(units
 				(unit
 					(name "A")
@@ -19507,7 +19645,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "41f1bf3f-e774-3c16-8b1c-5f2560f7c0e8")
+			(tstamps "40d2dc93-813f-4079-787a-69c4b1dc370a")
 			(units
 				(unit
 					(name "A")
@@ -19576,7 +19714,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "5b436157-7447-ac41-f2f2-af3ef64a7b6f")
+			(tstamps "8d4db816-f286-261c-37f1-f16217085856")
 			(units
 				(unit
 					(name "A")
@@ -19658,6 +19796,75 @@
 			)
 		)
 		(comp
+			(ref "R228")
+			(value "DNP 10k")
+			(footprint "CostasLink:R_0402_1005Metric")
+			(fields
+				(field
+					(name "LCSC") "C25744")
+				(field
+					(name "MPN") "0402WGF1002TCE")
+				(field
+					(name "Footprint") "CostasLink:R_0402_1005Metric")
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "CostasLink")
+				(part "R")
+				(description "Resistor")
+			)
+			(property
+				(name "LCSC")
+				(value "C25744")
+			)
+			(property
+				(name "MPN")
+				(value "0402WGF1002TCE")
+			)
+			(property
+				(name "Sheetname")
+				(value "Transmitter and triggers")
+			)
+			(property
+				(name "Sheetfile")
+				(value "tx.kicad_sch")
+			)
+			(property
+				(name "dnp")
+			)
+			(property
+				(name "ki_keywords")
+				(value "R res resistor")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "R_*")
+			)
+			(sheetpath
+				(names "/Transmitter and triggers/")
+				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
+			)
+			(tstamps "c7118fd0-7c66-087c-aadc-82a81c662aa7")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
 			(ref "TP201")
 			(value "LD U203")
 			(footprint "CostasLink:TestPoint_Pad_D1.5mm")
@@ -19696,7 +19903,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "2b0ed428-1eb2-3776-2f04-7d9003a2b34e")
+			(tstamps "57455049-f03a-b640-e306-01d93941e999")
 			(units
 				(unit
 					(name "A")
@@ -19714,6 +19921,8 @@
 			(footprint "CostasLink:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm")
 			(fields
 				(field
+					(name "LCSC") "C579150")
+				(field
 					(name "MPN") "ADL5375-05ACPZ-R7")
 				(field
 					(name "Footprint") "CostasLink:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm")
@@ -19728,6 +19937,10 @@
 				(lib "CostasLink")
 				(part "ADL5375")
 				(description "ADI ADL5375-05 400 MHz to 6 GHz quadrature modulator, 0.5 V baseband bias, LFCSP-24")
+			)
+			(property
+				(name "LCSC")
+				(value "C579150")
 			)
 			(property
 				(name "MPN")
@@ -19933,7 +20146,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "c673e740-4c57-b852-1838-28fe8feaa68d")
+			(tstamps "514a742c-e656-ec88-7aef-c43bf5ff9cae")
 			(units
 				(unit
 					(name "A")
@@ -20092,8 +20305,8 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "e5dde46a-bc13-9296-b1b0-22796fbfb951" "4faa4421-e5f5-ae2d-13a5-877b553ee457"
-				"4e99abc7-dd7b-be7b-12bb-8b14c4f72fcb"
+			(tstamps "b9ef4e59-94b8-2ac6-7271-5d9b376260fd" "e5975a30-8342-23be-82cf-0e672ad85303"
+				"8a75f420-eaa2-f50e-47b4-f71bb462cc09"
 			)
 			(units
 				(unit
@@ -20182,7 +20395,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "17bbe4a5-a202-e854-4a95-35a56dca49ee")
+			(tstamps "7f101d43-1777-c2ba-fb7d-b0aa11b24e33")
 			(units
 				(unit
 					(name "A")
@@ -22980,7 +23193,7 @@
 				(names "/Slow path: confirm or veto; interference detectors/")
 				(tstamps "/6bbffa5f-5c82-d12f-8669-7f065bd8149d/")
 			)
-			(tstamps "80101c5a-b9bc-e2ca-3e32-f3eec0f2b060")
+			(tstamps "ddb30748-df02-98ff-1542-c4b70779edb0")
 			(units
 				(unit
 					(name "A")
@@ -23046,7 +23259,7 @@
 				(names "/Slow path: confirm or veto; interference detectors/")
 				(tstamps "/6bbffa5f-5c82-d12f-8669-7f065bd8149d/")
 			)
-			(tstamps "a349dc77-5881-18d4-f59e-d5e810ebd6db")
+			(tstamps "a19a3f32-3173-2711-388e-d47777e6e6ec")
 			(units
 				(unit
 					(name "A")
@@ -23112,7 +23325,7 @@
 				(names "/Slow path: confirm or veto; interference detectors/")
 				(tstamps "/6bbffa5f-5c82-d12f-8669-7f065bd8149d/")
 			)
-			(tstamps "2bcc0649-d3e0-7543-99ee-4f1480abd64d")
+			(tstamps "4b9be3e7-ebce-7dbc-d416-406a6930ec97")
 			(units
 				(unit
 					(name "A")
@@ -23178,7 +23391,7 @@
 				(names "/Slow path: confirm or veto; interference detectors/")
 				(tstamps "/6bbffa5f-5c82-d12f-8669-7f065bd8149d/")
 			)
-			(tstamps "ddfae97b-efd9-c3c6-91b7-55b6e683f673")
+			(tstamps "a286708e-0cc2-5191-50b4-e9c6f45ba3d4")
 			(units
 				(unit
 					(name "A")
@@ -25422,7 +25635,7 @@
 				(names "/Slow path: confirm or veto; interference detectors/")
 				(tstamps "/6bbffa5f-5c82-d12f-8669-7f065bd8149d/")
 			)
-			(tstamps "2d9c700c-c573-5cfd-2798-ff2be6ed7d16")
+			(tstamps "9245d482-1903-3de0-fe78-798c66dff3f4")
 			(units
 				(unit
 					(name "A")
@@ -25488,7 +25701,7 @@
 				(names "/Slow path: confirm or veto; interference detectors/")
 				(tstamps "/6bbffa5f-5c82-d12f-8669-7f065bd8149d/")
 			)
-			(tstamps "90e0b086-1d1e-33fb-080c-d963b8f0df8e")
+			(tstamps "f1c3eb5e-7e7a-ae53-c7e2-653dba0eb3fe")
 			(units
 				(unit
 					(name "A")
@@ -25554,7 +25767,7 @@
 				(names "/Slow path: confirm or veto; interference detectors/")
 				(tstamps "/6bbffa5f-5c82-d12f-8669-7f065bd8149d/")
 			)
-			(tstamps "d7164fc1-c7bf-b4fd-ba0f-7856722fcd9f")
+			(tstamps "82e9daf8-67a8-9be3-38f7-6cc70347da09")
 			(units
 				(unit
 					(name "A")
@@ -25620,7 +25833,7 @@
 				(names "/Slow path: confirm or veto; interference detectors/")
 				(tstamps "/6bbffa5f-5c82-d12f-8669-7f065bd8149d/")
 			)
-			(tstamps "49601ff7-5f35-bf90-181d-7585ce113339")
+			(tstamps "07c6dc6c-53f3-e35f-abd7-8c3435591f1b")
 			(units
 				(unit
 					(name "A")
@@ -29505,13 +29718,13 @@
 		)
 		(libpart
 			(lib "CostasLink")
-			(part "Balun_5400")
-			(description "Johanson 5400BL15B050 1:1 balun 4.9-5.875 GHz, 0805")
+			(part "Balun_HHM1907")
+			(description "TDK HHM1907B1 1:1 balun 4.9-5.95 GHz, 0402")
 			(fields
 				(field
 					(name "Reference") "T")
 				(field
-					(name "Value") "5400BL15B050")
+					(name "Value") "HHM1907B1")
 				(field
 					(name "Footprint")
 				)
@@ -29519,7 +29732,7 @@
 					(name "Datasheet")
 				)
 				(field
-					(name "Description") "Johanson 5400BL15B050 1:1 balun 4.9-5.875 GHz, 0805")
+					(name "Description") "TDK HHM1907B1 1:1 balun 4.9-5.95 GHz, 0402")
 			)
 			(pins
 				(pin
@@ -29529,28 +29742,18 @@
 				)
 				(pin
 					(num "2")
-					(name "GND")
+					(name "BAL1")
 					(type "passive")
 				)
 				(pin
 					(num "3")
-					(name "BAL+")
+					(name "BAL2")
 					(type "passive")
 				)
 				(pin
 					(num "4")
-					(name "BAL-")
-					(type "passive")
-				)
-				(pin
-					(num "5")
 					(name "GND")
 					(type "passive")
-				)
-				(pin
-					(num "6")
-					(name "NC")
-					(type "no_connect")
 				)
 			)
 		)
@@ -32136,6 +32339,11 @@
 				(pintype "passive")
 			)
 			(node
+				(ref "R228")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
 				(ref "TP307")
 				(pin "1")
 				(pinfunction "1_1")
@@ -33016,18 +33224,13 @@
 			(name "/I_P")
 			(class "Default")
 			(node
-				(ref "C154")
-				(pin "1")
-				(pintype "passive")
-			)
-			(node
 				(ref "R122")
 				(pin "1")
 				(pintype "passive")
 			)
 			(node
 				(ref "R141")
-				(pin "1")
+				(pin "2")
 				(pintype "passive")
 			)
 			(node
@@ -33524,11 +33727,6 @@
 			(name "/Q_P")
 			(class "Default")
 			(node
-				(ref "C155")
-				(pin "1")
-				(pintype "passive")
-			)
-			(node
 				(ref "JP101")
 				(pin "1")
 				(pinfunction "Pin_1_1")
@@ -33547,7 +33745,7 @@
 			)
 			(node
 				(ref "R142")
-				(pin "1")
+				(pin "2")
 				(pintype "passive")
 			)
 			(node
@@ -33600,18 +33798,13 @@
 			(name "/Receiver and Costas loop/ERR")
 			(class "Default")
 			(node
-				(ref "C157")
-				(pin "1")
-				(pintype "passive")
-			)
-			(node
 				(ref "R124")
 				(pin "1")
 				(pintype "passive")
 			)
 			(node
 				(ref "R144")
-				(pin "1")
+				(pin "2")
 				(pintype "passive")
 			)
 			(node
@@ -33709,11 +33902,6 @@
 			(name "/Receiver and Costas loop/VC")
 			(class "Default")
 			(node
-				(ref "C156")
-				(pin "1")
-				(pintype "passive")
-			)
-			(node
 				(ref "R132")
 				(pin "2")
 				(pintype "passive")
@@ -33725,7 +33913,7 @@
 			)
 			(node
 				(ref "R143")
-				(pin "1")
+				(pin "2")
 				(pintype "passive")
 			)
 			(node
@@ -33910,13 +34098,8 @@
 			(name "/Slow path: confirm or veto; interference detectors/LOG_Q")
 			(class "Default")
 			(node
-				(ref "C524")
-				(pin "1")
-				(pintype "passive")
-			)
-			(node
 				(ref "R530")
-				(pin "1")
+				(pin "2")
 				(pintype "passive")
 			)
 			(node
@@ -33969,18 +34152,13 @@
 			(name "/Slow path: confirm or veto; interference detectors/PEAK_Q")
 			(class "Default")
 			(node
-				(ref "C525")
-				(pin "1")
-				(pintype "passive")
-			)
-			(node
 				(ref "R525")
 				(pin "1")
 				(pintype "passive")
 			)
 			(node
 				(ref "R531")
-				(pin "1")
+				(pin "2")
 				(pintype "passive")
 			)
 			(node
@@ -34053,13 +34231,8 @@
 			(name "/Slow path: confirm or veto; interference detectors/TEMP")
 			(class "Default")
 			(node
-				(ref "C527")
-				(pin "1")
-				(pintype "passive")
-			)
-			(node
 				(ref "R533")
-				(pin "1")
+				(pin "2")
 				(pintype "passive")
 			)
 			(node
@@ -34078,11 +34251,6 @@
 			(name "/Slow path: confirm or veto; interference detectors/V5_MON")
 			(class "Default")
 			(node
-				(ref "C526")
-				(pin "1")
-				(pintype "passive")
-			)
-			(node
 				(ref "R528")
 				(pin "2")
 				(pintype "passive")
@@ -34094,7 +34262,7 @@
 			)
 			(node
 				(ref "R532")
-				(pin "1")
+				(pin "2")
 				(pintype "passive")
 			)
 		)
@@ -35418,14 +35586,8 @@
 			)
 			(node
 				(ref "T101")
-				(pin "2")
-				(pinfunction "GND_2")
-				(pintype "passive")
-			)
-			(node
-				(ref "T101")
-				(pin "5")
-				(pinfunction "GND_5")
+				(pin "4")
+				(pinfunction "GND_4")
 				(pintype "passive")
 			)
 			(node
@@ -37233,36 +37395,34 @@
 		)
 		(net
 			(code "139")
-			(name "Net-(T101-BAL+)")
-			(class "Default")
+			(name "Net-(T101-BAL1)")
+			(class "RF")
 			(node
-				(ref "T101")
-				(pin "3")
-				(pinfunction "BAL+_3")
+				(ref "C159")
+				(pin "1")
 				(pintype "passive")
 			)
 			(node
-				(ref "U104")
-				(pin "22")
-				(pinfunction "RFIP_22")
-				(pintype "input")
+				(ref "T101")
+				(pin "2")
+				(pinfunction "BAL1_2")
+				(pintype "passive")
 			)
 		)
 		(net
 			(code "140")
-			(name "Net-(T101-BAL-)")
-			(class "Default")
+			(name "Net-(T101-BAL2)")
+			(class "RF")
 			(node
-				(ref "T101")
-				(pin "4")
-				(pinfunction "BAL-_4")
+				(ref "C160")
+				(pin "1")
 				(pintype "passive")
 			)
 			(node
-				(ref "U104")
-				(pin "21")
-				(pinfunction "RFIN_21")
-				(pintype "input")
+				(ref "T101")
+				(pin "3")
+				(pinfunction "BAL2_3")
+				(pintype "passive")
 			)
 		)
 		(net
@@ -37535,6 +37695,38 @@
 		)
 		(net
 			(code "157")
+			(name "Net-(U104-RFIN)")
+			(class "RF")
+			(node
+				(ref "C160")
+				(pin "2")
+				(pintype "passive")
+			)
+			(node
+				(ref "U104")
+				(pin "21")
+				(pinfunction "RFIN_21")
+				(pintype "input")
+			)
+		)
+		(net
+			(code "158")
+			(name "Net-(U104-RFIP)")
+			(class "RF")
+			(node
+				(ref "C159")
+				(pin "2")
+				(pintype "passive")
+			)
+			(node
+				(ref "U104")
+				(pin "22")
+				(pinfunction "RFIP_22")
+				(pintype "input")
+			)
+		)
+		(net
+			(code "159")
 			(name "Net-(U105-FB+)")
 			(class "Default")
 			(node
@@ -37550,7 +37742,7 @@
 			)
 		)
 		(net
-			(code "158")
+			(code "160")
 			(name "Net-(U105-FB-)")
 			(class "Default")
 			(node
@@ -37566,7 +37758,7 @@
 			)
 		)
 		(net
-			(code "159")
+			(code "161")
 			(name "Net-(U105-IN+)")
 			(class "Default")
 			(node
@@ -37592,7 +37784,7 @@
 			)
 		)
 		(net
-			(code "160")
+			(code "162")
 			(name "Net-(U105-PD)")
 			(class "Default")
 			(node
@@ -37608,7 +37800,7 @@
 			)
 		)
 		(net
-			(code "161")
+			(code "163")
 			(name "Net-(U105-Vocm)")
 			(class "Default")
 			(node
@@ -37624,7 +37816,7 @@
 			)
 		)
 		(net
-			(code "162")
+			(code "164")
 			(name "Net-(U106-FB+)")
 			(class "Default")
 			(node
@@ -37640,7 +37832,7 @@
 			)
 		)
 		(net
-			(code "163")
+			(code "165")
 			(name "Net-(U106-FB-)")
 			(class "Default")
 			(node
@@ -37656,7 +37848,7 @@
 			)
 		)
 		(net
-			(code "164")
+			(code "166")
 			(name "Net-(U106-IN+)")
 			(class "Default")
 			(node
@@ -37682,7 +37874,7 @@
 			)
 		)
 		(net
-			(code "165")
+			(code "167")
 			(name "Net-(U106-IN-)")
 			(class "Default")
 			(node
@@ -37713,7 +37905,7 @@
 			)
 		)
 		(net
-			(code "166")
+			(code "168")
 			(name "Net-(U106-PD)")
 			(class "Default")
 			(node
@@ -37729,7 +37921,7 @@
 			)
 		)
 		(net
-			(code "167")
+			(code "169")
 			(name "Net-(U106-Vocm)")
 			(class "Default")
 			(node
@@ -37745,7 +37937,7 @@
 			)
 		)
 		(net
-			(code "168")
+			(code "170")
 			(name "Net-(U107-OUT)")
 			(class "Default")
 			(node
@@ -37766,7 +37958,7 @@
 			)
 		)
 		(net
-			(code "169")
+			(code "171")
 			(name "Net-(U111-COM)")
 			(class "Default")
 			(node
@@ -37782,7 +37974,7 @@
 			)
 		)
 		(net
-			(code "170")
+			(code "172")
 			(name "Net-(U112A--)")
 			(class "Default")
 			(node
@@ -37803,7 +37995,7 @@
 			)
 		)
 		(net
-			(code "171")
+			(code "173")
 			(name "Net-(U112B--)")
 			(class "Default")
 			(node
@@ -37829,12 +38021,17 @@
 			)
 		)
 		(net
-			(code "172")
+			(code "174")
 			(name "Net-(U114-AIN0)")
 			(class "Default")
 			(node
+				(ref "C154")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
 				(ref "R141")
-				(pin "2")
+				(pin "1")
 				(pintype "passive")
 			)
 			(node
@@ -37845,12 +38042,17 @@
 			)
 		)
 		(net
-			(code "173")
+			(code "175")
 			(name "Net-(U114-AIN1)")
 			(class "Default")
 			(node
+				(ref "C155")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
 				(ref "R142")
-				(pin "2")
+				(pin "1")
 				(pintype "passive")
 			)
 			(node
@@ -37861,12 +38063,17 @@
 			)
 		)
 		(net
-			(code "174")
+			(code "176")
 			(name "Net-(U114-AIN2)")
 			(class "Default")
 			(node
+				(ref "C156")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
 				(ref "R143")
-				(pin "2")
+				(pin "1")
 				(pintype "passive")
 			)
 			(node
@@ -37877,12 +38084,17 @@
 			)
 		)
 		(net
-			(code "175")
+			(code "177")
 			(name "Net-(U114-AIN3)")
 			(class "Default")
 			(node
+				(ref "C157")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
 				(ref "R144")
-				(pin "2")
+				(pin "1")
 				(pintype "passive")
 			)
 			(node
@@ -37893,7 +38105,7 @@
 			)
 		)
 		(net
-			(code "176")
+			(code "178")
 			(name "Net-(U115-BIAS_FILT)")
 			(class "Default")
 			(node
@@ -37909,7 +38121,7 @@
 			)
 		)
 		(net
-			(code "177")
+			(code "179")
 			(name "Net-(U115-CE)")
 			(class "Default")
 			(node
@@ -37925,7 +38137,7 @@
 			)
 		)
 		(net
-			(code "178")
+			(code "180")
 			(name "Net-(U115-CP_OUT)")
 			(class "Default")
 			(node
@@ -37951,7 +38163,7 @@
 			)
 		)
 		(net
-			(code "179")
+			(code "181")
 			(name "Net-(U115-LD)")
 			(class "Default")
 			(node
@@ -37968,7 +38180,7 @@
 			)
 		)
 		(net
-			(code "180")
+			(code "182")
 			(name "Net-(U115-NOISE_FILT)")
 			(class "Default")
 			(node
@@ -37984,7 +38196,7 @@
 			)
 		)
 		(net
-			(code "181")
+			(code "183")
 			(name "Net-(U115-REF_IN)")
 			(class "Default")
 			(node
@@ -38000,7 +38212,7 @@
 			)
 		)
 		(net
-			(code "182")
+			(code "184")
 			(name "Net-(U115-REG)")
 			(class "Default")
 			(node
@@ -38016,7 +38228,7 @@
 			)
 		)
 		(net
-			(code "183")
+			(code "185")
 			(name "Net-(U115-RFOUTA_N)")
 			(class "LO")
 			(node
@@ -38038,7 +38250,7 @@
 			)
 		)
 		(net
-			(code "184")
+			(code "186")
 			(name "Net-(U115-RFOUTA_P)")
 			(class "LO")
 			(node
@@ -38060,7 +38272,7 @@
 			)
 		)
 		(net
-			(code "185")
+			(code "187")
 			(name "Net-(U115-RFOUTB_N)")
 			(class "Default")
 			(node
@@ -38082,7 +38294,7 @@
 			)
 		)
 		(net
-			(code "186")
+			(code "188")
 			(name "Net-(U115-RFOUTB_P)")
 			(class "Default")
 			(node
@@ -38104,7 +38316,7 @@
 			)
 		)
 		(net
-			(code "187")
+			(code "189")
 			(name "Net-(U115-RFOUT_EN)")
 			(class "Default")
 			(node
@@ -38120,7 +38332,7 @@
 			)
 		)
 		(net
-			(code "188")
+			(code "190")
 			(name "Net-(U115-RSET)")
 			(class "Default")
 			(node
@@ -38136,7 +38348,7 @@
 			)
 		)
 		(net
-			(code "189")
+			(code "191")
 			(name "Net-(U115-TUNE)")
 			(class "Default")
 			(node
@@ -38157,7 +38369,7 @@
 			)
 		)
 		(net
-			(code "190")
+			(code "192")
 			(name "Net-(U117-RFIN)")
 			(class "RF")
 			(node
@@ -38173,7 +38385,7 @@
 			)
 		)
 		(net
-			(code "191")
+			(code "193")
 			(name "Net-(U117-RFOUT)")
 			(class "RF")
 			(node
@@ -38195,7 +38407,7 @@
 			)
 		)
 		(net
-			(code "192")
+			(code "194")
 			(name "Net-(U201-LOIN)")
 			(class "LO")
 			(node
@@ -38211,7 +38423,7 @@
 			)
 		)
 		(net
-			(code "193")
+			(code "195")
 			(name "Net-(U201-LOIP)")
 			(class "LO")
 			(node
@@ -38227,7 +38439,7 @@
 			)
 		)
 		(net
-			(code "194")
+			(code "196")
 			(name "Net-(U201-RFOUT)")
 			(class "RF")
 			(node
@@ -38243,7 +38455,7 @@
 			)
 		)
 		(net
-			(code "195")
+			(code "197")
 			(name "Net-(U202-RFIN)")
 			(class "RF")
 			(node
@@ -38259,7 +38471,7 @@
 			)
 		)
 		(net
-			(code "196")
+			(code "198")
 			(name "Net-(U202-RFOUT)")
 			(class "RF")
 			(node
@@ -38281,7 +38493,7 @@
 			)
 		)
 		(net
-			(code "197")
+			(code "199")
 			(name "Net-(U203-BIAS_FILT)")
 			(class "Default")
 			(node
@@ -38297,7 +38509,7 @@
 			)
 		)
 		(net
-			(code "198")
+			(code "200")
 			(name "Net-(U203-CE)")
 			(class "Default")
 			(node
@@ -38313,7 +38525,7 @@
 			)
 		)
 		(net
-			(code "199")
+			(code "201")
 			(name "Net-(U203-CP_OUT)")
 			(class "Default")
 			(node
@@ -38339,7 +38551,7 @@
 			)
 		)
 		(net
-			(code "200")
+			(code "202")
 			(name "Net-(U203-LD)")
 			(class "Default")
 			(node
@@ -38356,7 +38568,7 @@
 			)
 		)
 		(net
-			(code "201")
+			(code "203")
 			(name "Net-(U203-NOISE_FILT)")
 			(class "Default")
 			(node
@@ -38372,7 +38584,7 @@
 			)
 		)
 		(net
-			(code "202")
+			(code "204")
 			(name "Net-(U203-REF_IN)")
 			(class "Default")
 			(node
@@ -38388,7 +38600,7 @@
 			)
 		)
 		(net
-			(code "203")
+			(code "205")
 			(name "Net-(U203-REG)")
 			(class "Default")
 			(node
@@ -38404,7 +38616,7 @@
 			)
 		)
 		(net
-			(code "204")
+			(code "206")
 			(name "Net-(U203-RFOUTA_N)")
 			(class "LO")
 			(node
@@ -38426,7 +38638,7 @@
 			)
 		)
 		(net
-			(code "205")
+			(code "207")
 			(name "Net-(U203-RFOUTA_P)")
 			(class "LO")
 			(node
@@ -38448,7 +38660,7 @@
 			)
 		)
 		(net
-			(code "206")
+			(code "208")
 			(name "Net-(U203-RFOUTB_N)")
 			(class "Default")
 			(node
@@ -38470,7 +38682,7 @@
 			)
 		)
 		(net
-			(code "207")
+			(code "209")
 			(name "Net-(U203-RFOUTB_P)")
 			(class "Default")
 			(node
@@ -38492,7 +38704,7 @@
 			)
 		)
 		(net
-			(code "208")
+			(code "210")
 			(name "Net-(U203-RFOUT_EN)")
 			(class "Default")
 			(node
@@ -38508,7 +38720,7 @@
 			)
 		)
 		(net
-			(code "209")
+			(code "211")
 			(name "Net-(U203-RSET)")
 			(class "Default")
 			(node
@@ -38524,7 +38736,7 @@
 			)
 		)
 		(net
-			(code "210")
+			(code "212")
 			(name "Net-(U203-TUNE)")
 			(class "Default")
 			(node
@@ -38545,7 +38757,7 @@
 			)
 		)
 		(net
-			(code "211")
+			(code "213")
 			(name "Net-(U301-EN)")
 			(class "Default")
 			(node
@@ -38567,7 +38779,7 @@
 			)
 		)
 		(net
-			(code "212")
+			(code "214")
 			(name "Net-(U302-EN)")
 			(class "Default")
 			(node
@@ -38589,7 +38801,7 @@
 			)
 		)
 		(net
-			(code "213")
+			(code "215")
 			(name "Net-(U401-A)")
 			(class "Default")
 			(node
@@ -38605,7 +38817,7 @@
 			)
 		)
 		(net
-			(code "214")
+			(code "216")
 			(name "Net-(U401-B)")
 			(class "Default")
 			(node
@@ -38621,7 +38833,7 @@
 			)
 		)
 		(net
-			(code "215")
+			(code "217")
 			(name "Net-(U401-RF1)")
 			(class "RF")
 			(node
@@ -38637,7 +38849,7 @@
 			)
 		)
 		(net
-			(code "216")
+			(code "218")
 			(name "Net-(U401-RF2)")
 			(class "RF")
 			(node
@@ -38653,7 +38865,7 @@
 			)
 		)
 		(net
-			(code "217")
+			(code "219")
 			(name "Net-(U401-RFC)")
 			(class "RF")
 			(node
@@ -38669,7 +38881,7 @@
 			)
 		)
 		(net
-			(code "218")
+			(code "220")
 			(name "Net-(U501-FB+)")
 			(class "Default")
 			(node
@@ -38685,7 +38897,7 @@
 			)
 		)
 		(net
-			(code "219")
+			(code "221")
 			(name "Net-(U501-FB-)")
 			(class "Default")
 			(node
@@ -38701,7 +38913,7 @@
 			)
 		)
 		(net
-			(code "220")
+			(code "222")
 			(name "Net-(U501-IN+)")
 			(class "Default")
 			(node
@@ -38722,7 +38934,7 @@
 			)
 		)
 		(net
-			(code "221")
+			(code "223")
 			(name "Net-(U501-IN-)")
 			(class "Default")
 			(node
@@ -38748,7 +38960,7 @@
 			)
 		)
 		(net
-			(code "222")
+			(code "224")
 			(name "Net-(U501-PD)")
 			(class "Default")
 			(node
@@ -38764,7 +38976,7 @@
 			)
 		)
 		(net
-			(code "223")
+			(code "225")
 			(name "Net-(U501-Vocm)")
 			(class "Default")
 			(node
@@ -38780,7 +38992,7 @@
 			)
 		)
 		(net
-			(code "224")
+			(code "226")
 			(name "Net-(U502-FB+)")
 			(class "Default")
 			(node
@@ -38796,7 +39008,7 @@
 			)
 		)
 		(net
-			(code "225")
+			(code "227")
 			(name "Net-(U502-FB-)")
 			(class "Default")
 			(node
@@ -38812,7 +39024,7 @@
 			)
 		)
 		(net
-			(code "226")
+			(code "228")
 			(name "Net-(U502-IN+)")
 			(class "Default")
 			(node
@@ -38833,7 +39045,7 @@
 			)
 		)
 		(net
-			(code "227")
+			(code "229")
 			(name "Net-(U502-IN-)")
 			(class "Default")
 			(node
@@ -38859,7 +39071,7 @@
 			)
 		)
 		(net
-			(code "228")
+			(code "230")
 			(name "Net-(U502-PD)")
 			(class "Default")
 			(node
@@ -38875,7 +39087,7 @@
 			)
 		)
 		(net
-			(code "229")
+			(code "231")
 			(name "Net-(U502-Vocm)")
 			(class "Default")
 			(node
@@ -38891,7 +39103,7 @@
 			)
 		)
 		(net
-			(code "230")
+			(code "232")
 			(name "Net-(U503-IN+)")
 			(class "Default")
 			(node
@@ -38912,7 +39124,7 @@
 			)
 		)
 		(net
-			(code "231")
+			(code "233")
 			(name "Net-(U503-IN-)")
 			(class "Default")
 			(node
@@ -38933,7 +39145,7 @@
 			)
 		)
 		(net
-			(code "232")
+			(code "234")
 			(name "Net-(U503-OUT)")
 			(class "Default")
 			(node
@@ -38949,7 +39161,7 @@
 			)
 		)
 		(net
-			(code "233")
+			(code "235")
 			(name "Net-(U504-IN+)")
 			(class "Default")
 			(node
@@ -38970,7 +39182,7 @@
 			)
 		)
 		(net
-			(code "234")
+			(code "236")
 			(name "Net-(U504-OUT)")
 			(class "Default")
 			(node
@@ -38986,7 +39198,7 @@
 			)
 		)
 		(net
-			(code "235")
+			(code "237")
 			(name "Net-(U505-IN+)")
 			(class "Default")
 			(node
@@ -39007,7 +39219,7 @@
 			)
 		)
 		(net
-			(code "236")
+			(code "238")
 			(name "Net-(U505-OUT)")
 			(class "Default")
 			(node
@@ -39023,7 +39235,7 @@
 			)
 		)
 		(net
-			(code "237")
+			(code "239")
 			(name "Net-(U507-BFIN)")
 			(class "Default")
 			(node
@@ -39039,7 +39251,7 @@
 			)
 		)
 		(net
-			(code "238")
+			(code "240")
 			(name "Net-(U507-INHI)")
 			(class "Default")
 			(node
@@ -39055,7 +39267,7 @@
 			)
 		)
 		(net
-			(code "239")
+			(code "241")
 			(name "Net-(U507-INLO)")
 			(class "Default")
 			(node
@@ -39071,7 +39283,7 @@
 			)
 		)
 		(net
-			(code "240")
+			(code "242")
 			(name "Net-(U507-OFLT)")
 			(class "Default")
 			(node
@@ -39087,7 +39299,7 @@
 			)
 		)
 		(net
-			(code "241")
+			(code "243")
 			(name "Net-(U508A--)")
 			(class "Default")
 			(node
@@ -39108,12 +39320,17 @@
 			)
 		)
 		(net
-			(code "242")
+			(code "244")
 			(name "Net-(U510-AIN0)")
 			(class "Default")
 			(node
+				(ref "C524")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
 				(ref "R530")
-				(pin "2")
+				(pin "1")
 				(pintype "passive")
 			)
 			(node
@@ -39124,12 +39341,17 @@
 			)
 		)
 		(net
-			(code "243")
+			(code "245")
 			(name "Net-(U510-AIN1)")
 			(class "Default")
 			(node
+				(ref "C525")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
 				(ref "R531")
-				(pin "2")
+				(pin "1")
 				(pintype "passive")
 			)
 			(node
@@ -39140,12 +39362,17 @@
 			)
 		)
 		(net
-			(code "244")
+			(code "246")
 			(name "Net-(U510-AIN2)")
 			(class "Default")
 			(node
+				(ref "C526")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
 				(ref "R532")
-				(pin "2")
+				(pin "1")
 				(pintype "passive")
 			)
 			(node
@@ -39156,12 +39383,17 @@
 			)
 		)
 		(net
-			(code "245")
+			(code "247")
 			(name "Net-(U510-AIN3)")
 			(class "Default")
 			(node
+				(ref "C527")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
 				(ref "R533")
-				(pin "2")
+				(pin "1")
 				(pintype "passive")
 			)
 			(node
@@ -39172,7 +39404,7 @@
 			)
 		)
 		(net
-			(code "246")
+			(code "248")
 			(name "Net-(U601-LE{slash}HYS)")
 			(class "Default")
 			(node
@@ -39193,7 +39425,7 @@
 			)
 		)
 		(net
-			(code "247")
+			(code "249")
 			(name "Net-(U601-OUT)")
 			(class "Default")
 			(node
@@ -39214,7 +39446,7 @@
 			)
 		)
 		(net
-			(code "248")
+			(code "250")
 			(name "Net-(U602-LE{slash}HYS)")
 			(class "Default")
 			(node
@@ -39235,7 +39467,7 @@
 			)
 		)
 		(net
-			(code "249")
+			(code "251")
 			(name "Net-(U602-OUT)")
 			(class "Default")
 			(node
@@ -39256,7 +39488,7 @@
 			)
 		)
 		(net
-			(code "250")
+			(code "252")
 			(name "Net-(U603-LE{slash}HYS)")
 			(class "Default")
 			(node
@@ -39277,7 +39509,7 @@
 			)
 		)
 		(net
-			(code "251")
+			(code "253")
 			(name "Net-(U603-OUT)")
 			(class "Default")
 			(node
@@ -39298,7 +39530,7 @@
 			)
 		)
 		(net
-			(code "252")
+			(code "254")
 			(name "Net-(U604-LE{slash}HYS)")
 			(class "Default")
 			(node
@@ -39319,7 +39551,7 @@
 			)
 		)
 		(net
-			(code "253")
+			(code "255")
 			(name "Net-(U604-OUT)")
 			(class "Default")
 			(node
@@ -39340,7 +39572,7 @@
 			)
 		)
 		(net
-			(code "254")
+			(code "256")
 			(name "Net-(Y101-OUT)")
 			(class "Default")
 			(node
@@ -39361,7 +39593,23 @@
 			)
 		)
 		(net
-			(code "255")
+			(code "257")
+			(name "Net-(Y201-VC{slash}NC)")
+			(class "Default")
+			(node
+				(ref "R228")
+				(pin "2")
+				(pintype "passive")
+			)
+			(node
+				(ref "Y201")
+				(pin "1")
+				(pinfunction "VC/NC_1")
+				(pintype "input")
+			)
+		)
+		(net
+			(code "258")
 			(name "unconnected-(J301-D+-PadA6)")
 			(class "Default")
 			(node
@@ -39372,7 +39620,7 @@
 			)
 		)
 		(net
-			(code "256")
+			(code "259")
 			(name "unconnected-(J301-D+-PadB6)")
 			(class "Default")
 			(node
@@ -39383,7 +39631,7 @@
 			)
 		)
 		(net
-			(code "257")
+			(code "260")
 			(name "unconnected-(J301-D--PadA7)")
 			(class "Default")
 			(node
@@ -39394,7 +39642,7 @@
 			)
 		)
 		(net
-			(code "258")
+			(code "261")
 			(name "unconnected-(J301-D--PadB7)")
 			(class "Default")
 			(node
@@ -39405,7 +39653,7 @@
 			)
 		)
 		(net
-			(code "259")
+			(code "262")
 			(name "unconnected-(J301-SBU1-PadA8)")
 			(class "Default")
 			(node
@@ -39416,7 +39664,7 @@
 			)
 		)
 		(net
-			(code "260")
+			(code "263")
 			(name "unconnected-(J301-SBU2-PadB8)")
 			(class "Default")
 			(node
@@ -39427,7 +39675,7 @@
 			)
 		)
 		(net
-			(code "261")
+			(code "264")
 			(name "unconnected-(J302-1_3V3-Pad1)")
 			(class "Default")
 			(node
@@ -39438,7 +39686,7 @@
 			)
 		)
 		(net
-			(code "262")
+			(code "265")
 			(name "unconnected-(J302-17_3V3-Pad17)")
 			(class "Default")
 			(node
@@ -39449,18 +39697,7 @@
 			)
 		)
 		(net
-			(code "263")
-			(name "unconnected-(T101-NC-Pad6)")
-			(class "Default")
-			(node
-				(ref "T101")
-				(pin "6")
-				(pinfunction "NC_6")
-				(pintype "no_connect")
-			)
-		)
-		(net
-			(code "264")
+			(code "266")
 			(name "unconnected-(U104-NC-Pad12)")
 			(class "Default")
 			(node
@@ -39471,7 +39708,7 @@
 			)
 		)
 		(net
-			(code "265")
+			(code "267")
 			(name "unconnected-(U113-RDY{slash}~{BSY}-Pad5)")
 			(class "Default")
 			(node
@@ -39482,7 +39719,7 @@
 			)
 		)
 		(net
-			(code "266")
+			(code "268")
 			(name "unconnected-(U114-ALERT{slash}RDY-Pad2)")
 			(class "Default")
 			(node
@@ -39493,7 +39730,7 @@
 			)
 		)
 		(net
-			(code "267")
+			(code "269")
 			(name "unconnected-(U115-SW-Pad5)")
 			(class "Default")
 			(node
@@ -39504,7 +39741,7 @@
 			)
 		)
 		(net
-			(code "268")
+			(code "270")
 			(name "unconnected-(U116-NC-Pad1)")
 			(class "Default")
 			(node
@@ -39515,7 +39752,7 @@
 			)
 		)
 		(net
-			(code "269")
+			(code "271")
 			(name "unconnected-(U201-NC-Pad6)")
 			(class "Default")
 			(node
@@ -39526,7 +39763,7 @@
 			)
 		)
 		(net
-			(code "270")
+			(code "272")
 			(name "unconnected-(U201-NC-Pad7)")
 			(class "Default")
 			(node
@@ -39537,7 +39774,7 @@
 			)
 		)
 		(net
-			(code "271")
+			(code "273")
 			(name "unconnected-(U201-NC-Pad13)")
 			(class "Default")
 			(node
@@ -39548,7 +39785,7 @@
 			)
 		)
 		(net
-			(code "272")
+			(code "274")
 			(name "unconnected-(U201-NC-Pad15)")
 			(class "Default")
 			(node
@@ -39559,7 +39796,7 @@
 			)
 		)
 		(net
-			(code "273")
+			(code "275")
 			(name "unconnected-(U203-SW-Pad5)")
 			(class "Default")
 			(node
@@ -39570,7 +39807,7 @@
 			)
 		)
 		(net
-			(code "274")
+			(code "276")
 			(name "unconnected-(U205-NC-Pad1)")
 			(class "Default")
 			(node
@@ -39581,7 +39818,7 @@
 			)
 		)
 		(net
-			(code "275")
+			(code "277")
 			(name "unconnected-(U206-NC-Pad1)")
 			(class "Default")
 			(node
@@ -39592,7 +39829,7 @@
 			)
 		)
 		(net
-			(code "276")
+			(code "278")
 			(name "unconnected-(U301-NC-Pad4)")
 			(class "Default")
 			(node
@@ -39603,7 +39840,7 @@
 			)
 		)
 		(net
-			(code "277")
+			(code "279")
 			(name "unconnected-(U302-NC-Pad4)")
 			(class "Default")
 			(node
@@ -39614,7 +39851,7 @@
 			)
 		)
 		(net
-			(code "278")
+			(code "280")
 			(name "unconnected-(U303-NC-Pad4)")
 			(class "Default")
 			(node
@@ -39625,7 +39862,7 @@
 			)
 		)
 		(net
-			(code "279")
+			(code "281")
 			(name "unconnected-(U304-NC-Pad4)")
 			(class "Default")
 			(node
@@ -39636,7 +39873,7 @@
 			)
 		)
 		(net
-			(code "280")
+			(code "282")
 			(name "unconnected-(U305-NC-Pad4)")
 			(class "Default")
 			(node
@@ -39647,7 +39884,7 @@
 			)
 		)
 		(net
-			(code "281")
+			(code "283")
 			(name "unconnected-(U401-NC-Pad4)")
 			(class "Default")
 			(node
@@ -39658,7 +39895,7 @@
 			)
 		)
 		(net
-			(code "282")
+			(code "284")
 			(name "unconnected-(U402-NC-Pad1)")
 			(class "Default")
 			(node
@@ -39669,7 +39906,7 @@
 			)
 		)
 		(net
-			(code "283")
+			(code "285")
 			(name "unconnected-(U506-RDY{slash}~{BSY}-Pad5)")
 			(class "Default")
 			(node
@@ -39680,7 +39917,7 @@
 			)
 		)
 		(net
-			(code "284")
+			(code "286")
 			(name "unconnected-(U510-ALERT{slash}RDY-Pad2)")
 			(class "Default")
 			(node
@@ -39691,7 +39928,7 @@
 			)
 		)
 		(net
-			(code "285")
+			(code "287")
 			(name "unconnected-(U605-VREF-Pad1)")
 			(class "Default")
 			(node
@@ -39699,17 +39936,6 @@
 				(pin "1")
 				(pinfunction "VREF_1")
 				(pintype "power_out+no_connect")
-			)
-		)
-		(net
-			(code "286")
-			(name "unconnected-(Y201-VC{slash}NC-Pad1)")
-			(class "Default")
-			(node
-				(ref "Y201")
-				(pin "1")
-				(pinfunction "VC/NC_1")
-				(pintype "input+no_connect")
 			)
 		)
 	)

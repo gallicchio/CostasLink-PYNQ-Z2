@@ -18,6 +18,16 @@ Balun_Johanson_5400BL15B050
     brown mark's corner is drawn on the silkscreen at pad 1.  No JLCPCB drawing exists for this
     part (consigned), so the CPL rotation must be read in the preview.
 
+Balun_TDK_HHM1907B1
+    The balun fitted since Prompt 31 (the Johanson above is kept for the record).  From TDK's drawing
+    (rf_balun_hhm1907b1_en, "Recommended land pattern", read 2026-10-14): body 1.0 x 0.5 mm; four
+    terminals, two per end; land pads 0.30 wide and 0.35 long, outer edges 0.80 apart in x and 0.90 in y
+    (so centred at x = +-0.25, y = +-0.275).  Terminal figure (top view, marking up): 4 and 3 along the
+    top row left to right, 1 and 2 along the bottom row left to right.  So 1 (unbalanced) is bottom left,
+    4 (GND) above it, and the balanced pair 2 (bottom) / 3 (top) is the RIGHT end.  Half-turn symmetric
+    pads, so a silkscreen dot marks pad 1.  JLCPCB stocks it (C531388), so mfg/footprint_check.py compares
+    these pads with their drawing and the CPL rotation is predicted from it.
+
 RPi_Socket_2x20_P2.54mm_Underside
     The 2x20 socket (C2977589, 8.5 mm insulator), the GPSDO-PYNQ-Z2 board's drawing: pin 1 at the
     origin, odd pins along -x from it, the even row at +2.54 in y, 1.0 mm holes in 1.7 mm pads,
@@ -101,6 +111,19 @@ def balun():
     return "\n".join(L)
 
 
+def balun_tdk():
+    L = [HEAD % dict(name="Balun_TDK_HHM1907B1", descr="TDK HHM1907B1 1:1 balun 4.9-5.95 GHz, 1.0x0.5 mm, 4 terminals (datasheet land pattern)",
+                     tags="balun 0402", attr="smd", refy=-1.3, valy=1.3)]
+    L.append(_rect(-0.5, -0.25, 0.5, 0.25, "F.Fab", 0.1))
+    L.append(_rect(-0.75, -0.55, 0.75, 0.55, "F.CrtYd", 0.05))
+    # the marking is at pad 1's end: bottom left (y up on the datasheet = -y here)
+    L.append('\t(fp_circle (center -0.75 0.6) (end -0.67 0.6) (stroke (width 0.15) (type solid)) (fill yes) (layer "F.SilkS"))')
+    for n, (x, y) in {"1": (-0.25, 0.275), "2": (0.25, 0.275), "3": (0.25, -0.275), "4": (-0.25, -0.275)}.items():
+        L.append(_smd(n, x, y, 0.30, 0.35))
+    L.append(")\n")
+    return "\n".join(L)
+
+
 def rpi_socket():
     # Drawn as the MIRROR image of the socket seen from above: the odd row along -x and the even row
     # 2.54 ABOVE it (-y).  gen/board.py puts it on the back with pcbnew's Flip(), which (measured in
@@ -135,6 +158,13 @@ def sma():
         return '(pad "%s"' % ("1" if m.group(1) == "5" else "2")
     text = re.sub(r'\(pad "([1-5])"', renum, text)
     assert n[0] == 5, n
+    # The centre pin's 2.0 mm ring on In1, In2 and B.Cu, where nothing connects to it, was 0.41 pF of excess
+    # capacitance against the planes' 2.5 mm antipads: 66 ohm shunt at 5.8 GHz, 9 dB return loss, 0.6 dB a launch
+    # (review B, Prompt 31).  No copper there but the plated hole, and gen/project.py's "SMA launch antipad" rule
+    # keeps the planes 1.35 mm from the hole (a 4 mm antipad): about 12 % reflection instead of 35 %.
+    i = text.index('(pad "1" thru_hole circle')
+    j = text.index('(remove_unused_layers no)', i)            # the vendored pad's own line (a second one would be dropped)
+    text = text[:j] + '(remove_unused_layers yes)\n\t\t(keep_end_layers yes)' + text[j + len('(remove_unused_layers no)'):]
     return text
 
 
@@ -194,7 +224,7 @@ def slot():
 
 
 def generated():
-    return {"SKY65404-31_QFN-6_1.5x1.5mm": sky65404(), "Balun_Johanson_5400BL15B050": balun(), "MountingHole_Slot_3.2x5.2mm_M3": slot(),
+    return {"SKY65404-31_QFN-6_1.5x1.5mm": sky65404(), "Balun_Johanson_5400BL15B050": balun(), "Balun_TDK_HHM1907B1": balun_tdk(), "MountingHole_Slot_3.2x5.2mm_M3": slot(),
             "RPi_Socket_2x20_P2.54mm_Underside": rpi_socket(), "SMA_BWSMA-KWE-Z001": sma(), "MMCX_BWMMCX-KE_Vertical": mmcx(),
             "Coupler_20dB_5.8GHz_CPWG": coupler()}
 
@@ -204,7 +234,8 @@ MODELS = {"SMA_BWSMA-KWE-Z001": ("SMA-TH_5P-L14.5-W6.0-H9.6_BWSMA-KWE-Z001.wrl",
           "MMCX_BWMMCX-KE_Vertical": ("MMCX-TH_BWMMCX-KE.wrl", None),
           "RPi_Socket_2x20_P2.54mm_Underside": ("PinSocket_2x20_P2.54mm_Vertical.wrl", "Connector_PinSocket_2.54mm"),
           "SKY65404-31_QFN-6_1.5x1.5mm": (None, None), "MountingHole_Slot_3.2x5.2mm_M3": (None, None),
-          "Balun_Johanson_5400BL15B050": ("C_0805_2012Metric.wrl", "Capacitor_SMD")}
+          "Balun_Johanson_5400BL15B050": ("C_0805_2012Metric.wrl", "Capacitor_SMD"),
+          "Balun_TDK_HHM1907B1": ("C_0402_1005Metric.wrl", "Capacitor_SMD")}
 
 if __name__ == "__main__":
     for k, v in generated().items():

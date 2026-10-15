@@ -8957,6 +8957,145 @@
 		)
 		(embedded_fonts no)
 	)
+	(symbol "Balun_HHM1907"
+		(pin_names
+			(offset 0.762)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "T"
+			(at 0 10.16 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "HHM1907B1"
+			(at 0 -10.16 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "TDK HHM1907B1 1:1 balun 4.9-5.95 GHz, 0402"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "Balun_HHM1907_0_1"
+			(rectangle
+				(start -5.08 5.08)
+				(end 5.08 -5.08)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type background)
+				)
+			)
+		)
+		(symbol "Balun_HHM1907_1_1"
+			(pin passive line
+				(at -8.89 0.00 0)
+				(length 3.81)
+				(name "UNBAL"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 8.89 2.54 180)
+				(length 3.81)
+				(name "BAL1"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 8.89 -2.54 180)
+				(length 3.81)
+				(name "BAL2"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "3"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 0.00 -8.89 90)
+				(length 3.81)
+				(name "GND"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+				(number "4"
+					(effects
+						(font
+							(size 1.02 1.02)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
 	(symbol "Coupler_20dB"
 		(pin_names
 			(offset 0.762)

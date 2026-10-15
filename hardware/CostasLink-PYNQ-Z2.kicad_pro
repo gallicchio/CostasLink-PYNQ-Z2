@@ -490,6 +490,14 @@
       },
       {
         "netclass": "RF",
+        "pattern": "Net-(T101-BAL1)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(T101-BAL2)"
+      },
+      {
+        "netclass": "RF",
         "pattern": "Net-(U101-RF_IN)"
       },
       {
@@ -511,6 +519,14 @@
       {
         "netclass": "RF",
         "pattern": "Net-(U103-RFOUT)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(U104-RFIN)"
+      },
+      {
+        "netclass": "RF",
+        "pattern": "Net-(U104-RFIP)"
       },
       {
         "netclass": "RF",

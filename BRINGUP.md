@@ -15,7 +15,7 @@ section 10 is folded in: the table at the end says which stage retires which ris
 | bench supply, **5.1-5.25 V**, current limit 1.5 A, into a short USB-A-to-C cable (or a USB-C PD supply rated 3 A) | stage 1; the board draws 1.37 A with both synthesizers running; the PTC, the FET and the bead drop up to 0.21 V at their maximum resistances, and the ADL53xx and ADL5611 want 4.75 V: 5.10 V at the plug leaves 4.89 V.  A laptop's port or a thin cable is not enough (the design review; sim/budget.py section 9) | have |
 | the 6 GHz scope (or a spectrum analyser, or the B210 at 5.8 GHz) | the LO and TX monitors; the loop's analog nodes | have |
 | U.FL-to-SMA pigtails, 6 or more (Hirose U.FL-LP-088 leads, 100-200 mm) | twelve monitors are U.FL, rated for 30 matings, so leave the leads on the taps you use most; five are MMCX (REF OUT, ERR, VC, TRIG IN and I SLOW MON): 5 MMCX-to-SMA leads too | buy, about $15 for 10 |
-| SMA attenuators: **30 dB** (board-to-board loopback: the LNA's absolute maximum input is +1 dBm and the transmitter gives +9.8), **20 dB x 2** (in front of each PA module), 1 W rating is plenty | stages 3 and 5 | buy if not in the drawer, $10-20 each |
+| SMA attenuators: **40 dB** (board-to-board loopback: the LNA's absolute maximum input is +1 dBm and the transmitter gives +9.8; 30 dB leaves the receiver 7 dB above the top of its regulated range, Prompt 31's review C; never under 20), **20 dB x 2** (in front of each PA module, and one in the TX lead for the two-whip test), 1 W rating is plenty | stages 3 and 5 | buy if not in the drawer, $10-20 each |
 | SMA male-male leads, 3 x 150 mm (the switch block's jumpers; loopback) and 2 x 1 m | stages 3 and 4 | have / buy |
 | 50 ohm SMA terminations x 2 | an unused SMA (RX ANT when the switch block is cabled) | have |
 | 2 dBi 5.8 GHz whips, SMA male, x 4 | the lab antennas | buy, $5 each |
@@ -38,8 +38,8 @@ section 10 is folded in: the table at the end says which stage retires which ris
    800 Ms/s through the ISERDESE2s, AXI-Lite, timing met; the Icepi Zero at 100 MHz and 200 Ms/s through
    IDDRX1F, the UART at 1 Mbaud; the Python driver (`gateware/driver/costaslink.py`) runs every operation
    of these stages, and its tests run it against the RTL with a loopback model (`make sim-driver`).
-3. The release passes its gates (DRC, parts, CPL, placement preview), the consigned parts are ordered
-   from Digi-Key the same day the PCB is ordered (PLAN.md section 16: the cost).
+3. The release passes its gates (DRC, parts, CPL, placement preview); nothing is consigned unless JLCPCB's shelf
+   is short on the day, in which case `mfg/release/CONSIGNMENT.md` says what to buy (PLAN.md section 17: the cost).
 4. The DAC EEPROMs: nothing to do before the board exists, but the first gateware writes all eight DAC
    channels' EEPROM defaults to mid-scale (1.65 V) once, so a power-up injects no offset into the arms.
 5. The Icepi's sampler, with the Icepi alone: the ECP5's IDDRX1F hands over two samples a clock, and
@@ -111,7 +111,10 @@ Nothing plugged into the header yet; the board alone on the bench supply through
 
 ## Stage 3: loopback, one board (the day the loop locks)
 
-TX ANT through a **30 dB attenuator** into RX ANT.  Never a bare cable: the LNA dies at +1 dBm.
+TX ANT through a **40 dB attenuator** into RX ANT (30 dB works but leaves the receiver 7 dB above the top of
+`received_dBm()`'s range, the DSA pinned at 31.75 dB and the slow path saturated: Prompt 31).  Never a bare
+cable: the LNA dies at +1 dBm.  Before the gateware holds the loop, VC sits at a rail (0 or 3.3 V), not at
+1.65 V: the closed loop integrates the arm's offset with no carrier; that is normal.
 
 1. RX MON: -20 dBm at the demodulator's input minus 20 dB of coupling = -40 dBm at the U.FL, with the
    DSA set so (the budget's regulated level).  Walk the DSA through its 0.25 dB steps and watch RX MON
@@ -217,7 +220,9 @@ the switch block cabled in and time division (stage 4.4).
    B time-stamps it (t2, CMP_I on clock-capable pin 18) and answers at t3, A time-stamps the answer (t4):
    offset = ((t2 - t1) - (t4 - t3)) / 2.  Repeat at 3, 10, 30 m: the offset must not move with the
    distance (the air cancels), and its scatter over 100 exchanges is the synchronization's precision.
-   Calibrate the boards' own asymmetry side by side with a 1 m cable and a 30 dB pad first.
+   Calibrate the boards' own asymmetry side by side with a 1 m cable and a 40 dB pad first.  Start RX_TIMING's
+   confirm delay at 80 ns (the slow I stage's 20 ns overdrive recovery is not in the 37 ns model) and shorten it
+   from the measurement; expect the bench's CFAR windows near 0.2 a, set by the oscillators' phase noise.
    *Pass:* the latency line's intercept within 2 ns of the budget at both ends; BPSK quiet at 30 m
    with 20 dB in the lead; the T/R exchange works at 10 m.
    *Retires:* own-transmitter leakage (DOA 6: at the bench level), the switch (DOA 10's HMC536), the
@@ -261,7 +266,7 @@ Before the first field day (the design review):
   board's 1.37 A: ventilate the box, or the PTC trips.
 * **The second harmonic** (11.6 GHz) on TX MON, if a 12 GHz analyser can be borrowed, before the PA
   amplifies it; the PA module's own filter is not specified.  Choose the two frequencies after a scan with the B210 at both ends (UNII-2C 5.47-5.725 GHz is the
-quiet one for the 5.2 GHz direction if it is empty; 5.70 and 5.80 GHz keep both inside the amateur band and the balun's 5.875 GHz rating).
+quiet one for the 5.2 GHz direction if it is empty; 5.70 and 5.80 GHz keep both inside the amateur band and the LNA's 5.9 GHz rating).
 
 1. Board alone, panels on the 10 m cables at both ends, 300 m: the budget says -49 dBm at the receiver
    and 43 dB of SNR: lock, latency and error rates as in stage 4.  Reach (quiet, BPSK): 3.1 km on the
@@ -316,7 +321,7 @@ quiet one for the 5.2 GHz direction if it is empty; 5.70 and 5.80 GHz keep both 
 | 7 | heat: 6.8 W | the PLL regulators' 2.2 ohm; exposed-pad vias; +5V_RF pour | 1.4 | a fan; TX_DIS and the DSA idle parts |
 | 8 | the slow path's offsets or saturation | I_OFF / Q_OFF, V_T2; the nulling routine | 3.2 | the fast path works without it |
 | 9 | the single-ended ladder drive wobbles the modulator's common mode | VR_I / VR_Q trims; the receiver cares about sign | 2.3, 3.5 | accept the -15 dBc feedthrough as a fixed vector |
-| 10 | parts and the order: five HMC536 at JLCPCB, three consigned lines, two DACs by address, CPL rotations | PLACEMENT_CHECKS.txt, the preview, the HMC427A as a second-source switch | 0 | order the day the stock is checked |
+| 10 | parts and the order: five HMC536 at JLCPCB, the ADL5375's thin shelf (4 on 2026-10-14; Digi-Key fallback), two DACs by address, CPL rotations | PLACEMENT_CHECKS.txt, the preview, the HMC427A as a second-source switch | 0 | order the day the stock is checked |
 | 11 | the Icepi Zero: no pull-ups, 5 V from its own USB-C, no gateware | DNP 4.7 k; JP301 open; the same Verilog top | 1.5, 4 | fit the 4.7 k |
 | 12 | a generated symbol with pins swapped | the pin audit (done: two incomplete symbols found and fixed) | 0, 3 | a rework is unlikely to save a QFN with a swapped pair; order one board first if in doubt |
 | 13 | **new:** the TCXO's pin 1 is undocumented in its datasheet text (control or NC); the symbol leaves it open | nothing | 2.1 | if the TX synthesizer's reference is off frequency, pin 1 wants 1.65 V: a rework wire to the VCXO's divider |

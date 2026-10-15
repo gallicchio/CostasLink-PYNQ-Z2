@@ -18,6 +18,19 @@ import levels as LV
 Y_RF = 66.04                 # the RF chain's line
 
 
+def rf_blocks(b1, b2, dem):
+    """The balun's balanced pair into RFIP/RFIN through a DC block each (ADL5380 datasheet: "both the LO and RF
+    ports should be ac-coupled"; its evaluation board's C2x/C3x; review A of Prompt 31: a lattice balun's balanced
+    terminals have a DC path to its ground terminal, which would have pulled the demodulator's biased RF inputs
+    to 0 V).  The same 1.5 pF as the LO legs' blocks.  Drawn after everything else so that the two capacitors
+    take the sheet's last references and no hand-placed part's reference moves (gen/placement.py anchors)."""
+    e = B.dcblock(b1[0], b1[1], b1[0] + 10.16)
+    W(e, dem.pin("22"))
+    xm = b2[0] + 10.16
+    B.dcblock(b2[0], b2[1], xm, above=False)
+    L((xm, b2[1]), dem.pin("21"), first="h")
+
+
 def build(S):
     U.begin(S, ref_base=100)
     title(20, 18, "Receiver: 5.8 GHz in, I/Q out, and the Costas loop that keeps the LO on the carrier")
@@ -92,24 +105,25 @@ def build(S):
     sig(xc + 6, y - 34, LV.txt("DEM_IN"), cols=20)
     t = U.part_at_pin("BALUN", "T101", "1", cout[0] + 7.62, y)
     W(cout, t.pin("1"))
-    for n in ("2", "5"):
-        px, py = t.pin(n); W((px, py), (px, py + G)); gnd(px, py + G)
-    S.nc(*t.pin("6"))
-    note(xc + 2, y + 18, "Johanson 5400BL15B050 1:1 balun (the ADL5380's 5.8 GHz test circuit).  CONSIGNED.", cols=26)
-    # demodulator: RFIP on the balun's BAL+ row, 7.62 to the right of its pins
-    b3, b4 = t.pin("3"), t.pin("4")
-    dem = U.part_at_pin("ADL5380", "U104", "22", b3[0] + 7.62, b3[1])
-    W(b3, dem.pin("22"))
-    L(b4, dem.pin("21"), first="h")
+    px, py = t.pin("4"); W((px, py), (px, py + G)); gnd(px, py + G)
+    note(xc + 2, y + 18, "TDK HHM1907B1 1:1 balun, 4.9-5.95 GHz, 0.8 dB: the ADL5380 sheet's Johanson 5400 from JLCPCB's shelf "
+         "(same ratio and band).  The 1.5 pF blocks: the RF port is AC-coupled (the sheet's C2x/C3x); the balun's balanced "
+         "terminals have a DC path to ground.", cols=26)
+    # demodulator: RFIP on the balun's BAL1 row, 7.62 to the right of its pins
+    b1, b2 = t.pin("2"), t.pin("3")
+    dem = U.part_at_pin("ADL5380", "U104", "22", b1[0] + 20.32, b1[1])
+    balun_pair = (b1, b2, dem)                   # wired at the end of the sheet (rf_blocks): its two DC blocks are the sheet's last parts
     B.supply_bar(dem, ["6", "13", "24"], "+5V_RF", dy=12.7, bulk="C 1uF")
     B.bottom_gnd(dem, ["7", "1", "2", "5", "8", "11", "14", "17", "18", "20", "23", "25"])
-    adj = stub(dem, "19", dx=-7.62)
-    r_adj = part("R 1.5k", nref("R"), adj[0], adj[1] - 3.81 - G, rot=0, dnp=True, value="DNP 1.5k", text="right", fsize=1.0)
+    adj = stub(dem, "19", dx=-7.62)               # past the LO pair's two verticals
+    # the resistor stands straight on the stub's end (no gap), so its flag stays under the RF blocks' lines (Prompt 31)
+    r_adj = part("R 1.5k", nref("R"), adj[0], adj[1] - 3.81, rot=0, dnp=True, value="DNP 1.5k", text="right", fsize=1.0)
     rt, rbt = sorted((r_adj.pin("1"), r_adj.pin("2")), key=lambda p: p[1])
-    W(rbt, adj); W(rt, (rt[0], rt[1] - G)); flag("+5V_RF", rt[0], rt[1] - G)
+    W(rt, (rt[0], rt[1] - G)); flag("+5V_RF", rt[0], rt[1] - G)
     S.nc(*dem.pin("12"))
     note(dem.pin("1")[0] - 20, y + 48, "ADL5380: ADJ open at 5.8 GHz (its spec condition): baseband common mode 3.2 V, gain x1.95, 390 MHz.  "
-         "Fit 1.5k here to drop the common mode to 2.5 V (and the 5.8 GHz gain).  LO 0 dBm, differential from the synthesizer below.  CONSIGNED.", cols=44)
+         "Fit 1.5k here to drop the common mode to 2.5 V (and the 5.8 GHz gain).  LO 0 dBm, differential from the synthesizer below.  "
+         "JLCPCB C579152; consigned from Digi-Key only if their shelf is short on the day.", cols=44)
     # P to LOIN, N to LOIP (the design review, KimiK3): on the board the synthesizer's RFOUTA_P faces
     # the demodulator's LOIN, so the pair runs straight and equal; P to LOIP crossed it and sent one
     # leg 40 mm round.  Inverting the LO inverts I and Q together, which the Costas loop's
@@ -389,17 +403,11 @@ def build(S):
         e = stub(adc, n, dx=12.7); S.hlabel(e[0], e[1], name, shape="bidirectional", rot=0)
     e = stub(adc, "1", dx=-5.08); W(e, (e[0], e[1] + G)); gnd(e[0], e[1] + G)
     S.nc(*adc.pin("2"))
-    # four RC inputs on 2.54-pitch pins: each line's capacitor hangs from its left end, the top
-    # line reaching farthest, so no capacitor crosses the line below it
-    for k, (n, name) in enumerate((("4", "I_P"), ("5", "Q_P"), ("6", "VC"), ("7", "ERR"))):
-        px, py = adc.pin(n)
-        ra, rb = series("R 10k", px - 10.16 - 10.16 * (3 - k), py); W(rb, (px, py))
-        x0 = px - 55.88 + 10.16 * k
-        W((x0, py), ra)
-        label(x0, py, name, size=1.0)
-        J(x0 + 2.54, py); down("C 100nF", x0 + 2.54, py, text="right")
+    # four RC inputs: the resistor between the source and the capacitor, the capacitor at the pin (sch_blocks.adc_inputs)
+    B.adc_inputs(adc, (("4", "I_P"), ("5", "Q_P"), ("6", "VC"), ("7", "ERR")))
     B.supply_bar(adc, ["8"], "+3V3_DIG", dy=10.16)
     B.bottom_gnd(adc, ["3"])
     note(xd + 20, y0 + 110, "ADS1115 (I2C 0x48, 860 SPS): the averaged I and Q (lock = I large, Q small), VC (how far the VCXO is pulled) and the loop error.  "
          "Its four inputs are the nets named at the taps above (I_P, Q_P, VC, ERR).", cols=36)
+    rf_blocks(*balun_pair)
     return S

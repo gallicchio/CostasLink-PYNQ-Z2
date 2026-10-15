@@ -1,4 +1,4 @@
-CostasLink-PYNQ-Z2 rev A: PLACEMENT CHECKS for JLCPCB's preview (2026-10-12)
+CostasLink-PYNQ-Z2 rev A: PLACEMENT CHECKS for JLCPCB's preview (2026-10-14)
 
 The board is assembled on the top only (J302, on the back, is soldered at home: hand_solder_bom.csv).
 
@@ -83,10 +83,6 @@ NOT YET SEEN RIGHT in a preview (33 part numbers, 78 placements):
       top:    D301 D302
       correction 0, NOT PREDICTED (two pads: polarity is a mark, not a pin number): look at it hardest
       look for: the cathode (pad 1) at the silk bracket's end; JLCPCB marks the cathode
-  C2837312   5400BL15B050               Balun_Johanson_5400BL15B050  (CONSIGNED)
-      top:    T101
-      correction 180, predicted: JLCPCB's drawing turned 180 to lie on ours (top side, 6 pads by number, worst 0.02 mm)
-      look for: pin 1 by the silk mark (Johanson's drawing)
   C2937625   TR/SIGN/SEL/REF            PinHeader_1x03_P2.54mm_Vertical
       top:    J303 JP101 JP102 JP103 JP201
       correction 270, predicted: JLCPCB's drawing turned 90 to lie on ours (top side, 3 pads by number, worst 0.00 mm)
@@ -141,11 +137,14 @@ NOT YET SEEN RIGHT in a preview (33 part numbers, 78 placements):
       top:    U601 U602 U603 U604
       correction 180, predicted: JLCPCB's drawing turned 180 to lie on ours (top side, 6 pads by number, worst 0.11 mm)
       look for: pin 1 by the silk mark
-  C579150    ADL5375-05                 QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm  (CONSIGNED)
+  C531388    HHM1907B1                  Balun_TDK_HHM1907B1
+      top:    T101
+      correction 0, predicted: JLCPCB's drawing turned 0 to lie on ours (top side, 4 pads by number, worst 0.02 mm)
+  C579150    ADL5375-05                 QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm
       top:    U201
       correction 270, predicted: JLCPCB's drawing turned 90 to lie on ours (top side, 25 pads by number, worst 0.01 mm)
       look for: pin 1 by the silk dot; JLCPCB's dot on it (the ADL5380, the ADL5375, the PE43711)
-  C579152    ADL5380                    QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm  (CONSIGNED)
+  C579152    ADL5380                    QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm
       top:    U104
       correction 270, predicted: JLCPCB's drawing turned 90 to lie on ours (top side, 25 pads by number, worst 0.06 mm)
       look for: pin 1 by the silk dot; JLCPCB's dot on it (the ADL5380, the ADL5375, the PE43711)

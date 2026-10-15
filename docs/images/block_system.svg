@@ -377,19 +377,19 @@ L 2593.700787 935.433071
    </g>
    <g id="text_15">
     <g id="patch_27">
-     <path d="M 1288.546524 389.261811 
-L 1829.563712 389.261811 
-Q 1833.313712 389.261811 1833.313712 385.511811 
-L 1833.313712 351.348491 
-Q 1833.313712 347.598491 1829.563712 347.598491 
-L 1288.546524 347.598491 
-Q 1284.796524 347.598491 1284.796524 351.348491 
-L 1284.796524 385.511811 
-Q 1284.796524 389.261811 1288.546524 389.261811 
+     <path d="M 1293.318399 389.261811 
+L 1824.791837 389.261811 
+Q 1828.541837 389.261811 1828.541837 385.511811 
+L 1828.541837 351.348491 
+Q 1828.541837 347.598491 1824.791837 347.598491 
+L 1293.318399 347.598491 
+Q 1289.568399 347.598491 1289.568399 351.348491 
+L 1289.568399 385.511811 
+Q 1289.568399 389.261811 1293.318399 389.261811 
 z
 " style="fill: #fffbe6; stroke: #999988; stroke-width: 0.6; stroke-linejoin: miter"/>
     </g>
-    <text style="font: 7.5px 'DejaVu Sans'" transform="translate(1288.546524 357.047319)">over the air: 5.8 GHz (4.9-5.875 GHz in spec), each direction its own frequency (two antennas) or the same one in turns (one antenna + switch)</text>
+    <text style="font: 7.5px 'DejaVu Sans'" transform="translate(1293.318399 357.047319)">over the air: 5.8 GHz (4.9-5.9 GHz in spec), each direction its own frequency (two antennas) or the same one in turns (one antenna + switch)</text>
     <text style="font: 7.5px 'DejaVu Sans'" transform="translate(1424.169376 366.015561)">path loss: 68 dB at 10 m, 97 dB at 300 m, 134 dB at 20 km (free space)</text>
     <text style="font: 7.5px 'DejaVu Sans'" transform="translate(1360.978946 374.983803)">flight time 3.34 ns per metre: 33 ns across the lab, 1 µs across campus, 67 µs to a mountain 20 km away</text>
     <text style="font: 7.5px 'DejaVu Sans'" transform="translate(1308.706876 383.952045)">with 24 dBi panels both ends and no amplifier: -76 dBm at 20 km (SNR 16 dB in 100 MHz; the slow path confirms from 20 dB further)</text>

@@ -48,7 +48,7 @@ DOCS = ["PLAN.md", "BRINGUP.md", "README.md", "docs/SYSTEM.md", "docs/HOSTS.md",
 
 import parts as PARTS_MOD                          # noqa: E402
 DK = {}                                            # Digi-Key number -> (stock, price) as gen/parts.py saw them
-for _k, _p in PARTS_MOD.consigned().items():
+for _k, _p in {**PARTS_MOD.consigned(), **PARTS_MOD.fallback()}.items():
     _m = re.match(r"Digi-Key ([\d,]+) at \$([\d.]+)", _p["consign"]["seen"])
     DK[_p["consign"]["digikey"]] = [_m.group(1), _m.group(2)] if _m else ["?", "?"]
 
@@ -85,8 +85,6 @@ EVERY = (COST["jlc"][0] + COST["digikey"] + COST["consign_ship"][0] + COST["othe
          COST["jlc"][1] + COST["digikey"] + COST["consign_ship"][1] + COST["other"][1])
 TWO = (COST["jlc"][0] + COST["digikey"] + COST["consign_ship"][0], COST["jlc"][1] + COST["digikey"] + COST["consign_ship"][1])
 ROADMAP = {r["step"]: r["total"] for r in J("latency_roadmap.json") if isinstance(r, dict) and "step" in r}
-SHELF = sum((p["consign"]["jlc_unit"] - p["consign"]["dk_unit"]) * 2 for p in PARTS_MOD.consigned().values()
-            if p["consign"].get("jlc_unit") is not None)          # the two ADI chips from JLCPCB's shelf, 2 boards
 L_LAT, L_TX, L_RX = B["latency_ns"], B["latency_tx_ns"], B["latency_rx_ns"]
 ROWS = B["link_rows"]
 
@@ -132,12 +130,12 @@ CLAIMS = [
      ["%.0f" % COST["pcb"][0], "%.0f" % COST["pcb"][2], "%.0f" % COST["pcb"][1]]),
     ("the assembly", r"(\d+) Extended codes' feeders, (\d+) SMT pads and (\d+) through-hole joints a board[^|]*\| \$(\d+) \|", ["PLAN.md"],
      [F["ext"], "%d" % COST["smt_pads"], "%d" % COST["tht_joints"], "%.0f" % COST["assembly"]]),
-    ("JLCPCB's parts", r"their parts: (\d+) BOM lines \((\d+) with the three consigned\), with attrition \| \$(\d+) \|", ["PLAN.md"],
-     [F["bom_lines"], "%d" % (COST["lines"] + 3), "%.0f" % COST["parts"]]),
+    ("JLCPCB's parts", r"their parts: (\d+) BOM lines, with attrition[^|]*\| \$(\d+) \|", ["PLAN.md"],
+     [F["bom_lines"], "%.0f" % COST["parts"]]),
     ("the duty", r"US duty at 35 % under DDP \| \$(\d+) \|", ["PLAN.md"], ["%.0f" % COST["duty"]]),
     ("JLCPCB's total", r"\*\*JLCPCB total\*\* \| \*\*\$(\d+)-(\d+)\*\*", ["PLAN.md"], F["jlc"].split("-")),
-    ("Digi-Key", r"with tax and shipping \(CONSIGNMENT\.md\) \| \*\*\$(\d+)\*\*", ["PLAN.md"], ["%.0f" % COST["digikey"]]),
-    ("the consignment's post", r"shipping the consignment to JLCPCB \| \$(\d+)-(\d+)", ["PLAN.md"], ["%.0f" % x for x in COST["consign_ship"]]),
+    ("Digi-Key (section 17)", r"\| Digi-Key \| [^|]*\| \*\*\$(\d+)\*\* \|", ["PLAN.md"], ["%.0f" % COST["digikey"]]),
+    ("the consignment's post", r"shipping a consignment to JLCPCB \| \$(\d+)-(\d+)", ["PLAN.md"], ["%.0f" % x for x in COST["consign_ship"]]),
     ("the bench and the field", r"when the far end needs them \| \*\*\$(\d+)-(\d+)\*\*", ["PLAN.md"], ["%.0f" % x for x in COST["other"]]),
     ("everything", r"\*\*everything\*\* \| \*\*\$([\d,]+)-([\d,]+)\*\*", ["PLAN.md"], [money_k(EVERY[0]), money_k(EVERY[1])]),
     ("a radio of the two-board order", r"The two-board order of section 17 is\n  ~\$(\d+)-(\d+) each", ["docs/SYSTEM.md"],
@@ -146,7 +144,6 @@ CLAIMS = [
      ["PLAN.md"], [money_k(TWO[0]), money_k(TWO[1])] + F["jlc"].split("-")),
     ("the roadmap's totals", r"\n\| (0|1|2|3|4|5) \| \*\*[^|]*\| [^|]*\| [^|]*\| [^|]*\| ≈? ?\$([\d,]+)-([\d,]+) \|", ["PLAN.md"],
      lambda m: [m.group(1)] + [money_k(round(x, -1)) for x in ROADMAP[m.group(1)]]),
-    ("the ADI chips from JLCPCB's shelf instead (gen/parts.py consign=)", r"instead of consigning would cost \$(\d+) more in parts", ["PLAN.md"], ["%.0f" % SHELF]),
     ("the board's current from 5 V (budget section 9)", r"(?<![\d.])(1\.\d\d) A\b", None, [F["I_A"]]),
     ("at power-up, before the synthesizers are programmed (budget I_powerup_mA)", r"Current: (\d\.\d\d) A plus up to (\d\.\d) A",
      ["BRINGUP.md"], ["%.2f" % (B["I_powerup_mA"] / 1e3), "%.1f" % (2 * P["pll_I_mA"] / 1e3)]),
