@@ -103,10 +103,10 @@ Then upload `BOM_JLCPCB.csv` and `CostasLink-PYNQ-Z2_cpl_jlcpcb_upload.csv` (not
 
 ## Numbers behind the choices
 
-- Board 120.0 x 100.0 mm, 4 copper layers, 1.6 mm; smallest track 0.150 mm; 1128 vias, all 0.45/0.25 mm.
+- Board 120.0 x 100.0 mm, 4 copper layers, 1.6 mm; smallest track 0.150 mm; 1100 vias, all 0.45/0.25 mm.
 - Assembly: 387 placements a board on 80 BOM lines (52 Extended, 0 consigned), 1104 SMD pads and 93 through-hole joints a board, on top.
 - Mounting holes: H301 3.2 mm at (5.0, 5.0), H302 3.2 mm at (115.0, 5.0), H303 3.2 mm at (115.0, 94.0), H304 3.2 mm at (61.3, 93.3).
 - Estimate: $680.32 of goods before duty and shipping, JLCPCB $943.43-$958.43 all in, Digi-Key $0.00 (COST_ESTIMATE.md).
-- Checks passed: DRC 0 violations, 0 unconnected, 0 parity; the connectors' labels 38 connectors, 22 rows, 0 violations; 2 limit(s) left off on record; the RF launches in the gerbers (launch_check: 5 SMA launches and 10 relieved pads as designed -> hardware/checks/launches.json); 242 filled zone polygons; every netlist part on the board; every code matched (gen/parts.py's words, the value, the package, the MPN) and in stock; no ordered part wants a hole; every part of three or more pads has a read or predicted rotation; the CPL agrees with KiCad's position export, and JLCPCB's drawings placed by it land on our pads (54 parts, top side).
+- Checks passed: DRC 0 violations, 0 unconnected, 0 parity; the connectors' labels 38 connectors, 22 rows, 0 violations; 2 limit(s) left off on record; the RF launches in the gerbers (launch_check: 5 SMA launches and 10 relieved pads as designed -> hardware/checks/launches.json); 234 filled zone polygons; every netlist part on the board; every code matched (gen/parts.py's words, the value, the package, the MPN) and in stock; no ordered part wants a hole; every part of three or more pads has a read or predicted rotation; the CPL agrees with KiCad's position export, and JLCPCB's drawings placed by it land on our pads (54 parts, top side).
 
 Sources: the ECP5-2ADC-2DAC order of 2026-10-09 (the form's fields and defaults, its cart's fees), jlcpcb.com/help/article/pcb-assembly-price, /capabilities/pcb-assembly-capabilities, /help/article/How-to-mark-on-PCB (2026-05-22), /help/article/us-tariff-policy-faq (2026-09-09).  The form changes; when a screenshot shows it has, update the lists in mfg/make_release.py and this date.

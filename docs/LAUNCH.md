@@ -131,14 +131,15 @@ capacitance and inductance in the gerbers** are those, against the 2.1 pF build 
 mesh and **16 % on the FINE mesh**; clipping the centre pin to 0.3 mm after soldering is worth 3 points (the
 stub is a capacitor against the back pour), and the 1.85 mm pad without its taper 1 point.
 
-## 5. What went into the board (build 38)
+## 5. What went into the board (builds 38 and 39)
 
 | knob | value | where | why |
 |---|---|---|---|
 | voids on In1, In2 and B.Cu round each 5.8 GHz SMA pin | radius 2.2 mm (antipad 4.4) | `gen/rf_launch.LAUNCH_R` → rule areas from `gen/routes.rf_voids` | the knee of the antipad curve; already build 37's |
 | the centre pad's clearance to the top pour | 0.9 mm | `LAUNCH_CLEAR` → an F.Cu rule area of radius 1.9 mm round each launch pin (`rf_voids`); not a pad property, which KiCad would apply to every SMA, layer and track | 29 → 19 %: the one lever left after the voids |
 | the centre pad | 2.0 mm, JLCPCB's land pattern | `LAUNCH_PAD_OD` | 1.85 mm is worth 2 points, inside the mesh error, and takes the annulus on the 1.3 mm hole from 0.35 to 0.275 mm (JLCPCB's floor is 0.25) |
-| a taper from the pad to the line | none | `LAUNCH_TAPER = 0` | worth nothing at 5.8 GHz against a 0.29 mm line; one custom pad fewer in the gerbers |
+| a taper from the pad to the line | none: a plain circle, symmetric under rotation | no taper code at all (Prompt 34) | a real 1 mm taper from the pad's edge (row 5 of 4.1) is within 0.03 dB of none at 5.8 GHz and 0.03 dB worst over 4-6 GHz; the study's own "1.0 mm taper" was hidden inside its pad disc |
+| other nets inside the legs | none, on any layer | `gen/routes.launch_keepout`: a 6.2 mm square round each launch pin that the router may not enter | build 38 had the LNA's 0.2 mm VCC track circling J101's pin 1.3 mm off, inside the legs, to cross the line, and with that blocked the DSA's P/S pull-up track took the same loop: both were nets with one end on each side of the receive line and a rule-placed resistor or choke on the wrong side.  The choke (L102) and the pull-up (R102) are anchored on their pins' side; the keep-out is registered after the planned fence vias and before any routed net, because the "local nets first" pass is what laid both loops (Prompt 34) |
 | the B.Cu pour's clearance to the pin stub | 1.2 mm | the same rule areas (2.2 mm) | on the plateau (0.6 mm costs 6 points) |
 | the inner-layer rings | none | `remove_unused_layers yes` (Prompt 31) | 4 points |
 

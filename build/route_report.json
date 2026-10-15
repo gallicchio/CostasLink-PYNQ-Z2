@@ -1,13 +1,13 @@
 {
- "tracks": 4111,
- "vias": 1137,
+ "tracks": 3977,
+ "vias": 1109,
  "unrouted": {
   "GND": 2
  },
  "failed": [
   [
    "GND",
-   "from C317.2: walled in (3951 steps)"
+   "from C317.2: walled in (3010 steps)"
   ],
   [
    "GND",

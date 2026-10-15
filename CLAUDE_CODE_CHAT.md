@@ -3819,3 +3819,57 @@ measured better than the model, not worse.  The five launches are the only throu
 U.FL taps and the gain blocks' pads got their In1 relief and no solve (0.2 pF each at most, against a 50 Ω
 line that is a |Γ| of 0.05).
 2026-10-15 00:36 PDT
+
+## Prompt 34 (2026-10-15 ~01:00 PDT)
+
+"A few things: The SMA connector labeled RX ant in the image that you pulled has a trace running around the pin,
+within the ground pins.  Can you hand-route that trace so that it doesn't need to go around like that, especially
+through the SMA connector?
+
+My memory of the SYZYGY study was that the tiny pointy bit sticking off of the annular ring toward the trace ended
+up not being necessary -- it got optimized to be so small that it was basically hidden under the ring.  If this is
+true, just eliminate it so that the pad is symmetric under 90 degree rotations.  Make sure both simulate within a
+reasonable error budget of each other.
+
+In CLAUDE_PCB.md, note the problem with the default SMA pad in KiCAD.  We've had this problem twice and almost cost
+us a huge reflection on $1k worth or boards.  Make checking these SMA launches standard practice in CLAUDE_PCB.md."
+
+## Response 34 (2026-10-15 01:00 - 2026-10-15 04:58 PDT)
+
+**The trace round RX ANT's pin.**  It was the LNA's VCC net: U101's VCC pin (6) is on the right of the receive
+line and the choke that feeds it, L102, was rule-placed on the left, 3 mm away; the line and its fence vias wall
+the two sides apart on every layer the router uses, and the one place the wall ends is the SMA's centre pin, so the
+router took a 0.2 mm track 8 mm up, round the pin at 1.3 mm inside the legs, and 8 mm back down: a 20 mm loop for
+a 3 mm connection, in the launch the field solve never saw (it is also what the first attempt at the pad clearance
+flagged as a DRC item at 0.2 mm from the pad).  The fix is placement, not routing: L102 is anchored beside the VCC
+pin on its own side (`gen/placement.py`), and so the net is a 1.3 mm stub.  And so it cannot happen at any of the
+five again: `gen/routes.launch_keepout` closes a 6.2 mm square round each launch pin to the router on every layer,
+tracks and vias, the planned line and the pin being the only copper inside the legs.  The first rebuild then showed the keep-out
+is only as good as its place in the order: the DSA's P/S pull-up, R102, rule-placed on the left of the line with its
+pin on the right, took exactly the same loop round the pin (the "local nets first" pass runs before the keep-out
+was registered), then ran down the LNA's right side 0.5 mm from the VCC pin and walled it in (one unconnected).
+So R102 is anchored beside its pin too, and the keep-out is registered after the planned fence vias (which belong
+inside the square) and before any routed net.  The other four launches had nothing but their own line within
+3.6 mm; J101 was the only case, twice.  Build 39: the VCC net is 1.6 mm, the P/S net 5.4 mm (it was 32 mm), DRC 0, the release passes with the
+same gate line for all five launches (`In1_Cu 2.20  In2_Cu 2.20  B_Cu 2.20  F_Cu 1.90 mm`), the cost unchanged.
+
+**The taper.**  Your memory is right, and the study's own text says so (FIELD_SOLVER.md, "a warning about reading
+the taper number literally"): its `TAPER_LEN = 1.0` polygon started at the pad's centre with the pad's half-width,
+so on a 1.95 mm pad it spent 0.975 mm of its 1.0 mm inside the disc and the optimised footprint had, in its words,
+"in effect, no taper at all".  Here the taper was built the other way, from the pad's edge, so the comparison in
+`docs/LAUNCH.md` 4.1 is between a real 1 mm taper and none: −7.11 against −7.14 dB at 5.8 GHz, −6.70 against −6.73
+dB worst over 4-6 GHz, 19 % reflected both ways (the taper adds 0.3 nH of series inductance and 0.09 pF, which
+cancel).  0.03 dB on a model whose mesh moves the answer by 0.7 dB: the same launch.  The taper code is gone from
+the footprint, the constants and the gerber check (build 38 already had it switched off, so the copper does not
+change): the pad is JLCPCB's plain 2.0 mm circle, symmetric under any rotation.
+
+**CLAUDE_PCB.md.**  Section 14 opens its launch notes with "**The stock SMA footprint is wrong for a launch above a
+GHz, and it has bitten twice**": the SYZYGY first test board's 70 % on the bench, CostasLink build 36's 85 % in the
+gerbers a commit before an order of about $1,000; what the vendor's and KiCad's default pad does (the full ring on
+every layer, the planes at the zone clearance, the top pour at the CPWG gap, DRC content with all of it: 2 pF at
+5.8 GHz); then standard practice for every through-hole RF launch from now on, seven points: end layers only
+(confirmed in the plotted layers), rule-area antipads on every inner and back layer (never a DRC rule, never the
+pad's clearance property, and why), the top pour the solved distance off as a rule area, a plain round pad with no
+taper and no sub-0.3 mm annulus, nothing else inside the legs (a router keep-out), the field solve re-run on the
+actual stack with the anchor, and the gerber parser as a release gate, which is section 10's new gate 22.
+2026-10-15 04:58 PDT

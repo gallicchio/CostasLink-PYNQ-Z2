@@ -110,7 +110,11 @@ ANCHORS = {
     "J402": at(76.0, SMA_Y, 90), "J401": at(92.0, SMA_Y, 90), "J403": at(108.0, SMA_Y, 90),
     # ---- receive chain, straight down x = RX_X ----
     "U101": at(RX_X + 0.5, 15.0, 180),       # LNA: RF_IN (pin 3) up, RF_OUT (4) down, both 0.5 left of centre at 180
+    "L102": at(RX_X + 3.1, 16.3, 180),      # the LNA's VCC choke beside its VCC pin (6, right of the line), under R101: rule-placed on the LEFT, its
+                                             # 0.2 mm track went up and round the SMA's pin inside the legs to cross the line (Prompt 33)
     "U102": at(RX_X + 0.75, 23.0, 270),      # DSA: RF1 (5) up, RF2 (14) down
+    "R102": at(RX_X + 4.35, 21.0, 90),       # the DSA's P/S pull-up beside its pin (3, right of the line): rule-placed on the LEFT, its track
+                                             # crossed the line round J101's pin inside the SMA's legs, then walled the LNA's VCC pin in (Prompt 34)
     "U103": at(RX_X + 1.95, 32.0, 0),        # gain block 1: pins 1/3 on its left face, in above, out below
     "U117": at(RX_X + 1.95, 40.0, 0),        # gain block 2
     "CP101": at(RX_X, 49.6, 270),            # coupler: IN (1) up, OUT (2) down, coupled port to the right

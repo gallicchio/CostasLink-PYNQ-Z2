@@ -985,6 +985,16 @@ def _fan_pattern(pins, rows, P, h0, shift, st, dh=0.55):
     return geo
 
 
+def launch_keepout(R, pads, half=3.1):
+    """No routed track of any net, on any layer, and no via inside a 5.8 GHz SMA's legs (the 0.9 mm legs at
+    +-2.55 mm): the only copper there is the planned line and the pin.  The router once took the LNA's
+    VCC net up and round J101's pin, inside its legs, to get across the line (Prompt 33)."""
+    for ref in LAUNCH_SMAS:
+        if (ref, "1") in pads.xy:
+            cx, cy = pads.xy[(ref, "1")]
+            R.keepout(cx - half, cy - half, cx + half, cy + half, list(range(len(R.g.keep))), via=True)
+
+
 def chip_keepout(R, pads, ref, inset=0.9):
     """No track of any other net on the top layer under a fine-pitch chip (inside its pin ring,
     between the pins and the paddle), and no via: only its own planned stubs and ties go there.
@@ -1091,6 +1101,7 @@ def plan_and_route(R, pads, planned_only=False):
     # every chip's fan-out before any chip's local nets: a local net routed first ran along the
     # next chip's pin row and walled its pins in (Response 9); from its via a local net has every
     # layer to choose from and goes round
+    launch_keepout(R, pads)                      # after the fence vias (planned), before any routed net
     for ref in fine:
         t = time.time()
         b = fan(R, ref, no_fan=RF_PINS)

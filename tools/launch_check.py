@@ -104,39 +104,6 @@ def pad_centres(pcb):
     return out
 
 
-def exit_angles(pcb):
-    """For every launch SMA: the angle, in the footprint's own frame, at which the first track leaves the centre
-    pin (0 = along +x), from the board file (SyzygyRadioDrivers' review-3 sma_launch.py: a taper pointing the
-    other way is a stub).  {ref: [(angle_deg, length_mm, width_mm), ...]}"""
-    import rf_launch as RS
-    doc = parse(open(pcb, encoding="utf-8").read())[0]
-    fps = {}
-    for fp in kids(doc, "footprint"):
-        ref = next((val(p, 2) for p in kids(fp, "property") if val(p, 1) == "Reference"), None)
-        if ref in RS.LAUNCH_SMAS:
-            at = kid(fp, "at")
-            net = None
-            for pad in kids(fp, "pad"):
-                if str(val(pad)) == "1" and kid(pad, "net") is not None:
-                    net = str(val(kid(pad, "net"), 1))            # the net's number, which the segments carry
-            fps[ref] = (num(at, 1), num(at, 2), num(at, 3) if len(at) > 3 else 0.0, net)
-    out = {r: [] for r in fps}
-    for seg in kids(doc, "segment"):
-        netno = str(val(kid(seg, "net"), 1))
-        s, e = kid(seg, "start"), kid(seg, "end")
-        w = num(kid(seg, "width"), 1)
-        for ref, (fx, fy, rot, net) in fps.items():
-            if net is None or str(netno) != str(net):
-                continue
-            for (ax, ay), (bx, by) in (((num(s, 1), num(s, 2)), (num(e, 1), num(e, 2))), ((num(e, 1), num(e, 2)), (num(s, 1), num(s, 2)))):
-                if math.hypot(ax - fx, ay - fy) < 0.3:
-                    dx, dy = bx - fx, by - fy
-                    th = math.radians(rot)
-                    lx, ly = dx * math.cos(th) - dy * math.sin(th), dx * math.sin(th) + dy * math.cos(th)
-                    out[ref].append((math.degrees(math.atan2(-ly, lx)), math.hypot(dx, dy), w))
-    return out
-
-
 def main(argv):
     import rf_launch as RS
     gdir = argv[1] if len(argv) > 1 else os.path.join(ROOT, "mfg", "release", "gerbers")
@@ -180,9 +147,6 @@ def main(argv):
             fails.append("%s.%s: In1 copper %.2f mm from the pad's centre, the relief wants %.2f" % (ref, num, r, want))
     # the taper's direction: every line leaves along the footprint's -x (180 deg); with a taper fitted, a line
     # leaving any other way would run off the taper's side
-    if RS.LAUNCH_TAPER > 0:
-        for ref, segs in exit_angles(BI.PCB).items():
-            real = [s for s in segs if s[1] >= 0.1]
             if not real:
                 fails.append("%s: no track leaves its centre pin" % ref)
             for ang, L, w in real:
