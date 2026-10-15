@@ -515,6 +515,10 @@ number in a table.
     36's gerbers (a DRC rule that never matched), the top pad over In1 at 0.21 mm.  Now rule areas keep the
     inner and back copper 2.2 mm off each 5.8 GHz pin and relieve In1 under the taps' and gain blocks' RF
     pads, and `tools/launch_check.py` measures the plotted gerbers as a release gate.
+    The SyzygyRadioDrivers field solve, re-run on this stack and connector (`docs/LAUNCH.md`): the plotted
+    launch reflected 85 % at 5.8 GHz (2.1 pF); the voids take it to 29 %, and the centre pad's 0.9 mm
+    clearance to the top pour (build 38) to 19 %, 0.9 dB a launch (0.5 pF, 0.5 nH), where the study's
+    optimised launch sat before its test board measured 3-5 %.  The rest is the connector's own pin stub.
 11. **The Icepi Zero.** No I2C pull-ups on its header (now DNP 4.7 k on this board), 5 V from its own
     USB-C, and MUX_RX and TRIG_A (no fast input) on its bank 0.
 12. **The generated symbols.** Audited pin by pin against the datasheet texts (Response 8,

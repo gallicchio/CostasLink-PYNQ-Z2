@@ -356,7 +356,11 @@ def metrics(r):
     fit = lumped_fit(f, s11d, s21d)
     t, step, z = tdr(f, s11d)
     tw = (t > 0) & (t < 120e-12)
+    refl = float(abs(s11d[i58]) ** 2)
+    # |S21| off openEMS's line port is not passive on the sweep mesh (|S11|^2+|S21|^2 = 1.09 at 5.8 GHz, 1.02 on the
+    # fine mesh), so the loss that is reported is the mismatch loss implied by the validated |S11|, a lower bound.
     return dict(s11_58=float(20 * np.log10(abs(s11d[i58]))), il_58=float(-20 * np.log10(abs(s21d[i58]))),
+                ml_58=float(-10 * np.log10(1 - refl)), passiv_58=float(abs(s11d[i58]) ** 2 + abs(s21d[i58]) ** 2),
                 refl_58=float(abs(s11d[i58]) ** 2), s11_worst_46=float(20 * np.log10(abs(s11d[band]).max())),
                 il_worst_06=float((-20 * np.log10(abs(s21d[f <= 6e9]))).max()),
                 z_tdr_min=float(np.nanmin(z[tw])) if tw.any() else float("nan"),

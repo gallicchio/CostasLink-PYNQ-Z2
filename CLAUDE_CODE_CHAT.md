@@ -3734,3 +3734,88 @@ $943-958 all in, Digi-Key $0.**  REVA_CHANGES.md rows 37-39; `CLAUDE_PCB.md` sec
 **What I would still do before ordering:** nothing on the copper.  The order-day run of
 `mfg/make_release.py --refresh` decides the ADL5375-05 fallback (4 on the shelf) and the preview settles the
 33 unseen rotations.
+
+
+## Prompt 33 (2026-10-14 ~20:00 PDT)
+
+"Are the connectors going to reflect 5.8 GHz?  We did a whole study in the SYZYGY board because some KiCAD
+defaults were not right for this 6 layer board.  Make sure that all 5-6 GHz connectors have proper capacitance
+and inductance *in the gerbers*."  Then: "There are several SMA test boards within the SYZYGY directory where we
+did 3D EM simulations.  Make sure that these launches are not going to cause us issues like our test boards did.
+In the end, your simulations matched the latest SMA test board well enough.  I'd rather spend design time and
+simulation time here to get it right."
+
+## Response 33 (2026-10-14 20:00 - 2026-10-15 00:36 PDT)
+
+**In the gerbers, they were going to.**  I wrote `tools/launch_check.py`, which parses the plotted copper
+layers rather than the board file, and build 36's release showed: the inner-layer rings at the SMA pins were
+gone (Prompt 31's `remove_unused_layers` worked), but the In1 and In2 planes stood **0.90 mm** from each centre
+pin, a 1.8 mm antipad, *smaller* than the 2.5 mm the board review had measured, because the DRC rule meant to
+hold them 1.35 mm off had a property in its condition that never matched and DRC said nothing.  The 2.0 mm top
+pad sat over In1 at 0.21 mm.  The 5.8 GHz U.FL taps and the ADL5611s' RF pads had In1 straight under them.
+
+**What the gerbers now carry** (build 37): explicit rule areas in the generator (`gen/routes.rf_voids`,
+`gen/rf_launch.py`): no copper fill within 2.2 mm of each 5.8 GHz SMA's pin on In1, In2 and B.Cu, and In1
+relieved 0.2 mm beyond the taps' and gain blocks' RF pads; the DRC rule's condition fixed as well, but the
+copper no longer depends on it.  `launch_check.py` is a release gate: no flash at the pins on the inner layers,
+the planes the designed radius off them, the plane under each relieved pad clear, and (when a taper is
+fitted) every line leaving the pin along the taper.  The committed gerbers fail it exactly as they should.
+
+**The SYZYGY study, applied.**  `../SyzygyRadioDrivers/SMABridgeTestAnalysis/` (FIELD_SOLVER.md, the V1 and V3
+test boards): on its 6-layer stack the as-built launch reflected 70 % and four free changes took it to 20 %
+(pad on the outer layers only, the inner antipad opened to a 4.0-4.6 mm plateau, a 1.95 mm pad with a 1.0 mm
+taper, 0.9 mm of pad clearance to the top pour; the B.Cu clearance 1.2 mm against the protruding pin's stub).
+The principles carry over; the numbers do not: this is a 4-layer 7628 stack (0.21 mm prepreg over a 1.065 mm
+core, two planes) and a different connector (BWSMA-KWE-Z001: a 0.9 mm pin in a 1.3 mm hole, 0.9 mm square legs
+at ±2.55 mm, 1.9 mm of pin under the board).  So the study's openEMS model was re-targeted to this stack and
+connector (`sim/launch/launch_cl.py`, nothing else changed), its rasterised-metal check passed on every
+geometry (`check_cl.py`), and the study's own optimised point was re-run here with its own code as the anchor:
+S11 −7.135 dB and insertion loss 0.426 dB at 5.8 GHz on 2.046 M cells, against the study's cached −7.13 dB / 0.43 dB on the same cell count (`sim/launch/anchor/anchor.json`): this machine and environment give the study's answer.  (Its 0.54 pF fit is on the raw port S-parameters; the 0.68 pF here is the same fit after de-embedding to the board's face, which is the convention the tables below use.)
+
+**The numbers** (`docs/LAUNCH.md` §4; |S11| is what the study validated, the loss quoted is the mismatch loss
+it implies, because openEMS's line port is not passive on the sweep mesh and its |S21| flatters every row):
+
+| launch | S11 at 5.8 GHz | reflected | mismatch loss | shunt C | series L |
+|---|---:|---:|---:|---:|---:|
+| build 36 as its gerbers had it (planes 0.9 mm off the pin, pad over In1 at 0.21 mm) | **−0.7 dB** | **85 %** | 8.2 dB | 2.1 pF | 0.3 nH |
+| build 37 (2.2 mm voids on In1/In2/B.Cu) | −5.4 dB | 29 % | 1.5 dB | 0.64 pF | 0.5 nH |
+| build 38: + the centre pad 0.9 mm clear of the top pour | **−7.1 dB** | **19 %** | 0.9 dB | 0.49 pF | 0.5 nH |
+| the same on the fine mesh (3.7 M cells) | −7.9 dB | 16 % | 0.8 dB | 0.45 pF | 0.2 nH |
+| the study's optimised launch on its own stack, same model | −7.1 dB | 20-22 % | | 0.54 pF | |
+| ... which its V3 test board then measured | −12.7 to −15.1 dB | 3-5 % | | | |
+
+Build 36 would have lost 8 dB at *each* SMA: 16 dB on the TX chain, 16 dB on the receive chain, and the
+antenna-switch block's three launches on top.  That is the "issue like our test boards had", only worse,
+because this 4-layer stack puts the barrel through a 1.065 mm core 0.25 mm from the plane's edge.
+
+The sweep round the candidate, one knob at a time (§4.2): the **antipad's knee is at 4.4 mm** (3.4 / 4.0 /
+4.4 / 4.8 / 5.2 mm: 24 / 19 / 17 / 17 / 18 %), so the 2.2 mm voids already in the gerbers sit on the plateau;
+**the top pour's clearance is the one lever left** (0.25 → 0.9 mm: 29 → 19 %; 1.3 mm: one more point, inside
+the mesh error); the **B.Cu clearance** is on its plateau at 1.2 mm (0.6 mm: 23 %); the study's **smaller pad
+is worth 2 points and its taper nothing** against a 0.29 mm line; **keeping the inner rings would cost 4**;
+and with **no pin, legs or solder below the board the same launch reflects 13 %**, so what remains is the
+connector's own 1.9 mm stub.  The fine mesh puts the candidate at 15 % against the sweep mesh's 17 %: the
+model is pessimistic by about 0.7 dB, the same direction as against the study's measured board.
+Clipping the centre pins to 0.3 mm under the board after assembly is worth 3 more points (16 %), so it is in
+BRINGUP.md's step 0; the 1.85 mm pad without the taper 1 point, not taken.
+
+**What went into the board (build 38):** `gen/rf_launch.LAUNCH_CLEAR = 0.9`, drawn as an F.Cu rule area of radius
+1.9 mm round each of the five launch pins (`gen/routes.rf_voids`, beside the inner-layer voids), so it is in the
+gerbers whatever the pour does.  My first try was KiCad's pad clearance property on the footprint: that applies to
+every SMA, every layer and every track, the router does not know it, and DRC found 10 items at the trigger and
+REF IN jacks' back-side tracks; the rule area touches only the pour and only the five launches, the 2.2 mm voids kept, the pad JLCPCB's
+2.0 mm (1.85 mm would take the annulus on the 1.3 mm hole to 0.275 against JLCPCB's 0.25 floor for 2 points
+the mesh cannot resolve), no taper.  Expected: −7.1 dB return loss per launch at 5.8 GHz by a model that
+ran 5-8 dB pessimistic on the study's test board; the capacitance and inductance in the gerbers 0.5 pF and
+0.5 nH.  `tools/launch_check.py` now also measures the top pour's distance from each pin (1.90 mm) and the
+release gate holds it.  Build 38's release: DRC 0, every gate passing, and the launch gate's line for each of the five:
+`In1_Cu 2.20 mm  In2_Cu 2.20 mm  B_Cu 2.20 mm  F_Cu 1.90 mm`; nothing but the pad flashes inside any void, and the
+first ground fence vias start 2.65 mm from each pin.  Cost unchanged ($943-958, nothing consigned).
+
+**Honestly, what is still not simulated:** the real board's neighbourhood (the ESD shunt and the DC block
+0.5-2 mm from the pad, the fence vias where the router put them, the pour's exact outline) rather than the
+model's straight CPWG line; the study's model was validated with the same simplification, and the test board
+measured better than the model, not worse.  The five launches are the only through-hole RF on the board; the
+U.FL taps and the gain blocks' pads got their In1 relief and no solve (0.2 pF each at most, against a 50 Ω
+line that is a |Γ| of 0.05).
+2026-10-15 00:36 PDT

@@ -443,12 +443,13 @@ def supply_pours(R):
 #     with VOID_MARGIN round it, so the pad sees In2 at 1.3 mm instead of In1 at 0.21 (0.04 pF for 0.2;
 #     "ground relief", ADI's own evaluation boards).  Not the 0402 blocks (0.03 pF), the balun or the
 #     couplers' 0.29 mm pads.
-from rf_launch import LAUNCH_SMAS, LAUNCH_R, RELIEF_PADS, VOID_MARGIN      # shared with tools/launch_check.py
+from rf_launch import LAUNCH_SMAS, LAUNCH_R, LAUNCH_PAD_OD, LAUNCH_CLEAR, RELIEF_PADS, VOID_MARGIN   # shared with tools/launch_check.py
 
 
 def rf_voids(R, pads):
-    """Rule areas (no copper fill) round the SMA launches on the inner and back layers and under the RF pads
-    on In1 (above).  Returns the count."""
+    """Rule areas (no copper fill) round the SMA launches on the inner and back layers (LAUNCH_R), round the
+    centre pad on the top layer (LAUNCH_PAD_OD / 2 + LAUNCH_CLEAR, the pour's clearance to the pad, which the
+    launch's capacitance is mostly made of), and under the RF pads on In1 (above).  Returns the count."""
     import math
     n = 0
     for ref in LAUNCH_SMAS:
@@ -458,6 +459,11 @@ def rf_voids(R, pads):
         pts = [(cx + LAUNCH_R * math.cos(2 * math.pi * k / 48), cy + LAUNCH_R * math.sin(2 * math.pi * k / 48)) for k in range(48)]
         for layer in (pcbnew.In1_Cu, pcbnew.In2_Cu, pcbnew.B_Cu):
             R.void(layer, pts, name="launch %s" % ref)
+            n += 1
+        if LAUNCH_CLEAR > 0.25:                      # the top pour kept off the centre pad (docs/LAUNCH.md section 5)
+            r = LAUNCH_PAD_OD / 2 + LAUNCH_CLEAR
+            pts = [(cx + r * math.cos(2 * math.pi * k / 48), cy + r * math.sin(2 * math.pi * k / 48)) for k in range(48)]
+            R.void(pcbnew.F_Cu, pts, name="launch %s top" % ref)
             n += 1
     for ref, num in RELIEF_PADS:
         if (ref, num) not in pads.xy:

@@ -6,10 +6,11 @@ RELIEF_PADS = [("J102", "1"), ("J201", "1"), ("J109", "1"), ("J204", "1"),      
                ("U103", "1"), ("U103", "3"), ("U117", "1"), ("U117", "3"), ("U202", "1"), ("U202", "3")]   # the ADL5611s' RF pads
 VOID_MARGIN = 0.2         # In1 relieved this far beyond each pad's edge, mm
 # The SMA centre pad on F.Cu (and B.Cu), from the SyzygyRadioDrivers launch study (SMABridgeTestAnalysis/
-# FIELD_SOLVER.md section 15) as re-simulated for this board's stack and connector (sim/launch/, docs/LAUNCH.md):
-# a smaller pad, a short taper from the pad's edge to the line, and a wider clearance to the top pour than the
-# line's CPWG gap.  Until the sweep decides, the values are JLCPCB's land pattern: 2.0 mm, no taper, the CPWG gap.
+# FIELD_SOLVER.md section 15) re-simulated for this board's stack and connector (sim/launch/, docs/LAUNCH.md section 5):
+# the pour kept 0.9 mm from the pad instead of the line's 0.25 mm CPWG gap is the one lever left after the voids
+# (29 -> 19 % reflected at 5.8 GHz); the study's smaller pad and taper are worth 2 % and nothing here, so the pad
+# stays JLCPCB's land pattern.  The sweep that decided it: docs/LAUNCH.md section 4.
 LAUNCH_PAD_OD = 2.0       # the centre pad's diameter, mm (JLCPCB's drawing: 2.0; the annulus on a 1.3 mm hole is 0.35)
 LAUNCH_TAPER = 0.0        # a taper from the pad's edge down to the line's width, along the footprint's -x (where the lines leave), mm
-LAUNCH_CLEAR = 0.25       # the pad's own clearance to the pour on the outer layers, mm (the CPWG gap keeps the line's)
+LAUNCH_CLEAR = 0.9        # the top pour's clearance to the centre pad, mm: an F.Cu rule area (the line keeps its CPWG gap)
 LAUNCH_TRACE_W = 0.29     # sim/rf_lines.RF_W

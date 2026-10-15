@@ -1,4 +1,4 @@
-CostasLink-PYNQ-Z2 rev A: PLACEMENT CHECKS for JLCPCB's preview (2026-10-14)
+CostasLink-PYNQ-Z2 rev A: PLACEMENT CHECKS for JLCPCB's preview (2026-10-15)
 
 The board is assembled on the top only (J302, on the back, is soldered at home: hand_solder_bom.csv).
 

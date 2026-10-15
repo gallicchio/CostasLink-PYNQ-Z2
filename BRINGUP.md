@@ -58,6 +58,9 @@ Nothing plugged into the header yet; the board alone on the bench supply through
    shows; square to the board: it carries the board 8 mm above the PYNQ), and fit the shunts:
    JP101 SIGN B1 on Q-, JP102 SIGN B2 on Q+, JP103 SEL on CMP, JP201 REF on TCXO; JP202 (50R) and JP301
    (HDR 5V) open.  The modulator is off until a gateware drives TX_EN high (Response 15).
+   If the five 5.8 GHz SMAs' centre pins stand proud of the back (JLCPCB leaves through-hole pins as they come,
+   1.9 mm), clip them to within 0.3 mm of the solder: the stub is a capacitor against the back pour, worth 3 points
+   of reflection per launch in the field solve (docs/LAUNCH.md section 4.2).  REF IN and the triggers do not care.
 
 1. 5 V at a 0.1 A limit first, for a few seconds: the supply goes straight into its limit (the ADL5380 and the
    three ADL5611 have no enable), so read its voltage: a short holds it near 0 V, a sound board settles at a volt

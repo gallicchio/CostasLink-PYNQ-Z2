@@ -2,7 +2,7 @@
 	(version "E")
 	(design
 		(source "../CostasLink-PYNQ-Z2.kicad_sch")
-		(date "2026-10-14T19:02:10")
+		(date "2026-10-15T00:10:06")
 		(tool "Eeschema 10.0.6")
 		(textvar
 			(name "DATE") "2026-10-09")

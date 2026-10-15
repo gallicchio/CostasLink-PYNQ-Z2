@@ -160,9 +160,9 @@ def sma():
     text = re.sub(r'\(pad "([1-5])"', renum, text)
     assert n[0] == 5, n
     # The centre pin's 2.0 mm ring on In1, In2 and B.Cu, where nothing connects to it, was 0.41 pF of excess
-    # capacitance against the planes' 2.5 mm antipads: 66 ohm shunt at 5.8 GHz, 9 dB return loss, 0.6 dB a launch
-    # (review B, Prompt 31).  No copper there but the plated hole, and gen/project.py's "SMA launch antipad" rule
-    # keeps the planes 1.35 mm from the hole (a 4 mm antipad): about 12 % reflection instead of 35 %.
+    # capacitance against the planes' antipads (review B, Prompt 31).  No copper there but the plated hole; the
+    # planes themselves are kept 2.2 mm from the pin by gen/routes.rf_voids' rule areas (a DRC rule never reached
+    # the gerbers, Prompt 33), and tools/launch_check.py measures that in the gerbers at every release.
     i = text.index('(pad "1" thru_hole circle')
     j = text.index('(remove_unused_layers no)', i)            # the vendored pad's own line (a second one would be dropped)
     text = text[:j] + '(remove_unused_layers yes)\n\t\t(keep_end_layers yes)' + text[j + len('(remove_unused_layers no)'):]
@@ -171,14 +171,15 @@ def sma():
     # where every SMA's line leaves (checked on the board: all five at 180 deg in the footprint's frame).
     import rf_launch as RL
     text = text.replace('(size 2 2)', '(size %g %g)' % (RL.LAUNCH_PAD_OD, RL.LAUNCH_PAD_OD), 1)
-    if RL.LAUNCH_CLEAR > 0.25:
-        text = text[:j] + '(clearance %g)\n\t\t' % RL.LAUNCH_CLEAR + text[j:]
+    # The pad's clearance to the top pour (LAUNCH_CLEAR) is NOT a pad property: KiCad applies that to every layer,
+    # every SMA and every track, and the router does not know it (build 38a: 10 DRC items at the trigger and REF
+    # jacks).  It is an F.Cu rule area round the five launch pins, from gen/routes.rf_voids, like the inner voids.
     if RL.LAUNCH_TAPER > 0:
         r, L, w = RL.LAUNCH_PAD_OD / 2, RL.LAUNCH_TAPER, RL.LAUNCH_TRACE_W
-        taper = ('\t(pad "1" smd custom (at 0 0) (size %g %g) (layers "F.Cu") (clearance %g)\n'
+        taper = ('\t(pad "1" smd custom (at 0 0) (size %g %g) (layers "F.Cu")\n'
                  '\t\t(options (clearance outline) (anchor circle))\n'
                  '\t\t(primitives (gr_poly (pts (xy %g %g) (xy %g %g) (xy %g %g) (xy %g %g)) (width 0) (fill yes)))\n\t)\n'
-                 % (RL.LAUNCH_PAD_OD, RL.LAUNCH_PAD_OD, RL.LAUNCH_CLEAR, 0, -r, -(r + L), -w / 2, -(r + L), w / 2, 0, r))
+                 % (RL.LAUNCH_PAD_OD, RL.LAUNCH_PAD_OD, 0, -r, -(r + L), -w / 2, -(r + L), w / 2, 0, r))
         k = text.rindex(')')
         text = text[:k] + taper + text[k:]
     return text

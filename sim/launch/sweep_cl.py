@@ -2,7 +2,7 @@
 """Drive launch_cl.py over the CostasLink launch's design space, several solves at a time (the study's
 sweep_launch.py pattern: openEMS is memory-bandwidth bound, so 7 jobs of 4 threads use 32 cores).
 
-    em-env python sweep_cl.py <sweep> [...]     sweeps: asbuilt, design, antipad, clear, bound, converge, all
+    em-env python sweep_cl.py <sweep> [...]     sweeps: asbuilt, design, antipad, clear, bound, final, converge, all
 
 Results are cached per geometry in cache/<key>.npz (keyed by MODEL_REV) and tabulated in out/<sweep>.csv.
 """
@@ -24,6 +24,7 @@ NTHREAD = int(os.environ.get("NTHREAD", 4))
 AS_PLOTTED_36 = dict(antipad=1.8, bcu_clear=0.25, fcu_clear=0.25, trace_gap=0.25, taper_len=0.0, pad_od=2.0)   # build 36's gerbers
 DESIGN_37 = dict(antipad=4.4, bcu_clear=1.2, fcu_clear=0.25, trace_gap=0.25, taper_len=0.0, pad_od=2.0)        # the rule areas
 CANDIDATE = dict(antipad=4.4, bcu_clear=1.2, fcu_clear=0.9, trace_gap=0.25, taper_len=1.0, pad_od=1.85)        # the study's lessons applied
+FINAL = dict(antipad=4.4, bcu_clear=1.2, fcu_clear=0.9, trace_gap=0.25, taper_len=0.0, pad_od=2.0)            # what build 38 has
 
 
 def key_of(geo, mesh):
@@ -70,6 +71,11 @@ def jobs_for(name):
     if name in ("bound", "all"):
         add("candidate, no pin below (bound)", **dict(CANDIDATE, pin_below=0, legs_below=0, solder_h=0))
         add("candidate, inner pads kept (remove_unused_layers no)", **dict(CANDIDATE, inner_pads=True))
+    if name in ("final", "all"):
+        add("final: 2.2 mm voids, pad 2.0, pad clearance 0.9, no taper", **FINAL)
+        add("final, fine mesh", mesh=FINE, **FINAL)
+        add("final, centre pin clipped to 0.3 mm below the board", **dict(FINAL, pin_below=0.3))
+        add("final but pad 1.85 (no taper)", **dict(FINAL, pad_od=1.85))
     if name in ("converge", "all"):
         add("candidate, fine mesh", mesh=FINE, **CANDIDATE)
     return J
@@ -84,8 +90,8 @@ def main(names):
             res = pool.map(one, J)
         rows = []
         for tag, geo, m, secs in res:
-            print("  %-56s S11(5.8) %6.2f dB  IL %5.2f dB  refl %4.0f %%  worst S11 4-6 GHz %6.2f  C %5.2f pF  L %5.2f nH  Zmin %5.1f  Zmsl %5.1f  %4.0f s"
-                  % (tag, m["s11_58"], m["il_58"], 100 * m["refl_58"], m["s11_worst_46"], m["C_pF"], m["L_nH"], m["z_tdr_min"], m["z_msl_58"], secs), flush=True)
+            print("  %-56s S11(5.8) %6.2f dB  ML %5.2f dB  refl %4.0f %%  worst S11 4-6 GHz %6.2f  C %5.2f pF  L %5.2f nH  Zmin %5.1f  Zmsl %5.1f  %4.0f s"
+                  % (tag, m["s11_58"], m["ml_58"], 100 * m["refl_58"], m["s11_worst_46"], m["C_pF"], m["L_nH"], m["z_tdr_min"], m["z_msl_58"], secs), flush=True)
             rows.append(dict(tag=tag, **{k: geo.get(k, "") for k in ("antipad", "pad_od", "taper_len", "fcu_clear", "trace_gap", "bcu_clear", "inner_pads", "pin_below")}, **m, seconds=round(secs)))
         with open(os.path.join(OUT, name + ".csv"), "w", newline="") as fh:
             w = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
