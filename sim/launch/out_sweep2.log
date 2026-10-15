@@ -1,0 +1,140 @@
+antipad: 4 job(s), 6 at a time x 5 threads
+openEMS - fixed number of threads: 5
+openEMS - fixed number of threads: 5
+openEMS - fixed number of threads: 5
+ ---------------------------------------------------------------------- 
+ ---------------------------------------------------------------------- 
+ ---------------------------------------------------------------------- 
+ | openEMS 64bit -- version v0.37.0-rc1-11-gd3d2a49
+ | openEMS 64bit -- version v0.37.0-rc1-11-gd3d2a49
+ | (C) 2010-2026 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license
+ | openEMS 64bit -- version v0.37.0-rc1-11-gd3d2a49
+ | (C) 2010-2026 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license
+openEMS - fixed number of threads: 5
+ ---------------------------------------------------------------------- 
+ | (C) 2010-2026 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license
+ ---------------------------------------------------------------------- 
+ ---------------------------------------------------------------------- 
+	Used external libraries:
+		CSXCAD -- Version: v0.7.0-rc1-12-gd607c9b
+		hdf5   -- Version: 1.14.6
+		          compiled against: HDF5 library version: 1.14.6
+		tinyxml -- compiled against: 2.6.2
+		fparser
+		boost  -- compiled against: 1_90
+		vtk -- Version: 9.6.2
+		       compiled against: 9.6.2
+
+	Used external libraries:
+		CSXCAD -- Version: v0.7.0-rc1-12-gd607c9b
+		hdf5   -- Version: 1.14.6
+		          compiled against: HDF5 library version: 1.14.6
+		tinyxml -- compiled against: 2.6.2
+		fparser
+		boost  -- compiled against: 1_90
+		vtk -- Version: 9.6.2
+		       compiled against: 9.6.2
+
+	Used external libraries:
+		CSXCAD -- Version: v0.7.0-rc1-12-gd607c9b
+		hdf5   -- Version: 1.14.6
+		          compiled against: HDF5 library version: 1.14.6
+		tinyxml -- compiled against: 2.6.2
+		fparser
+		boost  -- compiled against: 1_90
+		vtk -- Version: 9.6.2
+		       compiled against: 9.6.2
+
+Create FDTD operator (compressed SSE + multi-threading)
+Create FDTD operator (compressed SSE + multi-threading)
+Create FDTD operator (compressed SSE + multi-threading)
+ ---------------------------------------------------------------------- 
+ | openEMS 64bit -- version v0.37.0-rc1-11-gd3d2a49
+ | (C) 2010-2026 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license
+ ---------------------------------------------------------------------- 
+	Used external libraries:
+		CSXCAD -- Version: v0.7.0-rc1-12-gd607c9b
+		hdf5   -- Version: 1.14.6
+		          compiled against: HDF5 library version: 1.14.6
+		tinyxml -- compiled against: 2.6.2
+		fparser
+		boost  -- compiled against: 1_90
+		vtk -- Version: 9.6.2
+		       compiled against: 9.6.2
+
+Create FDTD operator (compressed SSE + multi-threading)
+FDTD simulation size: 170x133x82 --> 1.85402e+06 FDTD cells 
+FDTD timestep is: 2.14369e-14 s; Nyquist rate: 1943 timesteps @1.20042e+10 Hz
+openEMS::SetupFDTD: Warning, the timestep seems to be very small --> long simulation. Check your mesh!?
+Excitation signal length is: 22274 timesteps (4.77486e-10s)
+Max. number of timesteps: 55000 ( --> 2.46925 * Excitation signal length)
+openEMS::SetupFDTD: Warning, max. number of timesteps is smaller than three times the excitation. 
+	You may want to choose a higher number of max. timesteps... 
+Create FDTD engine (compressed SSE + multi-threading)
+FDTD simulation size: 169x132x82 --> 1.82926e+06 FDTD cells 
+FDTD timestep is: 2.14369e-14 s; Nyquist rate: 1943 timesteps @1.20042e+10 Hz
+openEMS::SetupFDTD: Warning, the timestep seems to be very small --> long simulation. Check your mesh!?
+Excitation signal length is: 22274 timesteps (4.77486e-10s)
+Max. number of timesteps: 55000 ( --> 2.46925 * Excitation signal length)
+openEMS::SetupFDTD: Warning, max. number of timesteps is smaller than three times the excitation. 
+	You may want to choose a higher number of max. timesteps... 
+Create FDTD engine (compressed SSE + multi-threading)
+Warning: Unused primitive (type: Box) detected in property: PEC!
+Running FDTD engine... this may take a while... grab a cup of coffee?!?
+Warning: Unused primitive (type: Box) detected in property: PEC!
+Running FDTD engine... this may take a while... grab a cup of coffee?!?
+FDTD simulation size: 171x134x82 --> 1.87895e+06 FDTD cells 
+FDTD timestep is: 2.14369e-14 s; Nyquist rate: 1943 timesteps @1.20042e+10 Hz
+openEMS::SetupFDTD: Warning, the timestep seems to be very small --> long simulation. Check your mesh!?
+Excitation signal length is: 22274 timesteps (4.77486e-10s)
+Max. number of timesteps: 55000 ( --> 2.46925 * Excitation signal length)
+openEMS::SetupFDTD: Warning, max. number of timesteps is smaller than three times the excitation. 
+	You may want to choose a higher number of max. timesteps... 
+Create FDTD engine (compressed SSE + multi-threading)
+Warning: Unused primitive (type: Box) detected in property: PEC!
+Running FDTD engine... this may take a while... grab a cup of coffee?!?
+FDTD simulation size: 175x138x82 --> 1.9803e+06 FDTD cells 
+FDTD timestep is: 2.14369e-14 s; Nyquist rate: 1943 timesteps @1.20042e+10 Hz
+openEMS::SetupFDTD: Warning, the timestep seems to be very small --> long simulation. Check your mesh!?
+Excitation signal length is: 22274 timesteps (4.77486e-10s)
+Max. number of timesteps: 55000 ( --> 2.46925 * Excitation signal length)
+openEMS::SetupFDTD: Warning, max. number of timesteps is smaller than three times the excitation. 
+	You may want to choose a higher number of max. timesteps... 
+Create FDTD engine (compressed SSE + multi-threading)
+Warning: Unused primitive (type: Box) detected in property: PEC!
+Running FDTD engine... this may take a while... grab a cup of coffee?!?
+[@       22s] Timestep:          485 || Speed:   39.0 MC/s (4.688e-02 s/TS) || Energy: ~1.08e-19 (- 0.00dB)
+[@       23s] Timestep:          485 || Speed:   38.6 MC/s (4.807e-02 s/TS) || Energy: ~1.08e-19 (- 0.00dB)
+[@       23s] Timestep:          485 || Speed:   38.1 MC/s (4.930e-02 s/TS) || Energy: ~1.08e-19 (- 0.00dB)
+[@       25s] Timestep:          485 || Speed:   38.4 MC/s (5.156e-02 s/TS) || Energy: ~1.07e-19 (- 0.00dB)
+[@       45s] Timestep:          970 || Speed:   39.0 MC/s (4.687e-02 s/TS) || Energy: ~3.15e-19 (- 0.00dB)
+[@       46s] Timestep:          970 || Speed:   38.3 MC/s (4.840e-02 s/TS) || Energy: ~3.19e-19 (- 0.00dB)
+[@       47s] Timestep:          970 || Speed:   38.2 MC/s (4.923e-02 s/TS) || Energy: ~3.17e-19 (- 0.00dB)
+[@       50s] Timestep:          970 || Speed:   38.2 MC/s (5.189e-02 s/TS) || Energy: ~3.30e-19 (- 0.00dB)
+[@     1m08s] Timestep:         1455 || Speed:   38.5 MC/s (4.753e-02 s/TS) || Energy: ~5.27e-19 (- 0.00dB)
+[@     1m10s] Timestep:         1455 || Speed:   37.9 MC/s (4.898e-02 s/TS) || Energy: ~5.19e-19 (- 0.00dB)
+[@     1m11s] Timestep:         1455 || Speed:   37.8 MC/s (4.970e-02 s/TS) || Energy: ~5.27e-19 (- 0.00dB)
+[@     1m15s] Timestep:         1455 || Speed:   38.0 MC/s (5.215e-02 s/TS) || Energy: ~5.21e-19 (- 0.00dB)
+[@     1m30s] Timestep:         1940 || Speed:   40.2 MC/s (4.550e-02 s/TS) || Energy: ~1.63e-18 (- 0.00dB)
+[@     1m33s] Timestep:         1940 || Speed:   39.0 MC/s (4.755e-02 s/TS) || Energy: ~1.61e-18 (- 0.00dB)
+[@     1m35s] Timestep:         1940 || Speed:   38.8 MC/s (4.846e-02 s/TS) || Energy: ~1.64e-18 (- 0.00dB)
+[@     1m40s] Timestep:         1940 || Speed:   38.7 MC/s (5.124e-02 s/TS) || Energy: ~1.57e-18 (- 0.00dB)
+[@     1m52s] Timestep:         2425 || Speed:   39.7 MC/s (4.609e-02 s/TS) || Energy: ~1.76e-17 (- 0.00dB)
+[@     1m56s] Timestep:         2425 || Speed:   39.3 MC/s (4.712e-02 s/TS) || Energy: ~1.77e-17 (- 0.00dB)
+[@     1m58s] Timestep:         2425 || Speed:   39.4 MC/s (4.773e-02 s/TS) || Energy: ~1.76e-17 (- 0.00dB)
+[@     2m04s] Timestep:         2425 || Speed:   39.2 MC/s (5.054e-02 s/TS) || Energy: ~1.77e-17 (- 0.00dB)
+[@     2m15s] Timestep:         2910 || Speed:   39.9 MC/s (4.584e-02 s/TS) || Energy: ~1.30e-16 (- 0.00dB)
+[@     2m19s] Timestep:         2910 || Speed:   39.5 MC/s (4.695e-02 s/TS) || Energy: ~1.30e-16 (- 0.00dB)
+[@     2m21s] Timestep:         2910 || Speed:   39.2 MC/s (4.789e-02 s/TS) || Energy: ~1.30e-16 (- 0.00dB)
+[@     2m29s] Timestep:         2910 || Speed:   39.1 MC/s (5.062e-02 s/TS) || Energy: ~1.31e-16 (- 0.00dB)
+[@     2m37s] Timestep:         3395 || Speed:   39.4 MC/s (4.643e-02 s/TS) || Energy: ~6.16e-16 (- 0.00dB)
+[@     2m42s] Timestep:         3395 || Speed:   39.2 MC/s (4.734e-02 s/TS) || Energy: ~6.16e-16 (- 0.00dB)
+[@     2m45s] Timestep:         3395 || Speed:   38.0 MC/s (4.941e-02 s/TS) || Energy: ~6.17e-16 (- 0.00dB)
+[@     2m54s] Timestep:         3395 || Speed:   37.9 MC/s (5.230e-02 s/TS) || Energy: ~6.21e-16 (- 0.00dB)
+[@     3m00s] Timestep:         3880 || Speed:   38.6 MC/s (4.741e-02 s/TS) || Energy: ~2.09e-15 (- 0.00dB)
+[@     3m05s] Timestep:         3880 || Speed:   38.1 MC/s (4.864e-02 s/TS) || Energy: ~2.07e-15 (- 0.00dB)
+[@     3m09s] Timestep:         3880 || Speed:   38.1 MC/s (4.932e-02 s/TS) || Energy: ~2.09e-15 (- 0.00dB)
+[@     3m19s] Timestep:         3880 || Speed:   38.3 MC/s (5.164e-02 s/TS) || Energy: ~2.08e-15 (- 0.00dB)
+[@     3m23s] Timestep:         4365 || Speed:   38.8 MC/s (4.715e-02 s/TS) || Energy: ~5.19e-15 (- 0.00dB)
+[@     3m29s] Timestep:         4365 || Speed:   38.4 MC/s (4.824e-02 s/TS) || Energy: ~5.11e-15 (- 0.00dB)
+[@     3m33s] Timestep:         4365 || Speed:   38.2 MC/s (4.925e-02 s/TS) || Energy: ~5.18e-15 (- 0.00dB)

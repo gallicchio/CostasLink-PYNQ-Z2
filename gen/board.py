@@ -282,6 +282,7 @@ def copper(board, args):
 def pours(board, R):
     import routes as RS
     RS.ground_fills(R)
+    RS.rf_voids(R, R.pads)
     board.BuildConnectivity()
     filler = pcbnew.ZONE_FILLER(board)
     filler.Fill(board.Zones())

@@ -1300,6 +1300,16 @@ def drc_gate(pcb, skip):
     return "0 violations, 0 unconnected, 0 parity"
 
 
+def launch_gate(gdir):
+    """The 5.8 GHz launches in the plotted gerbers: tools/launch_check.py (no inner rings at the SMA pins, the
+    planes LAUNCH_R clear of them, In1 relieved under the RF pads).  Prompt 32."""
+    r = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "launch_check.py"), gdir], capture_output=True, text=True)
+    sys.stdout.write(r.stdout[-2500:])
+    if r.returncode:
+        raise Gate("the RF launches are not as designed in the gerbers (tools/launch_check.py):\n    " + r.stdout.strip().split("\n")[-1])
+    return r.stdout.strip().split("\n")[-1]
+
+
 def label_gate(pcb, skip):
     """The connectors' labels on the shipped file: tools/label_check.py (every name printed, its own,
     big enough; each row one relation; the limits; the headers' pin labels).  Response 15."""
@@ -1490,6 +1500,10 @@ def main(argv=None):
         zpath, gfiles = export_gerbers(a.pcb, stage)
     except Gate as e:
         return finish([str(e)], stage, a, test)
+    try:
+        launches = launch_gate(os.path.join(stage, "gerbers"))
+    except Gate as e:
+        return finish([str(e)], stage, a, test)
     gb = gerber_box(os.path.join(stage, "gerbers", "%s-Edge_Cuts.gbr" % os.path.splitext(os.path.basename(a.pcb))[0]))
     want = (to_cpl(box[0], box[3], B["aux"]), to_cpl(box[2], box[1], B["aux"]))
     if not gb or max(abs(gb[0] - want[0][0]), abs(gb[1] - want[0][1]), abs(gb[2] - want[1][0]),
@@ -1501,11 +1515,11 @@ def main(argv=None):
     write_consignment(cons_lines, a.assembled, stage, rows)
     cost = cost_md(stage, rows, fps, a.boards, a.assembled, dims, thin, cons_lines)
     cost.update(n_place=len(fitted), bottom=sorted((c["ref"] for c in fitted if cpl[c["ref"]]["jlc"]["side"] == "bottom"), key=refkey))
-    checks = ["- Checks passed: DRC %s; the connectors' labels %s; %d filled zone polygons; every netlist part on the board; every code matched "
+    checks = ["- Checks passed: DRC %s; the connectors' labels %s; the RF launches in the gerbers (%s); %d filled zone polygons; every netlist part on the board; every code matched "
               "(gen/parts.py's words, the value, the package, the MPN) and in stock; no ordered part wants a hole%s; "
               "every part of three or more pads has a read or predicted rotation; the CPL agrees with KiCad's position "
               "export, and JLCPCB's drawings placed by it land on our pads (%d parts, %s)."
-              % (drc, labels, B["filled"], " (accepted: %s)" % ", ".join(sorted(accepted)) if accepted else "", len(sim_ok),
+              % (drc, labels, launches, B["filled"], " (accepted: %s)" % ", ".join(sorted(accepted)) if accepted else "", len(sim_ok),
                  " and ".join(sorted(cost["sides"], reverse=True)) + (" side" if len(cost["sides"]) == 1 else " sides"))]
     order_md(stage, dims, a.boards, a.assembled, feat, B, cost, checks, n_unread, cons_lines)
     failures += scan_paths(stage)

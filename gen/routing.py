@@ -306,6 +306,28 @@ class Router:
                 self._vcount[k] += 1
         return v
 
+    def void(self, layer, pts, name=None):
+        """A rule area on `layer` where no copper fill is laid (tracks, vias and pads stay allowed): the RF
+        launches' antipads and the ground relief under RF pads (gen/routes.rf_voids)."""
+        z = pcbnew.ZONE(self.board)
+        z.SetLayer(layer)
+        z.SetIsRuleArea(True)
+        for setter, val in (("SetDoNotAllowZoneFills", True), ("SetDoNotAllowCopperPour", True)):
+            if hasattr(z, setter):
+                getattr(z, setter)(val)
+                break
+        for setter in ("SetDoNotAllowVias", "SetDoNotAllowTracks", "SetDoNotAllowPads", "SetDoNotAllowFootprints"):
+            if hasattr(z, setter):
+                getattr(z, setter)(False)
+        if name:
+            z.SetZoneName(name)
+        ol = z.Outline()
+        ol.NewOutline()
+        for x, y in pts:
+            ol.Append(self.P(x, y))
+        self.board.Add(z)
+        return z
+
     def zone(self, net, layer, pts, priority=0, clearance=0.15, min_width=0.15, connect="thermal",
              name=None, item=True, spoke=0.25, gap=0.2, block_vias=True):
         """A copper pour.  With item=True its outline's inside is also a

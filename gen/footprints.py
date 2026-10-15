@@ -166,6 +166,21 @@ def sma():
     i = text.index('(pad "1" thru_hole circle')
     j = text.index('(remove_unused_layers no)', i)            # the vendored pad's own line (a second one would be dropped)
     text = text[:j] + '(remove_unused_layers yes)\n\t\t(keep_end_layers yes)' + text[j + len('(remove_unused_layers no)'):]
+    # The launch geometry from the field solve (gen/rf_launch.py, docs/LAUNCH.md): the centre pad's diameter and its
+    # clearance to the pour, and a taper on F.Cu from the pad's edge to the line's width, pointing along -x, which is
+    # where every SMA's line leaves (checked on the board: all five at 180 deg in the footprint's frame).
+    import rf_launch as RL
+    text = text.replace('(size 2 2)', '(size %g %g)' % (RL.LAUNCH_PAD_OD, RL.LAUNCH_PAD_OD), 1)
+    if RL.LAUNCH_CLEAR > 0.25:
+        text = text[:j] + '(clearance %g)\n\t\t' % RL.LAUNCH_CLEAR + text[j:]
+    if RL.LAUNCH_TAPER > 0:
+        r, L, w = RL.LAUNCH_PAD_OD / 2, RL.LAUNCH_TAPER, RL.LAUNCH_TRACE_W
+        taper = ('\t(pad "1" smd custom (at 0 0) (size %g %g) (layers "F.Cu") (clearance %g)\n'
+                 '\t\t(options (clearance outline) (anchor circle))\n'
+                 '\t\t(primitives (gr_poly (pts (xy %g %g) (xy %g %g) (xy %g %g) (xy %g %g)) (width 0) (fill yes)))\n\t)\n'
+                 % (RL.LAUNCH_PAD_OD, RL.LAUNCH_PAD_OD, RL.LAUNCH_CLEAR, 0, -r, -(r + L), -w / 2, -(r + L), w / 2, 0, r))
+        k = text.rindex(')')
+        text = text[:k] + taper + text[k:]
     return text
 
 

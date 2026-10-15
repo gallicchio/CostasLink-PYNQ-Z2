@@ -431,6 +431,46 @@ def supply_pours(R):
         RT.PLANES[net] = list(poly)                 # the real outline: routing.inside_margin keeps off its edges
 
 
+# The RF launches' voids (Prompt 32: "make sure that all 5-6 GHz connectors have proper capacitance and
+# inductance in the gerbers").  Measured in build 36's gerbers: the SMA centre pins' rings were gone from the
+# inner layers (Prompt 31) but the planes came to 0.90 mm of the pin, a 1.8 mm antipad, because the DRC rule
+# meant to hold them off never matched; and the 2.0 mm top pad sat over In1 at 0.21 mm (about 0.4 pF).  A
+# rule area that forbids copper fill is explicit and lands in the gerbers whatever the DRC engine thinks:
+#   - each 5.8 GHz SMA: a circle of LAUNCH_R round the centre pin on In1, In2 and B.Cu.  The coax through
+#     the board is then 60/sqrt(4.4) ln(4.4/1.3) = 35 ohm over 1.6 mm (0.065 lambda): |Gamma| about 0.15,
+#     14-16 dB return loss, 0.1 dB; the ground legs' pads (inner edge 2.5 mm from the centre) cap the radius;
+#   - the 5.8 GHz U.FL taps' centre pads and the ADL5611s' 1.3 x 0.9 mm RF pads: In1 relieved under the pad
+#     with VOID_MARGIN round it, so the pad sees In2 at 1.3 mm instead of In1 at 0.21 (0.04 pF for 0.2;
+#     "ground relief", ADI's own evaluation boards).  Not the 0402 blocks (0.03 pF), the balun or the
+#     couplers' 0.29 mm pads.
+from rf_launch import LAUNCH_SMAS, LAUNCH_R, RELIEF_PADS, VOID_MARGIN      # shared with tools/launch_check.py
+
+
+def rf_voids(R, pads):
+    """Rule areas (no copper fill) round the SMA launches on the inner and back layers and under the RF pads
+    on In1 (above).  Returns the count."""
+    import math
+    n = 0
+    for ref in LAUNCH_SMAS:
+        if (ref, "1") not in pads.xy:
+            continue
+        cx, cy = pads.xy[(ref, "1")]
+        pts = [(cx + LAUNCH_R * math.cos(2 * math.pi * k / 48), cy + LAUNCH_R * math.sin(2 * math.pi * k / 48)) for k in range(48)]
+        for layer in (pcbnew.In1_Cu, pcbnew.In2_Cu, pcbnew.B_Cu):
+            R.void(layer, pts, name="launch %s" % ref)
+            n += 1
+    for ref, num in RELIEF_PADS:
+        if (ref, num) not in pads.xy:
+            continue
+        cx, cy = pads.xy[(ref, num)]
+        w, h = pads.size[(ref, num)] if hasattr(pads, "size") and (ref, num) in pads.size else (1.3, 1.0)
+        hw, hh = w / 2 + VOID_MARGIN, h / 2 + VOID_MARGIN
+        R.void(pcbnew.In1_Cu, [(cx - hw, cy - hh), (cx + hw, cy - hh), (cx + hw, cy + hh), (cx - hw, cy + hh)], name="relief %s.%s" % (ref, num))
+        n += 1
+    print("copper: %d RF launch voids (rule areas without copper fill)" % n, flush=True)
+    return n
+
+
 def ground_fills(R):
     """GND on In1 (solid) and as fills on F.Cu, In2 and B.Cu, filled last by gen/board.py.
 

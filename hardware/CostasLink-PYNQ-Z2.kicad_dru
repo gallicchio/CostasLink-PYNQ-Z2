@@ -13,9 +13,9 @@
 # pin's capacitance to ground through the board is a small fraction of what a 2.5 mm antipad allowed.
 (rule "SMA launch antipad, inner"
     (constraint hole_clearance (min 1.35mm))
-    (condition "A.Pad_Name == '1' && A.Footprint_Name == 'SMA_BWSMA-KWE-Z001' && B.Type == 'Zone'")
+    (condition "A.Pad_Type == 'Through-hole' && A.NetClass == 'RF' && B.Type == 'Zone'")
     (layer inner))
 (rule "SMA launch antipad, back"
     (constraint hole_clearance (min 1.35mm))
-    (condition "A.Pad_Name == '1' && A.Footprint_Name == 'SMA_BWSMA-KWE-Z001' && B.Type == 'Zone'")
+    (condition "A.Pad_Type == 'Through-hole' && A.NetClass == 'RF' && B.Type == 'Zone'")
     (layer "B.Cu"))

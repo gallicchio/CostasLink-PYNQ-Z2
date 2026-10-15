@@ -511,6 +511,10 @@ number in a table.
     Guard: BRINGUP.md stage 1.5's order, PYNQ first and this board last, this board off first.
 10c. **RF grounds through thermal spokes** (Prompt 32): the pours now join every pad solidly on the top and
     the inner layers; only the hand-soldered socket keeps reliefs.
+10d. **The SMA launches' capacitance** (Prompt 33): the planes stood 0.90 mm from each centre pin in build
+    36's gerbers (a DRC rule that never matched), the top pad over In1 at 0.21 mm.  Now rule areas keep the
+    inner and back copper 2.2 mm off each 5.8 GHz pin and relieve In1 under the taps' and gain blocks' RF
+    pads, and `tools/launch_check.py` measures the plotted gerbers as a release gate.
 11. **The Icepi Zero.** No I2C pull-ups on its header (now DNP 4.7 k on this board), 5 V from its own
     USB-C, and MUX_RX and TRIG_A (no fast input) on its bank 0.
 12. **The generated symbols.** Audited pin by pin against the datasheet texts (Response 8,
