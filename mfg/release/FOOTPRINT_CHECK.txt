@@ -3,15 +3,15 @@ FOOTPRINT vs ORDERED PART -- does the part fit the copper?
 
 board  hardware/CostasLink-PYNQ-Z2.kicad_pcb
 BOM    release/BOM_JLCPCB.csv
-run    2026-10-14T18:37:57-07:00
-421 footprint(s) placed, 1250 drill(s) on the board
+run    2026-10-14T19:28:15-07:00
+422 footprint(s) placed, 1277 drill(s) on the board
 
   ok C1525       C_0402_1005Metric                            C0402              68 placement(s)
   ok C25744      R_0402_1005Metric                            R0402              30 placement(s)
   ok C11702      R_0402_1005Metric                            R0402              29 placement(s)
   ok C1552       C_0402_1005Metric                            C0402              24 placement(s)
+  ok C25741      R_0402_1005Metric                            R0402              15 placement(s)
   ok C52923      C_0402_1005Metric                            C0402              15 placement(s)
-  ok C25741      R_0402_1005Metric                            R0402              14 placement(s)
   !! C88374      U.FL_Hirose_U.FL-R-SMT-1_Vertical            RF-SMD_FRF05002-JS 12 placement(s)
        datum their origin sits at (-0.763, +0.000) mm in our footprint; the JLCPCB CPL is moved there
   ok C25105      R_0402_1005Metric                            R0402              11 placement(s)

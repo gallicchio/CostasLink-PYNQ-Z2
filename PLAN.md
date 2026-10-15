@@ -506,6 +506,11 @@ number in a table.
     the same package at different addresses; a JLCPCB rotation on the SOT-89, QFN and SC-70 parts.
     Guards: PLACEMENT_CHECKS.txt and the preview; run the release the day of the order (it reads the
     live stock and decides the fallback); a second source for the switch is the HMC427A at $62.
+10b. **This board powered while the PYNQ-Z2 is off** (Prompt 32): each high output pushes 12 mA through
+    the Zynq's clamp diode on its pin (3.3 V less 0.6 V over 33 + 200 ohm), above its 10 mA absolute maximum.
+    Guard: BRINGUP.md stage 1.5's order, PYNQ first and this board last, this board off first.
+10c. **RF grounds through thermal spokes** (Prompt 32): the pours now join every pad solidly on the top and
+    the inner layers; only the hand-soldered socket keeps reliefs.
 11. **The Icepi Zero.** No I2C pull-ups on its header (now DNP 4.7 k on this board), 5 V from its own
     USB-C, and MUX_RX and TRIG_A (no fast input) on its bank 0.
 12. **The generated symbols.** Audited pin by pin against the datasheet texts (Response 8,

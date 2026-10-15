@@ -2,7 +2,7 @@
 	(version "E")
 	(design
 		(source "../CostasLink-PYNQ-Z2.kicad_sch")
-		(date "2026-10-14T18:26:04")
+		(date "2026-10-14T19:02:10")
 		(tool "Eeschema 10.0.6")
 		(textvar
 			(name "DATE") "2026-10-09")
@@ -13035,6 +13035,72 @@
 			)
 		)
 		(comp
+			(ref "R145")
+			(value "100k")
+			(footprint "CostasLink:R_0402_1005Metric")
+			(fields
+				(field
+					(name "LCSC") "C25741")
+				(field
+					(name "MPN") "0402WGF1003TCE")
+				(field
+					(name "Footprint") "CostasLink:R_0402_1005Metric")
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "CostasLink")
+				(part "R")
+				(description "Resistor")
+			)
+			(property
+				(name "LCSC")
+				(value "C25741")
+			)
+			(property
+				(name "MPN")
+				(value "0402WGF1003TCE")
+			)
+			(property
+				(name "Sheetname")
+				(value "Receiver and Costas loop")
+			)
+			(property
+				(name "Sheetfile")
+				(value "rx.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "R res resistor")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "R_*")
+			)
+			(sheetpath
+				(names "/Receiver and Costas loop/")
+				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
+			)
+			(tstamps "959617f4-db30-8a92-9b55-18c3900e02b9")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
 			(ref "T101")
 			(value "HHM1907B1")
 			(footprint "CostasLink:Balun_TDK_HHM1907B1")
@@ -14001,7 +14067,7 @@
 				(names "/Receiver and Costas loop/")
 				(tstamps "/caa81cf0-f127-99d6-482d-02b88e096324/")
 			)
-			(tstamps "fed8cfb0-2c30-2a52-fc2a-3cd7a14fc6f0" "c5e22597-160b-e30e-d32a-a9ef8a487e9c"
+			(tstamps "c5e22597-160b-e30e-d32a-a9ef8a487e9c" "fed8cfb0-2c30-2a52-fc2a-3cd7a14fc6f0"
 				"3d86f7df-309c-4326-5428-8ae4e75a2c06"
 			)
 			(units
@@ -35460,6 +35526,11 @@
 				(pintype "passive")
 			)
 			(node
+				(ref "R145")
+				(pin "2")
+				(pintype "passive")
+			)
+			(node
 				(ref "R208")
 				(pin "2")
 				(pintype "passive")
@@ -37163,6 +37234,11 @@
 				(ref "JP103")
 				(pin "2")
 				(pinfunction "Pin_2_2")
+				(pintype "passive")
+			)
+			(node
+				(ref "R145")
+				(pin "1")
 				(pintype "passive")
 			)
 			(node

@@ -432,12 +432,18 @@ def supply_pours(R):
 
 
 def ground_fills(R):
-    """GND on In1 (solid) and as fills on F.Cu, In2 and B.Cu, filled last by gen/board.py."""
+    """GND on In1 (solid) and as fills on F.Cu, In2 and B.Cu, filled last by gen/board.py.
+
+    The top, In1 and In2 ground joins every pad SOLIDLY (Prompt 32, from the SyzygyRadioBoard checklist): a
+    thermal relief's four spokes are inductors at 5.8 GHz, and the balun's ground pad, the ESD shunts, the
+    49.9 ohm loads, the LNA's ground pins and the SMAs' legs all return RF through them.  Reflow does not
+    care; the one part soldered at home, the socket on the back, keeps thermal reliefs on every layer by its
+    own pads' setting (gen/footprints.rpi_socket), and the back fill stays thermal."""
     W, H = PL.BOARD["w"], PL.BOARD["h"]
     whole = [(0, 0), (W, 0), (W, H), (0, H)]
-    R.zone("GND", pcbnew.In1_Cu, whole, priority=0, clearance=0.2, min_width=0.2, item=False, name="GND plane")
-    R.zone("GND", pcbnew.In2_Cu, whole, priority=0, clearance=0.2, min_width=0.25, item=False, name="GND In2")
-    R.zone("GND", pcbnew.F_Cu, whole, priority=0, clearance=0.2, min_width=0.25, item=False, name="GND top")
+    R.zone("GND", pcbnew.In1_Cu, whole, priority=0, clearance=0.2, min_width=0.2, item=False, name="GND plane", connect="solid")
+    R.zone("GND", pcbnew.In2_Cu, whole, priority=0, clearance=0.2, min_width=0.25, item=False, name="GND In2", connect="solid")
+    R.zone("GND", pcbnew.F_Cu, whole, priority=0, clearance=0.2, min_width=0.25, item=False, name="GND top", connect="solid")
     R.zone("GND", pcbnew.B_Cu, whole, priority=0, clearance=0.2, min_width=0.25, item=False, name="GND bottom")
 
 

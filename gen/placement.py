@@ -215,6 +215,7 @@ ANCHORS = {
     "JP102": at(48.5, 70.5, 90),             # SIGN B2 (0.5 mm right of 48 in Response 15: J502 beside it)
     "JP103": at(60.0, 70.5, 90),             # SEL
     "U111": at(60.0, 63.0, 0),               # HOLD
+    "R125": at(30.9, 89.0, 0),               # LOOP_HOLD's 100 k pull-down above its header pin (19), like R315: beside U111 its ground pad sat on a fill island with no room for a via (Prompt 32)
     "J106": at(58.0, 79.0, 0),               # ERR MON (MMCX)
     "U112": at(73.0, 65.0, 0),               # OPA2388
     "J107": at(80.0, 57.5, 0),               # VC MON (MMCX)

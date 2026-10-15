@@ -3657,3 +3657,80 @@ boards are $945 for two.
 J302 sockets and shunts anywhere.  On the day, run `mfg/make_release.py --refresh` (it reads the shelf and decides
 the ADL5375-05 fallback: 4 in stock), look at the preview against PLACEMENT_CHECKS.txt, and order 5 boards with 2
 assembled.
+
+## Prompt 32 (2026-10-14 ~18:50 PDT)
+
+A long conversation pasted from the "2026 Summer ToDo Quantum" Google Doc: Jason's checklist for a colleague's
+SyzygyRadioBoard and her answers (AC coupling of every 5.8 GHz port, decoupling pairs at the pins, thermal
+reliefs, terminations, ferrite isolation, power-up order and latch-up, test points, JLCPCB production notes,
+parts selection), with the instruction: for the relevant things, check them in our design.  Then, mid-turn:
+"trace the signal paths 'by hand' and make sure that all series and shunt components make sense, and that
+everything makes sense going into and out of the ICs along the way, including DC bias levels, power levels, and
+AC vs DC coupling"; and "look at voltage levels, power levels, input and output impedances, and specs of all of
+the ICs and other interfaces"; and: do not put the paste in this log, cite the document, but keep the full
+response.
+
+## Response 32 (2026-10-14 18:50 - 20:35)
+
+**The trace is `docs/PATHS.md`** (ten sections of hops and an eleventh of every port's impedance and limits),
+built on `tools/path_walk.py`, a netlist walker that lists, from any pin, the two-terminal parts in its way to
+the next active pin, so that no hop in the document is from memory.  Every hop quotes its part, its purpose,
+the DC on the node, the level at the 10 m two-whips case, and whether the coupling suits both ends, with the
+datasheet line it rests on.  What the trace says:
+
+- **RF, jack to demodulator:** blocked at every port that carries or forbids DC: the LNA both sides, the DSA both
+  sides (its sheet asks for 0 V DC on the ports), both ADL5611s (RFIN "requires a dc blocking capacitor",
+  RFOUT carries the 5 V bias through 43 nH), the coupler's output (copper would pass the 5 V on), and now both
+  ADL5380 RF pins behind the balun.  The ESD shunts sit on the jack side of the blocks.  Levels −53.9 → −40.9
+  (LNA) → −48.5 (DSA at 5.25 dB) → −34.2 → −19.9 dBm at the demodulator: 28 dB under its 5.8 GHz IP1dB, 11 dB
+  under its absolute maximum even with the DSA at 0.  The LNA's +1 dBm absolute maximum is the one limit a
+  bench mistake can reach (a bare cable from the other board is +9.8 dBm).
+- **Baseband:** the ADL5380's 3.8 V outputs through 1 k into summing nodes held at 1.87 V by the 1 k to ground
+  (the THS4541's guaranteed 2.0 V limit: 61 mV), gain 4.02, outputs 1.65 ± 0.125 V into comparators whose
+  rail-to-rail inputs take it, taps through 1 k, the slow stage through 1 k, the log amp through 1 k + 10 nF
+  (AC, as its biased inputs want), the ADC through 10 k with the 100 nF at the pin.  DC-coupled by design
+  everywhere a Costas loop needs DC, AC where a part is self-biased.
+- **The loop:** Q through the sign jumpers into the 3157's 0-VCC analog range, ERR through the hold switch into
+  the PI filter about V_MID, the summer, VC inside the VCXO's 0.3-3.0 V from an op amp that swings 0.02-3.28.
+- **References and LO:** 3.3 V CMOS through 100 nF into REF_IN (0.7 V p-p to VCC wanted); open-collector
+  RFOUTs pulled up through 27 nH, two 1.5 pF a leg (0.75 pF: half a dB, inside the −6 to +6 dBm LO window).
+- **TX:** the ladders' 0.17 / 0.50 / 0.83 V inside the −05's 0-1 V pins, the 0.507 V other leg; −4.5 dBm out
+  of the modulator, +9.8 after the ADL5611, 3 dB under its P1dB at the idle, at it on a corner; the pad
+  placeholder, the coupler, the ESD shunt on the jack side.
+- **Switch, slow path, detectors, triggers, power:** all as the budget has them; the slow I stage's 1.7×
+  overdrive and the power-up order carry their numbers.
+
+**The checklist against this board** (what it changed, what it confirmed, what it leaves for rev B):
+
+1. **Thermal reliefs on RF grounds (changed).**  The pours joined every pad through four spokes, the router's
+   default: the balun's ground pad, the three ESD shunts, the four 49.9 Ω loads, the LNA's ground pins and the
+   SMA legs all returned RF through inductors.  The top, In1 and In2 ground zones now connect solidly; the back
+   fill stays thermal and the socket's pads keep reliefs on every layer (it is soldered at home).
+2. **A floating CMOS select (changed).**  JP103 unfitted left the sign switch's S input open; R145 100 k to
+   ground (low = B1).
+3. **Power-up order (documented with the number).**  This board powered with the PYNQ off pushes 12 mA per
+   high output through the Zynq's clamps (3.3 − 0.6 V over 33 + 200 Ω), above its 10 mA absolute maximum.
+   BRINGUP stage 1.5 already orders it right; PLAN §10 and the trace now say why.  The other way round is safe.
+4. **Confirmed as is:** the AC-coupling table (every port, by the netlist); decoupling present (100 nF + 1 µF
+   per chip, three values at the gain blocks' chokes) though 3-8 mm from the pins (review B's rev B item);
+   ferrite isolation of +5V_RF (BLM21PG221) and the PLL rails behind 2.2 Ω and their own LDOs; source
+   termination of the fast outputs (33 Ω + ~20 Ω); the unused RFOUTB legs terminated; the ESD shunts; via
+   fences at λ/17 on the chains; three corner holes plus the middle slot; three fiducials; ENIG; no
+   via-in-pad; every control pin with a resting state; the limits on the silk.
+5. **Not done, noted in the trace's section 10:** thin-film 0201 loads (the thick-film 0402s terminate
+   monitors at −40 dBm: a 15 dB return loss there costs nothing), mitred corners (the pairs' L corners are
+   ~0.05 pF), anti-pads under the ADL5611's wide pads, an RC at each threshold pin, shield cans, mask cleared
+   over RF, fab-side impedance control.
+
+**The board after the changes (build 36).**  The solid pours and the new pull-down meant a re-route: the first
+pass left R125's ground pad on a top-fill island with no room for a via (its 100 k pull-down now stands above
+its own header pin, like the other pull-downs), the second left one 0.09 mm sliver the widening lays beside a
+thin track and every tidy re-makes (snapped onto the track's centre line by hand this time; the refill pass
+now does that itself).  **4,111 tracks, 1,137 vias, every net one piece, DRC 0 / 0 / 0, documents 0 stale;
+the release passes every gate: 80 BOM lines, 0 consigned, 387 placements a board, 52 Extended, JLCPCB
+$943-958 all in, Digi-Key $0.**  REVA_CHANGES.md rows 37-39; `CLAUDE_PCB.md` section 14 has the two rules
+(RF grounds solid; trace every path by hand before an order, with the walker).
+
+**What I would still do before ordering:** nothing on the copper.  The order-day run of
+`mfg/make_release.py --refresh` decides the ADL5375-05 fallback (4 on the shelf) and the preview settles the
+33 unseen rotations.

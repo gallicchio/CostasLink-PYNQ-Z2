@@ -69,9 +69,9 @@ def _smd(num, x, y, w, h, shape="roundrect"):
             % (num, shape, x, y, w, h, rr))
 
 
-def _tht(num, x, y, d, drill, shape="circle"):
-    return ('\t(pad "%s" thru_hole %s (at %g %g) (size %g %g) (drill %g) (layers "*.Cu" "*.Mask") (remove_unused_layers no))'
-            % (num, shape, x, y, d, d, drill))
+def _tht(num, x, y, d, drill, shape="circle", zone_connect=None):
+    return ('\t(pad "%s" thru_hole %s (at %g %g) (size %g %g) (drill %g) (layers "*.Cu" "*.Mask") (remove_unused_layers no)%s)'
+            % (num, shape, x, y, d, d, drill, (" (zone_connect %d)" % zone_connect) if zone_connect is not None else ""))
 
 
 def sky65404():
@@ -138,7 +138,8 @@ def rpi_socket():
         L.append(_rect(x0, y0, x1, y1, layer, w))
     for n in range(1, 41):
         col = (n - 1) // 2
-        L.append(_tht(str(n), -col * 2.54, 0.0 if n % 2 else -2.54, 1.7, 1.0, "rect" if n == 1 else "circle"))
+        # zone_connect 1 = thermal reliefs whatever the zone says: the socket is soldered at home (Prompt 32)
+        L.append(_tht(str(n), -col * 2.54, 0.0 if n % 2 else -2.54, 1.7, 1.0, "rect" if n == 1 else "circle", zone_connect=1))
     L.append(")\n")
     return "\n".join(L)
 

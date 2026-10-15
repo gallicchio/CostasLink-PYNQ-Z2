@@ -410,4 +410,14 @@ def build(S):
     note(xd + 20, y0 + 110, "ADS1115 (I2C 0x48, 860 SPS): the averaged I and Q (lock = I large, Q small), VC (how far the VCXO is pulled) and the loop error.  "
          "Its four inputs are the nets named at the taps above (I_P, Q_P, VC, ERR).", cols=36)
     rf_blocks(*balun_pair)
+    sel_pulldown(sel)
     return S
+
+
+def sel_pulldown(sel):
+    """A 100 k from the sign switch's S input to ground (Prompt 32): with JP103 unfitted the CMOS select
+    floated (review A's note A8).  Low = B1 = the Q- jumper's side, the same as the comparator at rest.
+    Drawn last so the sheet's resistor references do not move."""
+    xs, ys = sel[0], sel[1] + 5.08
+    J(xs, ys); W((xs, ys), (xs + 7.62, ys))
+    down("R 100k", xs + 7.62, ys, text="right")

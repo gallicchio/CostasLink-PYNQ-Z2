@@ -53,6 +53,9 @@ Digi-Key fallback that the release applies only if the shelf is short on the day
   they were made.
 * [`DESIGN_REVIEW_RESPONSE.md`](DESIGN_REVIEW_RESPONSE.md): the four reviews of build 17, every finding
   fixed, documented or answered, and how useful each reviewer was.
+* [`docs/PATHS.md`](docs/PATHS.md): every signal path traced by hand, hop by hop (series and shunt parts, the DC on
+  each node, the level, the coupling), and every IC port's impedance and limits against what the circuit presents
+  (Prompt 32; `tools/path_walk.py` walks the netlist for it).
 * [`docs/TRAJECTORIES.md`](docs/TRAJECTORIES.md): from the idle to each QPSK corner at the receiver, in
   time and on the I/Q plane, with the comparators, the slow path and the noise (`sim/trajectories.py`).
 * [`docs/HOSTS.md`](docs/HOSTS.md): what the Icepi Zero, a SYZYGY port (Brain-1) or an ECP5 on the board

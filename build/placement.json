@@ -169,13 +169,13 @@
   ],
   "C128": [
    53.86,
-   63.25,
+   64.0,
    0.0,
    "F"
   ],
   "C129": [
    62.86,
-   64.0,
+   63.0,
    0.0,
    "F"
   ],
@@ -186,8 +186,8 @@
    "F"
   ],
   "C131": [
-   52.14,
-   67.35,
+   53.64,
+   65.85,
    180.0,
    "F"
   ],
@@ -462,8 +462,8 @@
    "F"
   ],
   "C217": [
-   53.75,
-   65.34,
+   57.75,
+   65.59,
    270.0,
    "F"
   ],
@@ -1428,8 +1428,8 @@
    "F"
   ],
   "R119": [
-   39.61,
-   54.48686027918559,
+   49.86,
+   66.75,
    180.0,
    "F"
   ],
@@ -1452,8 +1452,8 @@
    "F"
   ],
   "R123": [
-   37.5281071068093,
-   52.710532131635674,
+   39.93206200920538,
+   54.20083439199959,
    90.0,
    "F"
   ],
@@ -1464,8 +1464,8 @@
    "F"
   ],
   "R125": [
-   62.88,
-   62.35,
+   30.9,
+   89.0,
    0.0,
    "F"
   ],
@@ -1580,6 +1580,12 @@
   "R144": [
    97.5,
    77.8,
+   0.0,
+   "F"
+  ],
+  "R145": [
+   53.88,
+   67.6,
    0.0,
    "F"
   ],
@@ -1962,8 +1968,8 @@
    "F"
   ],
   "R514": [
-   27.299999999999997,
-   50.190000000000005,
+   36.55,
+   54.940000000000005,
    270.0,
    "F"
   ],
@@ -3191,7 +3197,6 @@
   "R122": "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms",
   "R123": "COSTAS LOOP: sign(I) x Q, HOLD, PI filter; DACs, ADC",
   "R124": "COSTAS LOOP: sign(I) x Q, HOLD, PI filter; DACs, ADC",
-  "R125": "COSTAS LOOP: sign(I) x Q, HOLD, PI filter; DACs, ADC",
   "R126": "COSTAS LOOP: sign(I) x Q, HOLD, PI filter; DACs, ADC",
   "R127": "COSTAS LOOP: sign(I) x Q, HOLD, PI filter; DACs, ADC",
   "R128": "COSTAS LOOP: sign(I) x Q, HOLD, PI filter; DACs, ADC",
@@ -3207,6 +3212,7 @@
   "R138": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
   "R139": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
   "R140": "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)",
+  "R145": "COSTAS LOOP: sign(I) x Q, HOLD, PI filter; DACs, ADC",
   "R201": "TRANSMITTER: ADL5375, gain block, pad, coupler",
   "R202": "TRANSMITTER: ADL5375, gain block, pad, coupler",
   "R203": "COSTAS LOOP: sign(I) x Q, HOLD, PI filter; DACs, ADC",

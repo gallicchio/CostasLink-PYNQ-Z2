@@ -432,6 +432,40 @@ def ground_rescue(board, island=60, reach=3.0, clear=0.2):
     return added
 
 
+def _snap_onto_neighbour(board, t, reach=0.12):
+    """Move both ends of track `t` onto the centre line of the nearest longer track of its net on its layer,
+    if both ends are within `reach` mm of it; True if moved and the copper stayed joined."""
+    import math
+    mm = pcbnew.ToMM
+    def seg(p, a, c):
+        ax, ay, cx, cy, px, py = mm(a.x), mm(a.y), mm(c.x), mm(c.y), mm(p.x), mm(p.y)
+        dx, dy = cx - ax, cy - ay
+        L2 = dx * dx + dy * dy
+        k = 0 if L2 == 0 else max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / L2))
+        qx, qy = ax + k * dx, ay + k * dy
+        return math.hypot(px - qx, py - qy), (qx, qy)
+    best = None
+    for o in board.GetTracks():
+        if o.Type() != pcbnew.PCB_TRACE_T or o is t or o.GetNetname() != t.GetNetname() or o.GetLayer() != t.GetLayer() \
+                or mm(o.GetLength()) <= 0.5:
+            continue
+        d1, q1 = seg(t.GetStart(), o.GetStart(), o.GetEnd())
+        d2, q2 = seg(t.GetEnd(), o.GetStart(), o.GetEnd())
+        if max(d1, d2) < reach and (best is None or max(d1, d2) < best[0]):
+            best = (max(d1, d2), q1, q2)
+    if best is None:
+        return False
+    s0, e0 = pcbnew.VECTOR2I(t.GetStart()), pcbnew.VECTOR2I(t.GetEnd())
+    before = board.GetConnectivity().GetUnconnectedCount(False)
+    t.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(best[1][0]), pcbnew.FromMM(best[1][1])))
+    t.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(best[2][0]), pcbnew.FromMM(best[2][1])))
+    board.BuildConnectivity()
+    if board.GetConnectivity().GetUnconnectedCount(False) > before:
+        t.SetStart(s0); t.SetEnd(e0); board.BuildConnectivity()
+        return False
+    return True
+
+
 def _desc_len_mm(desc):
     """The length KiCad prints in a track item's description ("..., length 0.2000 mm"), or a large number."""
     import re
@@ -478,6 +512,14 @@ def drop_dangling_by_drc(board):
                 if board.GetConnectivity().GetUnconnectedCount(False) > before:
                     board.Add(spare)             # it was the only way: keep it
                     board.BuildConnectivity()
+                    # A wide sliver the widening laid ALONG a thin track of its net, carrying the join (Prompt 32's
+                    # build: 0.4 mm x 0.09 mm beside a 0.15 mm track, re-made by every tidy): snap its ends onto that
+                    # track's centre line, which keeps the join and ends the dangle.
+                    if _snap_onto_neighbour(board, spare):
+                        print("refill: snapped a %.2f mm %s sliver onto the track beside it at (%.2f, %.2f)"
+                              % (length, net, x - BI.ORIGIN[0], y - BI.ORIGIN[1]))
+                        removed += 1
+                        return removed
                     continue
                 print("refill: removed a %.2f mm %s track the DRC called dangling at (%.2f, %.2f)"
                       % (length, net, x - BI.ORIGIN[0], y - BI.ORIGIN[1]))
