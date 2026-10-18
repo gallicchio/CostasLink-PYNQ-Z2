@@ -1,6 +1,6 @@
 # CostasLink-PYNQ-Z2 rev A: JLCPCB order settings
 
-Written by `mfg/make_release.py` on 2026-10-17.  On jlcpcb.com, **Order now**, upload `CostasLink-PYNQ-Z2_gerbers.zip`, then set the form top to bottom; the fields are in the form's own order (as of 2026-10-09, CLAUDE_PCB.md section 8).  **A row marked `>>` with its value in bold is NOT JLCPCB's default: change it, and do not leave the default named beside it.**  11 fields differ from the defaults.  Every dialog the form raises has its own row.
+Written by `mfg/make_release.py` on 2026-10-18.  On jlcpcb.com, **Order now**, upload `CostasLink-PYNQ-Z2_gerbers.zip`, then set the form top to bottom; the fields are in the form's own order (as of 2026-10-09, CLAUDE_PCB.md section 8).  **A row marked `>>` with its value in bold is NOT JLCPCB's default: change it, and do not leave the default named beside it.**  11 fields differ from the defaults.  Every dialog the form raises has its own row.
 
 ## The PCB
 
@@ -62,7 +62,7 @@ Written by `mfg/make_release.py` on 2026-10-17.  On jlcpcb.com, **Order now**, u
 | Assembly Side | Top Side | Top Side | every part on one side |
 | >> PCBA Qty | **2** | 5 | of the 5 boards; the other 3 are bare spares |
 | Edge Rails/Fiducials | Added by JLCPCB | Added by JLCPCB | the board carries no rails of its own; its 3 fiducials (1 mm copper in 2 mm mask openings, at (11.0, 11.0), (115.5, 15.0), (116.5, 87.5) mm from the top-left corner) sit inside the outline; JLCPCB adds two rails with its fiducials, and Depanel below takes them off.  Parts hang over the edge (J101, J202, J401, J402, J403 4.6 mm past the top edge; J203, J301 1.7/4.6 mm past the right edge; J205, J206, J207 4.6 mm past the left edge): the Assembly remark below says so |
-| >> Confirm Parts Placement | **Yes** | No | free: the placement preview, read against PLACEMENT_CHECKS.txt (32 part numbers have predicted, unseen rotations) |
+| >> Confirm Parts Placement | **Yes** | No | free: the placement preview, read against PLACEMENT_CHECKS.txt (0 part numbers have predicted, unseen rotations) |
 | Stencil Storage | No | No |  |
 | Fixture Storage | No | No |  |
 | Parts Selection | By Customer (Self-Service) | By Customer (Self-Service) | the BOM carries every LCSC code and every line matches JLCPCB's shelf (nothing is consigned) |

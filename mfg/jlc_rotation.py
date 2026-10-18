@@ -141,6 +141,11 @@ JLC_ROTATION["USB_C_Receptacle_HRO_TYPE-C-31-M-12"] = (
 # change "predicted" to what they saw.
 #
 #   LCSC code: (correction, confidence, the part and why)
+# What Jason saw in CostasLink rev A's preview (2026-10-17), reported in Prompt 40 (2026-10-18): every part
+# the CPL carried as predicted sat right, the SMAs apart (their entry below).
+REVA_READ = ("Jason, CostasLink rev A's preview (2026-10-17): 'Everything look correct except the SMAs': "
+             "sat right as predicted")
+
 JLC_ROTATION_BY_PART = {
     "C41378174": (0, "read", "RP2354A, U1: all 61 pads line up by number; their pin-1 dot is at pin 1"),
     "C2671348": (0, "read", "SN75161B, U3: JLCPCB draws it upright, pin 1 top left, as KiCad does"),
@@ -192,15 +197,16 @@ JLC_ROTATION_BY_PART = {
 
     # CostasLink-PYNQ-Z2 (2026-10-09): PREDICTED from JLCPCB's drawings as the ECP5-2ADC-2DAC board read them
     # (its mfg/jlc_rotation.py, build 34; CLAUDE_PCB.md section 8's table), for the parts a fit by pin number
-    # cannot judge: the SMA's five holes are a square and the 1x2 header's two holes say nothing.  Neither has
-    # been seen in a preview yet; both are listed in PLACEMENT_CHECKS.txt.
+    # cannot judge: the SMA's five holes are a square and the 1x2 header's two holes say nothing.  Both were then
+    # read in rev A's preview (2026-10-17): the SMA's prediction was wrong, the header's right.
     "C496551": (0, "read", "edge SMA BWSMA-KWE-Z001: READ in JLCPCB's viewer (CostasLink rev A, 2026-10-17): at +90 "
                            "every one of the nine SMAs needed a quarter turn clockwise, so +0 is right.  The footprint "
                            "agrees: its body (F.Fab) runs from x 3.78 to 11.6, the barrel along +x at 0, the same as "
                            "JLCPCB's drawing; the +90 was predicted from a misreading of KiCad's barrel as along -y"),
-    "C492401": (270, "predicted", "1x2 header PZ254V-11-02P: JLCPCB's drawing lies along +x with pin 1 left, KiCad's "
-                                  "stands along +y with pin 1 at the top (the 1x3 and 1x6 headers predict 270 by pin "
-                                  "number; two pads predict nothing)"),
+    "C492401": (270, "read", "1x2 header PZ254V-11-02P: JLCPCB's drawing lies along +x with pin 1 left, KiCad's "
+                             "stands along +y with pin 1 at the top (the 1x3 and 1x6 headers predict 270 by pin "
+                             "number; two pads predict nothing).  READ: Jason, CostasLink rev A's preview (2026-10-17): 'Everything look correct except the SMAs': sat right as predicted (JP202, JP203, "
+                             "JP301-JP303, with their 1.27 mm datum move)"),
     # and PREDICTED from mfg/footprint_check.py's fit of JLCPCB's drawing on this board's footprints (2026-10-09),
     # where the fit by pin number alone could not say (make_release.py's rule wants three pads matched by name):
     "C2977589": (0, "predicted", "2x20 socket 2.54-2*20, J302 on the BACK: JLCPCB's drawing lies on our 40 holes "
@@ -210,24 +216,59 @@ JLC_ROTATION_BY_PART = {
                                  "a fit by name cannot see it; the PYNQ-Z2's pins come up through the right holes "
                                  "whichever way their label points.  Their origin is the socket's centre: the CPL "
                                  "point moves there (datum)"),
-    "C5137198": (0, "predicted", "BWMMCX-KE vertical MMCX on our MMCX_BWMMCX-KE_Vertical: JLCPCB's land pattern (their "
+    "C5137198": (0, "read", "BWMMCX-KE vertical MMCX on our MMCX_BWMMCX-KE_Vertical: JLCPCB's land pattern (their "
                  "SMA-TH_BWMMCX-KE) fits ours to 0.000 mm at 0 deg; they number the centre pin 5 and the four corner "
                  "legs 1-4, we number the centre 1 and every leg 2 (ground), so the fit by number fails while the "
                  "signal lands on the signal and ground on ground.  The jack is round and its legs square: any quarter "
-                 "turn is the same part (Response 15)"),
-    "C88374": (270, "predicted", "U.FL-R-SMT-1(80) on KiCad's U.FL_Hirose_U.FL-R-SMT-1_Vertical: JLCPCB's drawing "
+                 "turn is the same part (Response 15).  READ: Jason, CostasLink rev A's preview (2026-10-17): 'Everything look correct except the SMAs': sat right as predicted (six jacks)"),
+    "C88374": (270, "read", "U.FL-R-SMT-1(80) on KiCad's U.FL_Hirose_U.FL-R-SMT-1_Vertical: JLCPCB's drawing "
                                  "(signal pad 1 toward +y, grounds 2 and 3 toward -y) turned 90 lies on ours (signal "
                                  "pad toward -x, grounds at +-y) to 0.001 mm by pins 1 and 2 and by position on all "
                                  "three, so 360 - 90.  The ECP5 board's copy of JLCPCB's own drawing needed 0; this "
                                  "is KiCad's footprint, a quarter turn from theirs.  Their origin sits 0.76 mm from "
-                                 "ours (datum): the CPL point moves there"),
-    "C208262": (180, "predicted", "ADL5611 in SOT-89-3: JLCPCB draws the three leads toward +x with pin 1 at +y, "
+                                 "ours (datum): the CPL point moves there.  READ: Jason, CostasLink rev A's preview (2026-10-17): 'Everything look correct except the SMAs': sat right as predicted (22 jacks, "
+                                 "with the 0.763 mm datum move)"),
+    "C208262": (180, "read", "ADL5611 in SOT-89-3: JLCPCB draws the three leads toward +x with pin 1 at +y, "
                                   "KiCad's SOT-89-3 toward -x with pin 1 at -y: a half turn.  footprint_check's fit "
                                   "fits it by the three leads at 180 (JLCPCB draws the TAB as a second pad 2, which "
                                   "KiCad folds into pad 2's custom polygon; footprint_check keeps the lead) and finds "
                                   "their origin 0.7 mm from ours, so the CPL point moves there (datum).  The Lorenz "
                                   "board read +180 for its SOT-89 regulators (C8615, C8626; CLAUDE_PCB.md section 8), "
-                                  "which agrees"),
+                                  "which agrees.  READ: Jason, CostasLink rev A's preview (2026-10-17): 'Everything look correct except the SMAs': sat right as predicted (three, with the 0.7 mm datum move)"),
+
+    # CostasLink-PYNQ-Z2 rev A (2026-10-17): the 28 part numbers below were PREDICTED by make_release.py from
+    # mfg/footprint_check.py's fit of JLCPCB's drawing on KiCad's footprint (by pin number; the two-pad parts by
+    # nothing, correction 0), listed in PLACEMENT_CHECKS.txt, and then READ: Jason went through the preview and
+    # reported "Everything look correct except the SMAs" (Prompt 40, 2026-10-18).  The correction is relative to
+    # the KiCad footprint named; a board with a different footprint for the same code must fit it again.
+    "C10425": (180, "read", "74LVC1G17 SOT-353 SC-70-5 (U116, U205): " + REVA_READ),
+    "C113952": (0, "read", "SMAJ5.0A D_SMA (D303): the cathode bar; " + REVA_READ),
+    "C14461": (180, "read", "74LVC2G34 SOT-363 SC-70-6 (U204): " + REVA_READ),
+    "C17271830": (270, "read", "HMC536 MSOP-8-1EP (U401): " + REVA_READ),
+    "C19270534": (0, "read", "100 uF polymer CP_Elec_5x5.9 (C320): the stripe; " + REVA_READ),
+    "C2058382": (270, "read", "THS4541 VQFN-16-1EP 3x3 (U105, U106, U501, U502): " + REVA_READ),
+    "C2059281": (270, "read", "OPA2187 VSSOP-8 3x3 (U112, U508): " + REVA_READ),
+    "C210262": (0, "read", "SKY65404-31 QFN-6 1.5x1.5 (U101): " + REVA_READ),
+    "C2286": (0, "read", "0603 LED (D301, D302): the cathode at pad 1; " + REVA_READ),
+    "C2937625": (270, "read", "1x3 header PZ254V-11-03P (J303, JP101-JP103, JP201), with the 2.54 mm datum move: " + REVA_READ),
+    "C2974371": (180, "read", "TLV3601 SOT-353 SC-70-5 (U107, U503-U505): " + REVA_READ),
+    "C37593": (270, "read", "ADS1115 TSSOP-10 3x3 (U114, U510): " + REVA_READ),
+    "C38663": (180, "read", "74LVC1G3157 SOT-363 SC-70-6 (U110): " + REVA_READ),
+    "C42711": (270, "read", "AD8310 MSOP-8 3x3 (U507): " + REVA_READ),
+    "C46388": (270, "read", "TS5A3159 SOT-363 SC-70-6 (U111): " + REVA_READ),
+    "C470929": (270, "read", "PE43711 QFN-24-1EP 4x4 (U102): " + REVA_READ),
+    "C478093": (270, "read", "MCP4728 MSOP-10 3x3 (U113): " + REVA_READ),
+    "C5119013": (0, "read", "TCXO 3225 4-pin (Y201; pin 1 VC/NC, 2 GND, 3 OUT, 4 VDD): " + REVA_READ),
+    "C5179998": (0, "read", "VCXO 3225 4-pin (Y101): " + REVA_READ),
+    "C5213955": (180, "read", "TLV3603 SOT-363 SC-70-6 (U601-U604): " + REVA_READ),
+    "C531388": (0, "read", "HHM1907B1 balun (T101): " + REVA_READ),
+    "C579150": (270, "read", "ADL5375-05 QFN-24-1EP 4x4 (U201): " + REVA_READ),
+    "C579152": (270, "read", "ADL5380 QFN-24-1EP 4x4 (U104): " + REVA_READ),
+    "C627342": (270, "read", "MCP4728A1 MSOP-10 3x3 (U506): " + REVA_READ),
+    "C650158": (270, "read", "AD5696R TSSOP-16 (U605): " + REVA_READ),
+    "C7458627": (0, "read", "MAX2871 QFN-32-1EP 5x5 (U115, U203): " + REVA_READ),
+    "C81598": (0, "read", "1N4148W SOD-123 (D501): the cathode bar; " + REVA_READ),
+    "C8207": (180, "read", "74LVC1G04 SOT-353 SC-70-5 (U206, U402): " + REVA_READ),
 }
 
 # BOTTOM-SIDE PLACEMENTS ARE MIRRORED: rot -> 180 - rot, and it is CONFIRMED.

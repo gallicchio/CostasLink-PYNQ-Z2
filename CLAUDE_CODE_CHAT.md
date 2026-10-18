@@ -4330,3 +4330,22 @@ TR A line said "/10 into 50 ohm", which Prompt 36's 4.7 k made wrong: it now say
 and 35 mV into 50 ohm, and why.  Risk row 10 (parts and the order) retires at stage 0 and 1.0 with the same facts;
 the bench table lists the loupe, the assembly drawing and PLACEMENT_CHECKS.txt, and the shunts' count is seven.
 README.md's "Nothing ordered" line now says ordered.
+
+## Prompt 40 (2026-10-18 ~07:55 PDT)
+
+"Everything look correct except the SMAs, which I already told you about."
+
+## Response 40 (2026-10-18 07:55 - 08:20 PDT): the preview's 32 readings recorded
+
+That closes the rotation question for this board.  The 32 part numbers (83 placements) the CPL carried as predicted
+are recorded as read in mfg/jlc_rotation.py, each by LCSC code with the KiCad footprint named (a module constant
+REVA_READ carries the reading); the four that were already in the table as predicted (the 1x2 header, the MMCX, the
+U.FL, the ADL5611's SOT-89) are read now too, their datum moves included.  The CPL's numbers do not change, since
+the predictions were the numbers: the regenerated upload is byte for byte the one before, and PLACEMENT_CHECKS.txt
+lists nothing unseen.  The uploaded Gerbers and zip are kept as uploaded (restored from git after the regeneration,
+as in Response 38).  REVA_CHANGES row 56; CLAUDE_PCB.md's table has the row and the headers' row says read; its
+rule paragraph records the score: the predictions by pin number were right 32 for 32, the one from a description
+of the footprint was the wrong one.  BRINGUP.md: stage 0.3 says every rotation is a reading; stage 1.0's inspection
+is now a check that JLCPCB placed what the preview showed (the SMAs, the polarity marks, pin 1 on the QFNs that are
+hardest to rework, the ADL5611s' tab, the U.FL pads), and a difference is JLCPCB's placement error rather than a
+reading to record.

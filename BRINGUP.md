@@ -12,9 +12,10 @@ section 10 is folded in: the table at the end says which stage retires which ris
 side, nothing consigned, 4 layers on the JLC04161H-7628 stack, ENIG, the vias ink-plugged (the form's free upgrade
 from tented: either is fine on this board), no order number, JLCPCB's assembly rails taken off before shipping.
 Their production files were checked layer by layer against the upload (`mfg/PRODUCTION_FILE_CHECK.md`) and
-confirmed.  Stage 0 is therefore done, and stage 1.0 is where the delivered boards are read against what was
-ordered: the only thing the placement preview could not settle is the rotation of the 32 part numbers it
-predicted, and the only thing it got wrong (the SMAs) was turned by hand before production.
+confirmed.  Stage 0 is therefore done.  Jason read every part in the placement preview: the SMAs were a quarter
+turn off and were turned by hand before production (the table now says 0), and the 32 other predicted part numbers
+sat right, so every rotation on the board is a reading now (`mfg/jlc_rotation.py`; REVA_CHANGES 55-56).  Stage 1.0
+checks the delivered boards against that preview.
 
 ## What to have on the bench
 
@@ -34,7 +35,7 @@ predicted, and the only thing it got wrong (the SMAs) was turned by hand before 
 | two PYNQ-Z2 (or one PYNQ and one Icepi Zero), their supplies, a laptop | both ends | have |
 | an IR thermometer or camera | stage 1 (heat) | have |
 | the 2x20 socket J302 (LCSC C2977589, 2.54 mm, about 8.5 mm tall) and 2.54 mm jumper shunts (C5305), from `mfg/release/hand_solder_bom.csv` | J302 is soldered at home (Prompt 15: fitting it made JLCPCB's order two-sided, about $51 with duty); the shunts set JP101-JP103, JP201 and JP203 (seven a board) | buy with the order |
-| a loupe or the USB microscope, the top assembly drawing (`mfg/release/CostasLink-PYNQ-Z2_assembly_top.pdf`) and `mfg/release/PLACEMENT_CHECKS.txt`, printed | stage 1.0: the parts whose orientation JLCPCB's preview could only predict are read on the delivered boards, and the reading goes into `mfg/jlc_rotation.py` | have |
+| a loupe or the USB microscope, the top assembly drawing (`mfg/release/CostasLink-PYNQ-Z2_assembly_top.pdf`) and `mfg/release/PLACEMENT_CHECKS.txt`, printed | stage 1.0: the delivered boards against the drawing.  JLCPCB places what the preview showed, but the look is free, and a reversed part found there costs nothing where at step 1 it costs a chip | have |
 
 ## Stage 0: before the order (the gates; done, the boards ordered 2026-10-17)
 
@@ -54,8 +55,9 @@ predicted, and the only thing it got wrong (the SMAs) was turned by hand before 
    the shelf (the AD5696R's two for two boards, the HMC536's five, the ADL5375's 654), so nothing is consigned.  In
    the placement preview the nine SMAs lay along the edges, a quarter turn off: Jason turned them in JLCPCB's viewer,
    and the correction is 0 in `mfg/jlc_rotation.py` now (the CPL had carried a predicted +90; REVA_CHANGES 55).  The
-   other 32 predicted part numbers were not reported wrong, but nobody has recorded them as read: stage 1.0 reads
-   them on the boards.  JLCPCB's production Gerbers came back as uploaded but for their standard CAM (inner-layer
+   other 32 predicted part numbers sat right in the preview, every one as predicted (Prompt 40), and
+   `mfg/jlc_rotation.py` records them as read: PLACEMENT_CHECKS.txt lists nothing unseen, and the next board that
+   copies the table inherits the readings for the parts it shares.  JLCPCB's production Gerbers came back as uploaded but for their standard CAM (inner-layer
    rings dropped from through-hole pins with no inner connection, plated drills 0.13-0.15 mm over finished size,
    their rails with V-cuts, since removed) and were confirmed; the via covering came back plugged.
 4. The DAC EEPROMs: nothing to do before the board exists, but the first gateware writes all eight DAC
@@ -73,24 +75,21 @@ predicted, and the only thing it got wrong (the SMAs) was turned by hand before 
 Nothing plugged into the header yet; the board alone on the bench supply through USB-C.
 
 0. Out of the bag, before anything is soldered: the two assembled boards against the top assembly drawing
-   (`mfg/release/CostasLink-PYNQ-Z2_assembly_top.pdf`) and the NOT YET SEEN list of `mfg/release/PLACEMENT_CHECKS.txt`,
-   which says for each part what to look for.  The preview only predicted those 32 part numbers' rotations (and
-   the one it got wrong, the SMAs, Jason corrected by hand), so the delivered board is where they are read.  In order:
-   (a) the nine SMAs' barrels point off the board's edges (five up, three left, J203 right), not along them;
-   (b) the parts a preview cannot check at all, whose polarity is a mark: D303's cathode bar (the SMAJ5.0A across
-   the 5 V input: backwards it is a diode across the supply, and step 1's 0.1 A limit finds the short), C320's stripe
-   (the 100 uF polymer: backwards it heats and fails), D301 / D302 (the LEDs: backwards they stay dark, no harm) and
-   D501 (the slow sheet's peak-detector diode: backwards `detectors()` reads no peak);
-   (c) pin 1 by the dot on every QFN and MSOP against the drawing: U104 ADL5380, U201 ADL5375, U102 PE43711,
-   U115 / U203 MAX2871, U101 the LNA, U105 / U106 / U501 / U502 THS4541, U401 HMC536, U507 AD8310, U113 / U506
-   MCP4728, U605 AD5696R, U114 / U510 ADS1115, U112 / U508 OPA2187;
-   (d) the SC-70s (three pins one side, two the other, pin 1 by the mark), the three ADL5611s' wide tab toward
-   their RF output, the two oscillators' pin 1, the U.FL jacks' signal pad on the track side, every header's pin 1
-   at the square pad.
-   A reversed TVS or capacitor is a rework before power; a turned chip is a stage that will not pass and a rework
-   if the part can be had.  Whatever the reading, right or wrong and by how much, write it into `mfg/jlc_rotation.py`
-   as `read`, so the next order's PLACEMENT_CHECKS.txt is short.  Two things JLCPCB's CAM changed are normal and want
-   nothing: J302's signal pins and the jumper pins have no inner-layer rings (non-functional pad removal), and the
+   (`mfg/release/CostasLink-PYNQ-Z2_assembly_top.pdf`).  Every rotation was read right in JLCPCB's preview (stage 0.3),
+   so this is a check that the line placed what the preview showed, which it does; the ten minutes with the loupe
+   are still free, and a part found backwards here costs nothing where at step 1 it costs a chip.  In order:
+   (a) the nine SMAs' barrels point off the board's edges (five up, three left, J203 right), not along them: these
+   are the parts JLCPCB fits by hand, and the ones whose preview was corrected by hand;
+   (b) the polarity marks: D303's cathode bar (the SMAJ5.0A across the 5 V input: backwards it is a diode across the
+   supply, and step 1's 0.1 A limit finds the short), C320's stripe (the 100 uF polymer: backwards it heats and
+   fails), D301 / D302 (the LEDs: backwards they stay dark, no harm) and D501 (the slow sheet's peak-detector diode:
+   backwards `detectors()` reads no peak);
+   (c) pin 1 by the dot on the QFNs that matter most and are hardest to rework: U104 ADL5380, U201 ADL5375, U102
+   PE43711, U115 / U203 MAX2871, U101 the LNA, the four THS4541s, U401 HMC536;
+   (d) the three ADL5611s' wide tab toward their RF output, and the U.FL jacks' signal pad on the track side.
+   A part that differs from the preview is JLCPCB's placement, not the CPL (`mfg/jlc_rotation.py` holds the
+   readings): a photo to their support, and a rework before power if the part can be had.  Two things JLCPCB's CAM
+   changed are normal and want nothing: J302's signal pins and the jumper pins have no inner-layer rings (non-functional pad removal), and the
    vias are ink-plugged (the exposed pads' thermal vias keep their solder).
    Then solder J302 on the back (pin 1 at the right-hand end of the bottom edge, as the silk
    shows; square to the board: it carries the board 8 mm above the PYNQ), and fit the shunts:
@@ -370,7 +369,7 @@ quiet one for the 5.2 GHz direction if it is empty; 5.70 and 5.80 GHz keep both 
 | 7 | heat: 6.8 W | the PLL regulators' 2.2 ohm; exposed-pad vias; +5V_RF pour | 1.4 | a fan; TX_DIS and the DSA idle parts |
 | 8 | the slow path's offsets or saturation | I_OFF / Q_OFF, V_T2; the nulling routine | 3.2 | the fast path works without it |
 | 9 | the single-ended ladder drive wobbles the modulator's common mode | VR_I / VR_Q trims; the receiver cares about sign | 2.3, 3.5 | accept the -15 dBc feedthrough as a fixed vector |
-| 10 | parts and the order: five HMC536 at JLCPCB, the ADL5375's thin shelf (4 on 2026-10-14, 654 on the order day; Digi-Key fallback), two DACs by address, CPL rotations | PLACEMENT_CHECKS.txt, the preview, the HMC427A as a second-source switch | 0 (ordered 2026-10-17: every line on the shelf, nothing consigned; the SMAs' rotation caught in the preview), 1.0 (the 32 predicted rotations and the polarities read on the boards) | a reversed or turned part is a rework before power; the reading goes into jlc_rotation.py |
+| 10 | parts and the order: five HMC536 at JLCPCB, the ADL5375's thin shelf (4 on 2026-10-14, 654 on the order day; Digi-Key fallback), two DACs by address, CPL rotations | PLACEMENT_CHECKS.txt, the preview, the HMC427A as a second-source switch | 0 (ordered 2026-10-17: every line on the shelf, nothing consigned; every rotation read in the preview, the SMAs' corrected there), 1.0 (the delivered boards against the drawing) | a reversed or turned part is JLCPCB's placement error: a photo to their support and a rework before power |
 | 11 | the Icepi Zero: no pull-ups, 5 V from its own USB-C, no gateware | DNP 4.7 k; JP301 open; the same Verilog top | 1.5, 4 | fit the 4.7 k |
 | 12 | a generated symbol with pins swapped | the pin audit (done: two incomplete symbols found and fixed) | 0, 3 | a rework is unlikely to save a QFN with a swapped pair; order one board first if in doubt |
 | 13 | **new:** the TCXO's pin 1 is undocumented in its datasheet text (control or NC); the symbol leaves it open | nothing | 2.1 | if the TX synthesizer's reference is off frequency, pin 1 wants 1.65 V: a rework wire to the VCXO's divider |
