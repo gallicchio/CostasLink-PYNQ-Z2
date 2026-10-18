@@ -661,7 +661,9 @@ class Sch:
                 px, py, rot = x + off, y, 90
             else:
                 px, py, rot = x + off, y + h, 270
-            just = "right" if side == "l" else "left"
+            # the name reads INSIDE the box, as KiCad draws its own sheet pins (a left pin's text runs right):
+            # a net label on the wire outside then sits beside the pin, not on its name (Prompt 35)
+            just = "left" if side == "l" else "right"
             ptxt.append('\t\t(pin %s %s (at %s %s %d) %s (uuid %s))'
                         % (q(pname), shape, g(px), g(py), rot, _eff(1.27, justify=just), q(self._u("sp", filename, pname))))
             pos[pname] = (snap(px), snap(py))

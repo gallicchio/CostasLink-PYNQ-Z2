@@ -24,6 +24,15 @@ LIMIT_EXEMPT = {
             "every /10 tap's, 0-0.3 V/50R, printed under the window monitors and CMP I MON",
     "J502": "Q SLOW MON sits between U502 and JP102 with room for its name's column only; its level is I SLOW MON's, "
             "0-3.3 V through 1k, printed beside J501",
+    "J290": "LD TX sits between the lower rail row's name columns with room for its name only; its level is every /10 tap's, "
+            "0-0.3 V/50R, printed under the window monitors",
+    "J190": "LD RX likewise",
+    "J394": "3V3_PLL_TX (U.FL) stands alone beside its regulator with room for its name's column only; its level, DC through 1k, "
+            "is printed under the rail row (J390-J393)",
+    "J395": "3V3_PLL_RX likewise",
+    "J396": "3V3_OSC likewise",
+    "J109": "LO RX MON sits inside the RX synthesizer's loop filter with room for its name only (Prompt 35: the LD RX jack took "
+            "the last of it); its level is LO TX MON's, 0 dBm, 50R, printed beside J204",
 }
 
 

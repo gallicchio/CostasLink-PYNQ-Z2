@@ -45,6 +45,7 @@ def build(S):
     # the I comparator: sign(I slow)
     ip, inn_ = arms["I"]
     ci = B.comparator("U503", ip[0] + 38.1, ip[1] + 7.62)
+    note(ip[0] + 30, ip[1] + 30, "TLV3601, comparators (2.5 ns): U503 = sign(I slow); U504 / U505 = the slow Q window against V_T2.", cols=30)
     W(ip, (ip[0] + 10.16, ip[1]), (ip[0] + 10.16, ci.pin("3")[1]), ci.pin("3"))
     W(inn_, (inn_[0] + 5.08, inn_[1]), (inn_[0] + 5.08, ci.pin("4")[1]), ci.pin("4"))
     co = ci.pin("1")
@@ -89,7 +90,7 @@ def build(S):
     B.supply_bar(dac, ["1"], "+3V3_DIG", dy=10.16)
     B.bottom_gnd(dac, ["10"])
     sig(xd + 36, yd - 34, LV.txt("DAC2"), cols=34)
-    note(xd - 40, yd + 20, "MCP4728A1: the same DAC as sheet 3's at the factory-preset address 0x61 (no address programming).  V_T2 sets this path's "
+    note(xd - 40, yd + 20, "MCP4728A1, 12-bit quad DAC: the same DAC as sheet 3's at the factory-preset address 0x61 (no address programming).  V_T2 sets this path's "
          "Q window; I_OFF / Q_OFF reach the slow stages' summing nodes through 100 k; D = I_OFF_F does the same for the FAST I arm "
          "on sheet 3 through the 100 k here (its summing node I_SUM comes from that sheet).  Write all four EEPROM defaults to mid-scale (1.65 V) once, so power-up injects no offset.", cols=36)
     detectors(S)
@@ -126,8 +127,7 @@ def detectors(S):
     inp, inn, out = oa.pin("3"), oa.pin("2"), oa.pin("1")
     W(vo, (inp[0] - 25.4, vo[1]), (inp[0] - 25.4, inp[1]), inp)
     label(vo[0] + 2.54, vo[1], "LOG_Q", size=1.0)
-    xt = inp[0] - 15.24
-    J(xt, inp[1]); W((xt, inp[1]), (xt, inp[1] - 10.16)); tp(xt, inp[1] - 10.16, "LOG Q")
+    # LOG Q's jack (Prompt 35: it was a test pad) is drawn at the end of the sheet on a net label, clear of the op amp
     ra2, rb2 = series("R 10k", inn[0] - 12.7, inn[1], above=False)
     W(rb2, inn)
     W(ra2, (ra2[0] - 5.08, inn[1])); label(ra2[0] - 5.08, inn[1], "PEAK_Q", size=1.0)
@@ -158,14 +158,14 @@ def detectors(S):
     pw = part("OPA2388", "U508", X0 + 274.32, Y0 + 33.02, unit=3, text="right")
     B.supply_bar(pw, ["8"], "+3V3_ANA", dy=7.62, caps_side="left")
     B.bottom_gnd(pw, ["4"])
-    note(X0 + 4, Y0 + 52, "AD8310 on the fast Q arm: the link's whole band (+-%.0f MHz round the carrier), %.0f dB, %.0f mV/dB; LOG_Q is "
+    note(X0 + 4, Y0 + 52, "AD8310, logarithmic amplifier (95 dB of input range to a DC voltage, 24 mV/dB), on the fast Q arm: the link's whole band (+-%.0f MHz round the carrier), %.0f dB, %.0f mV/dB; LOG_Q is "
          "a burst's envelope (BFIN %.0f kHz; OFLT %.0f kHz).  %s + %s against its %.0f ohm input: %.2f of the arm.  With no carrier and the "
          "DSA at 0 the arm's own noise is %.1f mV rms, %.1f mV (%.0f dBV) here, %.0f dB over the log amp's floor.  A scope on the "
          "LOG Q pad shows WiFi's frames."
          % (D["fda_bw_MHz"], PP["log_top_dBV"] - PP["log_floor_dBV"], PP["log_slope_V_dB"] * 1e3, D["det_f_video_kHz"], D["det_f_oflt_kHz"],
             V["det_Rs"][2:], V["det_Rs"][2:], PP["log_Rin_ohm"], D["det_tap"], D["det_noise_arm_mV"], D["det_noise_arm_mV"] * D["det_tap"],
             D["det_noise_log_dBV"], D["det_noise_log_dBV"] - PP["log_floor_dBV"]), cols=48)
-    note(X0 + 112, Y0 + 52, "Peak hold of LOG_Q (Jason: a slowly decaying peak for WiFi's bursts beside a truer level).  A charges "
+    note(X0 + 112, Y0 + 52, "OPA2388, dual op amp, as a peak hold of LOG_Q (Jason: a slowly decaying peak for WiFi's bursts beside a truer level).  A charges "
          "%s through the diode inside its loop (no diode drop), B reads it, %s lets it fall in %.0f ms, so a 20 us frame "
          "still reads at the ADC a few conversions later.  The link's own events lift it too: read it in a pause."
          % (V["det_Chold"][2:], V["det_Rbleed"][2:], D["det_tau_ms"]), cols=48)
@@ -197,7 +197,12 @@ def detectors(S):
     t, b = vpart("NTC10K", "TH501", xt, yt + G + 3.81, text="right", ref_at=(xt + 4.2, yt + G + 3.5), val_at=(xt + 4.2, yt + G + 4.1))
     W((xt, yt), t); gnd(*b)
     W((xt, yt), (xt - 10.16, yt)); label(xt - 10.16, yt, "TEMP", size=1.0, justify="right bottom")
-    note(X0 + 412, Y0 + 56, "ADS1115 (I2C 0x49, ADDR to VDD): AIN0 LOG_Q (its conversion averages the log: 1.2 ms at 860 SPS, "
+    note(X0 + 412, Y0 + 56, "ADS1115, 16-bit 4-channel ADC (I2C 0x49, ADDR to VDD): AIN0 LOG_Q (its conversion averages the log: 1.2 ms at 860 SPS, "
          "125 ms at 8 SPS), AIN1 PEAK_Q, AIN2 V5_MON (+5V_RF x %.2f), AIN3 TEMP (a %.0f k NTC under %s from 3.3 V: %.2f V at 25 C, %.2f V at 60 C).  "
          "Each input through %s / %s (%.0f Hz).  The driver's detectors() reads them; nothing new on the FPGA's header."
          % (D["v5_div"], PP["ntc_R25_ohm"] / 1e3, V["ntc_Rtop"][2:], D["ntc_V25"], D["ntc_V60"], V["det_Radc"][2:], V["det_Cadc"][2:], D["det_f_adc_Hz"]), cols=40)
+    # LOG Q's jack, last (explicit references): on a net label above the log amp
+    xq, yq = X0 + 4, Y0 + 2.54
+    W((xq, yq), (xq + 5.08, yq))
+    label(xq, yq, "LOG_Q", size=1.0, justify="right bottom")
+    B.tap(xq + 5.08, yq, "LOG Q", rkey="R 1k", ref="J590", rref="R590")

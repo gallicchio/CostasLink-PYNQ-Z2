@@ -88,9 +88,13 @@ def ldo(ref, key, x, y, rail, series_r=None, note_text=""):
     return u
 
 
+RAILS = ("+5V_IN", "+5V_RF", "+3V3_PLL_TX", "+3V3_PLL_RX", "+3V3_ANA", "+3V3_DIG", "+3V3_OSC")
+JACK_RAILS = ("+5V_IN", "+5V_RF", "+3V3_ANA", "+3V3_DIG", "+3V3_PLL_TX", "+3V3_PLL_RX", "+3V3_OSC")   # J390-J393 the row, J394-J396 by their regulators
+
+
 def build(S):
     U.begin(S, ref_base=300)
-    title(20, 18, "Power and the FPGA: 5 V in, five quiet 3.3 V rails, the PYNQ-Z2's Raspberry Pi header")
+    title(20, 18, "Power and the FPGA: 5 V in, five quiet 3.3 V rails, the PYNQ-Z2's (or Icepi Zero's) Raspberry Pi header")
 
     # ---- inputs ---------------------------------------------------------------------------
     y = 55.88
@@ -142,8 +146,11 @@ def build(S):
     W(rb, (rb[0] + 5.08, gn2[1]), (rb[0] + 5.08, y + 30.48), (vb[0] + 5.08, y + 30.48)) if False else None
     W(rb, (rb[0] + 7.62, gn2[1]))
     label(rb[0] + 7.62, gn2[1], "VBUS", size=1.0)
-    note(14, yh + 24, "JP301 HDR 5V: fit it to power the board from the PYNQ-Z2's 5 V (pins 2/4) when the PYNQ runs on its barrel supply.  "
-         "Q302 turns off whenever USB-C 5 V is present (VBUS lifts its gate), and Q301 is off unless VBUS is present (Q303 pulls its gate down; +5V_HDR holds it up), so USB wins when both are plugged and neither supply ever feeds the other.", cols=34)
+    note(14, yh + 24, "Two ways to give the board its 5 V: the USB-C jack (power only, no data; any 5 V supply) or, with JP301 HDR 5V fitted, "
+         "the PYNQ-Z2's 5 V on header pins 2/4 when the PYNQ runs on its barrel supply (not the Icepi Zero's: no 1.4 A to spare).  "
+         "Each path: a 2 A PTC and a P-FET ideal diode.  Q302 turns off whenever USB-C 5 V is present (VBUS lifts its gate); Q301 is off "
+         "unless VBUS is present (Q303 pulls its gate down, +5V_HDR holds it up): USB wins when both are plugged and neither feeds the other.  "
+         "Power the PYNQ first (its clamps), then this board.", cols=36)
     # TVS, bulk, LED, the +5V_IN flag
     xe = xin + 43.18
     W((xin, y), (xin + 38.1, y))
@@ -186,11 +193,14 @@ def build(S):
     # ---- the five regulators -----------------------------------------------------------
     xl = 205.74
     ldo("U301", "TPS7A2033", xl, y, "+3V3_PLL_TX", series_r="R 2.2R 1206",
-        note_text="TPS7A2033: 300 mA, 10 uVrms.  2.2 ohm ahead of it shares the heat: 0.25 W in the LDO at 200 mA (+47 C).")
+        note_text="TPS7A2033, low-dropout linear regulator (LDO): 300 mA, 10 uVrms of noise.  2.2 ohm ahead of it shares the heat: 0.25 W in the LDO at 200 mA (+47 C).")
+    note(xl + 60, y + 44, "The five regulators are linear (no switching noise anywhere) and stand in one column on the board by the 5 V entry; each "
+         "rail fans out to chips all over the board, every one with its own capacitors at its pins, so the distance costs a few mV of "
+         "track (sim/budget.py section 9) and nothing in noise.", cols=36)
     ldo("U302", "TPS7A2033", xl, y + 40.64, "+3V3_PLL_RX", series_r="R 2.2R 1206")
     ldo("U303", "TPS7A2033", xl, y + 81.28, "+3V3_ANA", note_text="+3V3_ANA: the two FDAs, the loop op amp, the LNA, the DSA, the TX bias reference: 40 mA.")
     ldo("U304", "TPS7A2033", xl, y + 121.92, "+3V3_DIG", note_text="+3V3_DIG: comparators, switches, DAC, ADC, buffers: 30 mA.")
-    ldo("U305", "LP5907", xl, y + 162.56, "+3V3_OSC", note_text="LP5907: 6.5 uVrms for the VCXO and the TCXO (supply noise on an oscillator is FM).")
+    ldo("U305", "LP5907", xl, y + 162.56, "+3V3_OSC", note_text="LP5907, LDO: 6.5 uVrms for the VCXO and the TCXO (supply noise on an oscillator is FM).")
     # 3V3 LED
     xled = xl + 71.12
     yl = y + 121.92 - 2.54
@@ -201,15 +211,21 @@ def build(S):
     k = dled2.pin("1"); W(k, (k[0], k[1] + G)); gnd(k[0], k[1] + G)
     # test points per rail
     ytp = y + 162.56 + 38.1
-    for i, rail in enumerate(("+5V_IN", "+5V_RF", "+3V3_PLL_TX", "+3V3_PLL_RX", "+3V3_ANA", "+3V3_DIG", "+3V3_OSC")):
+    for i, rail in enumerate(RAILS):
         x = xl - 20.32 + 15.24 * i
         flag(rail, x, ytp - 5.08); W((x, ytp - 5.08), (x, ytp))
         tp(x, ytp, rail)
     xg = xl - 20.32 + 15.24 * 7
     tp(xg, ytp, "GND"); W((xg, ytp), (xg, ytp + G)); gnd(xg, ytp + G)
     W((xg, ytp), (xg + 7.62, ytp)); U.pwr_flag(xg + 7.62, ytp)       # ERC: the ground net's flag
-    note(xl - 20, ytp + 10, "Test pads: one per rail, and a ground for the probe's clip.", cols=30)
+    note(xl - 20, ytp + 10, "Test pads: one per rail, and a ground for the probe's clip.  Below: the same rails on U.FL jacks through 1 k, "
+         "for a logger or a scope under computer control (Prompt 35); a 50 ohm input reads them /21.", cols=30)
     sig(xl + 20, ytp + 10, LV.txt("5V_IN"), cols=60)
+    ytj = ytp + 25.4
+    for i, rail in enumerate(JACK_RAILS):
+        x = xl - 20.32 + 22.86 * i
+        flag(rail, x, ytj - 5.08); W((x, ytj - 5.08), (x, ytj))
+        B.tap(x, ytj, rail[1:], rkey="R 1k", ref="J39%d" % i, rref="R39%d" % i, text=False)     # named as the pad is (the board prints both)
 
     # ---- the PYNQ header -----------------------------------------------------------------
     xh, yh0 = 436.88, 101.6
@@ -239,18 +255,23 @@ def build(S):
             shape = "output" if net in PINS.OUTPUTS else ("input" if net in PINS.INPUTS else "bidirectional")
             U.S.hlabel(e[0], e[1], net, shape=shape, rot=0 if not left else 180)
     # J303 (the switch controls for an external module) moved to the antenna sheet in Response 14, with TR_B
-    # I2C pull-ups for a host without them (the Icepi Zero): DNP; the PYNQ-Z2 has 2k2 on its header
+    # I2C pull-ups for a host without them (the Icepi Zero), each behind a jumper (Prompt 35: no soldering to
+    # move between hosts); the PYNQ-Z2 has 2k2 on its header, so there the jumpers stay open
     xi = xh + 116.84
     yi = yh0 + 55.88
     flag("+3V3_DIG", xi + 3.81, yi - 15.24)
     W((xi + 3.81, yi - 15.24), (xi + 3.81, yi - 12.7)); W((xi, yi - 12.7), (xi + 7.62, yi - 12.7)); J(xi + 3.81, yi - 12.7)
     for k, net in enumerate(("I2C_SDA", "I2C_SCL")):
         xk = xi + 7.62 * k
-        r = part("R 4.7k", nref("R"), xk, yi - 12.7 + 3.81 + G, rot=0, dnp=True, value="DNP 4.7k", text="right" if k else "left", fsize=1.0)
+        jp = part("HDR1x2", "JP30%d" % (2 + k), xk, yi - 12.7 + 7.62, rot=270, value="SDA PU" if k == 0 else "SCL PU", text="hide")
+        W((xk, yi - 12.7), jp.pin("1"))
+        r = part("R 4.7k", nref("R"), xk, jp.pin("2")[1] + 3.81 + 2 * G, rot=0, text="right" if k else "left", fsize=1.0)
         top_, bot = sorted((r.pin("1"), r.pin("2")), key=lambda p: p[1])
-        W((xk, yi - 12.7), top_)
+        W(jp.pin("2"), top_)
         W(bot, (bot[0], bot[1] + G)); label(bot[0], bot[1] + G, net, size=1.0, justify="left top")
-    note(xi - 6, yi + 6, "I2C pull-ups, DNP: fit 4.7 k for the Icepi Zero (no pull-ups there); the PYNQ-Z2 has 2k2.", cols=24)
+    note(xi - 6, yi + 16, "I2C pull-ups: JP302 (SDA) and JP303 (SCL) fitted = 4.7 k to 3.3 V, for the Icepi Zero (no pull-ups there); "
+         "open for the PYNQ-Z2 (2k2 on its header).  One bus, five parts, five distinct addresses: 0x0C AD5696R (sheet 7), "
+         "0x48 and 0x49 ADS1115 (sheets 3, 6), 0x60 and 0x61 MCP4728 (sheets 3, 6).", cols=28)
     # the lines that must rest low while no gateware drives the header (Response 15, REVA_CHANGES.md 3): the
     # synthesizers' and the DSA's latch enables, so a floating line cannot load a word into them, and TRIG A /
     # TRIG B's buffer inputs, so their jacks stay quiet.  Explicit references: nothing after them renumbers.

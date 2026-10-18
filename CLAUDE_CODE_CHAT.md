@@ -3873,3 +3873,282 @@ pad's clearance property, and why), the top pour the solved distance off as a ru
 taper and no sub-0.3 mm annulus, nothing else inside the legs (a router keep-out), the field solve re-run on the
 actual stack with the anchor, and the gerber parser as a release gate, which is section 10's new gate 22.
 2026-10-15 04:58 PDT
+
+## Prompt 35 (2026-10-17 ~14:15 PDT)
+
+"As you go through these suggestions and corrections, look around to make sure that everything that you come
+across makes sense for this project and for the success of this PCB.
+
+The description "A 5.8 GHz link that carries a bit (or two) FPGA to FPGA in the speed-of-light time plus about
+25 ns. The receiver is a quadrature demodulator whose LO is a synthesizer on a VCXO; the Costas loop steers the
+VCXO, so the LO stays on the far end's carrier and the demodulator's I output IS the data, Q the phase error. The
+transmitter is a quadrature modulator driven by two 2-bit resistor ladders from FPGA pins. PLAN.md has the
+arithmetic; sim/budget.py computes it." is old. For example "the demodulator's I output IS the data, Q the phase
+error" is for PSK, but we're also doing other stuff. At least add "For example, for PSK,". In general, go through
+the comments and make sure they actually reflect the current state of the project goals, the schematic, and the
+PCB.
+
+On page 1, many of the pins coming from "Power and FPGA header" have what look like double labels. CMP_IN and
+CMP_IP for example. Similarly for the "Window comparators: I and Q" box.
+
+Is the power system correct, with the PTC and P-FED ideal diode? Will there be issues powering this up from
+either USB or the PYNQ-Z2's 5V (when running on its barrel) external 5V?
+
+There are several test points that are still test pads rather than MMCX (if it fits) or surface-mount U.FL if it
+does not. Examples include "TR A", "LOG Q", "LD U203", and an unlabeled one next to what looks like an IC
+labelled "LD U115". Even the row of DC voltage test points along the bottom (from 5V_IN to 3V3_OSC) should be
+surface mount U.FL, at least in addition to the existing test points. The test points are easy to probe with a
+multimeter, but difficult to automatically monitor from computer-controlled lab instruments.
+
+The corner of the board is labeled "RECEIVER 5.8 GHz", but it's both a transmitter and receiver. Maybe re-label
+"TRANSCIEVER 5.8 GHz"
+
+The SMA label "ANT" I think is for a single antenna that can be both in and out. Maybe label it on two lines
+"ANT" and "TX+RX". The SMAs labeled "TRIG A" and "TRIG B" should indicate that they are outputs. If "TRIG OUT A"
+and "TRIG OUT B" does not fit, add another line of small text above "3.3 V, 1.7 V/50R", shifting "TRIG A" and
+"TRIG B" up a bit.
+
+The set of regulators like TPS7A2033 are far away and seem only connected to power-hungry ICs by thin traces.
+Is this sufficient? It seems like the traces get thin for no good reason. They could be thicker. Maybe they
+could be moved a bit to avoid vias if that's what's keeping them thin. I'm also confused why they are
+floorplanned so far away from everything. These are linear regulators, not switching regulators, right? In
+general, the board is extremely crowed toward the SW corner and extremely sparse toward the NE. Maybe there is a
+good reason for this, and maybe it's not worth changing, but if the reason for keeping it this way is not
+sufficiently strong, feel free to spread things out more and move the power regulators closer to the place where
+the power is used.
+
+The 4-pin raspberry pi header appeared rotated 90 degrees in the underside of the 3D rendering.
+
+I'm actually confused how I'm supposed to hook things up if I have a separate TX and RX antenna vs how I hook
+them up with a single antenna. If I have a single antenna, do I have short SMA cables that go from "SW TX" to
+"TX ANT" and "SW RX" to "RX ANT"? This is what the comment at the top of page 5 indicates: "Fit this block to
+work with ONE antenna per direction: cable TX ANT -> SW TX and SW RX -> RX ANT" On the PCB, the same information
+should be in the silkscreen. "If you want TX and RX to share a single antenna, connect that single antenna to ANT
+and run short SMA cables from TX ANT -> SW TX and SW RX -> RX ANT." This info can be on the back.
+
+In general, user instructions can be on the back silkscreen. Things like "You can give this board 5V_IN either
+from a PYNQ-Z2, which is powered from a barrel connector, or from the USB-C plug, which is only to supply
+external power (no data)."
+
+You have a little info box in the schematic under the HMC536 switch. Add its switching time to that box and any
+other relevant information.
+
+The very first thing I see in the RX signal path is C101 right on top of the SMA connector. Why? Arrange the
+schematic so that the SMA is first, then the inductor and capacitor. Look at these schematics to determine if
+they make sense visually.
+
+Neither I, nor a casual student reader, will be familiar with what each IC is. The SKY65404-31 LNA needs to be
+labeled "LNA +13 dB" somewhere. The PE43711 needs to be more clearly labeled "RF Digital Step Attenuator" and
+needs to have a negative in its dB range for attenuation, the ADL5611's need to be labeled "+14.3 dB gain @ 5.8
+GHz", the THS4541 labeled "Fully differential amplifier", 74LVC1G3157 needs to be labeled "single-pole
+double-throw analog switch", OPA2388 needs to say "Op amp", MCP4728 needs to say "DAC 12-Bit", the AD4113 needs
+to say "ADC 16-bit", MAX2871 needs "PLL up to 6.0 GHz" etc. Maybe the only change needs to be that in your little
+info boxes, the first thing you say about the IC is its function. Then you can give the details that you give
+about being in the "the FAST arm" or whatever.
+
+Have an info box above the "JP101 / JP102 SIGN" one that explains that "sign(I) x Q" is not computed with a
+multiplier, instead comes from a switch either selecting +Q or -Q based on the sign of I, which come from CMP_I
+above.
+
+You have two boxes that start "THS4541, the FAST arm" with mostly identical information. Separate out the
+identical information to a box in between the two THS4541's. Then talk about the I and Q specific information in
+between I_P and I_N or between Q_P and Q_N.
+
+It is too slow to have the I and Q come onto header pins and through a jumper before they go into the
+74LVC1G3157? If it's fine, keep it, but I thought that these headers and jumpers were too slow for 100 MHz
+signals.
+
+Is it good, low-noise RF receiver design to have a modest +13 dB LNA followed by a step attenuator and then the
+ADL5611 gain blocks?
+
+Make an info box near where V_MID is made, which explains what V_MID is the mid-way point of the 3V3 analog
+supply and used in many comparators to compute the "positive or negative" sign and in opamps where a ground
+would be used in a dual-supply situation, since all analog levels are shifted to be between 0 and 3.3V.
+
+The wire around C130 looks wrong. Take a look.
+
+You can get rid of the comment that starts with "The OPA2187 first drawn here..."  The schematic does not need a
+record of your mistakes. That's what the chat is for.
+
+I am confused about how the one antenna scheme works and how it holds its frequency while not receiving. There
+are some words about "An MMCX-to-SMA lead to the TX sheet's REF IN (JP201 to REF IN) locks our carrier to the one
+we receive: the one-antenna T/R mode needs it".  But if both boards on both sides of the connection are
+connecting their REF OUT to REF IN, how is this not just "the dog eating its tail," where the two VCOs will
+wander away together until they reach some limit? Just to be clear, with one antenna, they need to share a
+channel, and not just that, they'll actually try to share a phase-locked frequency (to the best of the PLL's
+holdover ability). This scheme is better than each independently holding over its last-received tuning voltage
+while it is transmitting? (Using a sample and hold capacitor or something like that?) This may be the best
+scheme, but I don't think I read your justification of it.
+
+Where on the MAX2871 does the error signal affect the PLL? It looks like it only affects the VCXO at its VC pin.
+Maybe this is the right way to do it. But I thought that's what the PLL's TUNE pin was for. Why was the VCXO's VC
+pin chosen to be the analog "nudge" to lock the phase of the incoming signal? Have you checked that this VCXO can
+be nudged the right amount by our VC signal?
+
+Some of the SMA symbols in the schematic have their ground awkwardly above the connector instead of below. Look
+at them and make sure they all look ok. In general, look everywhere on the schematic and make sure that labels
+are legible and the way that the wiring is drawn makes sense.
+
+Would it be possible to "OR" the TRIG IN and the FPGA's trigger, which I think is on TX_Q1? This way I would not
+need to solder or unsolder the R226 resistor? In the experiment, there will be one of N photon detections in one
+of N detectors. Often N=2, but the signal will probably need to go through the FPGA before the FPGA tells the
+transmitter which of N states to go to (instead of idle). For lab testing of the communication system itself,
+I'm not exactly sure what the "TRIG IN" and "TRIG A" and "TRIG B" will be used for.
+
+With the currently fitted FPGA outputs to the modulator and comparators from the demodulator back into the FPGA,
+which of the TRAJECTORIES.md schemes can we do? Can we do a full idle+4? Or do we not have enough modulator
+levels and comparators?
+
+In the Window comparators sheet, move the DAC under the long incoming wires and actually connect signals like
+V_TIP and V_TIN up to the inverting inputs (in addition to labeling the nets).
+
+How are all of the I2C addresses handled? Can all of the chips be reached?
+
+Make jumpers for the I2C pullup resistors, so that I can switch between the PYNQ-Z2 to the Icepi Zero without
+soldering and unsoldering resistors."
+
+## Response 35 (2026-10-17 14:15 - 17:29 PDT)
+
+Everything below is in the generators, the documents and the board (build 40); the answers to the questions are
+here and, where they belong on a sheet, in a box at the node.  REVA_CHANGES.md rows 43-50 list the hardware changes.
+
+**The description.**  The root's box now says what the project is (one or two bits, both hosts, the window and the slow
+paths, the T/R switch) and "for example, for BPSK, I is the data and Q the phase error"; PLAN.md section 1 and the README
+say the same.  The title line says "transceiver ... for the PYNQ-Z2 and the Icepi Zero".  I went through every box on the
+seven sheets while doing the rest: each IC's box now opens with what the part is (SKY65404-31, LNA; PE43711, RF digital
+step attenuator: 0 to -31.75 dB; ADL5611, gain block; THS4541, fully differential amplifier; 74LVC1G3157, single-pole
+double-throw analog switch; TS5A3159, SPDT analog switch; OPA2388, dual op amp; MCP4728, 12-bit quad DAC; AD5696R,
+16-bit quad DAC; ADS1115, 16-bit 4-channel ADC; MAX2871, PLL frequency synthesizer 23.5 MHz-6.0 GHz; ADL5380, quadrature
+demodulator; ADL5375-05, quadrature modulator; HMC536MS8G, T/R switch; TLV3601/3603, comparators; AD8310, logarithmic
+amplifier; TC32H4 TCXO; SX3V VCXO; the LVC buffers and inverters; the LDOs) and then the detail.  The OPA2187 sentence
+is gone.
+
+**The double labels (page 1).**  kisch drew a sheet pin's name OUTSIDE its box (the justification was inverted against
+KiCad's own convention), so the net label I put on the pin for the window sheet's nets printed on top of the pin's name.
+The names now read inside the sheet boxes, as KiCad draws them, and the labels stand beside the pins.  The receiver
+sheet moved down 12 mm so the longer description clears its wires.
+
+**The power system.**  It is right, and both sources work: USB-C alone (Q303 sees VBUS, pulls Q301's gate down: Q301
+on; Q302's gate is lifted to VBUS through the 1 k: off, its body diode reverse-biased by the board's own 5 V), the
+header alone with JP301 fitted (VBUS absent: Q303 off, Q301's gate goes to +5V_HDR through the 100 k: off, body diode
+reverse-biased; Q302's gate sits on its 100 k to ground: on), both at once (USB wins; the header's FET is off and its body
+diode would conduct only if the PYNQ's 5 V were 0.6 V above a sagging VBUS, when it would just help).  The 2 A PTCs
+carry the 1.37 A; the PYNQ-Z2's 5 V rail (its barrel regulator) has that to spare, the Icepi Zero does not, so on the
+Icepi it is USB-C with JP301 open.  Power the PYNQ first (Prompt 32: its clamps).  The JP301 box on sheet 2 says all
+this, and so does the back of the board now.
+
+**Test points to jacks.**  LD RX (J190), LD TX (J290) and LOG Q (J590) are U.FL (their corners are full: a 5.5 mm MMCX
+does not fit beside a QFN-32's loop filter), TR A (J490) is an MMCX in the switch corner, each through its series
+resistor (453 ohm for the logic lines, /10 into 50 ohm; 1 k for LOG Q); the seven rails have a U.FL each through 1 k
+(J390-J396, the "RAIL MONITORS" block between the TX chain and the regulators, two rows at a U.FL's 5.5 mm pitch), and
+their test pads stay along the bottom edge for a meter.  Every one is drawn last on its sheet with explicit
+references, so no hand anchor moved; BRINGUP.md, PATHS.md and the silk say the new names.
+
+**"RECEIVER 5.8 GHz".**  It was the receive chain's block name, and at the corner it read as the board's.  The blocks
+are "RX CHAIN 5.8 GHz" and "TX CHAIN 5.8 GHz" now; the board's name is the title between the SMAs.
+
+**ANT, TRIG A/B.**  ANT prints "ANT" over "TX+RX" (its +27 dBm MAX did not fit between SW TX and ANT: SW TX's +25 dBm MAX,
+which binds, is 8 mm away).  "TRIG OUT A" does not fit before the DSA, so TRIG A and B keep their names with "OUT" on
+a small line above "3.3 V, 1.7 V/50R", as you suggested; the placer's strip reservation and tools/label_check.py now
+take a two-line limit (KiCad prints the newline).  TRIG IN MON moved under TRIG IN's label to make the room.
+
+**The regulators and the thin rails.**  Measured on build 39: +3V3_ANA had 157 of its 246 mm at 0.20 mm, +3V3_DIG 216 of
+398, +3V3_OSC 104 of 138, the PLL rails 61-90 mm at 0.2 (they also have In2 pours).  The router lays every rail at 0.2 and
+the widening afterwards found room for 0.4 on about a third of the length.  Electrically that is 5-15 mV at 40-60 mA
+(sim/budget.py section 9's drop is in the 5 V path, not here), but thin for no reason, so I tried routing the rails at
+0.3 mm.  Six builds later the verdict: every net routes at 0.3, but the widening and the tidy pass then leave a 0.2 mm
+sliver at the DSA's VDD pin that each refill pass removes and the next tidy re-makes, forever (builds 40a-f).  So the
+rails are routed at 0.2 as before and widened to 0.3 / 0.4 where the copper leaves room (measured on build 40: +3V3_ANA 95 of 253 mm at 0.4 and 97 at 0.2 (was 50 / 157), +3V3_DIG 137 of 423 mm at 0.4 (was 99), +3V3_OSC 33 at 0.4 and 95 at 0.2, the PLL rails 19-52 mm at 0.4 over their In2 pours); fixing the tidy is
+a REVA_CHANGES row, not a day-before-the-order change.  The regulators themselves stay where they are, for a reason I
+think is sufficient: they are linear (no switching noise), every chip has its own capacitors at its pins, and each
+rail's loads are all over the board (ANA: the LNA at the top-left, the arms bottom-left, the loop in the middle; DIG:
+comparators at the bottom, switches, buffers top-left, DACs on the right), so there is no "near the load" to move to;
+the column sits where the 5 V comes in (USB-C on the right edge, the header's 5 V bottom-right) and the rails fan out.
+What filled the empty north-east is the rail monitors (four in a row, three beside their regulators), the two
+lock-detect jacks, TR A's MMCX, the I2C jumpers and the layer marks.  The south-west stays dense because everything
+there (the chains, the arms, the slow path, the comparators) is tied to the RX SMA at the top-left and the header along
+the bottom; spreading it would lengthen the 100 MHz pairs.
+
+**The 2x20 socket's 3D model.**  KiCad's stock PinSocket model runs its rows along the footprint's y; the underside
+socket is drawn with its rows along -x (the mirror the flip needs), so the render showed it turned 90 degrees across
+the board.  The model has a 90-degree rotate in the footprint now (gen/footprints.MODEL_ROT), checked in a render.  The
+footprint and the netlist were right all along: this was only the picture.
+
+**One antenna: how to cable it, and the frequency question.**  Sheet 5's header box and the back of the board now say
+it plainly: the antenna on ANT; short SMA leads TX ANT -> SW TX and SW RX -> RX ANT; the FPGA drives TR A; two antennas
+means RX ANT and TX ANT with the switch block unused.  And the lead: **one board only**, the prover.  The verifier
+transmits on its TCXO (JP201 on TCXO); the prover's Costas loop locks its VCXO to that carrier and, with REF OUT -> REF
+IN (JP201 on REF IN), its own transmitter runs from that VCXO, so its reply is at the verifier's frequency and phase (a
+transponder).  Both boards on the lead would be exactly your dog: two VCXOs locked to each other and to nothing else,
+wandering together to a rail.  Your sample-and-hold is what LOOP_HOLD already is (the TS5A3159 opens the integrator's
+input, the 100 nF keeps VC: 0.1 rad after 6 ms typical, PLAN section 18's table), on both boards while they transmit;
+the lead is what makes the carrier that comes back the one the verifier's loop was holding on, so the loop resumes
+instead of re-acquiring (3.8 ms from 30 kHz off).  Without it the prover would reply on its own TCXO, up to 29 kHz away,
+and the verifier would re-acquire every slot.  The notes at REF OUT, at JP201 and on sheet 5 say which board, and
+PLAN.md section 14 has the argument.
+
+**VC, not TUNE.**  The MAX2871's TUNE pin is the node inside its own loop: its charge pump and 80 kHz loop would correct
+any voltage added there as an error (and open-loop the VCO is 60 MHz/V and drifts).  The reference is the clean handle:
+the synthesizer follows it x232 with its own loop, and the 3 kHz Costas loop sits well inside that (asserted in
+sim/budget.py section 6).  The reach is checked there too: two TCXOs differ by at most 29 kHz, the VCXO's guaranteed
+pull is +-290 kHz (+-100 ppm typical = +-580 kHz), VC spans 0.3-3.0 V and the OPA2388 swings rail to rail; Ko = 430
+kHz/V of LO.  The VCXO's box says so now.
+
+**The SMA symbols.**  Conn_Coaxial has its pin on the LEFT and its shield below.  An input drawn at rot 0 (RX ANT, ANT)
+put its body under the first DC block, which is what you saw at C101; an output drawn at rot 180 (TX ANT, SW TX, SW RX,
+TRIG IN) put the shield on top with the ground above.  Inputs are mirrored now (pin facing the line, the jack first),
+outputs at rot 0, the couplers' monitor jacks upright, and every ground hangs below.  The wire round C130 was the PI
+filter's feedback column standing left of the capacitor's end, so the wire ran back over it; the column is at the
+capacitor's pin now.  The window DAC sits under the long input lines with its four outputs wired up their own columns
+into the comparators' inverting inputs (the labels stay too).
+
+**sign(I) x Q and the jumpers' speed.**  A box above JP101/JP102 explains the switch: +Q or -Q by the comparator's
+sign, the product of a +-1 and Q, no multiplier.  The jumpers are fine where they are: only the AVERAGE of the product
+feeds the 3 kHz loop, so a few pF and nH on the Q legs or on the select do nothing, and CMP_I (33 ohm source, then the
+PYNQ's 200 ohm and 10 pF) does not notice the stub to JP103.  Said in JP103's box.
+
+**LNA, then the attenuator, then the gain blocks.**  Yes, that is the textbook order: the LNA sets the noise figure
+and everything after it counts divided by its 20 (13 dB); the DSA at 0 dB costs 1.5 dB / 20 = 0.1 dB of noise figure
+and at short range it cuts the signal before the gain blocks and the demodulator can compress (it holds the demodulator
+at -20 dBm from 3 m to 300 m); put after the gain blocks it would protect nothing, put before the LNA it would add its
+whole loss to the noise figure.  The chain's NF is 2.0 dB by Friis (sim/budget.py).  The DSA's box says it.
+
+**V_MID.**  A box at the divider: the midpoint of the 3.3 V analogue supply, standing in for the ground of a dual-supply
+circuit since every level on the board lives between 0 and 3.3 V; the op amps' + inputs, the comparators' sign, the
+arms' centre and the hold switch's park position all sit on it.
+
+**TRIG IN OR the FPGA's bit.**  Done without a gate: the Schmitt buffer's output is now the Q ladder's THIRD LEG
+(R291 2.2 k into the Q node).  A TRIG IN high adds one ladder step (+0.36 V at the node: +Q) to whatever the FPGA's two
+Q bits set, an OR by summing currents, with no gate delay on the FPGA's bits and no contention (the old DNP 0 ohm put
+the buffer's push-pull output on the FPGA's pin).  To keep the Q ladder's step, impedance and settling equal to the I
+ladder's with the extra leg, its reference resistor is 348 ohm (C25107, in stock) instead of 300, and VR_Q becomes 0.246 V
+(VR_I stays 0.21): sim/budget.py section 1 computes and asserts it, the driver gets VR_I_V / VR_Q_V / TRIG_STEP_V.  The
+buffer's input has a 100 k to ground (R226, the reference the 0 ohm had) so a floating TRIG IN cannot key the
+transmitter.  Keep TX_Q1 low while a trigger is in use: both high would put the node 0.19 V over the 1 V range (the
+absolute maximum is 2 V).  For the lab: TRIG IN MON here against QP MON on the far board is still the link's own latency,
+with nothing to solder and no CTRL[8]; in the experiment the FPGA keeps the four bits and a detector can also key +Q
+directly.  BRINGUP.md stage 6.7, PATHS.md and the gateware README say so; CTRL[8] stays in the register map, unused.
+
+**Which schemes rev A can run.**  Each ladder gives c - a, c, c + a with c set by VR_I / VR_Q and the receiver has
+sign(I), the four windows IP / IN / QP / QN on 16-bit thresholds and the slow three.  So A1, A2, **A3 (the full idle + 4
+corners)**, A4, B1 and B2 all run, and J1 now that the I window pair exists.  B1's pilot is c on I; B2's pilot at 45
+degrees is c on both axes and its corners are then the square round the pilot, which the loop's -45 degree turn lands on
++-I and +-Q as the scheme wants.  Not possible: J2 (five levels) and R4 (weighted AC-coupled comparators).  PLAN.md
+section 18 has the paragraph.
+
+**I2C.**  Five parts, five addresses, all fixed by part or pin: 0x0C AD5696R (A0 = A1 = 0), 0x48 and 0x49 ADS1115 (ADDR
+to ground / to VDD), 0x60 MCP4728 and 0x61 MCP4728A1 (the factory-preset variant).  One bus from header pins 3/5, all
+reached (the driver's i2c_scan expects exactly those five).  The pull-ups: 4.7 k each behind a jumper now, JP302 (SDA)
+and JP303 (SCL), open on the PYNQ-Z2 (2k2 on its header), fitted on the Icepi Zero; the addresses are listed in the box
+beside them.
+
+**The HMC536 box** has its switching now: 30 ns from the control's 50 % to the RF at 10/90 % (tON, tOFF), 15 ns RF rise
+and fall, control 0 V (25 uA) / 3-5 V, -0.5 to +7.5 V absolute, 12 dB return loss at 4-6 GHz.
+
+**The board.**  Build 40: 4304 tracks, 1159 vias, every net joined, DRC 0 items (0 violations, 0 unconnected, 0 parity), the label check 0 violations (the five exemptions on record), the launch gate as before, the documents' numbers 0 stale, and mfg/make_release.py passing every gate: 81 BOM lines, nothing consigned, JLCPCB $689 of goods, $955-970 with duty and shipping (up $12 for the eleven jacks, the two jumpers and the 348 ohm).  It took seven builds (40a-g): the new jacks fought for room in the arms' corner (LD RX's pad spot sat in the I_P corridor; the ADC's filter capacitor I had nudged 0.7 mm walled its resistor's pin in; the coupler's load wandered to the wrong side of the coupled line and the tidy trimmed the line), and the rail monitors' names needed the placer's strip rules extended (two-line limits, a column row's shared limit, exemptions).  Each is a lesson in CLAUDE_PCB.md section 5.  The user's instructions are on the back silkscreen in three blocks (one
+antenna / two antennas; the 5 V sources; the jumpers' defaults).  Lessons in CLAUDE_PCB.md sections 4 (sheet-pin
+names inside the box; a coaxial jack's pin faces the line; every IC box opens with its function; no history of
+mistakes on a sheet), 6 (a two-line limit; instructions on the back), 9 (a pad an instrument will watch is a jack) and
+11 (a stock 3D model's axes).
+
+**Open, on record.**  The 0.3 mm rails (REVA_CHANGES 50: the tidy's sliver).  The silkscreen's own problem list has 98 entries, as build 39 had 72: block boxes that cannot be drawn as rectangles because a side would cross a part (their names are printed instead) and chip names that found no clear spot beside their chip (printed where there is room, else left to the fab layer); none of it is a connector, a limit or a jumper, which the label check covers.  The CPL rotations stay for the order day, as agreed.

@@ -55,7 +55,9 @@ RF_PAIRS = ("RX LO +", "RX LO -", "TX LO +", "TX LO -", "RF +", "RF -", "RX MON"
 LO_PAIRS = ("RX LO +", "RX LO -", "TX LO +", "TX LO -")
 SIG_W = 0.15
 FAN_W = 0.15                           # a fan-out line
-PWR_W = 0.2                            # the rails' links to their pours (the pours carry the current; a wider
+PWR_W = 0.2                            # the rails' links to their pours.  Prompt 35 tried 0.3 (measured: most of a 3.3 V rail's length was 0.2 mm):
+                                       # it routed, but the widening and the tidy then left a 0.2 mm sliver at the DSA's VDD pin that every refill
+                                       # pass removed and the next tidy re-made (builds 40a-f); the widening pass (RAILS_3V3) is where the room is.  A wider
 PWR5_W = 0.3                           # track cannot leave a 0.5 mm pad: route at the pad's width, CLAUDE_PCB.md section 5)
 RAILS_3V3 = (0.4, 0.3)                 # what the rails are widened to afterwards, where there is room
 RAILS_5V = (0.8, 0.4, 0.3)

@@ -13,21 +13,32 @@ from sch_blocks import stub, L
 import levels as LV
 
 
-def ladder(S, x, y, bits, ref_name, name):
+def ladder(S, x, y, bits, ref_name, name, extra=None, rr_key=None):
     """A 2-bit resistor DAC centred on (x, y): two 2.2k from the FPGA pins (rows y -/+ 7.62) and
-    300 ohm from the DAC reference (row y + 17.78) into the node at (x, y); returns the node."""
-    for bit, dy in zip(bits, (-7.62, 7.62)):
+    the reference resistor from the DAC reference (the last row + 10.16) into the node at (x, y);
+    extra = (net, resistor key): a third leg on row y + 22.86 from a sheet-local net (the Q ladder's
+    TRIG IN leg, Prompt 35: a detector pulse steps the transmitter to +Q without the FPGA, and a
+    pulse while the FPGA holds a Q bit simply adds to it: an OR by summing currents, no gate, no
+    delay on the FPGA's bits, no contention).  Returns the node."""
+    rows = [(bits[0], -7.62, True), (bits[1], 7.62, True)] + ([(extra[0], 22.86, False)] if extra else [])
+    for net, dy, hier in rows:
         yb = y + dy
-        S.hlabel(x - 33.02, yb, bit, shape="input", rot=180)
-        ra, rb = series(LV.VAL["dac_Rb"], x - 20.32, yb)
+        if hier:
+            S.hlabel(x - 33.02, yb, net, shape="input", rot=180)
+        else:
+            label(x - 33.02, yb, net, size=1.0, justify="right bottom")
+        third = bool(extra) and net == extra[0]
+        ra, rb = series(extra[1] if third else LV.VAL["dac_Rb"], x - 20.32, yb, ref="R291" if third else None)   # explicit: nothing after it renumbers
         W((x - 33.02, yb), ra)
         W(rb, (x, yb))
-    W((x, y - 7.62), (x, y + 7.62))
+    ylast = y + rows[-1][1]
+    W((x, y - 7.62), (x, ylast))
     J(x, y)
-    yr = y + 17.78
-    W((x, y + 7.62), (x, yr))
-    J(x, y + 7.62)
-    ra, rb = series(LV.VAL["dac_Rr"], x - 10.16, yr)
+    yr = ylast + 10.16
+    W((x, ylast), (x, yr))
+    for net, dy, hier in rows[1:]:
+        J(x, y + dy)
+    ra, rb = series(rr_key or LV.VAL["dac_Rr"], x - 10.16, yr)
     W(rb, (x, yr))
     W((x - 33.02, yr), ra)
     S.hlabel(x - 33.02, yr, ref_name, shape="input", rot=180)
@@ -54,8 +65,16 @@ def build(S):
     sig(ni[0] + 4, ni[1] - 13, LV.txt("TX_NODE"), cols=20)
     sig(ni[0] - 70, ni[1] + 17.78 - 3, LV.txt("VR"), cols=22)
     W(ni, (ni[0] + 2.54, ni[1]), (ni[0] + 2.54, ibbp[1]), ibbp)
-    nq = ladder(S, qbbp[0] - 27.94, qbbp[1] + 33.02, ("TX_Q1", "TX_Q0"), "VR_Q", "TX_Q")
+    nq = ladder(S, qbbp[0] - 27.94, qbbp[1] + 33.02, ("TX_Q1", "TX_Q0"), "VR_Q", "TX_Q",
+                extra=("TRIG_IN", LV.VAL["dac_Rb"]), rr_key=LV.VAL["dac_RrQ"])
     W(nq, (nq[0] + 2.54, nq[1]), (nq[0] + 2.54, qbbp[1]), qbbp)
+    note(nq[0] - 70, nq[1] + 26, "TRIG IN into the Q ladder (Prompt 35): the Schmitt buffer's output (below) is a third leg, so a detector pulse on TRIG IN "
+         "steps the transmitter from idle to +Q by itself (%.2f V a step, like a bit), %.0f ns after the jack, with no FPGA in the path; "
+         "with the FPGA driving the bits it adds to them (an OR by summing).  %s instead of the I ladder's %s keeps this ladder's "
+         "conductance, step and impedance equal to the I ladder's with the extra leg; VR_Q = %.3f V (VR_I x %.2f) centres it.  "
+         "Keep TX_Q1 low while a trigger is in use: both high puts the node %.2f V over the 1 V range (2 V absolute maximum)."
+         % (LV.B["dac_trig_step"], LV.P["trig_tpd_ns"], LV.VAL["dac_RrQ"][2:], LV.VAL["dac_Rr"][2:], LV.B["dac_VrQ"],
+            LV.B["dac_VrQ"] / LV.B["dac_Vr"], LV.B["dac_levels_q"][2] + LV.B["dac_trig_step"] - 1.0), cols=34)
     # the N inputs at the ladders' centre level: the divider sim/budget.py section 1 chose with the pins' own
     # 2 x 41 uA flowing into it (the 5.1k / 1k of build 17 sat at 0.61 V: the design review)
     xb = ibbn[0] - 10.16
@@ -84,7 +103,7 @@ def build(S):
     # still running on this board's own supply.  R227's 1 k beats the Zynq's configuration pull-ups (10 k at
     # the strongest: 0.35 V, under the 74LVC1G04's 0.8 V); driven high it still reads 2.35 V or more through the
     # PYNQ's 200 ohm (VOH 2.9 V at the XDC's 4 mA, less 0.55 V), over the inverter's 2.0 V.
-    xi, yi = 215.9, 167.64
+    xi, yi = 215.9, 193.04                           # under the Q ladder's third leg and reference rows (Prompt 35)
     inv = part("LVC1G04", "U206", xi, yi, rot=0)
     ia, iy = inv.pin("2"), inv.pin("4")
     xin = ia[0] - 20.32
@@ -98,7 +117,7 @@ def build(S):
     down("C 100nF", vcc[0] + 7.62, vcc[1] - 2.54, text="right", ref="C235")
     W(gnd_, (gnd_[0], gnd_[1] + G)); gnd(gnd_[0], gnd_[1] + G)
     U.S.nc(*inv.pin("1"))
-    note(xin - 2, yi + 14, "TX_EN (header 24) high transmits.  U206 makes DSOP = not TX_EN; R227 holds TX_EN low, so the "
+    note(xin - 2, yi + 14, "74LVC1G04, inverter.  TX_EN (header 24) high transmits.  U206 makes DSOP = not TX_EN; R227 holds TX_EN low, so the "
          "modulator is off whenever no running gateware drives it: the host off, unconfigured, or loading another overlay.  "
          "The gateware's CTRL[0] (TX_DIS) and the keyer drive the header pin inverted.", cols=44)
     # LO
@@ -117,7 +136,8 @@ def build(S):
     B.bottom_gnd(mod, ["2", "5", "8", "11", "12", "14", "17", "19", "20", "23", "25"])
     for n in ("6", "7", "13", "15"):
         S.nc(*mod.pin(n))
-    note(mod.pin("2")[0] - 4, y + 46, "ADL5375-05: 400 MHz-6 GHz quadrature modulator; -4.5 dBm out at 5.8 GHz with this drive, carrier feedthrough -19.5 dBm.  "
+    note(mod.pin("2")[0] - 4, y + 46, "ADL5375-05, quadrature modulator (I and Q at baseband multiply the LO and its 90 degree copy, summed onto the carrier), 400 MHz-6 GHz; "
+         "-4.5 dBm out at 5.8 GHz with this drive, carrier feedthrough -19.5 dBm.  "
          "LO 0 dBm differential from the synthesizer below.  JLCPCB C579150; consigned from Digi-Key only if their shelf is short on the day.", cols=40)
     # RF out: DC block, gain block, bias tee, pi pad, coupler, SMA
     rfo = mod.pin("16")
@@ -130,7 +150,7 @@ def build(S):
     xbias = gout[0] + 10.16
     W(gout, (xbias, yr))
     B.bias_tee(xbias, yr)
-    note(gb.pin("2")[0] - 2, yr + 18, "ADL5611: %+.1f dB at 5.8 GHz -> %+.1f dBm at the SMA.  P1dB %+.1f dBm at 5.8 GHz (its 5800 MHz row): "
+    note(gb.pin("2")[0] - 2, yr + 18, "ADL5611, gain block: %+.1f dB at 5.8 GHz -> %+.1f dBm at the SMA.  P1dB %+.1f dBm at 5.8 GHz (its 5800 MHz row): "
          "the QPSK corners, 3 dB over the axis points, reach it." % (LV.P["gb_gain_dB"], LV.B["tx_out_dBm"], LV.P["gb_p1db_dBm"]), cols=28)
     xpad = xbias + 40.64                         # past the bias tee's three capacitors
     B.dcblock(xbias, yr, xpad)
@@ -147,7 +167,7 @@ def build(S):
     xcp = xpad + 15.24 + 20.32
     W((xpad + 15.24, yr), (xcp, yr))
     cout = B.coupler_mon(xcp, yr, "TX MON", "CP201", level=LV.txt("TX_MON"))
-    j = part("SMA", "J202", cout[0] + 12.7, yr, rot=180, value="TX ANT", text="hide")
+    j = part("SMA", "J202", cout[0] + 17.78, yr, rot=0, value="TX ANT", text="hide")     # rot 0: the pin faces the line, the ground hangs below (Prompt 35)
     W(cout, j.pin("1"))
     B.esd_shunt(cout[0] + 2.54, yr)                # Prompt 28
     s2 = j.pin("2"); W(s2, (s2[0], s2[1] + G)); gnd(s2[0], s2[1] + G)
@@ -163,7 +183,7 @@ def build(S):
     # pad 1 is "E/D or N.C." on the TC32H4 drawing, read as an enable with an internal pull-up (the first review round);
     # a DNP 10 k to the rail is the fix if a unit ever needs it driven (review A, Prompt 31): a part, not a wire
     tcxo_pin1 = tc                                # its DNP pull-up is drawn at the end of the sheet (tcxo_pullup): the
-    note(tc.pin("1")[0] - 10, ys + 14, "25 MHz TCXO +-2.5 ppm (TC32H4, LVCMOS): the TX reference.  Two boards' carriers then differ by at most 29 kHz.  "
+    note(tc.pin("1")[0] - 10, ys + 14, "TC32H4, 25 MHz TCXO (temperature-compensated crystal oscillator) +-2.5 ppm, LVCMOS: the TX reference.  Two boards' carriers then differ by at most 29 kHz.  "
          "Pad 1 (E/D or N.C.) floats; the DNP 10 k pulls it up if a unit wants it.", cols=30)
     tout = tc.pin("3")
     # reference selector: TCXO (pin 1) or REF IN (pin 3); pin 2 to the synthesizer
@@ -171,7 +191,7 @@ def build(S):
     p1, p2, p3 = jr.pin("1"), jr.pin("2"), jr.pin("3")
     W(tout, (p1[0], tout[1]), p1)
     # REF IN above the TCXO, its line down to the jumper's pin 3; a DNP 49.9 ohm hangs at the jack
-    jin = part(B.jack_of("REF IN"), nref("J"), p3[0] - 7.62, ys - 30.48, rot=0, value="REF IN", text="hide")
+    jin = part(B.jack_of("REF IN"), nref("J"), p3[0] - 7.62, ys - 30.48, rot=0, mirror="y", value="REF IN", text="hide")   # pin facing the line (Prompt 35)
     rp = jin.pin("1")
     W(rp, (p3[0], rp[1]), p3)
     s2 = jin.pin("2"); W(s2, (s2[0], s2[1] + G)); gnd(s2[0], s2[1] + G)
@@ -183,7 +203,8 @@ def build(S):
     sig(tout[0] + 2, ys + 3, LV.txt("REF_TX"), cols=20)
     W(p2, ref_src)
     note(tout[0] - 12, ys + 36, "JP201 REF: TCXO (default) or REF IN (SMA, 10-210 MHz, 0.7 V p-p min; fit 49.9 ohm for a 50 ohm source).  "
-         "Lock two boards to one reference on the bench to take the frequency offset out of the experiment.", cols=34)
+         "Lock two boards to one reference on the bench to take the frequency offset out of the experiment; or, on the PROVER only, "
+         "REF IN from its own REF OUT (sheet 3) makes its carrier coherent with the one it receives (the one-antenna mode, sheet 5).", cols=34)
     pll, lo = B.synthesizer("U203", tout[0] + 83.82, ys + 5.08, "+3V3_PLL_TX", "LE_PLL_TX", "MUX_TX", "LO_TX", "LO TX MON", ref_src,
                             bar_dy=25.4)                      # the bar high enough for its capacitors to clear the REF IN jack
     lp, ln = lo["lo_p"], lo["lo_n"]
@@ -194,8 +215,8 @@ def build(S):
     label(lp[0] + 1.27, lp[1], "LO_TX_P", size=1.0)
     sig(x_out - 32, (lo_top["p"][1] + lp[1]) / 2.0, LV.txt("LO_TX"), cols=24)
     label(ln[0] + 1.27, ln[1], "LO_TX_N", size=1.0, justify="left top")
-    note(tout[0] + 30, ys - 60, "TX synthesizer: MAX2871, 5.8 GHz integer-N from 25 MHz (N = 232; the far end's RX sits 50 MHz away), RFOUTA differential into the ADL5375's LO, "
-         "RFOUTB to the LO TX MON jack.  Its own LDO, +3V3_PLL_TX.", cols=52)
+    note(tout[0] + 30, ys - 60, "MAX2871, PLL frequency synthesizer (23.5 MHz to 6.0 GHz, SPI), the TX LO: 5.8 GHz integer-N from 25 MHz (N = 232; the far end's RX sits 50 MHz away), RFOUTA differential into the ADL5375's LO, "
+         "RFOUTB to the LO TX MON jack, LD (lock detect) to its own jack.  Its own LDO, +3V3_PLL_TX.", cols=52)
 
     # ---- triggers -------------------------------------------------------------------------
     xt, yt = 457.2, 279.4
@@ -205,7 +226,8 @@ def build(S):
         e = stub(buf, n_in, dx=-12.7); S.hlabel(e[0], e[1], name, shape="input", rot=180)
         ox, oy = buf.pin(n_out)
         ra, rb = series("R 33R", ox + 7.62, oy); W((ox, oy), ra)
-        jt = part(B.jack_of(name.replace("_", " ")), nref("J"), ox + 20.32, oy, rot=0, value=name.replace("_", " "), text="hide")
+        jname = name.replace("_", " ")                             # the board adds "OUT" above its level (Prompt 35: "TRIG OUT A" did not fit)
+        jt = part(B.jack_of(jname), nref("J"), ox + 20.32, oy, rot=0, value=jname, text="hide")
         W(rb, jt.pin("1"))
         s2 = jt.pin("2"); W(s2, (s2[0], s2[1] + G)); gnd(s2[0], s2[1] + G)
         if unit == 2:
@@ -218,7 +240,7 @@ def build(S):
     W(vm, (vm[0], vm[1] + G)); gnd(vm[0], vm[1] + G)
     sch = part("LVC1G17", "U205", xt, yt + 55.88)
     yin = sch.pin("2")[1]
-    jin2 = part(B.jack_of("TRIG IN"), nref("J"), xt - 45.72, yin, rot=180, value="TRIG IN", text="hide")
+    jin2 = part(B.jack_of("TRIG IN"), nref("J"), xt - 45.72, yin, rot=0, mirror="y", value="TRIG IN", text="hide")   # pin facing the line, ground below (Prompt 35)
     ip = jin2.pin("1")
     ra, rb = series("R 1k", ip[0] + 15.24, yin); W(ip, (ip[0] + 5.08, yin)); W((ip[0] + 5.08, yin), ra); W(rb, sch.pin("2"))
     s2 = jin2.pin("2"); W(s2, (s2[0], s2[1] + G)); gnd(s2[0], s2[1] + G)
@@ -237,17 +259,17 @@ def build(S):
     J(xm, o4[1])
     W((xm, o4[1]), (xm, o4[1] - 12.7))
     B.tap(xm, o4[1] - 12.7, "TRIG IN MON", rkey=LV.VAL["tap_R"])
-    # the FPGA-free path (Response 12): a DNP 0 ohm from the buffer's output to the TX_Q1 ladder bit.  Fitted,
-    # with the FPGA holding TX_Q1 as an input, a TRIG IN pulse steps the transmitter from idle to +Q and the far
-    # board's QP comparator answers: TRIG IN MON here against QP MON there is the link's own latency.
-    xb = o4[0] + 10.16
-    J(xb, o4[1])
-    t, b = U.vpart("R 0R", nref("R"), xb, o4[1] + G + 3.81, dnp=True, value="DNP 0R", text="right", fsize=1.0)
-    W((xb, o4[1]), t)
-    W(b, (b[0], b[1] + G))
-    label(b[0], b[1] + G, "TX_Q1", size=1.0, justify="left top")
-    note(xb + 6, o4[1] + 14, "DNP 0R to TX_Q1: fit it, and set the FPGA's TX_Q1 pin to an input, to step the transmitter straight "
-         "from TRIG IN to +Q: the link's latency without either FPGA (TRIG IN MON here, QP MON on the far board).", cols=30)
+    # The FPGA-free path: until Prompt 35 a DNP 0 ohm from here to the TX_Q1 bit (fit it, make the FPGA pin an input);
+    # now the buffer's output is the Q ladder's third leg (above), always: TRIG IN steps the transmitter to +Q by
+    # itself and the FPGA's bits add to it.  So the buffer's input must rest LOW with nothing on the jack: 100 k
+    # to ground after the 1 k (a floating Schmitt input would key the transmitter).  Its reference is the one the
+    # 0 ohm had, so nothing after it renumbers.
+    xpd = rb[0] + 5.08
+    J(xpd, yin)
+    down("R 100k", xpd, yin, text="right", ref="R226")
+    note(o4[0] + 16, o4[1] + 14, "TRIG IN keys the transmitter by itself: the buffer's output is the Q ladder's third leg (above), "
+         "so a pulse here is +Q on the air %.0f ns + 1.6 ns later, and TRIG IN MON here against QP MON on the far board is the link's "
+         "own latency with no FPGA in the path.  R226 holds the input low with nothing plugged in." % LV.P["trig_tpd_ns"], cols=30)
     sig(xt + 20, yt + 70, LV.txt("TRIG_IN"), cols=30)
     vp2, vm2 = sch.pin("5"), sch.pin("3")
     W(vp2, (vp2[0], vp2[1] - 5.08)); flag("+3V3_DIG", vp2[0], vp2[1] - 5.08)
@@ -255,11 +277,15 @@ def build(S):
     down("C 100nF", vp2[0] + 7.62, vp2[1] - 2.54, text="right")
     W(vm2, (vm2[0], vm2[1] + G)); gnd(vm2[0], vm2[1] + G)
     S.nc(*sch.pin("1"))
-    note(xt - 50, yt + 80, "TRIG IN: a detector pulse (3.3 V logic; 1k series protects the Schmitt input; JP202 terminates it in 50 ohm) "
-         "starts the FPGA's latency counter.  TRIG A / B: the FPGA marks the symbol it sent or the one it decoded; "
-         "board-to-board latency is TRIG A here against TRIG B there on the scope.", cols=40)
+    note(xt - 50, yt + 80, "74LVC2G34 (U204, dual buffer) and 74LVC1G17 (U205, Schmitt buffer).  TRIG IN: a detector pulse (3.3 V logic; 1k series protects the Schmitt input; JP202 terminates it in 50 ohm) "
+         "starts the FPGA's latency counter and keys +Q.  TRIG OUT A / B: the FPGA marks the symbol it sent or the one it decoded; "
+         "board-to-board latency is TRIG OUT A here against TRIG OUT B there on the scope.", cols=40)
     box(xt - 56, yt - 36, 150, 140)
     tcxo_pullup(tcxo_pin1)
+    # the lock-detect jack (Prompt 35: a test pad an instrument cannot hold a probe on), explicit references
+    e = lo["ld"]
+    W(e, (e[0], e[1] + 7.62))                       # down a row (clear of the MUX label), then left to the jack
+    B.tap(e[0], e[1] + 7.62, "LD TX", rkey=LV.VAL["tap_R"], ref="J290", rref="R290", left=True, text=False)
     return S
 
 

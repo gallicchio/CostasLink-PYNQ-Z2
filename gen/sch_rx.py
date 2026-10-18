@@ -38,17 +38,19 @@ def build(S):
 
     # ---- RF chain -------------------------------------------------------------------------
     y = Y_RF
-    j = part("SMA", "J101", 22.86, y, rot=0, value="RX ANT", text="hide")
+    # mirrored: the SMA's pin faces right into the line, its body to the left (at rot 0 the pin is on the
+    # left and the first DC block sat on top of the body: Prompt 35)
+    j = part("SMA", "J101", 12.7, y, rot=0, mirror="y", value="RX ANT", text="hide")      # its pin at 17.78, where it was: the chain stays put
     jx, jy = j.pin("1")
     s2 = j.pin("2"); W(s2, (s2[0], s2[1] + G)); gnd(s2[0], s2[1] + G)
     sig(10, y + 14, "RX ANT, 50 ohm SMA: " + LV.txt("RX_ANT"), cols=30)
     e = B.dcblock(jx, y, jx + 12.7)
-    B.esd_shunt(jx + 1.27, y)                     # Prompt 28: the antenna side of the DC block
+    B.esd_shunt(jx + 1.27, y, text="right")       # Prompt 28: the antenna side of the DC block (texts away from the jack)
     lna = U.part_at_pin("SKY65404", "U101", "3", e[0] + 7.62, y)
     rin = lna.pin("3")
     xm = e[0]
     W((xm, y), rin)
-    J(xm, y); down("C 0.5pF", xm, y, text="left")
+    J(xm, y); down("C 0.5pF", xm, y, text="right")
     B.pullup_top(lna, "1", "R 100R", "+3V3_ANA", text="right")
     # supply through 0.6 nH, with 100 nF beside it
     vx, vy = lna.pin("6")
@@ -60,7 +62,8 @@ def build(S):
     down("C 100nF", vx - 12.7, yj, text="left")
     W((vx, vy - 2.54), (vx - 2.54, vy - 2.54)); U.pwr_flag(vx - 2.54, vy - 2.54, rot=90); J(vx, vy - 2.54)   # ERC: the LNA's VCC node is fed through the inductor
     B.bottom_gnd(lna, ["2", "5", "7"])
-    note(lna.pin("2")[0] - 24, y + 27, "SKY65404-31: 13 dB, NF 1.0 dB, 10 mA.  Skyworks' circuit: 0.5 pF shunt at RF_IN, 0.6 nH + 100 nF on VCC, 100 ohm on the enable.", cols=36)
+    note(lna.pin("2")[0] - 24, y + 27, "SKY65404-31, LNA (low-noise amplifier): +13 dB, NF 1.0 dB, 10 mA, 4.9-5.9 GHz.  Skyworks' circuit: 0.5 pF shunt at RF_IN, 0.6 nH + 100 nF on VCC, 100 ohm on the enable.  "
+         "It sets the receiver's noise figure (Friis: everything after it counts /20).", cols=36)
     rout = lna.pin("4")
     sig(jx + 30, y + 14, LV.txt("LNA_OUT"), cols=20)
     # DSA
@@ -74,8 +77,9 @@ def build(S):
     for n, name in (("17", "SPI_SCLK"), ("18", "SPI_SDATA"), ("16", "LE_DSA")):
         e = stub(dsa, n, dx=-12.7)
         S.hlabel(e[0], e[1], name, shape="input", rot=180)
-    note(dsa.pin("4")[0] - 30, y + 36, "PE43711: 0-31.75 dB in 0.25 dB steps, serial mode (P/S high; the parallel pins grounded as the datasheet asks).  "
-         "Powers up at 31.75 dB.", cols=36)
+    note(dsa.pin("4")[0] - 30, y + 36, "PE43711, RF digital step attenuator: 0 to -31.75 dB in 0.25 dB steps (1.5 dB of loss at 0), serial mode (P/S high; the parallel pins grounded as the datasheet asks).  "
+         "Powers up at -31.75 dB.  Placed after the LNA so that it costs the noise figure only its loss / 13 dB (0.1 dB at 0) and before "
+         "the gain blocks so that a strong signal is cut before it can compress them: the textbook order (gain, attenuator, more gain).", cols=36)
     r2 = dsa.pin("14")
     sig(r2[0] + 1, y + 5, LV.txt("DSA_OUT"), cols=20)
     # gain block and its bias tee
@@ -86,7 +90,7 @@ def build(S):
     xb = gout[0] + 10.16
     W(gout, (xb, y))
     B.bias_tee(xb, y)
-    note(gb.pin("2")[0] - 4, y + 26, "2 x ADL5611: +14.3 dB each at 5.8 GHz (22 dB at 1 GHz), 5 V through 43 nH chokes (Table 6).  The second one "
+    note(gb.pin("2")[0] - 4, y + 26, "ADL5611, gain block (a fixed-gain 50 ohm RF amplifier), two of them: +14.3 dB each at 5.8 GHz (22 dB at 1 GHz), 5 V through 43 nH chokes (Table 6).  The second one "
          "(Response 6) puts the comparators' 20 mV floor near the noise: the fast path reads to %.0f dBm, the slow one to %.0f." % (LV.B["floor_fast_dBm"], LV.B["noise_floor_slow_dBm"] + 8.4), cols=30)
     # the second gain block, its own bias tee
     xg2 = xb + 38.1                             # past the bias tee's three capacitors and their texts
@@ -106,7 +110,7 @@ def build(S):
     t = U.part_at_pin("BALUN", "T101", "1", cout[0] + 7.62, y)
     W(cout, t.pin("1"))
     px, py = t.pin("4"); W((px, py), (px, py + G)); gnd(px, py + G)
-    note(xc + 2, y + 18, "TDK HHM1907B1 1:1 balun, 4.9-5.95 GHz, 0.8 dB: the ADL5380 sheet's Johanson 5400 from JLCPCB's shelf "
+    note(xc + 2, y + 18, "TDK HHM1907B1, 1:1 balun (single-ended 50 ohm to the demodulator's differential input), 4.9-5.95 GHz, 0.8 dB: the ADL5380 sheet's Johanson 5400 from JLCPCB's shelf "
          "(same ratio and band).  The 1.5 pF blocks: the RF port is AC-coupled (the sheet's C2x/C3x); the balun's balanced "
          "terminals have a DC path to ground.", cols=26)
     # demodulator: RFIP on the balun's BAL1 row, 7.62 to the right of its pins
@@ -121,7 +125,8 @@ def build(S):
     rt, rbt = sorted((r_adj.pin("1"), r_adj.pin("2")), key=lambda p: p[1])
     W(rt, (rt[0], rt[1] - G)); flag("+5V_RF", rt[0], rt[1] - G)
     S.nc(*dem.pin("12"))
-    note(dem.pin("1")[0] - 20, y + 48, "ADL5380: ADJ open at 5.8 GHz (its spec condition): baseband common mode 3.2 V, gain x1.95, 390 MHz.  "
+    note(dem.pin("1")[0] - 20, y + 48, "ADL5380, quadrature demodulator (zero-IF: multiplies the RF by the LO and by the LO shifted 90 degrees, so I and Q are the received "
+         "constellation point at baseband, 390 MHz wide).  ADJ open at 5.8 GHz (its spec condition): baseband common mode 3.2 V, gain x1.95.  "
          "Fit 1.5k here to drop the common mode to 2.5 V (and the 5.8 GHz gain).  LO 0 dBm, differential from the synthesizer below.  "
          "JLCPCB C579152; consigned from Digi-Key only if their shelf is short on the day.", cols=44)
     # P to LOIN, N to LOIP (the design review, KimiK3): on the board the synthesizer's RFOUTA_P faces
@@ -152,16 +157,18 @@ def build(S):
     # resistors sit at the pins.  I is inverted; the Costas loop locks 180 degrees round and the idle
     # reads the same sign as before, and the gateware takes the sign from the idle in any case.
     ip, inn_ = B.arm(S, "I", "U105", ilo, ihi, ihi[1] + 5.08, xf, LV.VAL["fda_Rf"], rg_key=LV.VAL["fda_Rg"], rs_key=LV.VAL["fda_Rs"], hlabels=True,
-                     node_label="I_SUM",
-                     note_text=LV.FAST_ARM_NOTE + "  I is the data, inverted: ILO drives + (the board's pin order; the idle sets the sign).  "
-                     "I_SUM goes to sheet 6, where DAC2's channel D trims this arm's offset through 100 k: a few mV of demodulator "
-                     "offset x4 is a fair part of the comparator's 20 mV.")
+                     node_label="I_SUM")
+    # what the two arms share, once, between the two amplifiers; what is each arm's own, between its output pair (Prompt 35)
+    note(xf - 32, qhi[1] + 50.8 + 24, LV.FAST_ARM_NOTE, cols=38)              # under the Q amplifier (the I arm's box is under the I one)
+    note(ip[0] + 6, ip[1] + 2.5, "I arm: I is the data (BPSK: its sign), inverted: ILO drives + (the board's pin order; the idle sets the sign).  "
+         "I_SUM goes to sheet 6, where DAC2's channel D trims this arm's offset through 100 k: a few mV of demodulator "
+         "offset x4 is a fair part of the comparator's 20 mV.", cols=30)
     sig(ihi[0] + 10, ihi[1] - 21, LV.txt("IQ_DEM"), cols=26)
     qp, qn = B.arm(S, "Q", "U106", qhi, qlo, qhi[1] + 50.8, xf, LV.VAL["fda_Rf"], rg_key=LV.VAL["fda_Rg"], rs_key=LV.VAL["fda_Rs"], hlabels=True,
-                   trim="Q_OFF_F",
-                   note_text=LV.FAST_ARM_NOTE + "  Q is the phase error; both pairs also leave to the slow path (sheet 6) and the window "
-                   "comparators (sheet 7).  Q_OFF_F (DAC1 C, 100 k) trims this arm's offset: with a weak pilot the loop's lock point moves "
-                   "by the arm's offset over the pilot's slope (PLAN.md section 18).")
+                   trim="Q_OFF_F")
+    note(qp[0] + 14, qp[1] + 2.5, "Q arm: Q is the loop's phase error (0 at lock) and, for QPSK and the window schemes, the other bit.  Both pairs also leave to the "
+         "slow path (sheet 6) and the window comparators (sheet 7).  Q_OFF_F (DAC1 C, 100 k) trims this arm's offset: with a weak pilot the "
+         "loop's lock point moves by the arm's offset over the pilot's slope (PLAN.md section 18).", cols=30)
     # comparator I
     ci = B.comparator("U107", ip[0] + 35.56, ip[1] + 7.62)
     L(ip, ci.pin("3"), first="h") if abs(ip[1] - ci.pin("3")[1]) < 0.01 else W(ip, (ip[0] + 10.16, ip[1]), (ip[0] + 10.16, ci.pin("3")[1]), ci.pin("3"))
@@ -175,7 +182,7 @@ def build(S):
     W((co[0] + 7.62, co[1]), (co[0] + 7.62, co[1] + 15.24))
     B.tap(co[0] + 7.62, co[1] + 15.24, "CMP I MON", rkey=LV.VAL["tap_R"], text="CMP I MON: the comparator's output, /10 into 50 ohm")
     sig(co[0] + 10, co[1] - 24, LV.txt("CMP_I"), cols=34)
-    sig(ip[0] + 2, ip[1] + 13, LV.txt("I_ARM"), cols=22)
+    sig(ip[0] - 16, ip[1] - 28, LV.txt("I_ARM"), cols=30)                  # above the I_P line, left of the I MON tap
     # I MON tap and the ADC branch from the I_P line
     xi = ip[0] + 10.16
     J(xi, ip[1])
@@ -224,6 +231,9 @@ def build(S):
     W((xqn, yq2), (xl3, yq2), (xl3, q3[1]))
     W((xl3, p3[1]), p3); J(xl3, p3[1])
     W((xl3, q3[1]), q3)
+    note(jp1.pin("2")[0] - 40, y0 - 34, "sign(I) x Q without a multiplier: U110, a 74LVC1G3157 single-pole double-throw analog switch, passes "
+         "+Q (one leg of the pair, B2) when the comparator above says I is positive and -Q (the other leg, B1) when it says negative: "
+         "the product of a +-1 and Q.  Only its average matters to the 3 kHz loop, so the sign jumpers and the comparator's 2.5 ns are harmless.", cols=26)
     note(jp1.pin("2")[0] - 40, y0 - 4, "JP101 / JP102 SIGN: set them OPPOSITE ways.  Default: JP101 right (Q- to B1), JP102 left (Q+ to B2): the switch "
          "connects A to B1 when S is low and to B2 when S is high (its datasheet), so ERR = sign(I) x Q.  Both the other way = -sign(I) x Q: "
          "move both if the loop runs away (positive feedback).", cols=26)
@@ -236,7 +246,9 @@ def build(S):
     label(jps.pin("1")[0] - 10.16, jps.pin("1")[1], "CMP_I", size=1.0)
     W(jps.pin("3"), (jps.pin("3")[0] + 10.16, jps.pin("3")[1]))
     S.hlabel(jps.pin("3")[0] + 10.16, jps.pin("3")[1], "LOOP_SEL", shape="input", rot=0)
-    note(sel[0] - 14, sel[1] + 24, "JP103 SEL: COSTAS = sign(I) from U107 (the net CMP_I); FPGA = LOOP_SEL (hold it high for a plain PLL on Q).", cols=30)
+    note(sel[0] - 14, sel[1] + 24, "JP103 SEL: COSTAS = sign(I) from U107 (the net CMP_I); FPGA = LOOP_SEL (hold it high for a plain PLL on Q).  "
+         "A 0.1 inch jumper on a 100 MHz line adds a few pF and a few nH: nothing against the loop's 3 kHz, and the data line CMP_I "
+         "(33 ohm source, the PYNQ's 200 ohm and 10 pF) does not notice it.", cols=30)
     # error output, HOLD switch
     ex = ao[0] + 10.16
     W(ao, (ex, ao[1])); J(ex, ao[1])
@@ -258,8 +270,8 @@ def build(S):
     J(hx + 7.62, hy + 7.62); down("R 100k", hx + 7.62, hy + 7.62, text="right")
     B.supply_bar(hold, ["5"], "+3V3_DIG", dy=10.16)
     B.bottom_gnd(hold, ["2"])
-    note(hold.pin("4")[0] - 10, hy + 26, "LOOP_HOLD high ties the integrator's input to V_MID: no error in, VC holds, and the "
-         "switch's leakage goes into V_MID, not the integrator.", cols=26)
+    note(hold.pin("4")[0] - 10, hy + 26, "TS5A3159, SPDT analog switch (1 ohm): the loop's sample-and-hold.  LOOP_HOLD high ties the integrator's input to V_MID: no error in, VC holds "
+         "(the 100 nF keeps it: 0.1 rad of carrier phase after 6 ms typical), and the switch's leakage goes into V_MID, not the integrator.", cols=26)
     cx_, cy_ = hold.pin("4")
     W((cx_, cy_), (cx_ + 2.54, cy_), (cx_ + 2.54, ao[1] + 2.54))
     ncx, ncy = cx_ + 2.54, ao[1] + 2.54
@@ -273,12 +285,14 @@ def build(S):
     J(xn, inn[1])
     yfb = inn[1] - 15.24
     W((xn, inn[1]), (xn, yfb))
-    r2a, r2b = series(LV.VAL["loop_R2"], xn + 10.16, yfb)
+    xo = out[0] + 5.08                              # the feedback column; the capacitor's right pin lands ON it (Prompt 35: its wire ran back over C130)
+    ca, cb = series(LV.VAL["loop_C"], xo - 2.54, yfb)
+    r2a, r2b = series(LV.VAL["loop_R2"], (xn + ca[0]) / 2.0, yfb)
     W((xn, yfb), r2a)
-    ca, cb = series(LV.VAL["loop_C"], r2b[0] + 10.16, yfb)
     W(r2b, ca)
-    xo = out[0] + 5.08
-    W(cb, (xo, yfb), (xo, out[1]))
+    if abs(cb[0] - xo) > 1e-6:
+        W(cb, (xo, yfb))
+    W((xo, yfb), (xo, out[1]))
     W(out, (xo, out[1])); J(xo, out[1])
     # 1.65 V reference: a divider with a capacitor below the op amp (its + input is the lower one)
     vref = (inp[0] - 7.62, inp[1])
@@ -293,6 +307,10 @@ def build(S):
     W((vref[0] - 7.62, yv), (vref[0] - 15.24, yv))
     down("C 1uF", vref[0] - 15.24, yv, text="left")
     label(vref[0] - 5.08, yv, "V_MID", size=1.0)
+    note(vref[0] - 38, yv + 8, "V_MID, 1.65 V: the midpoint of the 3.3 V analogue supply (10k / 10k, 1 uF).  Every analogue level on this board is shifted "
+         "to live between 0 and 3.3 V, so V_MID stands in for the ground of a dual-supply circuit: the op amps' + inputs sit on it, the "
+         "comparators compare against it (sign = above or below V_MID), the arms are centred on it, and the hold switch parks the "
+         "integrator's input on it.", cols=30)
     note(ncx - 20, y0 - 24, "PI loop filter (sim/budget.py section 6): R1 %s, R2 %s, C 100 nF C0G -> fn 3 kHz, zeta 0.7 at the DSA's regulated level "
          "(Kd %.2f V/rad; it scales with the signal, which the DSA keeps).  U112A inverts; U112B inverts again: net non-inverting."
          % (LV.VAL["loop_R1"][2:], LV.VAL["loop_R2"][2:], LV.B["loop_Kd"]), cols=40)
@@ -329,7 +347,8 @@ def build(S):
     W((vp[0], vp[1] - 2.54), (vp[0] + 7.62, vp[1] - 2.54)); J(vp[0], vp[1] - 2.54)
     down("C 100nF", vp[0] + 7.62, vp[1] - 2.54, text="right")
     W(vm, (vm[0], vm[1] + G)); gnd(vm[0], vm[1] + G)
-    note(ncx + 72, ncy + 24, "OPA2388: zero drift, 5 uV offset, rail-to-rail in and out on 3.3 V, so the loop's static phase error is the comparator's, not the op amp's.  (The OPA2187 first drawn here needs 4.5 V and its inputs stop 2 V below the rail: it could never have sat at 1.65 V on 3.3 V.)", cols=28)
+    note(ncx + 72, ncy + 24, "OPA2388, dual op amp: zero drift, 5 uV offset, rail-to-rail in and out on 3.3 V, so the loop's static phase error is the comparator's, not the op amp's.  "
+         "A = the PI filter (integrator), B = the summing stage that adds the DAC's VC_OFF and scales to the VCXO.", cols=28)
     # VC runs left along a corridor under the loop to the VCXO (drawn below the synthesizer row)
     y_vc = ncy + 45.72
     W((xob, bout[1]), (xob, y_vc))
@@ -345,8 +364,12 @@ def build(S):
     W((xv, yv2 - 2.54), (xv + 7.62, yv2 - 2.54)); J(xv, yv2 - 2.54)
     down("C 100nF", xv + 7.62, yv2 - 2.54, text="right")
     gx, gy = vc.pin("2"); W((gx, gy), (gx, gy + G)); gnd(gx, gy + G)
-    note(vcin[0] - 20, ys + 14, "25 MHz VCXO (SX3V): +-100 ppm over 0.3-3.0 V = +-580 kHz at 5.8 GHz, 15 kHz modulation bandwidth.  "
-         "The loop's VCO.  Same pads as the TX TCXO.", cols=30)
+    note(vcin[0] - 20, ys + 14, "SX3V 25 MHz VCXO (voltage-controlled crystal oscillator): +-100 ppm over 0.3-3.0 V = +-580 kHz at 5.8 GHz "
+         "(x232), 15 kHz modulation bandwidth.  It is the Costas loop's VCO: the loop steers VC, the synthesizer follows its reference x232 "
+         "with its own 80 kHz loop, and the 3 kHz Costas loop sits well inside that.  Why here and not the MAX2871's TUNE pin: TUNE is "
+         "inside the synthesizer's loop, which would correct any nudge as an error (and open-loop the VCO is 60 MHz/V and drifts); the "
+         "reference is the clean handle.  Reach: two TCXOs differ by at most 29 kHz, the VCXO's guaranteed pull is +-290 kHz, and VC "
+         "(0.3-3.0 V) is within the OPA2388's rail-to-rail swing: checked in sim/budget.py section 6.  Same pads as the TX TCXO.", cols=30)
     vout = vc.pin("3")
     sig(vout[0] + 10, ys + 4, LV.txt("REF_RX"), cols=16)
     # REF OUT: the VCXO's 25 MHz buffered to an MMCX, for the TX synthesizer's REF IN (a coherent transponder)
@@ -361,8 +384,10 @@ def build(S):
     down("C 100nF", vp[0] + 7.62, vp[1] - 2.54, text="right")
     W(vm, (vm[0], vm[1] + G)); gnd(vm[0], vm[1] + G)
     o = stub(rb, "4", dx=5.08)
-    B.tap(o[0], o[1], "REF OUT", rkey="R 33R", text=LV.txt("REF_OUT") + ".  An MMCX-to-SMA lead to the TX sheet's REF IN "
-          "(JP201 to REF IN) locks our carrier to the one we receive: the one-antenna T/R mode needs it (sheet 5).")
+    note(p2[0] - 30, yin + 10, "74LVC1G17, Schmitt buffer: the VCXO's 25 MHz out to REF OUT without loading the oscillator.", cols=26)
+    B.tap(o[0], o[1], "REF OUT", rkey="R 33R", text=LV.txt("REF_OUT") + ".  On ONE board of a pair (the prover), an MMCX-to-SMA lead "
+          "to the TX sheet's REF IN (JP201 to REF IN) makes its transmitter coherent with the carrier it receives: a transponder.  The other "
+          "board (the verifier) keeps JP201 on its TCXO; both with the lead would be a ring with no reference (sheet 5).")
     pll, lo = B.synthesizer("U115", vout[0] + 109.22, ys + 5.08, "+3V3_PLL_RX", "LE_PLL_RX", "MUX_RX", "LO_RX", "LO RX MON", vout)
     # LO pair up to the demodulator: two verticals in the corridor left of the chip
     lp, ln = lo["lo_p"], lo["lo_n"]
@@ -370,8 +395,8 @@ def build(S):
     W(ln, (lo_top["n"][0], ln[1]), lo_top["n"])
     label(lp[0] + 1.27, lp[1], "LO_RX_P", size=1.0)
     label(ln[0] + 1.27, ln[1], "LO_RX_N", size=1.0, justify="left top")
-    note(vout[0] + 20, ys - 34, "RX synthesizer: MAX2871, 5.8 GHz integer-N from the 25 MHz VCXO (N = 232), RFOUTA differential into the ADL5380's LO (0 dBm), "
-         "RFOUTB to the LO RX MON jack.  Its own LDO, +3V3_PLL_RX.  The Costas loop steers the VCXO, so this whole synthesizer is the loop's VCO.", cols=52)
+    note(vout[0] + 20, ys - 34, "MAX2871, PLL frequency synthesizer (23.5 MHz to 6.0 GHz, SPI), the RX LO: 5.8 GHz integer-N from the 25 MHz VCXO (N = 232), RFOUTA differential into the ADL5380's LO (0 dBm), "
+         "RFOUTB to the LO RX MON jack, LD (lock detect) to its own jack.  Its own LDO, +3V3_PLL_RX.  The Costas loop steers the VCXO, so this whole synthesizer is the loop's VCO.", cols=52)
 
     # ---- the DAC and the ADC (right of the loop) ------------------------------------------
     xd = 449.58                                 # left of the loop's summing-node column (xbn) and its corridors
@@ -396,7 +421,7 @@ def build(S):
     sig(vo[0] + 2.54, ybot + 19.8, LV.txt("VC_OFF"), cols=30)
     sig(xd + 22, y0 + 50, LV.txt("DAC"), cols=30)
     sig(xd + 22, y0 + 136, LV.txt("ADC"), cols=30)
-    note(xd - 30, y0 + 90, "MCP4728 (I2C 0x60): A = VR_I, B = VR_Q (the TX ladders' references, 0.21 V: amplitude and carrier null), C = Q_OFF_F (the fast Q arm's offset trim, through 100 k), "
+    note(xd - 30, y0 + 90, "MCP4728, 12-bit quad DAC (I2C 0x60): A = VR_I, B = VR_Q (the TX ladders' references, 0.21 V: amplitude and carrier null), C = Q_OFF_F (the fast Q arm's offset trim, through 100 k), "
          "D = VC_OFF (a frequency offset / acquisition sweep).", cols=36)
     adc = part("ADS1115", "U114", xd, y0 + 127.0)
     for n, name in (("10", "I2C_SCL"), ("9", "I2C_SDA")):
@@ -407,10 +432,14 @@ def build(S):
     B.adc_inputs(adc, (("4", "I_P"), ("5", "Q_P"), ("6", "VC"), ("7", "ERR")))
     B.supply_bar(adc, ["8"], "+3V3_DIG", dy=10.16)
     B.bottom_gnd(adc, ["3"])
-    note(xd + 20, y0 + 110, "ADS1115 (I2C 0x48, 860 SPS): the averaged I and Q (lock = I large, Q small), VC (how far the VCXO is pulled) and the loop error.  "
+    note(xd + 20, y0 + 110, "ADS1115, 16-bit 4-channel ADC (I2C 0x48, 860 SPS): the averaged I and Q (lock = I large, Q small), VC (how far the VCXO is pulled) and the loop error.  "
          "Its four inputs are the nets named at the taps above (I_P, Q_P, VC, ERR).", cols=36)
     rf_blocks(*balun_pair)
     sel_pulldown(sel)
+    # the lock-detect jack (Prompt 35: a test pad an instrument cannot hold a probe on), explicit references
+    e = lo["ld"]
+    W(e, (e[0], e[1] + 7.62))                       # down a row (clear of the MUX label), then left to the jack
+    B.tap(e[0], e[1] + 7.62, "LD RX", rkey=LV.VAL["tap_R"], ref="J190", rref="R190", left=True, text=False)
     return S
 
 

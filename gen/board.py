@@ -326,7 +326,7 @@ def refill_by_project():
     import project
     if os.path.exists(RESCUED):
         os.remove(RESCUED)
-    for _ in range(12):                       # one rescue, then one dangling track a pass
+    for _ in range(40):                       # one rescue, then one dangling track a pass (12 until Prompt 35: the 0.3 mm rails left a stack of slivers at one pin)
         r = subprocess.run(kienv.python() + [os.path.abspath(__file__), "--inside", "--refill"], cwd=ROOT)
         if r.returncode != 3:
             break

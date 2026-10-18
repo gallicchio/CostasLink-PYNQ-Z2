@@ -57,7 +57,8 @@ Nothing plugged into the header yet; the board alone on the bench supply through
 0. Before power: solder J302 on the back (pin 1 at the right-hand end of the bottom edge, as the silk
    shows; square to the board: it carries the board 8 mm above the PYNQ), and fit the shunts:
    JP101 SIGN B1 on Q-, JP102 SIGN B2 on Q+, JP103 SEL on CMP, JP201 REF on TCXO; JP202 (50R) and JP301
-   (HDR 5V) open.  The modulator is off until a gateware drives TX_EN high (Response 15).
+   (HDR 5V) open; JP302 / JP303 (the I2C pull-ups) open for the PYNQ-Z2, fitted for the Icepi Zero (Prompt 35).
+   The modulator is off until a gateware drives TX_EN high (Response 15).  The back silkscreen repeats these.
    If the five 5.8 GHz SMAs' centre pins stand proud of the back (JLCPCB leaves through-hole pins as they come,
    1.9 mm), clip them to within 0.3 mm of the solder: the stub is a capacitor against the back pour, worth 3 points
    of reflection per launch in the field solve (docs/LAUNCH.md section 4.2).  REF IN and the triggers do not care.
@@ -65,7 +66,8 @@ Nothing plugged into the header yet; the board alone on the bench supply through
 1. 5 V at a 0.1 A limit first, for a few seconds: the supply goes straight into its limit (the ADL5380 and the
    three ADL5611 have no enable), so read its voltage: a short holds it near 0 V, a sound board settles at a volt
    or two where its chips start to draw.  Then raise the limit to 1.5 A.
-2. Rails at the test pads (bottom-right strip): +5V_IN within 0.15 V of the supply, +5V_RF at least
+2. Rails at the test pads (bottom-right strip; the same rails on the U.FL row under the TX chain, through 1 k, for a
+   logger): +5V_IN within 0.15 V of the supply, +5V_RF at least
    4.85 V (measure it again at 1.37 A in stage 2; if it is lower, raise the supply toward 5.25 V),
    +3V3_PLL_TX / +3V3_PLL_RX / +3V3_ANA / +3V3_DIG / +3V3_OSC 3.30 +-0.05.  Both LEDs lit.
 3. Current: 0.89 A plus up to 0.4 A for the two MAX2871 before they are programmed (CE is pulled high and
@@ -96,7 +98,7 @@ Nothing plugged into the header yet; the board alone on the bench supply through
 
 1. SPI: write the MAX2871 register words from `gateware/max2871_regs.py` (5.800 GHz on the TX
    synthesizer from its TCXO, 5.800 on the RX one from the VCXO with the loop open).  The MUX pins
-   (header 23/35) read lock detect; the LD test pads beside each chip show it too.
+   (header 23/35) read lock detect; the LD RX / LD TX jacks (U.FL, /10 into 50 ohm) beside each chip show it too.
 2. LO TX MON and LO RX MON (U.FL) on the spectrum analyser: 5.800 GHz, -4 to +5 dBm as programmed,
    the 25 MHz reference spurs 60 dB down or better, and the RX one moves +-580 kHz as the FPGA writes
    VC_OFF through the DAC across its range (loop open, HOLD high: VC follows VC_OFF).  REF OUT on the
@@ -145,7 +147,7 @@ cable: the LNA dies at +1 dBm.  Before the gateware holds the loop, VC sits at a
    lands within a few mV of the printed Vr: the N inputs' divider now carries the ADL5375's own
    2 x 41 uA (sim/budget.py section 1).
 4. BPSK: the FPGA flips the I ladder; CMP I MON (the comparator's output, /10) on one scope channel
-   against TRIG A (the FPGA's mark of the flip) on the other: the edge comes **15 ns + the cable**
+   against TRIG OUT A (the FPGA's mark of the flip) on the other: the edge comes **15 ns + the cable**
    after the mark (the receive half of the 23.5 ns; the transmit half is in the mark's own path).
    The slow path's CMP I S edge (header pin 40) about 27 ns behind it, and a QPSK corner's CMP QP S about
    7 ns behind its CMP QP (docs/TRAJECTORIES.md: the clipped slow stage drives its RC with the full
@@ -185,7 +187,7 @@ the switch block cabled in and time division (stage 4.4).
 
 1. Lock at 3 m: each receiver locks on the other's carrier (VC MON steady on both).  The RX synthesizer
    is re-centred by the FPGA when VC nears an end of its range (the two TCXOs may differ by 29 kHz).
-2. Latency: TRIG A on board A (the mark of the flip) against TRIG B on board B (the mark of the decode),
+2. Latency: TRIG OUT A on board A (the mark of the flip) against TRIG OUT B on board B (the mark of the decode),
    both leads to one scope: 23.5 ns of electronics plus 3.34 ns per metre.  Repeat at 3, 10, 30 m: the
    slope is the speed of light, the intercept the electronics.  This is the experiment's calibration.
 3. Error rates: continuous BPSK at 100 Mbaud for the BER; then the idle-carrier events at 1 MHz trial
@@ -195,7 +197,7 @@ the switch block cabled in and time division (stage 4.4).
    251 m: build/link_rates.md, with the receive chain's NF by Friis since Response 18).
 4. One antenna by time division: the switch block cabled (TX ANT -> SW TX, SW RX -> RX ANT, one whip on
    ANT), REF OUT -> REF IN on the prover with JP201 to REF IN, the T/R sequencer in the gateware:
-   measure the 30 ns on TR A (test pad) against TX MON, and the prover's reply coherent with the
+   measure the 30 ns on TR A (MMCX, /10 into 50 ohm) against TX MON, and the prover's reply coherent with the
    verifier's carrier (the verifier's loop holds through the exchange and is still locked after).
 5. Interference: a 5 GHz WiFi scan at the bench (the laptop); the loop's 3 kHz bandwidth should not
    notice a -40 dBm WiFi channel, the fast comparators will (false flags vetoed by the slow path).
@@ -209,10 +211,11 @@ the switch block cabled in and time division (stage 4.4).
 6. The schemes against each other (PLAN.md section 18), each edge on the scope at both ends and its
    jitter over 10^4 events: the BPSK flip decided by sign(I) against the same flip decided by IN set
    beside the idle; the plan's corners (QP/QN and CMP I); the pilot at 45 degrees with the four corners
-   (about -14 dBc, the four window comparators).  TRIG A here against the MON jacks there.
-7. The link without either FPGA: fit the DNP 0 ohm from TRIG IN to TX_Q1 on the transmitting board, set
-   CTRL[8] (TX_Q1 an input), and drive TRIG IN from a pulse generator: TRIG IN MON there against QP MON
-   on the far board is the radio link's own latency.  With JP202 fitted (50 ohm at the jack) set the
+   (about -14 dBc, the four window comparators).  TRIG OUT A here against the MON jacks there.
+7. The link without either FPGA: TRIG IN is the Q ladder's third leg (Prompt 35), so with the transmitting board's
+   gateware holding its Q bits at 01 (idle) a pulse on TRIG IN is +Q on the air by itself: TRIG IN MON there
+   against QP MON on the far board is the radio link's own latency (nothing to solder, no CTRL[8]).  With JP202
+   fitted (50 ohm at the jack) set the
    generator's load to 50 ohm and its amplitude to 3.3 V there: in Hi-Z mode it delivers half, 1.65 V,
    under the Schmitt buffer's 2.19 V upper threshold (the design review).
 8. The FPGA on the link's clock, and two-way time transfer (docs/SYSTEM.md section 4, Prompt 27): a

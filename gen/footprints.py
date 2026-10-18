@@ -244,6 +244,9 @@ MODELS = {"SMA_BWSMA-KWE-Z001": ("SMA-TH_5P-L14.5-W6.0-H9.6_BWSMA-KWE-Z001.wrl",
           "SKY65404-31_QFN-6_1.5x1.5mm": (None, None), "MountingHole_Slot_3.2x5.2mm_M3": (None, None),
           "Balun_Johanson_5400BL15B050": ("C_0805_2012Metric.wrl", "Capacitor_SMD"),
           "Balun_TDK_HHM1907B1": ("C_0402_1005Metric.wrl", "Capacitor_SMD")}
+# a stock model turned to this footprint's frame (degrees about z): KiCad's socket model runs its rows along +y with pin 2 at -x;
+# the underside socket is drawn with its rows along -x and pin 2 at -y (Prompt 35: the render showed it across the board)
+MODEL_ROT = {"RPi_Socket_2x20_P2.54mm_Underside": 90.0}
 
 if __name__ == "__main__":
     for k, v in generated().items():

@@ -24,14 +24,17 @@ synthesizer (MAX2871) referenced to a **voltage-controlled crystal oscillator**.
 error signal steers that VCXO, so the whole synthesizer behaves as the loop's VCO, multiplied by
 232: a ±100 ppm crystal pull is ±580 kHz at 5.8 GHz, which covers two TCXO-referenced transmitters
 disagreeing by at most 29 kHz, with the FPGA stepping the synthesizer's fractional word for anything
-larger. When the loop is locked, the demodulator's **I output is the data and its Q output is the
-phase error**. Both go through a differential amplifier to fast comparators and straight into the
-FPGA: the data path has no loop, no filter narrower than 100 MHz and no software in it, so a phase
-flip at the transmitter is a comparator edge at the receiver about 15 ns later (plus the air). The
-transmitter is a quadrature modulator (ADL5375) whose I and Q baseband inputs are driven by 2-bit
-resistor DACs from four FPGA pins, so the FPGA sets the constellation point in a couple of
-nanoseconds. The same analog receiver serves all three modulations; they differ only in what the
-transmitter's FPGA writes to its four pins and how the receiver's FPGA reads its three.
+larger. When the loop is locked, the demodulator's I and Q outputs are the constellation point the
+far end sent, in its own frame: for example, for BPSK, **I is the data and Q is the phase error**;
+for QPSK and the pilot-plus-corners schemes (section 18) the four window comparators say which way
+the point left the idle. Both go through a differential amplifier to fast comparators and straight
+into the FPGA: the data path has no loop, no filter narrower than 100 MHz and no software in it, so
+a phase flip at the transmitter is a comparator edge at the receiver about 15 ns later (plus the
+air). The transmitter is a quadrature modulator (ADL5375) whose I and Q baseband inputs are driven
+by 2-bit resistor DACs from four FPGA pins, so the FPGA sets the constellation point in a couple of
+nanoseconds (and TRIG IN sums into the Q ladder, so a detector pulse can key +Q with no FPGA in the
+path: Prompt 35). The same analog receiver serves all the modulations; they differ only in what the
+transmitter's FPGA writes to its four pins and how the receiver's FPGA reads its comparators.
 
 ### Why a carrier that is on all the time changes everything
 
@@ -242,16 +245,16 @@ MAX2871's outputs are differential and drive them directly.
 | **LQW15AN6N8G00D** ×3 (Prompt 28; fitted since Prompt 29) | the antenna jacks' ESD / DC path: RX ANT, TX ANT, ANT | C82919, 23999, $0.07 | a 6.8 nH wirewound self-resonant at 6.0 GHz or above: 400 Ω to 1.5 kΩ across 4.9-6 GHz, ~0.05 dB as a shunt; each on its line (beside the DC block, or against the TX line) | multilayer LQG15HS (self-resonant at 3.4-4.5 GHz: capacitive in the band); a 0.2 pF RF TVS (fast ESD, no DC path) |
 | **TPS7A2033PDBVR** ×4 | 3.3 V LDOs: PLL TX, PLL RX, analog, digital | C2862740, 198360, $0.22 | 300 mA, 10 µV rms, 65 dB PSRR at 100 kHz, SOT-23-5; the PLL ones sit behind 2.2 Ω to share the heat (0.25 W each) | ADM7150 ($8-21, 1 µV: the Syzygy choice, overkill at 232× multiplication where the MAX2871's own floor dominates); LP5907 for everything (250 mA: not enough for a MAX2871 at full output) |
 | **LP5907MFX-3.3** | 3.3 V LDO for the two oscillators | C23380874, 3403, $0.14 | 6.5 µV rms; an oscillator's supply noise is FM, so it gets its own quiet rail | sharing the analog rail |
-| **SN74LVC2G34DCKR** | buffers for TRIG A/B outputs to U.FL (latency measurement) | C14461, 22998, $0.16 | one package, 2.2 ns, 24 mA into 50 Ω through 33 Ω | — |
-| **SN74LVC1G17** ×2 | Schmitt buffer for TRIG IN (a detector pulse); the REF OUT buffer on the VCXO | C10425, 83000, $0.07 | 1 kΩ series protection then a Schmitt input, 50 Ω termination jumper; REF OUT is the VCXO's 25 MHz through 33 Ω for the TX synthesizer's REF IN (coherent transponder) | straight to the FPGA pin (1 kΩ × 10 pF = 10 ns) |
+| **SN74LVC2G34DCKR** | buffers for TRIG OUT A/B (latency measurement) | C14461, 22998, $0.16 | one package, 2.2 ns, 24 mA into 50 Ω through 33 Ω | — |
+| **SN74LVC1G17** ×2 | Schmitt buffer for TRIG IN (a detector pulse); the REF OUT buffer on the VCXO | C10425, 83000, $0.07 | 1 kΩ series protection then a Schmitt input, 50 Ω termination jumper, 100 k holds it low; its output is also the Q ladder's third leg (Prompt 35: a TRIG IN pulse is +Q on the air with no FPGA, and ORs with the FPGA's bits by summing); REF OUT is the VCXO's 25 MHz through 33 Ω for the TX synthesizer's REF IN (coherent transponder) | straight to the FPGA pin (1 kΩ × 10 pF = 10 ns) |
 | **SN74LVC1G04DCKR** ×2 | TR_B = not TR_A on the board (Response 14), freeing header pin 28; TX_EN's inverter U206 (Response 15) | C8207, 76408, $0.08 | the switch rests in receive on both hosts (A's pull-ups hold A high) | the FPGA driving B (one header pin) |
 | **HMC536MS8G** | the antenna switch (T/R), section 14 | C17271830, **5**, $9.91 (Digi-Key 0 until 2027-01) | DC-6 GHz GaAs, 15 ns rise, 30 ns on/off, 27 dB isolation, +27 dBm at 0.1 dB (minimum; +29 typical), 0/3.3 V control straight from the FPGA, no supply pin, MSOP-8 with a paddle (hand-solderable: Jason's limit is 0603) | HMC427A (10 ns, 40-45 dB, $62-75 at Digi-Key, 389 in stock; +5 V complementary logic needs two translators; QFN 3×3); HMC8038 (150 ns, 60 dB, +36 dBm, $8.6, 282 at JLCPCB: the right switch for campus distances with a PA, useless in the lab); HMC849A (150 ns, $9, none at JLCPCB); ADRF5019 (150 ns, needs −2.5 V); ADRF5020 (10 ns, $41-75, needs −2.5 V, none); PE42423 (500 ns), PE42422 (2 µs), SKY13453 (1 µs), SKY13350 (45 ns, discontinued), HMC545A/UPG2179 (3 GHz) |
 | **AO3401A** ×2 | P-FET ideal diodes on the two 5 V inputs (USB-C, header) | C15127 Basic, 756184, $0.10 | 60 mΩ at 4.5 V (maximum): 82 mV at 1.37 A against a Schottky's 350 mV, which the ADL53xx's 4.75 V minimum cannot spare; each input blocked from the other (CLAUDE_PCB.md §4) | Schottky OR-ing |
 | **MF-MSMF200-2** ×2 | 2 A PTC fuses on both inputs | C210837, 16439, $0.07 | — | — |
 | **SMAJ5.0A** | TVS on the 5 V rail | C113952, 575476, $0.04 | — | — |
 | **TYPE-C-31-M-12** | USB-C 5 V input (CC pull-downs 5.1 k) | C165948, 409808, $0.19 | the HRO part built on three boards; its CPL datum is known | barrel jack (someone plugs in 12 V) |
-| **BWSMA-KWE-Z001** ×9 | SMA, right angle through-hole: the five RF ports and four field ports (TRIG A, TRIG B, TRIG IN, REF IN) | C496551, 148391, $0.41 | the ECP5 board's part, +90 CPL correction known | edge-launch |
-| **BWMMCX-KE** ×5 | MMCX, vertical through-hole, 500 matings: REF OUT and four baseband monitors | C5137198, 12841, $0.58 | the taps with room round them (Response 10) | BWMMCX-KEF (edge-mount: its footprint carries Edge.Cuts) |
+| **BWSMA-KWE-Z001** ×9 | SMA, right angle through-hole: the five RF ports and four field ports (TRIG OUT A, TRIG OUT B, TRIG IN, REF IN) | C496551, 148391, $0.41 | the ECP5 board's part, +90 CPL correction known | edge-launch |
+| **BWMMCX-KE** ×6 | MMCX, vertical through-hole, 500 matings: REF OUT, four baseband monitors and TR A (Prompt 35: a jack an instrument can hold, not a pad) | C5137198, 12841, $0.58 | the taps with room round them (Response 10) | BWMMCX-KEF (edge-mount: its footprint carries Edge.Cuts) |
 | **U.FL-R-SMT-1(80)** ×12 | the 5.8 GHz taps and the boxed-in ones | C88374, 31378, $0.11 | SMT launch on the line; 30 matings | MMCX (no room; a through-hole pin on a 5.8 GHz line) |
 | **2.54-2*20** (C2977589) | 2x20 socket, 8.5 mm, underside | C2977589, 33575, $0.32 | the GPSDO board's part; through-hole carries the mechanical load; soldered at home (hand_solder_bom.csv, Response 15) | the SMD HC-PM254 |
 | PZ254V-11-02P / -03P | jumpers (loop source, LNA enable, TRIG IN 50 Ω, header 5 V) | C492401 / C2937625 | exact lengths, not strips (CLAUDE_PCB.md §8) | — |
@@ -840,7 +843,12 @@ measuring what time division costs. It needs two more things the board now has: 
 transmitting, and the **REF OUT → REF IN** lead that runs the prover's TX synthesizer from the VCXO
 its Costas loop steers, so its reply is coherent with the verifier's carrier and the verifier's
 loop, holding, is already on frequency when the reply arrives (a transponder; otherwise it would
-have to re-acquire, 100 µs). DroneSDR's `pointToPointRF/README.md` (2025) reached the same switch
+have to re-acquire: 3.8 ms from 30 kHz off, section 3). **One board of the pair carries the lead**
+(Jason, Prompt 35: "the dog eating its tail"): the verifier transmits on its TCXO, the prover locks
+to that and transponds it back; with both boards on the lead there would be two VCXOs locked to
+each other and to nothing else, wandering together until one hit a rail. The hold itself is the
+sample-and-hold on the integrator (section 18: 0.1 rad after 6 ms typical); the lead is what makes
+the carrier that comes back the one the verifier's loop was holding on. DroneSDR's `pointToPointRF/README.md` (2025) reached the same switch
 conclusion for the OOK link (HMC427A, with the −5 V and level-shifter pain it brings) and chose the
 ADL5511 detector; what carries over from it: the limiter (VLM-63-2W-S+) ahead of a detector or LNA
 when a PA is in play, DC blocks on GaAs switch ports, "don't buy a no-name terminator", and the
@@ -1182,6 +1190,19 @@ is a rev B idea, worth it only if holds longer than a few ms matter.
 | A4 one bit, pilot at 45° | 29 m | 1.3 km | 10.3 km |
 | A3 two bits, the plan's corners | 21 m | 919 m | 7.3 km |
 | B2 two bits, pilot at 45° + corners | 28 m | 1.2 km | 9.9 km |
+
+**Which of these rev A's hardware can run (Jason, Prompt 35: "Can we do a full idle+4?").** The
+transmitter gives each axis three levels, c − a, c, c + a, with c set per axis by VR_I / VR_Q (DC from
+the DAC) and a fixed by the ladder; TRIG IN adds one more step of +Q. The receiver has sign(I)
+(CMP_I), the four windows IP / IN / QP / QN each on its own 16-bit threshold, and the slow path's
+three. So: **A1, A2, A3 (the full idle + 4 corners: QP / QN for the event and the Q bit, CMP_I for
+the I bit), A4, B1 and B2 all run**, and so does J1 now that the I window pair exists (its second I
+threshold is V_TIN). B1's pilot is c on the I axis; B2's pilot at 45° is c on both axes, and its
+four "corners" are then c ± a on each axis, the square round the pilot, which after the loop's −45°
+turn land on ±I and ±Q as the scheme wants (the constellation file's absolute corners differ from
+these by the pilot's offset, 0.14 a, in each message's length: immaterial to the windows). What the
+ladders cannot do: J2 (5-PSK: five levels) and R4 (lines through the idle at odd angles need
+weighted, AC-coupled comparators). TRIG IN by itself is A2's "+Q" with no FPGA.
 
 ## 19. Far future: how low the latency could go, and what it costs (Prompt 21)
 

@@ -14,7 +14,7 @@
 		(comment 3 "https://github.com/QuantumQuasars/OpticsPCBs/CostasLink-PYNQ-Z2")
 	)
 	(lib_symbols)
-	(text "CostasLink-PYNQ-Z2: 5.8 GHz PSK / FSK / QPSK link with a hardware Costas loop, for the PYNQ-Z2"
+	(text "CostasLink-PYNQ-Z2: 5.8 GHz PSK / FSK / QPSK transceiver with a hardware Costas loop, for the PYNQ-Z2 and the Icepi Zero"
 		(exclude_from_sim no)
 		(at 17.78 21.59 0)
 		(effects
@@ -26,31 +26,10 @@
 		)
 		(uuid "44047133-7264-a7eb-7f68-315aa4fc2325")
 	)
-	(text_box "A 5.8 GHz link that carries a bit (or two) FPGA to FPGA in the speed-of-light time plus about 25 ns. The receiver is a\nquadrature demodulator whose LO is a synthesizer on a VCXO; the Costas loop steers the VCXO, so the LO stays on the far\nend's carrier and the demodulator's I output IS the data, Q the phase error. The transmitter is a quadrature modulator\ndriven by two 2-bit resistor ladders from FPGA pins. PLAN.md has the arithmetic; sim/budget.py computes it."
-		(exclude_from_sim no)
-		(at 17.78 27.94 0)
-		(size 133.35 11.43)
-		(margins 0.9525 0.9525 0.9525 0.9525)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(fill
-			(type color)
-			(color 255 255 194 1)
-		)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left top)
-		)
-		(uuid "4d98b0e9-1041-2af3-ef25-63d509469e50")
-	)
-	(text_box "Power sheet (left): the header's 28 FPGA signals\nleave as named lines to the receiver, transmitter,\nantenna-switch and slow-path sheets. VR_I and VR_Q\nare the monitoring DAC's two TX references, from the\nreceiver sheet (where the DAC lives) to the\ntransmitter.  The switch sheet is its own block with\nthree SMAs: fit it to share one antenna (T/R), leave\nit off for two antennas (full duplex on two\nfrequencies)."
+	(text_box "Power sheet (left): the header's 28 FPGA signals\nleave as named lines to the receiver, transmitter,\nantenna-switch and slow-path sheets; the window-\ncomparator sheet's nets are joined by the net labels\nat its pins and at the header's.  VR_I and VR_Q are\nthe monitoring DAC's two TX references, from the\nreceiver sheet (where the DAC lives) to the\ntransmitter.  The switch sheet is its own block with\nthree SMAs: fit it to share one antenna (T/R), leave\nit off for two antennas (full duplex on two\nfrequencies)."
 		(exclude_from_sim no)
 		(at 25.4 190.5 0)
-		(size 59.69 22.86)
+		(size 58.42 26.67)
 		(margins 0.9525 0.9525 0.9525 0.9525)
 		(stroke
 			(width 0)
@@ -67,6 +46,27 @@
 			(justify left top)
 		)
 		(uuid "89b74a22-ac26-0aa1-81a4-e2ccf7ec5cd8")
+	)
+	(text_box "A 5.8 GHz link that carries one or two bits FPGA to FPGA in the speed-of-light time plus about 25 ns of electronics, for quantum\nposition verification; it plugs onto a PYNQ-Z2's or an Icepi Zero's Raspberry Pi header, and two of them talk to each other.  The\nreceiver (sheet 3) is a zero-IF quadrature demodulator whose LO is a synthesizer on a VCXO; a hardware Costas loop steers the\nVCXO, so the LO stays on the far end's carrier and the demodulated I and Q are the constellation point the far end sent, read by\ncomparators straight into the FPGA.  For example, for BPSK, I is the data and Q the phase error; for QPSK and the pilot-plus-\ncorners schemes the four window comparators (sheet 7) decide which way the point left the idle; a slow confirming path (sheet 6)\nvetoes false alarms.  The transmitter (sheet 4) is a quadrature modulator driven by two 2-bit resistor ladders from FPGA pins (and\nTRIG IN, summed into the Q ladder), on its own synthesizer and TCXO.  Sheet 5 is an optional T/R switch for one antenna.  PLAN.md\nhas the arithmetic; sim/budget.py computes it and every blue box quotes it."
+		(exclude_from_sim no)
+		(at 17.78 25.4 0)
+		(size 144.78 22.86)
+		(margins 0.9525 0.9525 0.9525 0.9525)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(fill
+			(type color)
+			(color 255 255 194 1)
+		)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+		)
+		(uuid "a6e1de5c-747a-7d24-34de-c39855b9db21")
 	)
 	(junction
 		(at 114.3 88.9)
@@ -94,23 +94,23 @@
 	)
 	(wire
 		(pts
-			(xy 116.84 55.88) (xy 182.88 55.88)
+			(xy 182.88 93.98) (xy 161.29 93.98)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "034d1999-e9fa-8eef-fff7-829b39a85a11")
+		(uuid "0cee01aa-4a8c-6cf5-f810-7315a8acf2b3")
 	)
 	(wire
 		(pts
-			(xy 114.3 88.9) (xy 114.3 60.96)
+			(xy 91.44 53.34) (xy 182.88 53.34)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "0d1243b7-285c-2550-a368-f3ce434bee8a")
+		(uuid "0d35c314-d863-ab5b-96ac-a6ea5a67852e")
 	)
 	(wire
 		(pts
@@ -144,6 +144,26 @@
 	)
 	(wire
 		(pts
+			(xy 114.3 88.9) (xy 114.3 73.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "166fdc86-9f75-4f1d-26f5-f56954b0fffb")
+	)
+	(wire
+		(pts
+			(xy 137.16 63.5) (xy 182.88 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1bca047a-c272-5583-497a-5cc0f6825059")
+	)
+	(wire
+		(pts
 			(xy 142.24 167.64) (xy 182.88 167.64)
 		)
 		(stroke
@@ -151,16 +171,6 @@
 			(type default)
 		)
 		(uuid "1d363b0a-f0c2-1f58-9c22-8540b23f5841")
-	)
-	(wire
-		(pts
-			(xy 182.88 66.04) (xy 176.53 66.04)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "1f29800d-8a60-497d-8856-f026e37b8e60")
 	)
 	(wire
 		(pts
@@ -184,13 +194,23 @@
 	)
 	(wire
 		(pts
-			(xy 161.29 81.28) (xy 161.29 259.08)
+			(xy 137.16 111.76) (xy 137.16 63.5)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "26f30929-8b76-5bbf-6881-840325b8265b")
+		(uuid "25b299a4-8907-56e1-9b1c-95475f06d529")
+	)
+	(wire
+		(pts
+			(xy 134.62 109.22) (xy 134.62 60.96)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "260603e7-7cca-befc-aa85-9daff680a7e5")
 	)
 	(wire
 		(pts
@@ -201,16 +221,6 @@
 			(type default)
 		)
 		(uuid "272a7165-7827-83c4-d58e-91993b009b49")
-	)
-	(wire
-		(pts
-			(xy 134.62 48.26) (xy 182.88 48.26)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "276e00ca-8913-fa9a-3ecc-a445f6794fe4")
 	)
 	(wire
 		(pts
@@ -244,16 +254,6 @@
 	)
 	(wire
 		(pts
-			(xy 166.37 76.2) (xy 166.37 254)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "2ac0085a-b8b8-6d6a-12c8-0935f1bc1f39")
-	)
-	(wire
-		(pts
 			(xy 147.32 121.92) (xy 147.32 205.74)
 		)
 		(stroke
@@ -284,26 +284,6 @@
 	)
 	(wire
 		(pts
-			(xy 171.45 71.12) (xy 171.45 248.92)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "30551b4a-bd00-aa65-dfa3-276375aafc0a")
-	)
-	(wire
-		(pts
-			(xy 119.38 53.34) (xy 182.88 53.34)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "31dee3a7-95f9-8cf2-7eb7-2548895462c7")
-	)
-	(wire
-		(pts
 			(xy 142.24 116.84) (xy 142.24 167.64)
 		)
 		(stroke
@@ -311,6 +291,16 @@
 			(type default)
 		)
 		(uuid "3203bfc7-2563-8fb9-926b-bb0da7a8c1ed")
+	)
+	(wire
+		(pts
+			(xy 119.38 93.98) (xy 119.38 66.04)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "32343bad-59b5-b602-b279-e314f705a164")
 	)
 	(wire
 		(pts
@@ -354,6 +344,16 @@
 	)
 	(wire
 		(pts
+			(xy 116.84 91.44) (xy 116.84 68.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3c5b878c-6490-3226-183a-fb3e0243f6d7")
+	)
+	(wire
+		(pts
 			(xy 171.45 248.92) (xy 306.07 248.92)
 		)
 		(stroke
@@ -394,6 +394,16 @@
 	)
 	(wire
 		(pts
+			(xy 171.45 83.82) (xy 171.45 248.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4417884a-bbf3-0c7e-e288-73eaa4a873a4")
+	)
+	(wire
+		(pts
 			(xy 114.3 246.38) (xy 308.61 246.38)
 		)
 		(stroke
@@ -401,6 +411,16 @@
 			(type default)
 		)
 		(uuid "457022c7-f1a6-3d8f-f1f2-bb4cbfecdc62")
+	)
+	(wire
+		(pts
+			(xy 114.3 73.66) (xy 182.88 73.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "45dc80b4-0a51-7e07-94db-b029be1ee4f4")
 	)
 	(wire
 		(pts
@@ -454,6 +474,26 @@
 	)
 	(wire
 		(pts
+			(xy 91.44 66.04) (xy 91.44 53.34)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "48c67ae6-eb63-819a-8676-4e6f7597c382")
+	)
+	(wire
+		(pts
+			(xy 173.99 81.28) (xy 173.99 175.26)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "49798723-a1ab-ea4f-377c-645e0791a839")
+	)
+	(wire
+		(pts
 			(xy 137.16 157.48) (xy 182.88 157.48)
 		)
 		(stroke
@@ -484,23 +524,13 @@
 	)
 	(wire
 		(pts
-			(xy 129.54 58.42) (xy 182.88 58.42)
+			(xy 182.88 78.74) (xy 176.53 78.74)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "4ff5466e-a2bb-9002-2ec9-bbb3daf8d75d")
-	)
-	(wire
-		(pts
-			(xy 114.3 60.96) (xy 182.88 60.96)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "58d1ee7d-8d1e-8040-6e90-60cd207566ad")
+		(uuid "58c133cb-c8ce-baee-f716-0e01d0ab1572")
 	)
 	(wire
 		(pts
@@ -514,16 +544,6 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 76.2) (xy 166.37 76.2)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "5d90842d-831d-e45e-8f50-2da247f2924b")
-	)
-	(wire
-		(pts
 			(xy 134.62 109.22) (xy 134.62 154.94)
 		)
 		(stroke
@@ -531,16 +551,6 @@
 			(type default)
 		)
 		(uuid "5df052d6-06bc-9819-4de2-ab78a058015c")
-	)
-	(wire
-		(pts
-			(xy 137.16 50.8) (xy 182.88 50.8)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "5e1e003d-0430-28e7-e676-065c9ec76962")
 	)
 	(wire
 		(pts
@@ -564,13 +574,23 @@
 	)
 	(wire
 		(pts
-			(xy 176.53 66.04) (xy 176.53 172.72)
+			(xy 163.83 91.44) (xy 163.83 256.54)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "65982213-65bb-eb58-5189-e4103ad09714")
+		(uuid "6121d0db-463e-f8cf-1dcd-a22632d66e80")
+	)
+	(wire
+		(pts
+			(xy 182.88 91.44) (xy 163.83 91.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "661fa0bf-397f-db10-66bb-f4864f5b50d1")
 	)
 	(wire
 		(pts
@@ -581,6 +601,16 @@
 			(type default)
 		)
 		(uuid "698693cd-da0e-55a8-3468-fc9b8ee6083d")
+	)
+	(wire
+		(pts
+			(xy 134.62 60.96) (xy 182.88 60.96)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6db29ada-a085-d622-29c0-adb0893db7db")
 	)
 	(wire
 		(pts
@@ -614,6 +644,16 @@
 	)
 	(wire
 		(pts
+			(xy 116.84 68.58) (xy 182.88 68.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "74af33f0-46ec-c7a4-0ae8-0fa251a81982")
+	)
+	(wire
+		(pts
 			(xy 311.15 63.5) (xy 322.58 63.5)
 		)
 		(stroke
@@ -634,6 +674,16 @@
 	)
 	(wire
 		(pts
+			(xy 182.88 81.28) (xy 173.99 81.28)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "76753212-5230-6439-c5d9-2431bdb2fd18")
+	)
+	(wire
+		(pts
 			(xy 322.58 106.68) (xy 314.96 106.68)
 		)
 		(stroke
@@ -641,6 +691,16 @@
 			(type default)
 		)
 		(uuid "79755e15-3f0d-8af6-f5b1-f2c1d949ce33")
+	)
+	(wire
+		(pts
+			(xy 111.76 76.2) (xy 182.88 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "808e8011-0fb8-507a-68c3-119e65a176b3")
 	)
 	(wire
 		(pts
@@ -654,13 +714,13 @@
 	)
 	(wire
 		(pts
-			(xy 134.62 109.22) (xy 134.62 48.26)
+			(xy 129.54 104.14) (xy 129.54 71.12)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "838f9098-1da6-c64d-197f-9f43279816b9")
+		(uuid "85091796-e5af-f981-a278-e76a50543c78")
 	)
 	(wire
 		(pts
@@ -674,13 +734,23 @@
 	)
 	(wire
 		(pts
-			(xy 124.46 99.06) (xy 124.46 43.18)
+			(xy 119.38 66.04) (xy 182.88 66.04)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "8bc92ae3-1e9d-d358-95cb-e3cae9348eba")
+		(uuid "8c384dec-1041-30c4-7c81-3baed4949056")
+	)
+	(wire
+		(pts
+			(xy 129.54 71.12) (xy 182.88 71.12)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8c7832a8-49f4-4a69-ed17-e41132840719")
 	)
 	(wire
 		(pts
@@ -694,23 +764,13 @@
 	)
 	(wire
 		(pts
-			(xy 91.44 40.64) (xy 182.88 40.64)
+			(xy 182.88 88.9) (xy 166.37 88.9)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "8f069457-b15c-bf58-d60e-68ca4479b284")
-	)
-	(wire
-		(pts
-			(xy 182.88 68.58) (xy 173.99 68.58)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "8f49933e-f67d-2103-d22e-9805ec4314a1")
+		(uuid "8ff2fe0b-cb1d-ef4a-bbd4-7cacac2c8228")
 	)
 	(wire
 		(pts
@@ -774,16 +834,6 @@
 	)
 	(wire
 		(pts
-			(xy 116.84 91.44) (xy 116.84 55.88)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "999a6721-b900-9760-19fa-d3f7a8aefb5e")
-	)
-	(wire
-		(pts
 			(xy 306.07 40.64) (xy 322.58 40.64)
 		)
 		(stroke
@@ -791,6 +841,26 @@
 			(type default)
 		)
 		(uuid "99c620f2-c982-1a07-916a-848703ab2f41")
+	)
+	(wire
+		(pts
+			(xy 127 58.42) (xy 182.88 58.42)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9a4f858b-5a78-4b02-322c-ed91a95ae077")
+	)
+	(wire
+		(pts
+			(xy 111.76 86.36) (xy 111.76 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9b65cc79-bde3-b175-5121-c7d1d9a496e2")
 	)
 	(wire
 		(pts
@@ -844,13 +914,13 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 81.28) (xy 161.29 81.28)
+			(xy 124.46 55.88) (xy 182.88 55.88)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "a28a87e0-d80b-c4cf-f769-816a99a0a91b")
+		(uuid "a0e7366e-d5a8-a91e-4588-1220c8d44673")
 	)
 	(wire
 		(pts
@@ -861,36 +931,6 @@
 			(type default)
 		)
 		(uuid "a3cb91e8-5f8d-d5d4-0cd1-00e1169689df")
-	)
-	(wire
-		(pts
-			(xy 163.83 78.74) (xy 163.83 256.54)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "a6d87345-9a60-0ed4-63ab-9855cc44675a")
-	)
-	(wire
-		(pts
-			(xy 182.88 71.12) (xy 171.45 71.12)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "a79e5562-fc7c-e55d-9487-eb8dcd5271f7")
-	)
-	(wire
-		(pts
-			(xy 182.88 73.66) (xy 168.91 73.66)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "a8013fa5-b280-090b-2f9b-1eaa710aa505")
 	)
 	(wire
 		(pts
@@ -914,6 +954,16 @@
 	)
 	(wire
 		(pts
+			(xy 166.37 88.9) (xy 166.37 254)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "aaa7a97e-195d-40ab-92ee-501f9daa9c34")
+	)
+	(wire
+		(pts
 			(xy 99.06 73.66) (xy 99.06 236.22)
 		)
 		(stroke
@@ -921,16 +971,6 @@
 			(type default)
 		)
 		(uuid "ab8c158a-fbf1-a53a-c154-a43cf6306d5a")
-	)
-	(wire
-		(pts
-			(xy 119.38 93.98) (xy 119.38 53.34)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "acf4a444-efb9-2f1e-3b49-bce0ad5e824b")
 	)
 	(wire
 		(pts
@@ -954,6 +994,16 @@
 	)
 	(wire
 		(pts
+			(xy 161.29 93.98) (xy 161.29 259.08)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "aff6a272-18dc-835e-5bf7-ad2081b2c40f")
+	)
+	(wire
+		(pts
 			(xy 121.92 96.52) (xy 121.92 160.02)
 		)
 		(stroke
@@ -961,16 +1011,6 @@
 			(type default)
 		)
 		(uuid "b09f3a61-7357-5fd5-6c56-534d87ffe2bb")
-	)
-	(wire
-		(pts
-			(xy 168.91 73.66) (xy 168.91 251.46)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "b1e3cadc-d90f-b261-6a6d-2e9270282e0f")
 	)
 	(wire
 		(pts
@@ -1024,13 +1064,13 @@
 	)
 	(wire
 		(pts
-			(xy 111.76 86.36) (xy 111.76 63.5)
+			(xy 182.88 83.82) (xy 171.45 83.82)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "c0fcb716-656c-e389-1822-37758f2c74b1")
+		(uuid "c37e8394-f9ad-b1f5-4c7e-6b4865aef786")
 	)
 	(wire
 		(pts
@@ -1084,16 +1124,6 @@
 	)
 	(wire
 		(pts
-			(xy 124.46 43.18) (xy 182.88 43.18)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "d13e47a1-0b7c-c175-cd5c-464b8f28fb0e")
-	)
-	(wire
-		(pts
 			(xy 147.32 205.74) (xy 182.88 205.74)
 		)
 		(stroke
@@ -1111,16 +1141,6 @@
 			(type default)
 		)
 		(uuid "d2d5f141-7612-f712-f149-221602e64d5e")
-	)
-	(wire
-		(pts
-			(xy 111.76 63.5) (xy 182.88 63.5)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "d348a60a-0ffb-9ef6-8d9d-4d06ad4875b4")
 	)
 	(wire
 		(pts
@@ -1204,23 +1224,13 @@
 	)
 	(wire
 		(pts
-			(xy 127 101.6) (xy 127 45.72)
+			(xy 124.46 99.06) (xy 124.46 55.88)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "dc8aeb61-32cd-7914-f6d3-ed4a585cc363")
-	)
-	(wire
-		(pts
-			(xy 129.54 104.14) (xy 129.54 58.42)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "decc546b-3f28-8c52-340c-b0c6852dd8b1")
+		(uuid "e1dcc61d-9aed-3a0d-4608-de1572305942")
 	)
 	(wire
 		(pts
@@ -1254,6 +1264,16 @@
 	)
 	(wire
 		(pts
+			(xy 182.88 86.36) (xy 168.91 86.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ea96bb73-16cc-9df9-2c1e-98976aea4181")
+	)
+	(wire
+		(pts
 			(xy 322.58 109.22) (xy 314.96 109.22)
 		)
 		(stroke
@@ -1261,16 +1281,6 @@
 			(type default)
 		)
 		(uuid "eb3265f1-55c0-a838-7847-d4ee5ceef8b8")
-	)
-	(wire
-		(pts
-			(xy 127 45.72) (xy 182.88 45.72)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ec14f9fa-cfd9-a382-3426-5238853718fb")
 	)
 	(wire
 		(pts
@@ -1324,23 +1334,13 @@
 	)
 	(wire
 		(pts
-			(xy 173.99 68.58) (xy 173.99 175.26)
+			(xy 127 101.6) (xy 127 58.42)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "f121b252-abfa-a108-1fcf-57afb791de33")
-	)
-	(wire
-		(pts
-			(xy 137.16 111.76) (xy 137.16 50.8)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "f1a8c46f-116e-376c-338d-47a9697771d9")
+		(uuid "f1c161ce-d46e-fa77-6044-9dbf990169da")
 	)
 	(wire
 		(pts
@@ -1351,6 +1351,16 @@
 			(type default)
 		)
 		(uuid "f21a1922-2a61-ad36-d6b9-42df5f72437d")
+	)
+	(wire
+		(pts
+			(xy 176.53 78.74) (xy 176.53 172.72)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f5158d8e-69a3-c2ee-c2ef-a899dcdee8a7")
 	)
 	(wire
 		(pts
@@ -1374,26 +1384,6 @@
 	)
 	(wire
 		(pts
-			(xy 91.44 66.04) (xy 91.44 40.64)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "f6996d1e-f3b8-d8c3-843c-b5d0d9875ef0")
-	)
-	(wire
-		(pts
-			(xy 182.88 78.74) (xy 163.83 78.74)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "f862cddf-a534-b3b9-2601-d12308b8439a")
-	)
-	(wire
-		(pts
 			(xy 88.9 114.3) (xy 139.7 114.3)
 		)
 		(stroke
@@ -1401,6 +1391,16 @@
 			(type default)
 		)
 		(uuid "fc27cc1e-7dec-09db-4157-984e9ea8aad1")
+	)
+	(wire
+		(pts
+			(xy 168.91 86.36) (xy 168.91 251.46)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ff1af7e2-4751-a9ea-fe70-bcadaf0dac49")
 	)
 	(label "CMP_QN"
 		(at 88.9 76.2 0)
@@ -1421,16 +1421,6 @@
 			(justify right bottom)
 		)
 		(uuid "0868a30e-eddc-090b-044d-46c3a7bd947c")
-	)
-	(label "Q_N"
-		(at 182.88 78.74 180)
-		(effects
-			(font
-				(size 1 1)
-			)
-			(justify right bottom)
-		)
-		(uuid "2b140395-fcb6-8bd8-02b0-336841cfe155")
 	)
 	(label "CMP_IN"
 		(at 314.96 116.84 180)
@@ -1492,6 +1482,26 @@
 		)
 		(uuid "54c9f3cf-1d78-0b20-2942-9f93fe69e8cf")
 	)
+	(label "Q_P"
+		(at 182.88 88.9 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify right bottom)
+		)
+		(uuid "55a0ad02-0ea6-691c-b81c-d8f0c7b034ef")
+	)
+	(label "Q_N"
+		(at 182.88 91.44 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify right bottom)
+		)
+		(uuid "6d416782-0b63-5993-6e7f-deab78652946")
+	)
 	(label "I2C_SDA"
 		(at 88.9 88.9 0)
 		(effects
@@ -1532,26 +1542,6 @@
 		)
 		(uuid "a5af88d6-d2d5-31b9-1b4b-8fb82c10ed97")
 	)
-	(label "I_N"
-		(at 182.88 73.66 180)
-		(effects
-			(font
-				(size 1 1)
-			)
-			(justify right bottom)
-		)
-		(uuid "a9bcc450-a7b6-49f6-ad0f-bd208144f86c")
-	)
-	(label "Q_P"
-		(at 182.88 76.2 180)
-		(effects
-			(font
-				(size 1 1)
-			)
-			(justify right bottom)
-		)
-		(uuid "b04b9959-21dd-6d1b-f073-57aee2ef8aff")
-	)
 	(label "I2C_SCL"
 		(at 88.9 86.36 0)
 		(effects
@@ -1572,16 +1562,6 @@
 		)
 		(uuid "be356a95-38f7-8e92-0f10-52be4c8a96ea")
 	)
-	(label "I_P"
-		(at 182.88 71.12 180)
-		(effects
-			(font
-				(size 1 1)
-			)
-			(justify right bottom)
-		)
-		(uuid "c4dae138-4fe0-29e1-cc2a-1030a3808fb0")
-	)
 	(label "CMP_QP"
 		(at 314.96 119.38 180)
 		(effects
@@ -1601,6 +1581,26 @@
 			(justify right bottom)
 		)
 		(uuid "d7b57c63-a3a3-c3a6-cab8-c76b8afa6708")
+	)
+	(label "I_P"
+		(at 182.88 83.82 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify right bottom)
+		)
+		(uuid "db138694-2177-b629-19f9-279f0b36d0f4")
+	)
+	(label "I_N"
+		(at 182.88 86.36 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify right bottom)
+		)
+		(uuid "fbafa97c-9aa4-d0a4-ee34-1a58eb4027de")
 	)
 	(sheet
 		(at 322.58 38.1)
@@ -1646,7 +1646,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "I_N" input
@@ -1656,7 +1656,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "Q_P" input
@@ -1666,7 +1666,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "Q_N" input
@@ -1676,7 +1676,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "I_SUM" output
@@ -1686,7 +1686,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "CMP_I_S" output
@@ -1696,7 +1696,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "CMP_QP_S" output
@@ -1706,7 +1706,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "CMP_QN_S" output
@@ -1716,7 +1716,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "I2C_SDA" bidirectional
@@ -1726,7 +1726,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "I2C_SCL" bidirectional
@@ -1736,7 +1736,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(instances
@@ -1791,7 +1791,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "CMP_IN" input
@@ -1801,7 +1801,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "CMP_IP" input
@@ -1811,7 +1811,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "CMP_I_S" input
@@ -1821,7 +1821,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "CMP_QN" input
@@ -1831,7 +1831,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "CMP_QN_S" input
@@ -1841,7 +1841,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "CMP_QP" input
@@ -1851,7 +1851,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "CMP_QP_S" input
@@ -1861,7 +1861,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "I2C_SCL" bidirectional
@@ -1871,7 +1871,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "I2C_SDA" bidirectional
@@ -1881,7 +1881,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "LE_DSA" output
@@ -1891,7 +1891,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "LE_PLL_RX" output
@@ -1901,7 +1901,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "LE_PLL_TX" output
@@ -1911,7 +1911,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "LOOP_HOLD" output
@@ -1921,7 +1921,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "LOOP_SEL" output
@@ -1931,7 +1931,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "MUX_RX" input
@@ -1941,7 +1941,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "MUX_TX" input
@@ -1951,7 +1951,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "SPI_SCLK" output
@@ -1961,7 +1961,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "SPI_SDATA" output
@@ -1971,7 +1971,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "TRIG_A" output
@@ -1981,7 +1981,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "TRIG_B" output
@@ -1991,7 +1991,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "TRIG_IN" input
@@ -2001,7 +2001,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "TR_A" output
@@ -2011,7 +2011,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "TX_EN" output
@@ -2021,7 +2021,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "TX_I0" output
@@ -2031,7 +2031,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "TX_I1" output
@@ -2041,7 +2041,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "TX_Q0" output
@@ -2051,7 +2051,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "TX_Q1" output
@@ -2061,7 +2061,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(instances
@@ -2116,7 +2116,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "I_N" input
@@ -2126,7 +2126,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "Q_P" input
@@ -2136,7 +2136,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "Q_N" input
@@ -2146,7 +2146,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "CMP_IP" output
@@ -2156,7 +2156,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "CMP_IN" output
@@ -2166,7 +2166,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "CMP_QP" output
@@ -2176,7 +2176,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "CMP_QN" output
@@ -2186,7 +2186,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "I2C_SDA" bidirectional
@@ -2196,7 +2196,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "I2C_SCL" bidirectional
@@ -2206,7 +2206,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(instances
@@ -2261,7 +2261,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(instances
@@ -2273,7 +2273,7 @@
 		)
 	)
 	(sheet
-		(at 182.88 38.1)
+		(at 182.88 50.8)
 		(size 63.5 48.26)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2288,7 +2288,7 @@
 		)
 		(uuid "caa81cf0-f127-99d6-482d-02b88e096324")
 		(property "Sheetname" "Receiver and Costas loop"
-			(at 182.88 36.83 0)
+			(at 182.88 49.53 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2299,7 +2299,7 @@
 			)
 		)
 		(property "Sheetfile" "rx.kicad_sch"
-			(at 182.88 87.63 0)
+			(at 182.88 100.33 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2310,173 +2310,173 @@
 			)
 		)
 		(pin "CMP_I" output
-			(at 182.88 40.64 180)
+			(at 182.88 53.34 180)
 			(uuid "63435391-85df-61e1-11ff-981c0c8a128c")
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "LOOP_HOLD" input
-			(at 182.88 43.18 180)
+			(at 182.88 55.88 180)
 			(uuid "e3caac3c-2d07-0a89-917b-dc9b509444c7")
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "LOOP_SEL" input
-			(at 182.88 45.72 180)
+			(at 182.88 58.42 180)
 			(uuid "5fc64c53-d663-81d4-6c44-ec2c0ac49329")
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "SPI_SCLK" input
-			(at 182.88 48.26 180)
+			(at 182.88 60.96 180)
 			(uuid "6b43803f-032e-2843-1087-73ff5124beb4")
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "SPI_SDATA" input
-			(at 182.88 50.8 180)
+			(at 182.88 63.5 180)
 			(uuid "fe675c1b-500b-072b-d768-3663ada7e51b")
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "LE_PLL_RX" input
-			(at 182.88 53.34 180)
+			(at 182.88 66.04 180)
 			(uuid "f29ffef1-73fb-a01c-2c62-45115acc4cb6")
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "LE_DSA" input
-			(at 182.88 55.88 180)
+			(at 182.88 68.58 180)
 			(uuid "5d2c2829-64d3-256d-8879-72a964f47bde")
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "MUX_RX" output
-			(at 182.88 58.42 180)
+			(at 182.88 71.12 180)
 			(uuid "31676460-975d-60bb-250c-20902cf5642c")
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "I2C_SDA" bidirectional
-			(at 182.88 60.96 180)
+			(at 182.88 73.66 180)
 			(uuid "b4e8da0f-7513-81ab-fc1c-9e683dd81c67")
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "I2C_SCL" bidirectional
-			(at 182.88 63.5 180)
+			(at 182.88 76.2 180)
 			(uuid "45beb8b6-3d25-fb9c-716c-4942148310d8")
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "VR_I" output
-			(at 182.88 66.04 180)
+			(at 182.88 78.74 180)
 			(uuid "ad76d428-41e2-267c-e3cc-6a0a2382c587")
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "VR_Q" output
-			(at 182.88 68.58 180)
+			(at 182.88 81.28 180)
 			(uuid "9fcdb9a4-36ac-9502-107f-e86b63315e04")
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "I_P" output
-			(at 182.88 71.12 180)
+			(at 182.88 83.82 180)
 			(uuid "dd51412f-47b0-279f-f605-8776a7773956")
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "I_N" output
-			(at 182.88 73.66 180)
+			(at 182.88 86.36 180)
 			(uuid "5a6e2018-5367-ea0d-7404-bff943323540")
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "Q_P" output
-			(at 182.88 76.2 180)
+			(at 182.88 88.9 180)
 			(uuid "42cfbb4f-1e66-9fcd-85df-7273e2cad7b0")
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "Q_N" output
-			(at 182.88 78.74 180)
+			(at 182.88 91.44 180)
 			(uuid "b67634b5-f29a-a1c8-e8cd-2af2a3dd0250")
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "I_SUM" input
-			(at 182.88 81.28 180)
+			(at 182.88 93.98 180)
 			(uuid "8b513daf-b1e3-da60-3c01-e3a3e4736248")
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(instances
@@ -2531,7 +2531,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "TX_I0" input
@@ -2541,7 +2541,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "TX_Q1" input
@@ -2551,7 +2551,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "TX_Q0" input
@@ -2561,7 +2561,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "TX_EN" input
@@ -2571,7 +2571,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "SPI_SCLK" input
@@ -2581,7 +2581,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "SPI_SDATA" input
@@ -2591,7 +2591,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "LE_PLL_TX" input
@@ -2601,7 +2601,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "MUX_TX" output
@@ -2611,7 +2611,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "TRIG_A" input
@@ -2621,7 +2621,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "TRIG_B" input
@@ -2631,7 +2631,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "TRIG_IN" output
@@ -2641,7 +2641,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "VR_I" input
@@ -2651,7 +2651,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(pin "VR_Q" input
@@ -2661,7 +2661,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify right)
+				(justify left)
 			)
 		)
 		(instances

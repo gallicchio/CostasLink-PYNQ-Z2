@@ -103,14 +103,14 @@ def build_symbols(share):
 
 
 # ------------------------------------------------------------------------------------------
-def _set_model(node, model):
+def _set_model(node, model, rot=0.0):
     rest = [c for c in node if not (isinstance(c, list) and head(c) == "model")]
     node[:] = rest
     if model:
         node.append([("atom", "model"), ("str", MODEL_PATH + model),
                      [("atom", "offset"), [("atom", "xyz"), ("atom", "0"), ("atom", "0"), ("atom", "0")]],
                      [("atom", "scale"), [("atom", "xyz"), ("atom", "1"), ("atom", "1"), ("atom", "1")]],
-                     [("atom", "rotate"), [("atom", "xyz"), ("atom", "0"), ("atom", "0"), ("atom", "0")]]])
+                     [("atom", "rotate"), [("atom", "xyz"), ("atom", "0"), ("atom", "0"), ("atom", "%g" % rot)]]])
 
 
 def _box_wrl(size, rgb):
@@ -176,7 +176,7 @@ def build_footprints(share, models_needed):
             model, mlib = footprints.MODELS.get(name, (None, None))
             if model and mlib is None:
                 mlib = VENDORED
-            _set_model(node, model)
+            _set_model(node, model, rot=footprints.MODEL_ROT.get(name, 0.0))
             if model:
                 models_needed[model] = mlib
             write(os.path.join(PRETTY, name + ".kicad_mod"), ser(node) + "\n")

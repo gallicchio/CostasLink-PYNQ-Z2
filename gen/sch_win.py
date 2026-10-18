@@ -20,22 +20,24 @@ from sch_blocks import stub
 import levels as LV
 import pins as PINS
 
-# (name, the arm signal on IN+, the threshold on IN-, the FPGA line, reference)
-ROWS = (("IP", "I_P", "V_TIP", "CMP_IP", "U603"), ("IN", "I_N", "V_TIN", "CMP_IN", "U604"),
-        ("QP", "Q_P", "V_TQP", "CMP_QP", "U601"), ("QN", "Q_N", "V_TQN", "CMP_QN", "U602"))
+# (name, the arm signal on IN+, the threshold on IN-, the FPGA line, reference, the DAC's output pin)
+ROWS = (("IP", "I_P", "V_TIP", "CMP_IP", "U603", "6"), ("IN", "I_N", "V_TIN", "CMP_IN", "U604", "7"),
+        ("QP", "Q_P", "V_TQP", "CMP_QP", "U601", "3"), ("QN", "Q_N", "V_TQN", "CMP_QN", "U602", "2"))
 X_IN = 38.1          # the input labels, at the sheet's left
 X_CMP = 160.02       # the comparators' column
-Y0, DY = 78.74, 45.72
+Y0, DY = 78.74, 43.18
+X_COL = 121.92       # the thresholds' columns (5.08 apart) up from the DAC, left of the comparators
+XD, YD = 76.2, 245.0 # the DAC, under the long input lines (Prompt 35)
 
 
-def window(S, name, inp, vt, out, ref, x, y):
+def window(S, name, inp, vt, out, ref, x, y, xcol):
     c = B.comparator(ref, x, y, kind="TLV3603")
     ip = c.pin("3")
     S.hlabel(X_IN, ip[1], inp, shape="input", rot=180)
     W((X_IN, ip[1]), ip)
     e = stub(c, "4", dx=-10.16)
-    label(e[0] - 1.27, e[1], vt, size=1.0, justify="right bottom")
-    W(e, (e[0] - 1.27, e[1]))
+    W(e, (xcol, e[1]))                     # the threshold's column comes up from the DAC into IN-
+    label(xcol + 1.27, e[1], vt, size=1.0)
     o = c.pin("1")
     xo = o[0] + 15.24
     W(o, (xo, o[1]))
@@ -46,7 +48,7 @@ def window(S, name, inp, vt, out, ref, x, y):
     S.hlabel(xo + 20.32, o[1], out, shape="output", rot=0)
     W((xo, o[1]), (xo, o[1] + 12.7))
     B.tap(xo, o[1] + 12.7, name + " MON", rkey=LV.VAL["tap_R"])
-    return c
+    return c, (xcol, e[1])
 
 
 def build(S):
@@ -62,27 +64,35 @@ def build(S):
          "jitter the FPGA's 1-2 ns sampling cannot."
          % ", ".join("%d" % PINS.SIGNALS[r[3]] for r in ROWS), cols=120)
     note(20, 46, LV.LEGEND, cols=120)
-    for k, (name, inp, vt, out, ref) in enumerate(ROWS):
-        window(S, name, inp, vt, out, ref, X_CMP, Y0 + DY * k)
+    # the DAC's output pins, where they will land (it is drawn AFTER the comparators so that their references stay):
+    # the lower a pin on the DAC, the farther right its column, so no column crosses another's run from the DAC
+    pins = {n: U.pin_at("AD5696R", n, XD, YD) for n in (r[5] for r in ROWS)}
+    order = sorted(pins, key=lambda n: pins[n][1])
+    xcol = {n: X_COL + 5.08 * order.index(n) for n in pins}
+    tops = {}
+    for k, (name, inp, vt, out, ref, dpin) in enumerate(ROWS):
+        c, top = window(S, name, inp, vt, out, ref, X_CMP, Y0 + DY * k, xcol[dpin])
+        tops[dpin] = top
     sig(X_IN + 4, Y0 - 12, LV.txt("I_ARM"), cols=40)
     sig(X_IN + 4, Y0 + 2 * DY - 12, LV.txt("Q_ARM"), cols=40)
-    note(X_CMP - 30, Y0 + 4 * DY - 14, "LE/HYS (each comparator): both DNP = 3 mV of hysteresis (the TLV3601's); fit the 0 ohm = 0 mV, "
+    note(X_CMP + 44, Y0 + 4 * DY - 14, "TLV3603, comparators (2.5 ns) with a latch / hysteresis pin.  LE/HYS (each comparator): both DNP = 3 mV of hysteresis (the TLV3601's); fit the 0 ohm = 0 mV, "
          "the sharpest edge; fit the 150 k = 30 mV (56 k = 60 mV), for slow or noisy edges.  Driving the pin low latches the output.", cols=60)
 
     # ---- the thresholds: AD5696R, address 0x0C (A1 = A0 = 0), outputs update on each write (LDAC low),
-    # span 0-2.5 V (GAIN low), power-up at midscale 1.25 V (RSTSEL high) ----
-    xd, yd = 337.82, 121.92
-    dac = part("AD5696R", "U605", xd, yd)
+    # span 0-2.5 V (GAIN low), power-up at midscale 1.25 V (RSTSEL high); under the input lines, each output
+    # wired up its own column into its comparator's IN- (Prompt 35) ----
+    dac = part("AD5696R", "U605", XD, YD)
     for n, name in (("8", "I2C_SDA"), ("13", "I2C_SCL")):
         e = stub(dac, n, dx=-12.7)
         S.hlabel(e[0], e[1], name, shape="bidirectional", rot=180)
-    for n, vt in (("3", "V_TQP"), ("2", "V_TQN"), ("6", "V_TIP"), ("7", "V_TIN")):
-        e = stub(dac, n, dx=10.16)
-        label(e[0], e[1], vt, size=1.0)
+    for name, inp, vt, out, ref, dpin in ROWS:
+        e = stub(dac, dpin, dx=7.62)
+        label(e[0] - 6.35, e[1], vt, size=1.0)
+        W(e, (xcol[dpin], e[1]), tops[dpin])
     U.S.nc(*dac.pin("1"))
     B.supply_bar(dac, ["5", "11", "15", "16"], "+3V3_DIG", dy=10.16, side_caps=2, caps_side="right")
     B.bottom_gnd(dac, ["4", "9", "10", "12", "14"])
-    note(xd - 30, yd + 30, "AD5696R (I2C 0x0C): A = V_TQP, B = V_TQN, C = V_TIP, D = V_TIN.  16 bits on its own 2.5 V reference "
+    note(XD + 60, YD - 6, "AD5696R, 16-bit quad DAC (I2C 0x0C): A = V_TQP, B = V_TQN, C = V_TIP, D = V_TIN.  16 bits on its own 2.5 V reference "
          "(0.038 mV a step); GAIN low: 0-2.5 V, round the arms' 1.65 V centre.  It powers up at midscale (1.25 V), where all four "
          "comparators read high until the FPGA writes them.  VREF is the internal reference's output, unused.  The A grade: the "
          "threshold servo absorbs its INL and its reference's drift.", cols=44)

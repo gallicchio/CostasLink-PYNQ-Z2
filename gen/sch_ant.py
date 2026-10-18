@@ -22,12 +22,15 @@ import levels as LV
 def build(S):
     U.begin(S, ref_base=400)
     title(20, 18, "Antenna switch: one antenna shared by TX and RX in time (T/R), 30 ns")
-    note(20, 24, "Fit this block to work with ONE antenna per direction: cable TX ANT -> SW TX and SW RX -> RX ANT (two short SMA leads, 1 ns), "
-         "the antenna on ANT, and let the FPGA drive TR_A / TR_B (B = not A): A HIGH, B low = receive (ANT to RF2 = SW RX); A low, B high = transmit (ANT to RF1 = SW TX).  "
-         "The far end then sees our carrier only while we transmit, so its Costas loop HOLDs meanwhile (LOOP_HOLD) and our reply carrier "
-         "must already be at its frequency: feed this board's TX synthesizer from the receiver's VCXO (REF OUT -> REF IN, JP201 to REF IN) "
-         "and the two carriers are coherent (a transponder).  Without this block, two antennas and two frequencies: both carriers always on, "
-         "no holds, no turnaround.  sim/budget.py section 2b has the numbers.", cols=120)
+    note(20, 24, "Fit this block to work with ONE antenna per board: connect the antenna to ANT and run two short SMA leads, TX ANT -> SW TX and "
+         "SW RX -> RX ANT (1 ns each), and let the FPGA drive TR_A / TR_B (B = not A): A HIGH, B low = receive (ANT to RF2 = SW RX); A low, B high = transmit (ANT to RF1 = SW TX).  "
+         "Without this block, two antennas per board and two frequencies 600 MHz apart: both carriers always on, no holds, no turnaround.  "
+         "How a pair keeps its frequency with one antenna each: the VERIFIER transmits on its TCXO (JP201 on TCXO) and the PROVER's Costas loop "
+         "locks its VCXO to that carrier; the prover's TX synthesizer runs from that VCXO (REF OUT -> REF IN, JP201 on REF IN: a transponder), "
+         "so its reply is at the verifier's own frequency and phase.  While either board transmits its loop HOLDs (LOOP_HOLD, a sample-and-hold "
+         "on the integrator: 0.1 rad after 6 ms typical), and when it listens again the carrier it hears is the one it was locked to, so the loop "
+         "resumes instead of re-acquiring (3.8 ms from 30 kHz off).  ONE board carries the lead: both with it would be a ring of two VCXOs with "
+         "no reference, wandering together to a rail.  sim/budget.py section 2b and PLAN.md section 14 have the numbers.", cols=120)
 
     y = 101.6
     sw = U.part_at_pin("HMC536", "U401", "3", 139.7, y)          # RFC at (139.7, y)
@@ -35,11 +38,11 @@ def build(S):
     S.nc(*sw.pin("4"))
     B.bottom_gnd(sw, ["6", "7", "9"])
     # ANT at the left through a DC block
-    j = part("SMA", "J401", rfc[0] - 45.72, y, rot=0, value="ANT", text="hide")
+    j = part("SMA", "J401", rfc[0] - 45.72, y, rot=0, mirror="y", value="ANT", text="hide")     # pin facing the line (Prompt 35)
     jx, jy = j.pin("1")
     s2 = j.pin("2"); W(s2, (s2[0], s2[1] + G)); gnd(s2[0], s2[1] + G)
     B.dcblock(jx, y, rfc[0])
-    B.esd_shunt(jx + 2.54, y)                      # Prompt 28
+    B.esd_shunt(jx + 2.54, y, text="right")        # Prompt 28 (texts away from the jack)
     sig(jx - 12, y - 28, "ANT, the antenna: " + LV.txt("ANT"), cols=26)
     # RF1 (SW TX) up and right, RF2 (SW RX) down and right, each through a DC block to its jack
     for p, dy, ref, name, txt in ((rf1, -20.32, "J402", "SW TX", LV.txt("SW_TX")), (rf2, 20.32, "J403", "SW RX", LV.txt("SW_RX"))):
@@ -48,7 +51,7 @@ def build(S):
         W(p, (xk, p[1]), (xk, yk))
         x1 = xk + 30.48
         B.dcblock(xk, yk, x1)
-        jk = part("SMA", ref, x1 + 12.7, yk, rot=180, value=name, text="hide")
+        jk = part("SMA", ref, x1 + 12.7, yk, rot=0, value=name, text="hide")      # rot 0: the pin faces the line, the ground hangs below (Prompt 35)
         W((x1, yk), jk.pin("1"))
         sh = jk.pin("2"); W(sh, (sh[0], sh[1] + G)); gnd(sh[0], sh[1] + G)
         sig(x1 + 18, yk - 4 + (0 if dy > 0 else -8), txt, cols=30)
@@ -71,10 +74,8 @@ def build(S):
         tr[name] = (xr - 25.4, yc)
         if name == "TR_A":
             S.hlabel(xr - 25.4, yc, name, shape="input", rot=180)
-        if pull_rail:                                                  # a test point above TR_A's line, 7.62 right of the pull-up
-            J(xr - 2.54, yc)
-            W((xr - 2.54, yc), (xr - 2.54, yc - 5.08))
-            tp(xr - 2.54, yc - 5.08, "TR A")
+        if pull_rail:                                                  # TR A's jack hangs off here (drawn last: late_taps)
+            tr_tap = (xr - 2.54, yc)
     # TR_B = not TR_A, made here (Response 14): the header pin that carried TR_B now carries a comparator.
     # A 74LVC1G04 from TR_A's line drives TR_B's: at reset TR_A rests high (the pull-ups), so B rests low
     # and the switch rests in receive on both hosts.
@@ -104,6 +105,12 @@ def build(S):
     note(a[0] - 70, b[1] + 56, "TR_A / TR_B: 0 / 3.3 V; A from the FPGA (header 27, also J303), B = not A from U402 (since Response 14).  Truth table (datasheet): A low, B high: ANT-RF1 = SW TX (transmit).  "
          "A high, B low: ANT-RF2 = SW RX (receive): A's pull-ups (10 k here, 2k2 on the PYNQ) hold A high until the gateware drives it, "
          "so B rests low and the switch rests in receive on both hosts.  30 ns from the edge to the RF settled; 15 ns rise; U402 adds about 3 ns to B.", cols=60)
-    note(rfc[0] - 8, y + 36, "HMC536MS8G: DC-6 GHz GaAs T/R switch, 0.7 dB, 27 dB isolation at 5-6 GHz, +29 dBm for 0.1 dB compression, "
+    note(rfc[0] - 8, y + 36, "HMC536MS8G, T/R switch (SPDT, GaAs, DC-6 GHz): 0.7 dB loss, 27 dB isolation at 5-6 GHz, +29 dBm for 0.1 dB compression, "
+         "12 dB return loss at 4-6 GHz.  Switching: 30 ns from the control's 50 %% to the RF at 10 / 90 %% (tON, tOFF), 15 ns RF rise and fall "
+         "(10-90 %%); the far end hears our reply 30 ns + the air after TR_A falls.  Control 0 V (25 uA) / 3-5 V, absolute maximum -0.5 to +7.5 V; "
          "no supply pin (the controls power it).  DC blocks on all three RF pins (its datasheet).  Exposed pad to ground.", cols=36)
+    # TR A's jack (Prompt 35: it was a test pad), drawn last with explicit references
+    J(*tr_tap)
+    W(tr_tap, (tr_tap[0], tr_tap[1] - 12.7))        # two rows up: the jack's ground (5.08 under its pin) stays off TR_A's line
+    B.tap(tr_tap[0], tr_tap[1] - 12.7, "TR A", rkey=LV.VAL["tap_R"], ref="J490", rref="R490")
     return S

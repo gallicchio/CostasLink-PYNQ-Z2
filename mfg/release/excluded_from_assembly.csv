@@ -10,10 +10,7 @@ R104,DNP 1.5k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM 
 R210,DNP,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
 R211,DNP,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
 R214,DNP,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
-R226,DNP 0R,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
 R228,DNP 10k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
-R312,DNP 4.7k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
-R313,DNP 4.7k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
 R601,DNP 150k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
 R602,DNP 0R,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
 R605,DNP 150k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
@@ -22,8 +19,6 @@ R609,DNP 150k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM 
 R610,DNP 0R,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
 R613,DNP 150k,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
 R614,DNP 0R,R_0402_1005Metric,marked do-not-populate or excluded from the BOM in the schematic
-TP101,LD U115,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
-TP201,LD U203,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
 TP301,+5V_IN,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
 TP302,+5V_RF,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
 TP303,+3V3_PLL_TX,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
@@ -32,5 +27,3 @@ TP305,+3V3_ANA,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
 TP306,+3V3_DIG,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
 TP307,+3V3_OSC,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
 TP308,GND,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
-TP401,TR A,TestPoint_Pad_D1.5mm,TP: a test pad: not a part
-TP501,LOG Q,TestPoint_Pad_D1.5mm,TP: a test pad: not a part

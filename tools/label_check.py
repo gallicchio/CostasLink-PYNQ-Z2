@@ -118,7 +118,12 @@ def main():
         if not any(lims):
             continue
         if len(refs) > 1 and len(set(lims)) == 1:
-            row_box = (min(bodies[r][0] for r in refs), min(bodies[r][1] for r in refs), max(bodies[r][2] for r in refs), max(bodies[r][3] for r in refs))
+            if all(r in LR.LIMIT_EXEMPT for r in refs):
+                notes.append("row %s: its limit left off: %s" % (" ".join(refs), LR.LIMIT_EXEMPT[refs[0]]))
+                continue
+            # the shared limit stands beyond the NAMES (a column row's names hang 10 mm from the bodies): search round both
+            boxes = [bodies[r] for r in refs] + [found[r]["box"] for r in refs if r in found]
+            row_box = (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
             if nearest(lims[0], row_box) is None:
                 bad.append("row %s: the shared limit %r is not printed by the row" % (" ".join(refs), lims[0]))
             continue
@@ -142,7 +147,8 @@ def main():
         for r, v in vals[1:]:
             r0, v0 = vals[0]
             # the same side of the name and the same edge in line (left edges, right edges or centres)
-            same_side = abs(v[1] - v0[1]) <= LR.TOL and abs(v[3] - v0[3]) <= 0.6
+            extra = 1.2 * abs(by[r]["limit"].count("\n") - by[r0]["limit"].count("\n"))   # a two-line limit beside one-line ones (TRIG A / B)
+            same_side = abs(v[1] - v0[1]) <= LR.TOL and abs(v[3] - v0[3]) <= 0.6 + extra
             in_line = min(abs(v[0] - v0[0]), abs(v[2] - v0[2]), abs((v[0] + v[2]) - (v0[0] + v0[2])) / 2) <= LR.TOL
             if not (same_side and in_line):
                 bad.append("row %s: %s's limit sits %s from its name, %s's %s" % (" ".join(refs), r0, v0, r, v))

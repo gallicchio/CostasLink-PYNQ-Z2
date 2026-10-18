@@ -190,7 +190,7 @@ class Silk:
         self.placed[layer].append((r[0] - GAP, r[1] - GAP, r[2] + GAP, r[3] + GAP, "label %r" % text))
         return r
 
-    def probe(self, text, x, y, h=TEXT_H, w=None, stroke=STROKE, bottom=False, angle=0, justify="center"):
+    def probe(self, text, x, y, h=TEXT_H, w=None, stroke=STROKE, bottom=False, angle=0, justify="center", vias=True):
         """Would this label fit?  Its extent if so, else None: nothing is added to the board."""
         layer = pcbnew.B_SilkS if bottom else pcbnew.F_SilkS
         t = pcbnew.PCB_TEXT(self.board)
@@ -201,7 +201,7 @@ class Silk:
             t.SetHorizJustify({"left": pcbnew.GR_TEXT_H_ALIGN_LEFT, "right": pcbnew.GR_TEXT_H_ALIGN_RIGHT}[justify])
         t.SetPosition(self.P(x, y))
         r = self._extent(t)
-        return None if self.free(layer, r) else r
+        return None if self.free(layer, r, vias) else r
 
     def line(self, pts, bottom=False, width=STROKE):
         layer = pcbnew.B_SilkS if bottom else pcbnew.F_SilkS
@@ -410,6 +410,7 @@ def labels(S, p):
                       ("U102", "PE43711 DSA"), ("U101", "SKY65404 LNA"), ("U401", "HMC536 T/R"), ("U103", "ADL5611"), ("U117", "ADL5611"),
                       ("U202", "ADL5611"), ("U105", "THS4541 I x4"), ("U106", "THS4541 Q x4"), ("U501", "THS4541 I x20"), ("U502", "THS4541 Q x20"),
                       ("U112", "OPA2388 PI"), ("U110", "sign(I) x Q"), ("U111", "HOLD"), ("U113", "DAC 0x60"), ("U506", "DAC 0x61"), ("U114", "ADC 0x48"),
+                      ("U605", "DAC 0x0C 16b"), ("U510", "ADC 0x49"), ("U507", "AD8310 LOG"),
                       ("Y101", "VCXO"), ("Y201", "TCXO")):
         fp = S.board.FindFootprintByReference(ref)
         if fp is None:
@@ -424,8 +425,57 @@ def labels(S, p):
     bottom(S, p)
 
 
+INSTRUCTIONS = (
+    ("ONE ANTENNA (T/R switch block fitted):",
+     "the antenna on ANT; short SMA leads TX ANT -> SW TX",
+     "and SW RX -> RX ANT; the FPGA drives TR A (high = receive).",
+     "Prover only: MMCX lead REF OUT -> REF IN, JP201 on REF IN.",
+     "TWO ANTENNAS: RX ANT and TX ANT, the switch block unused."),
+    ("5 V IN: the USB-C jack (power only, no data; any 5 V supply)",
+     "or, with JP301 HDR 5V fitted, the PYNQ-Z2's 5 V (pins 2/4)",
+     "when the PYNQ runs on its barrel supply.  Both plugged: USB",
+     "wins, neither feeds the other.  Power the PYNQ first.",
+     "Icepi Zero: USB-C here, JP301 open, JP302/JP303 fitted."),
+    ("JUMPERS: JP101 SIGN B1 on Q-, JP102 SIGN B2 on Q+ (opposite",
+     "ways); JP103 SEL on CMP; JP201 REF on TCXO; JP202 50R open;",
+     "JP301 open; JP302/JP303 I2C pull-ups open on the PYNQ-Z2.",
+     "Every jack is labelled with what it takes or gives."),
+)
+
+
+def instructions(S):
+    """The user's instructions on the back (Prompt 35), where the back is bare: blocks of lines, each block
+    at the first of its places where every line fits (silk over tented vias and tracks is fine; never over
+    the socket's pads)."""
+    # x0 is each block's RIGHT edge as drawn (the text is mirrored on the back, so a left-justified line runs to -x
+    # here and reads left to right when the board is turned over)
+    spots = [(x0, float(y0)) for y0 in range(14, 84, 3) for x0 in (58.0, 100.0, 112.0, 80.0)]
+    h, dy = 1.0, 2.0                           # 1.0 mm text with parentheses and descenders is 1.3 mm tall: 1.7 mm of pitch lost a line in three (build 40g)
+    used = []
+    for block in INSTRUCTIONS:
+        done, whys = False, []
+        for x0, y0 in spots:
+            if any(abs(y0 - y) < dy * (len(block) + 1) and abs(x0 - x) < 50 for x, y in used):
+                continue
+            # the back is mirrored: a left-justified line reads from the right in the file; anchor each at x0 as the
+            # reader sees it (S.label mirrors the text) and let the block's longest line set its box
+            ok = all(S.probe(line, x0, y0 + dy * i, h=h, bottom=True, justify="left", vias=False) is not None for i, line in enumerate(block))
+            if ok:
+                for i, line in enumerate(block):
+                    S.label(line, x0, y0 + dy * i, h=h, bottom=True, justify="left", vias=False)
+                used.append((x0, y0))
+                done = True
+                break
+            if len(whys) < 4:                   # the first few reasons, for the log
+                t = pcbnew.PCB_TEXT(S.board); t.SetText(block[0]); t.SetLayer(pcbnew.B_SilkS)
+                S._style(t, h, None, STROKE, True, 0); t.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_LEFT); t.SetPosition(S.P(x0, y0))
+                whys.append("(%.0f, %.0f): %s" % (x0, y0, ", ".join(S.blockers(pcbnew.B_SilkS, S._extent(t))) or "a later line"))
+        if not done:
+            S.problems.append("no clear place on the back for the instruction block %r: %s" % (block[0], "; ".join(whys)))
+
+
 def bottom(S, p):
-    """The back: the identity in the strip right of the socket, and the socket's pin numbers."""
+    """The back: the identity in the strip right of the socket, the user's instructions, and the socket's pin numbers."""
     lines = [(BI.TITLE, 1.3, 0.2), ("https://" + BI.URL, 0.8, STROKE), (BI.AUTHORS, 0.8, STROKE),
              ("rev %s  %s   %s" % (BI.REV, BI.DATE, BI.LICENCE), 0.8, STROKE)]
     placed = False
@@ -435,14 +485,14 @@ def bottom(S, p):
             # ever taken back out of the board: KiCad freed a removed text twice and aborted)
             y, ok = y0, True
             for text, h, st in lines:
-                if S.probe(text, x0, y, h=h, stroke=st, bottom=True) is None:
+                if S.probe(text, x0, y, h=h, stroke=st, bottom=True, vias=False) is None:     # tented vias: silk may cross them
                     ok = False
                     break
                 y += 1.6 if h < 1.0 else 2.0
             if ok:
                 y = y0
                 for text, h, st in lines:
-                    S.label(text, x0, y, h=h, stroke=st, bottom=True)
+                    S.label(text, x0, y, h=h, stroke=st, bottom=True, vias=False)
                     y += 1.6 if h < 1.0 else 2.0
                 placed = True
                 break
@@ -450,6 +500,7 @@ def bottom(S, p):
             break
     if not placed:
         S.problems.append("the identity block found no clear place on the back")
+    instructions(S)
     yh = PL.hdr_pin(1)[1]
     try_label(S, "PYNQ-Z2 RPi header: pin 1 at this end", [(42.0, yh - 2.9), (42.0, yh - 3.5), (30.0, yh - 2.9), (42.0, yh + 6.1)], bottom=True)
     for n in ("1", "2", "39", "40"):

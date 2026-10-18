@@ -511,7 +511,8 @@ class CostasLink:
 
     # the MCP4728s: the fast write of all four channels (DAC_AB, DAC_CD, DAC_GO); a shadow of each
     def dac(self, which=DAC1, **channels):
-        """dac(DAC1, VR_I=0.21, VC_OFF=1.65) in volts, or codes with code_ prefix (code_VR_I=260)"""
+        """dac(DAC1, VR_I=0.21, VC_OFF=1.65) in volts, or codes with code_ prefix (code_VR_I=260).  The ladders'
+        references are board_constants.VR_I_V and VR_Q_V (they differ since Prompt 35: the Q ladder's third leg is TRIG IN)."""
         names = DAC1_CH if which == DAC1 else DAC2_CH
         sh = self._dac[which]
         for k, v in channels.items():

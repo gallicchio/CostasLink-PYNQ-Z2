@@ -44,7 +44,7 @@ PWR_PINS = [(s, "output" if s in PINS.OUTPUTS else "input" if s in PINS.INPUTS e
 
 SHEETS = [
     ("Power and FPGA header", "pwr.kicad_sch", "A2", sch_pwr.build, PWR_PINS, (25.4, 63.5), "r"),      # its 27 rows must not share a y with the transmitter's
-    ("Receiver and Costas loop", "rx.kicad_sch", "A2", sch_rx.build, RX_PINS, (182.88, 38.1), "l"),
+    ("Receiver and Costas loop", "rx.kicad_sch", "A2", sch_rx.build, RX_PINS, (182.88, 50.8), "l"),    # under the description (Prompt 35)
     ("Transmitter and triggers", "tx.kicad_sch", "A2", sch_tx.build, TX_PINS, (182.88, 139.7), "l"),
     ("Antenna switch: one antenna by T/R", "ant.kicad_sch", "A3", sch_ant.build, ANT_PINS, (182.88, 203.2), "l"),
     ("Slow path: confirm or veto; interference detectors", "slow.kicad_sch", "A2", sch_slow.build, SLOW_PINS, (322.58, 38.1), "l"),
@@ -63,11 +63,16 @@ def draw():
                      rev=BI.REV, date=BI.DATE, company=company(),
                      comments=["Made by gen/schematic.py from gen/pins.py and gen/parts.py", BI.LICENCE, "https://" + BI.URL])
     root.text(17.78, 21.59, "%s: %s" % (BI.TITLE, BI.TAGLINE), size=3.0, bold=True)
-    root.note(17.78, 27.94, "A 5.8 GHz link that carries a bit (or two) FPGA to FPGA in the speed-of-light time plus about 25 ns. "
-              "The receiver is a quadrature demodulator whose LO is a synthesizer on a VCXO; the Costas loop steers the VCXO, "
-              "so the LO stays on the far end's carrier and the demodulator's I output IS the data, Q the phase error. "
-              "The transmitter is a quadrature modulator driven by two 2-bit resistor ladders from FPGA pins. "
-              "PLAN.md has the arithmetic; sim/budget.py computes it.", cols=120)
+    root.note(17.78, 25.4, "A 5.8 GHz link that carries one or two bits FPGA to FPGA in the speed-of-light time plus about 25 ns "
+              "of electronics, for quantum position verification; it plugs onto a PYNQ-Z2's or an Icepi Zero's Raspberry Pi header, "
+              "and two of them talk to each other.  The receiver (sheet 3) is a zero-IF quadrature demodulator whose LO is a synthesizer "
+              "on a VCXO; a hardware Costas loop steers the VCXO, so the LO stays on the far end's carrier and the demodulated I and Q "
+              "are the constellation point the far end sent, read by comparators straight into the FPGA.  For example, for BPSK, "
+              "I is the data and Q the phase error; for QPSK and the pilot-plus-corners schemes the four window comparators (sheet 7) "
+              "decide which way the point left the idle; a slow confirming path (sheet 6) vetoes false alarms.  The transmitter (sheet 4) "
+              "is a quadrature modulator driven by two 2-bit resistor ladders from FPGA pins (and TRIG IN, summed into the Q ladder), "
+              "on its own synthesizer and TCXO.  Sheet 5 is an optional T/R switch for one antenna.  PLAN.md has the arithmetic; "
+              "sim/budget.py computes it and every blue box quotes it.", cols=130)
     sheets = []
     pinpos = {}
     for i, (name, fn, paper, build, pins, (x, y), side) in enumerate(SHEETS):
@@ -128,7 +133,8 @@ def draw():
         arm = name in ("I_P", "I_N", "Q_P", "Q_N")
         src = rx[name] if arm else pw[name]                  # the label sits on the pin, where that net's wire starts
         root.label(src[0], src[1], name, size=1.0, justify="right bottom" if arm else "left bottom")
-    root.note(25.4, 190.5, "Power sheet (left): the header's %d FPGA signals leave as named lines to the receiver, transmitter, antenna-switch and slow-path sheets. "
+    root.note(25.4, 190.5, "Power sheet (left): the header's %d FPGA signals leave as named lines to the receiver, transmitter, antenna-switch and slow-path sheets; "
+              "the window-comparator sheet's nets are joined by the net labels at its pins and at the header's.  "
               "VR_I and VR_Q are the monitoring DAC's two TX references, from the receiver sheet (where the DAC lives) to the transmitter.  "
               "The switch sheet is its own block with three SMAs: fit it to share one antenna (T/R), leave it off for two antennas (full duplex on two frequencies)." % len(PWR_PINS), cols=52)   # narrower than the 66 mm to the first root wire column
     return root, sheets

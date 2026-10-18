@@ -66,6 +66,7 @@ PARTS = dict(
     fda_I_mA=10.1,
     # TLV3601 (datasheet 6.5): propagation 2.5 ns typ, 3.5 ns max at 50 mV overdrive; hysteresis 1.5-5 mV
     cmp_tpd_ns=2.5,
+    trig_tpd_ns=4.5,                   # SN74LVC1G17 Schmitt buffer, 3.3 V, maximum: TRIG IN to the Q ladder's third leg (Prompt 35)
     cmp_hyst_mV=5.0,                   # the worst (the floor below); sim/trajectories.py models the typical:
     cmp_hyst_typ_mV=3.0,               # TLV3601 3 mV typ (1.5-5)
     cmp_offset_mV=5.0,
@@ -187,6 +188,27 @@ print("TX DAC: Rb %.0f (+%.0f header) x2, Rr %.0f to Vr = %.3f V (DAC channel): 
 print("  same board on a host without series resistors (Icepi): levels %s V" % ["%.3f" % v for v in levels_icepi])
 assert abs(levels[1] - 0.5) < 1e-6
 assert 0.25 < step < 0.40, step
+# The Q ladder has a THIRD leg (Prompt 35): Rb from the TRIG IN Schmitt buffer (U205, 0 / 3.3 V, on this board so no header
+# resistor), so a detector pulse steps the transmitter to +Q without the FPGA, and a pulse while the FPGA holds a Q bit adds to
+# it: an OR by summing currents, no gate in the FPGA's path.  Its reference resistor RrQ is chosen so that the Q node's
+# conductance equals the I node's (the same step per bit, the same impedance and settling); VR_Q then centres it.
+RrQ = 1.0 / (1.0 / Rr - 1.0 / Rb)
+RrQ_fit = STOCKED.ohms(STOCKED.nearest_res(RrQ, tol=1.05))
+GQ = 2.0 / Rb_eff + 1.0 / Rb + 1.0 / RrQ_fit
+def dac_node_q(nhigh, trig, Rb_, VrQ_):
+    return (VIO * nhigh / Rb_ + VIO * trig / Rb + VrQ_ / RrQ_fit) / (2.0 / Rb_ + 1.0 / Rb + 1.0 / RrQ_fit)
+VrQ = (0.5 * GQ - VIO / Rb_eff) * RrQ_fit
+levels_q = [dac_node_q(n, 0, Rb_eff, VrQ) for n in (0, 1, 2)]
+trig_step = dac_node_q(1, 1, Rb_eff, VrQ) - dac_node_q(1, 0, Rb_eff, VrQ)
+R.update(dac_RrQ=RrQ_fit, dac_VrQ=VrQ, dac_levels_q=levels_q, dac_trig_step=trig_step, dac_step_q=levels_q[2] - levels_q[1],
+         dac_Znode_q=1.0 / GQ)
+print("  Q ladder's third leg (TRIG IN, %.0f ohm): RrQ %.0f -> %.0f fitted, VR_Q %.3f V: levels %s V, step %.3f V (I's %.3f), "
+      "a trigger adds %.3f V; node %.0f ohm" % (Rb, RrQ, RrQ_fit, VrQ, ["%.3f" % v for v in levels_q], levels_q[2] - levels_q[1], step,
+                                                 trig_step, 1.0 / GQ))
+assert abs(levels_q[1] - 0.5) < 1e-6
+assert abs((levels_q[2] - levels_q[1]) / step - 1.0) < 0.02, "the Q ladder's step differs from the I ladder's"
+assert 0.5 + trig_step <= P["mod_bb_abs_V"][1] + 1e-9                      # idle + a trigger: inside the 0-1 V range
+assert levels_q[2] + trig_step <= 2.0, "+Q bit and a trigger together: over the 2 V absolute maximum"
 i_dac_mA = (0.5 - Vr) / Rr * 1e3
 print("  Vr DAC channel sources %.2f mA at the centre level (MCP4728 output buffer: fine)" % i_dac_mA)
 ib_offset_mV = P["mod_bb_Ibias_uA"] * 1e-6 * Znode * 1e3

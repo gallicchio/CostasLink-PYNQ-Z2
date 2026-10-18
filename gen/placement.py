@@ -88,7 +88,7 @@ CORRIDORS = [(RX_X - 0.9, SMA_Y + 3.0, RX_X + 0.9, 56.5), (TX_X - 0.9, SMA_Y + 3
 # either (gen/board.marks draws them; gen/routes.plan_and_route and gen/silk keep clear).
 FIDUCIALS = [(11.0, 11.0), (115.5, 15.0), (116.5, 87.5)]
 FID_COPPER, FID_MASK, FID_CLEAR = 0.5, 1.0, 1.5      # radii: the copper dot, the mask opening, nothing else
-LAYER_MARK = (74.0, 30.0)                            # "1" on F.Cu ... "4" on B.Cu, 1.2 mm high
+LAYER_MARK = (102.5, 20.5)                           # "1" on F.Cu ... "4" on B.Cu, 1.2 mm high (at (74, 30) until Prompt 35: the rail jacks' row)
 LAYER_MARK_BOX = (LAYER_MARK[0] - 1.6, LAYER_MARK[1] - 1.3, LAYER_MARK[0] + 1.6, LAYER_MARK[1] + 1.3)
 MARK_KEEP = [(x - FID_CLEAR, y - FID_CLEAR, x + FID_CLEAR, y + FID_CLEAR) for x, y in FIDUCIALS] + [LAYER_MARK_BOX]
 
@@ -147,7 +147,7 @@ ANCHORS = {
     # rule then walled the resistors' far pads and the slow ADC's SCL pin; the 160 Hz filter does not care where
     # its parts sit).  U114 (85, 81): the I_P / Q_P pair to its left, VC / ERR above its right; the I2C pins'
     # side (right, upper) kept clear.  U510 (35, 19.5): V5_MON / TEMP below its right, clear of SCL/SDA.
-    "C154": at(80.0, 78.8, 0), "C155": at(80.0, 84.5, 0), "R141": at(77.0, 80.3, 0), "R142": at(77.0, 82.7, 0),
+    "C154": at(80.0, 78.8, 0), "C155": at(80.0, 84.5, 0),      # (0.7 lower walled R141's I_P pin in: builds 40b-d) "R141": at(77.0, 80.3, 0), "R142": at(77.0, 82.7, 0),
     "C156": at(90.0, 77.8, 0), "C157": at(92.5, 77.8, 0), "R143": at(95.0, 77.8, 0), "R144": at(97.5, 77.8, 0),
     "C526": at(40.5, 21.5, 0), "C527": at(40.5, 23.5, 0), "R532": at(43.5, 23.5, 0), "R533": at(46.0, 23.5, 0),              # the TCXO's DNP pad-1 pull-up (Prompt 31), beside Y201, not where the rules dropped it (28, 97)      # RX synthesizer: RFOUTA (12/13) on its top face, up into the LO pins
     "J109": at(18.5, 66.0, 90),              # LO RX MON
@@ -207,7 +207,6 @@ ANCHORS = {
     "R220": at(53.15, 48.18, 0),             # and its 49.9 ohm load level with the block's top pad: it was walled in 3 mm away
                                              # (both 0.5 mm left since the LO pair's N leg moved out to x 55.4: the design review)
     "U201": at(TX_X, 38.0, 90),              # ADL5375: RFOUT (16) up, LO (3/4) below, I pins (21/22) left, Q (9/10) right
-    "U206": at(TX_X + 10.5, 42.0, 0),        # TX_EN -> DSOP (Response 15, REVA_CHANGES 2): in the room right of the modulator
     "R315": at(13.14, 89.0, 0),              # LE_PLL_RX's pull-down above header pin 33: by rule it hung 12 mm off U115's
                                              # crowded LE side and walled the net in (Response 15)
     "U202": at(TX_X - 1.95, 29.0, 180),      # gain block: RFIN (1) below, RFOUT (3) above, on its right face
@@ -237,13 +236,15 @@ ANCHORS = {
     # U205 and its 1k above TRIG IN's pin, under its own MMCX and that one's name, so TRIG IN's name and limit sit
     # level with the pin like TRIG A's and TRIG B's (Response 15: one relation for the column; at y 48 the 1k sat
     # where the name goes)
-    "U205": at(15.0, 45.7, 0), "R223": at(12.12, 45.7, 0),
+    "U205": at(15.0, 45.7, 0), "R223": at(21.5, 49.0, 90),    # the 453 ohm between the buffer and J208 (right of TRIG IN's label strip)
+    "U206": at(61.5, 45.5, 0),               # TX_EN's inverter, left of the rail monitors' name columns (at (66.5, 42) until Prompt 35)
 
     "C602": at(65.86, 83.35, 0), "R605": at(68.38, 85.0, 0),
     "R510": at(47.81, 62.85, 0),             # the slow Q stage's input resistor just under JP101's SIGN B1 (Response 15;
                                              # by rule it went 8 mm off, into the TX synthesizer's routing)
     "R141": at(80.44, 81.25, 0), "R142": at(78.24, 82.7, 0),   # the ADC's input resistors at its pins, where the rules had them   # U604's decoupling and LE/HYS where the rules had them before Response 15
-    "J208": at(16.6, 40.2, 0),               # TRIG IN MON (MMCX, Response 14): above the buffer whose output it shows,
+    "J208": at(19.0, 53.3, 0),               # TRIG IN MON (MMCX, Response 14): under TRIG IN's label since Prompt 35 (TRIG B's two-line limit took its
+                                             # old place above U205), between JP202 and the RX corridor, its name under it
                                              # between TRIG B's name and its own (Response 15), left of L103
     # ---- the antenna switch, top right ----
     "U401": at(92.0, 18.0, 270),             # RFC (3) up to ANT; RF1 (5) down-left to SW TX, RF2 (8) down-right to SW RX
@@ -253,14 +254,19 @@ ANCHORS = {
     "C403": at(108.0, 12.5, 90),             # SW RX's block
     "R401": at(96.5, 15.6, 0), "R403": at(96.5, 13.4, 0),     # the 100 ohm on A and B, right of the chip's control pins (not on the RF1 line)
     "R402": at(100.5, 15.6, 0), "R404": at(100.5, 13.4, 0),   # A's pull-up, B's pull-down
-    "TP401": at(104.0, 22.0),                # below the RF2 line, which runs from the switch to SW RX at about y 15 here
+    "J490": at(108.0, 25.0),                 # TR A, an MMCX (Prompt 35: it was a test pad at (104, 22)); below the RF2 line (y ~15 here), right of U301
+    "JP302": at(113.5, 27.0, 0), "JP303": at(113.5, 34.5, 0),   # the I2C pull-up jumpers (Prompt 35), in the free strip under the switch block (pin 1 at the anchor, 6.2 mm of courtyard)
+    "R312": at(109.5, 30.5, 90), "R313": at(109.5, 37.5, 90),    # their 4.7 k beside them (by rule they went to the ADC's SDA pin, into the window monitors' limit strip)
+    "R215": at(61.5, 57.0, 0),               # U203's CE pull-up, straight out of its pin 4 (by rule it stood under Y201 and did not route: build 40a)
     "R211": at(58.5, 19.15, 0),              # the pi pad's DNP shunts stand beside the line, not on it
     "R210": at(58.5, 24.5, 0),
     "R213": at(53.5, 13.0, 0),               # the TX coupler's isolated-port load, clear of the SMA's leg
+    "R103": at(27.54, 55.18, 270),           # the RX coupler's isolated-port load, below-right of its ISO pad where build 39's rules had it (Prompt 35's
+                                             # neighbours sent it up-left, and the line then ran along the coupled line: the tidy trimmed it, one unconnected)
     # ---- power, right side ----
     "U301": at(98.0, 28.0, 0), "U302": at(98.0, 36.0, 0), "U303": at(98.0, 44.0, 0), "U304": at(98.0, 52.0, 0), "U305": at(98.0, 60.0, 0),
     "J301": at(117.55, 70.0, 90),            # USB-C, its face 1.2 mm past the right edge (rot 90: the pad row toward -x)
-    "Q301": at(106.0, 78.0, 0), "D303": at(106.0, 86.0, 0), "FB301": at(88.5, 50.0, 0),
+    "Q301": at(106.0, 78.0, 0), "D303": at(106.0, 86.0, 0), "FB301": at(93.5, 50.0, 0),    # the bead 5 mm right since Prompt 35 (J396's name column)
     "C320": at(94.8, 86.0, 0),               # +5V_IN's 100 uF polymer (the hot-plug damper), left of the 22 uF pair: the rules found no room
     "D301": at(112.0, 62.0, 0), "D302": at(112.0, 57.0, 0),
     "Q302": at(72.0, 86.0, 0), "JP301": at(66.0, 79.5, 90),     # JP301 moved up in Response 14: the comparator row took its place
@@ -270,7 +276,23 @@ ANCHORS = {
     "TP301": at(71.6, 97.0), "TP302": at(75.6, 97.0), "TP303": at(79.6, 97.0), "TP304": at(83.6, 97.0),
     "TP305": at(87.6, 97.0), "TP306": at(91.6, 97.0), "TP307": at(95.6, 97.0), "TP308": at(99.6, 97.0),
     "F302": at(68.3, 91.43, 270),            # the header's 2 A PTC, 0.8 mm left of where the rules had put it: clear of TP301's name
-    "TP101": at(31.0, 77.0), "TP201": at(63.0, 47.0),
+    # LD TX and LD RX (Prompt 35): U.FL right of the rail row, their names above.  LD RX's pad spot by U115 has no
+    # room for a jack (build 40a: it sat in the I_P corridor and the net broke), LD TX by U203 walled the CE pull-up in
+    "J290": at(87.0, 45.5), "J190": at(92.5, 45.5),
+    "J590": at(38.5, 37.0),                             # LOG Q: U.FL below the peak hold (its pad's spot under U510 has no room for a jack)
+    # the seven rail monitors (Prompt 35): a row of U.FL through 1 k in the free field between the TX chain and the
+    # regulators, each resistor under its jack; the names a column above each (LABEL_ROWS)
+    # two rows (a U.FL needs 5.5 mm of pitch): four with their names in columns above, three with theirs below;
+    # each 1 k between the rows under or over its jack
+    # the four main rails in a row (a U.FL's courtyard is 4.35 x 5.0 mm: 5.5 mm pitch, no second row fits under their
+    # name columns), names below (a column above read as the SMAs' above it: label_rows.owner_ok), each 1 k over its jack;
+    # the PLL and OSC rails on a jack each beside their regulators in the north-east strip, names below
+    **{"J39%d" % i: at(65.0 + 5.5 * i, 29.0, 0) for i in range(4)},
+    **{"R39%d" % i: at(65.0 + 5.5 * i, 25.0, 90) for i in range(4)},
+    # x 103.3: 0.7 off the regulators' courtyards (SOT-23-5: +-2.05), their name columns clear of REF IN's limit strip (x >= 105.3)
+    "J394": at(103.3, 33.0), "R394": at(103.3, 29.0, 0),
+    "J395": at(103.3, 49.5), "R395": at(103.3, 45.5, 0),      # each 1 k over its jack, as in the row
+    "J396": at(103.3, 66.0), "R396": at(103.3, 62.0, 0),
 }
 
 # where a hand-placed part's own passives should look for room, when the rules' first choice
@@ -281,19 +303,20 @@ NUDGE = {}
 # everything that belongs to a block lies inside its box, nothing else does).  A rule-placed part
 # belongs to the block of the part it was hung off.
 BLOCKS = {
-    "RECEIVER 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms":
+    "RX CHAIN 5.8 GHz: LNA, DSA, 2x gain, coupler, balun, demodulator, I/Q arms":
         ["J101", "U101", "U102", "U103", "U117", "CP101", "J102", "T101", "U104", "U105", "U106", "J104", "J105"],
-    "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)": ["U115", "J109", "Y101", "U116", "J108", "TP101"],
+    "RX LO: MAX2871 on the 25 MHz VCXO (the loop's VCO)": ["U115", "J109", "Y101", "U116", "J108", "J190"],
     "SLOW PATH: x20, 4.8 MHz, confirm or veto": ["U501", "U502", "J501", "J502", "U503", "U504", "U505", "U506"],
-    "INTERFERENCE: log, peak, 5V, temp (0x49)": ["U507", "U508", "U510"],
+    "INTERFERENCE: log, peak, 5V, temp (0x49)": ["U507", "U508", "U510", "J590"],
     "FAST COMPARATORS: CMP_I and the I and Q windows": ["U107", "U601", "U602", "U603", "U604", "J103"],
     "WINDOW MONITORS": ["J601", "J602", "J603", "J604"],
-    "TRANSMITTER: ADL5375, gain block, pad, coupler": ["U201", "U202", "CP201", "J201", "R211", "R210", "R213", "U206"],
-    "TX LO: MAX2871 on the TCXO or REF IN": ["U203", "Y201", "JP201", "J203", "J204", "TP201"],
+    "TX CHAIN 5.8 GHz: ADL5375, gain block, pad, coupler": ["U201", "U202", "CP201", "J201", "R211", "R210", "R213", "U206"],
+    "TX LO: MAX2871 on the TCXO or REF IN": ["U203", "Y201", "JP201", "J203", "J204", "J290"],
     "COSTAS LOOP: sign(I) x Q, HOLD, PI filter; DACs, ADC":
         ["JP101", "U110", "JP102", "JP103", "U111", "J106", "U112", "J107", "U113", "U114", "U605"],
     "LATENCY TRIGGERS": ["J205", "J206", "J207", "U204", "U205", "JP202", "J208"],
-    "ANTENNA SWITCH HMC536 (fit for one antenna)": ["J402", "J401", "J403", "U401", "C401", "C402", "C403", "R401", "R402", "R403", "R404", "TP401", "U402"],
+    "ANTENNA SWITCH HMC536 (fit for one antenna)": ["J402", "J401", "J403", "U401", "C401", "C402", "C403", "R401", "R402", "R403", "R404", "J490", "U402"],
+    "RAIL MONITORS: U.FL through 1k": ["J39%d" % i for i in range(7)] + ["R39%d" % i for i in range(7)],
     "POWER: 5 V in, five 3.3 V rails": ["U301", "U302", "U303", "U304", "U305", "J301", "Q301", "D303", "FB301", "D301", "D302",
                                           "Q302", "JP301", "J303", "TP301", "TP302", "TP303", "TP304", "TP305", "TP306", "TP307", "TP308"],
 }
@@ -313,6 +336,9 @@ LABEL_ROWS = (
     (("J203",), "S", 0),                                    # REF IN, alone on the right edge: under it (inward, its limit is long)
     (("J603", "J604", "J601", "J602"), "S", 0),             # the window monitors: under each, the shared limit under them
     (("TP301", "TP302", "TP303", "TP304", "TP305", "TP306", "TP307", "TP308"), "N", 90),   # a column above each pad
+    (("J390", "J391", "J392", "J393"), "S", 90),            # the rail monitors (Prompt 35): a column below each jack
+    (("J394",), "S", 90), (("J395",), "S", 90), (("J396",), "S", 90),
+    (("J290", "J190"), "N", 90),                            # the lock detects: columns above (their limits exempt)
     (("J208",), "S", 0, "name"),                            # TRIG IN MON: under it, above U205 (its limit where it fits)
     (("J502",), "W", 90, "name"),                           # Q SLOW MON: a column left of it, between it and U502
     (("J105",), "W", 90),                                   # Q MON: a column left of it (Prompt 28: the detectors had taken the space)
@@ -328,6 +354,7 @@ HEADER_LABELS = (
     ("JP201", ("TCXO", "REF", "REF IN"), "N"),
     ("J303", ("TR A", "TR B", "GND"), "pins"),
     ("JP202", ("50R",), "S"),
+    ("JP302", ("SDA PU",), "N"), ("JP303", ("SCL PU",), "S"),       # the I2C pull-ups: fitted for the Icepi Zero, open for the PYNQ-Z2
     ("JP301", ("HDR 5V",), "S"),
 )
 HEADER_SIZE = (0.8, 0.7)                 # the smaller of gen/silk_jacks.HEADER: what must fit
@@ -362,7 +389,7 @@ def label_strips(P):
             name = P.comps[r]["value"].replace("+", "") if fam == "TP" else P.comps[r]["value"]
             L, T = CHAR * w * len(name) + 0.3, h + 0.3
             if angle == 90:
-                L, T = h + 0.2, L
+                L, T = h + 0.2, L + 0.9                # a column: KiCad's text runs past the estimate along its length (builds 40a-c)
             pts = [(P.pad_xy(r, n), pad_wh(P, r, n)) for n in P.fp(r)["pads"]]
             x0 = min(q[0] - d[0] / 2 for q, d in pts) - 0.1
             x1 = max(q[0] + d[0] / 2 for q, d in pts) + 0.1
@@ -383,7 +410,8 @@ def label_strips(P):
             else:
                 rect = (x0 - g - L, ay - T / 2, x0 - g, ay + T / 2)
             if lim and not shared and angle == 0:
-                ll, lt = CHAR * LIMIT_SIZE[1] * len(lim) + 0.3, LIMIT_SIZE[0] + 0.3
+                lines = lim.split("\n")                 # a two-line limit (TRIG A's "OUT" over its level): the longest line wide, both tall
+                ll, lt = CHAR * LIMIT_SIZE[1] * max(len(l) for l in lines) + 0.3, (LIMIT_SIZE[0] + 0.3) * len(lines)
                 if side in "EW":
                     lx0 = rect[0] if side == "E" else rect[2] - ll
                     rect = (min(rect[0], lx0), rect[1], max(rect[2], lx0 + ll), rect[3] + lt)

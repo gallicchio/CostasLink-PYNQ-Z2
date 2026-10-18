@@ -155,7 +155,7 @@ def dcblock(x0, y, x1, key="C 1.5pF", above=True):
     return (x1, y)
 
 
-def esd_shunt(x, y):
+def esd_shunt(x, y, text="left"):
     """Prompt 28: an antenna jack's ESD and DC path: a 6.8 nH wirewound (LQW15AN6N8, self-resonant at 6.0 GHz
     or above) from the line to ground, on the jack's side of its DC block.  Across 4.9-6 GHz it is 400 ohm to
     1.5 k (about 0.05 dB); it carries static off a cable or an antenna that is not DC-grounded, and below
@@ -163,7 +163,7 @@ def esd_shunt(x, y):
     from sch_util import nref
     ref = nref("L")
     J(x, y)
-    t, b = vpart("L6N8", ref, x, y + G + 3.81, value="6.8nH", text="left", fsize=1.0)
+    t, b = vpart("L6N8", ref, x, y + G + 3.81, value="6.8nH", text=text, fsize=1.0)
     W((x, y), t)
     gnd(*b)
     return ref
@@ -175,19 +175,37 @@ def esd_shunt(x, y):
 # MMCX (500 matings); the 5.8 GHz couplers' taps stay U.FL (a through-hole centre pin is a stub at
 # 5.8 GHz) and so do the taps boxed in by their stages.  The symbol (Conn_Coaxial) is the same for all.
 JACK = {"TRIG A": "SMA", "TRIG B": "SMA", "TRIG IN": "SMA", "REF IN": "SMA", "REF OUT": "MMCX",
-        "VC MON": "MMCX", "ERR MON": "MMCX", "I SLOW MON": "MMCX", "TRIG IN MON": "MMCX"}
+        "VC MON": "MMCX", "ERR MON": "MMCX", "I SLOW MON": "MMCX", "TRIG IN MON": "MMCX",
+        # Prompt 35: the test pads a computer-controlled instrument cannot hold a probe on became jacks: the two
+        # lock-detect pads and LOG Q are U.FL (their corners are full), TR A an MMCX (the switch corner has room);
+        # the seven rail monitors (sheet 2) are U.FL, beside the test pads that stay for a meter's probe
+        "TR A": "MMCX"}
 
 
 def jack_of(name):
     return JACK.get(name, "UFL")
 
 
-def tap(x, y, name, rkey="R 1k", dx=12.7, text=None, note_dx=8.0):
+def tap(x, y, name, rkey="R 1k", dx=12.7, text=None, note_dx=8.0, ref=None, rref=None, left=False):
     """A monitor tap from node (x, y): series resistor to the right, the jack (jack_of(name)),
-    shield to ground; the name stands beside the jack (its designator is not printed on the board)."""
-    a, b = series(rkey, x + dx / 2.0, y)
+    shield to ground; the name stands beside the jack (its designator is not printed on the board).
+    ref / rref: explicit references for a tap drawn late on a sheet (so no hand anchor's reference moves).
+    left: the tap runs to the LEFT of the node (the jack mirrored so its pin faces the resistor)."""
+    if left:
+        a, b = series(rkey, x - dx / 2.0, y, ref=rref)
+        W(b, (x, y))
+        j = part(jack_of(name), ref or nref("J"), x - dx - 5.08, y, rot=0, mirror="y", value=name, text="hide")
+        W(j.pin("1"), a)
+        p2 = j.pin("2")
+        W(p2, (p2[0], p2[1] + G))
+        gnd(p2[0], p2[1] + G)
+        if text is not False:
+            import levels as LV
+            note(x - dx - 5.08 - note_dx - 30, y - 1.5, text or LV.LIMITS.get(name, (None, name))[1], cols=24)
+        return j
+    a, b = series(rkey, x + dx / 2.0, y, ref=rref)
     W((x, y), a)
-    j = part(jack_of(name), nref("J"), x + dx + 5.08, y, rot=0, value=name, text="hide")
+    j = part(jack_of(name), ref or nref("J"), x + dx + 5.08, y, rot=0, value=name, text="hide")
     W(b, j.pin("1"))
     p2 = j.pin("2")
     W(p2, (p2[0], p2[1] + G))
@@ -264,13 +282,16 @@ def coupler_mon(x, y, name, ref, level=None):
     coupled port, 49.9 ohm on the isolated port; returns the OUT pin's point."""
     cp = U.part_at_pin("COUPLER", ref, "1", x, y, in_bom=False)
     cpl, iso, out = cp.pin("3"), cp.pin("4"), cp.pin("2")
-    # the coupled port goes up and left to the jack; the isolated port up and right to its load
-    W(cpl, (cpl[0] - 5.08, cpl[1]), (cpl[0] - 5.08, cpl[1] - 17.78))
-    jm = part("UFL", nref("J"), cpl[0] - 5.08 - 5.08, cpl[1] - 17.78 - 5.08, rot=270, value=name, text="hide")
-    W((cpl[0] - 5.08, cpl[1] - 17.78), jm.pin("1"))
+    # the coupled port goes up and left, then into the jack's pin from the left, the jack upright
+    # (rot 0: body to the right, shield down to a ground below it; until Prompt 35 it lay on its side
+    # with the ground flag beside it, above the coupler); the isolated port up and right to its load
+    xj = cpl[0] - 5.08
+    W(cpl, (xj, cpl[1]), (xj, cpl[1] - 17.78))
+    jm = part("UFL", nref("J"), xj + 5.08, cpl[1] - 17.78, rot=0, value=name, text="hide")
+    W((xj, cpl[1] - 17.78), jm.pin("1"))
     s2 = jm.pin("2")
-    W(s2, (s2[0] - G, s2[1]))
-    gnd(s2[0] - G, s2[1])
+    W(s2, (s2[0], s2[1] + G))
+    gnd(s2[0], s2[1] + G)
     W(iso, (iso[0] + 5.08, iso[1]))
     down("R 49.9R", iso[0] + 5.08, iso[1], text="right")
     note(x - 4, y + 10, "-20 dB coupled-line coupler, copper on the board (7.3 mm beside the line): " + name + " on the coupled end"
@@ -310,7 +331,7 @@ def synthesizer(ref, x, y, rail, le_name, mux_name, lo_name, mon_name, ref_src, 
     e = stub(pl, "30", dx=-10.16)
     U.S.hlabel(e[0], e[1], mux_name, shape="output", rot=180)
     e = stub(pl, "25", dx=-5.08)
-    tp(e[0], e[1], "LD " + ref)
+    ld = e                                              # LD: the sheet draws its jack last (late_taps), so no reference moves
     U.S.nc(*pl.pin("5"))
     # loop filter: CP_OUT -> C1 || (R2 + C2) -> R3 -> TUNE with C3 (all C0G), the values sim/budget.py section 8 chose
     import levels as LV
@@ -373,6 +394,7 @@ def synthesizer(ref, x, y, rail, le_name, mux_name, lo_name, mon_name, ref_src, 
     mnx, mny = out["mon_n"]
     W((mnx, mny), (mnx + 2.54, mny))
     down("R 49.9R", mnx + 2.54, mny, text="right")
+    out["ld"] = ld
     return pl, out
 
 

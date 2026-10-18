@@ -7,6 +7,10 @@ DEM_REG_DBM = -20.0    # the demodulator's input at the regulated level ...
 A_REG_V = 0.24664    # ... where the fast arm's peak a, differential at the comparators, is this
 DSA_POWER_UP_DB = 31.75    # the PE43711 starts at its maximum in serial mode (its datasheet, 'Power-up control')
 V_MID = 1.65    # the arms' and the comparators' centre (section 7)
+# the transmitter's ladders: section 1 (Prompt 35: the Q ladder's third leg is TRIG IN, so its reference differs)
+VR_I_V = 0.2125    # DAC1 A: centres the I ladder at 0.5 V (its 01 / 10 point)
+VR_Q_V = 0.2456    # DAC1 B: centres the Q ladder (348 ohm reference) at 0.5 V
+TRIG_STEP_V = 0.3605    # what a TRIG IN high adds at the Q node: one ladder step, +Q
 # the interference survey: sections 3 and 7b; the fast arm's ENBW from sim/wifi_channels.py (the ADL5380 and the arm)
 G_SLOW = 20.0    # the slow stage after the fast arm
 NF_CHAIN_DB = 1.956    # the receiver's noise figure at RX ANT

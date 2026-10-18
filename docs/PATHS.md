@@ -98,7 +98,7 @@ The LO into the demodulator (section 4) and the I/Q arms (section 2) continue fr
 | hop | part | why | coupling |
 |---|---|---|---|
 | J401 ANT (L401 6.8 nH to GND) → C401 1.5 pF → U401.3 RFC; J402 SW TX → C402 → U401.5 RF1; J403 SW RX → C403 → U401.8 RF2 | blocks on all three ports | "DC blocks are required at ports RFC, RF1, RF2" (HMC536 p. 7); no supply pin; 27 dB of isolation, +27 dBm at 0.1 dB | ✓ |
-| TR_A (header 27, R402 10 k up, J303.1, TP401) → R401 100 Ω → U401.1 A; TR_A → U402 74LVC1G04 → TR_B (R404 10 k down, J303.2) → R403 100 Ω → U401.2 B | control | 0/3.3 V logic (the HMC536 takes 3-5 V); at rest A high, B low = RF2 = SW RX: the receiver is connected when no host drives it | ✓ |
+| TR_A (header 27, R402 10 k up, J303.1, R490 453 Ω → J490 TR A MMCX) → R401 100 Ω → U401.1 A; TR_A → U402 74LVC1G04 → TR_B (R404 10 k down, J303.2) → R403 100 Ω → U401.2 B | control | 0/3.3 V logic (the HMC536 takes 3-5 V); at rest A high, B low = RF2 = SW RX: the receiver is connected when no host drives it | ✓ |
 
 ## 7. The slow path and the detectors (sheet 6)
 
@@ -108,7 +108,7 @@ The LO into the demodulator (section 4) and the I/Q arms (section 2) continue fr
 | U501.10 Is_P → R507 1 k → J501 I SLOW MON; → R508 1 k → U503.3 (C504 33 pF to GND); Is_N → R509 → U503.4 (C505 33 pF) | the slow pole | 1 k / 33 pF = 4.8 MHz on each leg ahead of the comparator; the tap before the pole | | ✓ |
 | U503 TLV3601 (CMP_I_S); U504 / U505 (CMP_QP_S / CMP_QN_S) with IN− = V_T2 (U506 A) | the slow comparators | the Q window on the slow path against one threshold (V_T2 needs a servo at the floor: its 0.1 a is 3.8 σ of the LO phase noise) | | ✓ |
 | Q_P → R523 1 k → C515 10 nF → U507.8 INHI; Q_N → R524 → C516 → U507.1 INLO | the log amp's input | AC-coupled, differential, 1 k series as the arm's load; the AD8310's inputs sit at VPOS/2 internally; its ENBL = VPOS | 1.65 V → the AD8310's bias | ✓ |
-| U507.4 VOUT = LOG_Q → R530 10 k → C524 100 nF → U510 AIN0; TP501; → U508A IN+ (3) | the interference level | 24 mV/dB; 100 pF of capacitive load allowed ("stable with capacitive loads of 100 pF"): the 100 nF is behind the 10 k since Prompt 31 | 0.4-2.5 V | ✓ |
+| U507.4 VOUT = LOG_Q → R530 10 k → C524 100 nF → U510 AIN0; R590 1 k → J590 LOG Q (U.FL); → U508A IN+ (3) | the interference level | 24 mV/dB; 100 pF of capacitive load allowed ("stable with capacitive loads of 100 pF"): the 100 nF is behind the 10 k since Prompt 31 | 0.4-2.5 V | ✓ |
 | U508A → D501 → PEAK_HOLD (C522 10 nF, R527 4.7 M bleed, R526 100 Ω) → U508B unity → PEAK_Q → R531 10 k → C525 → U510 AIN1 | peak hold | 47 ms decay | | ✓ |
 | +5V_RF / 2 → V5_MON; NTC 10 k (TH501) from +3V3_DIG over 10 k → TEMP; both through 10 k / 100 nF to U510 | monitors | 1.65 V at 25 °C, 0.77 V at 60 °C | | ✓ |
 
@@ -116,7 +116,8 @@ The LO into the demodulator (section 4) and the I/Q arms (section 2) continue fr
 
 | hop | part | why | coupling |
 |---|---|---|---|
-| TRIG_A / TRIG_B (header 37/35, R317/R318 100 k down) → U204 74LVC2G34 → R221 / R222 33 Ω → J205 / J206 (SMA) | outputs | source-terminated LVCMOS marks: about 1.7 V into 50 Ω, 2.2 ns | ✓ |
+| TRIG_A / TRIG_B (header 37/35, R317/R318 100 k down) → U204 74LVC2G34 → R221 / R222 33 Ω → J205 / J206 (SMA, TRIG OUT A / B) | outputs | source-terminated LVCMOS marks: about 1.7 V into 50 Ω, 2.2 ns | ✓ |
+| J207 TRIG IN (SMA) → R222 1 k (JP202 49.9 Ω to ground; R226 100 k down) → U205 74LVC1G17 → header 26 TRIG_IN; R225 453 Ω → J208 TRIG IN MON; **R291 2.2 k → the Q ladder node** (Prompt 35) | input, and the Q ladder's third leg | a 3.3 V pulse is +Q on the air with no FPGA (0.36 V at the node, one step); the 100 k keeps the Schmitt input low with nothing plugged in; R292 348 Ω is the Q reference so the node's conductance equals the I ladder's | ✓ |
 | J207 TRIG IN (JP202 50 Ω option) → R223 1 k → U205.2 (74LVC1G17 Schmitt); U205.4 → header 26 TRIG_IN, R225 453 Ω → J208 TRIG IN MON, R226 0 R DNP → TX_Q1 (the bypass that skips the FPGA) | input | 1 k limits what a hot source can push into the buffer (5 V tolerant inputs); the Schmitt cleans a slow edge | ✓ |
 
 ## 9. Power (sheet 2), as the current flows

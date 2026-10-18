@@ -93,6 +93,17 @@ def part_at_pin(key, ref, pin, x, y, rot=0, **kw):
     raise KeyError("pin %s not on %s" % (pin, lib_id))
 
 
+def pin_at(key, pin, x, y, rot=0, mirror=None, unit=1, sym=None):
+    """Where PARTS[key]'s `pin` lands if the part is placed at (x, y): for laying out round a part before it is drawn."""
+    lib_id = PARTS[key]["sym"] if not sym else LIB + ":" + sym
+    node, pins = kisch.SYMS.get(lib_id)
+    for p in pins:
+        if p["num"] == str(pin) and p["unit"] in (0, unit):
+            dx, dy = kisch._xform(p["x"], p["y"], rot, mirror)
+            return (x + dx, y + dy)
+    raise KeyError("pin %s not on %s" % (pin, lib_id))
+
+
 def _pins(pl):
     _, pins = kisch.SYMS.get(pl.lib_id)
     seen, out = set(), []
@@ -197,6 +208,8 @@ def _cost(box, texts, items, segs, W, H):
         if (min(a, cc) < x1 and x0 < max(a, cc) and min(b, d) < y1 and y0 < max(b, d)):
             c += 30.0
     if x0 < 8 or y0 < 8 or x1 > W - 8 or y1 > H - 25:
+        c += 1000.0
+    if x1 > W - 110 and y1 > H - 48:                 # the title block (98 x 40 mm at the bottom right)
         c += 1000.0
     return c
 

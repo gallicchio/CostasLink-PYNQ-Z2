@@ -3,7 +3,7 @@
 A 5.8 GHz bidirectional link for quantum position verification that carries one or two bits from one
 FPGA to another in the speed-of-light time plus about 23.5 ns of electronics, built to test three
 modulations with one receiver: BPSK with a hardware Costas loop, FSK, and QPSK. It plugs onto a
-PYNQ-Z2's Raspberry Pi header like `../GPSDO-PYNQ-Z2`. Two of them talk to each other.
+PYNQ-Z2's Raspberry Pi header like `../GPSDO-PYNQ-Z2`, or an Icepi Zero's. Two of them talk to each other.
 
 **Status (2026-10-12, rev A, Prompt 30):** architecture and parts decided and
 stock-checked, the schematic on seven sheets, ERC-clean, every symbol's pins audited against the
@@ -43,7 +43,13 @@ the static phase error 9.1° not 4.6°; WiFi captures sign(I) x Q) — REVA_CHAN
 routes completely: DRC 0, and the release in `mfg/release/` passes every gate (2026-10-14).**  Left for the order day: the CPL rotations,
 read off JLCPCB's preview.  Prompt 31 (2026-10-14) took the consignment out of the order: the balun is the TDK HHM1907B1 from
 JLCPCB's shelf (the ADL5380 sheet's Johanson 5400 has none there), and the two ADI chips come from JLCPCB's shelf with a
-Digi-Key fallback that the release applies only if the shelf is short on the day (`mfg/release/CONSIGNMENT.md`).  Nothing ordered.
+Digi-Key fallback that the release applies only if the shelf is short on the day (`mfg/release/CONSIGNMENT.md`).  Prompt 35 (2026-10-17, Jason's
+read of the schematic and the board): every IC's box says what the part is first; the SMAs drawn pin-first with their grounds below; the window
+comparators' thresholds wired from the DAC; TRIG IN summed into the Q ladder (an OR with the FPGA's Q bit, no gate, no resistor to solder);
+I2C pull-ups behind jumpers (PYNQ-Z2 / Icepi Zero); the test pads an instrument cannot hold became jacks (LD RX, LD TX, LOG Q on U.FL, TR A on MMCX)
+and the seven rails got U.FL monitors beside their pads; the one-antenna mode spelled out (one board carries the REF OUT -> REF IN lead);
+the board's rails routed at 0.3 mm; the user's instructions on the back silkscreen; the socket's 3D model turned the right way
+(REVA_CHANGES.md rows 43-50).  Nothing ordered.
 
 * [`PLAN.md`](PLAN.md): the idea, the numbers, the antenna question, the parts with the reasons and
   the rejected alternatives, the header pin map, power, the board, bring-up, what could go wrong.
