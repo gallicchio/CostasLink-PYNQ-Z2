@@ -4250,3 +4250,30 @@ able to open.  What remains is on record and either rev B (the 5 V vias, the 0.3
 order day (rotations, the AD5696R line).  My estimate of the first boards stands as in Response 31: they power up
 0.85, the synthesizers lock 0.75, the Costas loop locks over a cable 0.6, a bit crosses the bench 0.5, the room 0.4,
 and the board teaches something whatever happens 0.9.
+
+## Prompt 37 (2026-10-17 ~22:10 PDT)
+
+"There should be OpticsPCBs/CostasLink-PYNQ-Z2/mfg/release/CostasLink-PYNQ-Z2_gerbers_Y21.zip that JLCPCB wants
+me to confirm. Check if there is any reason I should modify these. If not, I'll say, "Yes, proceed to production"."
+
+## Response 37 (2026-10-17 22:10 - 22:35 PDT): JLCPCB's production files, layer by layer
+
+The zip is JLCPCB's CAM output for order 13544840A_Y21 (their `ok/` layers, our upload echoed back byte for byte,
+and the order record `4te.json` in GBK).  I rendered each of their layers over ours in one frame with gerbonara,
+diffed them pixel by pixel at 20 px/mm, eroded the 0.1 mm slivers of polygon conversion, and matched every
+difference that survived to a pad with pcbnew.  Written up as `mfg/release/PRODUCTION_FILE_CHECK.md`.
+
+Nothing to change.  Outer copper, both masks, both silks, the outline and every hole position are the upload's.
+JLCPCB changed three things, all standard: (1) non-functional pad removal on L2/L3: 62 / 59 through-hole pins
+with no inner-layer connection (J302's signal pins, every jumper pin, J303, the U.FL jacks' signal pins) lost their
+inner annulus, while every pad that does connect inside (SMA legs, the header's GND and +5V_HDR pins) is untouched;
+(2) the 5 mm assembly rails above and below the board with V-cuts, tooling holes, fiducials and the SMT QR places,
+left and right edges rail-free as the assembly remark asked; the five top-edge SMAs are right-angle through-hole
+parts whose bodies sit on the top face, so they rest over the rail and the rail snaps away downward; (3) drills
+0.13-0.15 mm over finished size for plated holes, 0.05 for non-plated, vias unchanged at 0.25, J301's 0.6 x 1.1
+shield slots routed with a 0.553 mm bit.  The order record agrees with ORDER_SETTINGS.md (4 layers, 1.6 mm,
+1 oz / 0.5 oz, ENIG, green, white, vias tented, no order number); it carries no stack-up field, so the order page is
+where JLC04161H-7628 shows.
+
+Bookkeeping: the 17 MB vendor zip stays on disk but is ignored by git (`*_gerbers_Y*.zip` in the repository's
+.gitignore); the method is in CLAUDE_PCB.md section 8 so the next board's confirmation takes ten minutes.
