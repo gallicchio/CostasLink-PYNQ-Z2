@@ -181,7 +181,8 @@ LIMITS = {
     # Prompt 35: the test pads an instrument cannot hold a probe on became jacks (the pads for a meter stay on the rails)
     "LD RX": (TAP_SHORT, "LD RX: the RX synthesizer's lock detect (3.3 V CMOS, high = locked) through %s, %s." % (TAP_R, TAP_DIV)),
     "LD TX": (TAP_SHORT, "LD TX: the TX synthesizer's lock detect (3.3 V CMOS, high = locked) through %s, %s." % (TAP_R, TAP_DIV)),
-    "TR A": (TAP_SHORT, "TR A: the switch's A control as the FPGA drives it (0 / 3.3 V; high = receive) through %s, %s: the 30 ns switch timing." % (TAP_R, TAP_DIV)),
+    "TR A": ("3.3 V hi-Z, 35 mV/50R", "TR A: the switch's A control as the FPGA drives it (0 / 3.3 V; high = receive) through 4.7 k: the full swing on a "
+             "high-impedance probe, 35 mV into 50 ohm (453 ohm into 50 ohm would pull TR_A, behind the PYNQ's 200 ohm, under the switch's 3 V)."),
     "LOG Q": ("0.4-2.5 V, 1k", "LOG Q: the AD8310's log output (24 mV/dB of the link band on the Q arm, 0.4-2.5 V) through 1k: WiFi's frames on a scope."),
     "TRIG IN": ("in: 5.5 V MAX", "TRIG IN: a 3.3 V logic pulse into a Schmitt buffer through 1k; 5.5 V MAX, never negative; JP202 fitted = 50 ohm termination.  "
                 "It also steps the transmitter to +Q by itself (the Q ladder's third leg): a detector can key the link without the FPGA."),

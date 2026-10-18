@@ -56,8 +56,8 @@ Nothing plugged into the header yet; the board alone on the bench supply through
 
 0. Before power: solder J302 on the back (pin 1 at the right-hand end of the bottom edge, as the silk
    shows; square to the board: it carries the board 8 mm above the PYNQ), and fit the shunts:
-   JP101 SIGN B1 on Q-, JP102 SIGN B2 on Q+, JP103 SEL on CMP, JP201 REF on TCXO; JP202 (50R) and JP301
-   (HDR 5V) open; JP302 / JP303 (the I2C pull-ups) open for the PYNQ-Z2, fitted for the Icepi Zero (Prompt 35).
+   JP101 SIGN B1 on Q-, JP102 SIGN B2 on Q+, JP103 SEL on CMP, JP201 REF on TCXO, JP203 TRIG>Q fitted; JP202 (50R)
+   and JP301 (HDR 5V) open; JP302 / JP303 (the I2C pull-ups) open for the PYNQ-Z2, fitted for the Icepi Zero (Prompt 35).
    The modulator is off until a gateware drives TX_EN high (Response 15).  The back silkscreen repeats these.
    If the five 5.8 GHz SMAs' centre pins stand proud of the back (JLCPCB leaves through-hole pins as they come,
    1.9 mm), clip them to within 0.3 mm of the solder: the stub is a capacitor against the back pour, worth 3 points
@@ -212,9 +212,12 @@ the switch block cabled in and time division (stage 4.4).
    jitter over 10^4 events: the BPSK flip decided by sign(I) against the same flip decided by IN set
    beside the idle; the plan's corners (QP/QN and CMP I); the pilot at 45 degrees with the four corners
    (about -14 dBc, the four window comparators).  TRIG OUT A here against the MON jacks there.
-7. The link without either FPGA: TRIG IN is the Q ladder's third leg (Prompt 35), so with the transmitting board's
-   gateware holding its Q bits at 01 (idle) a pulse on TRIG IN is +Q on the air by itself: TRIG IN MON there
-   against QP MON on the far board is the radio link's own latency (nothing to solder, no CTRL[8]).  With JP202
+7. The link without either FPGA: TRIG IN is the Q ladder's third leg (Prompt 35; JP203 fitted), so with the transmitting
+   board's gateware holding its Q bits at 01 (idle) a pulse on TRIG IN is +Q on the air by itself: TRIG IN MON there
+   against QP MON on the far board is the radio link's own latency (nothing to solder, no CTRL[8]).  And a prover with
+   no FPGA at all (Prompt 36): a short lead from the far board's QP MON (or CMP I MON) to its own TRIG IN, JP202 open:
+   the tap's 453 ohm into the Schmitt input's 1 k + 100 k gives 3.2 V, over its 2.19 V threshold, so the received
+   event keys the reply +Q about 20 ns after the jack: the whole hardware round trip on one scope.  With JP202
    fitted (50 ohm at the jack) set the
    generator's load to 50 ohm and its amplitude to 3.3 V there: in Hi-Z mode it delivers half, 1.65 V,
    under the Schmitt buffer's 2.19 V upper threshold (the design review).

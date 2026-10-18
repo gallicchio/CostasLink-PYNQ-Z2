@@ -4152,3 +4152,101 @@ mistakes on a sheet), 6 (a two-line limit; instructions on the back), 9 (a pad a
 11 (a stock 3D model's axes).
 
 **Open, on record.**  The 0.3 mm rails (REVA_CHANGES 50: the tidy's sliver).  The silkscreen's own problem list has 98 entries, as build 39 had 72: block boxes that cannot be drawn as rectangles because a side would cross a part (their names are printed instead) and chip names that found no clear spot beside their chip (printed where there is room, else left to the fab layer); none of it is a connector, a limit or a jumper, which the label check covers.  The CPL rotations stay for the order day, as agreed.
+
+## Prompt 36 (2026-10-17 ~17:40 PDT)
+
+"Do one more design review, tracing the signal path and power paths visually in the schematic and PCB, at each point
+asking yourself if this is the right way to do things for Quantum Position Verification and this pedagogical and
+experimental test board. If it's ready to send to JLCPCB for manufacture and assembly, I will do that when your review
+is done."
+
+## Response 36 (2026-10-17 17:40 - 18:24 PDT): the design review before the order
+
+I walked every path on the seven sheets and on the copper (tools/path_walk.py over build 40's netlist, the sheet
+renders quarter by quarter, the top, In2 and back renders, the 3D views), asking at each hop whether this is right
+for a quantum-position-verification test bed that students will read and that must deliver a bit with as little
+electronics as possible in the way.  Three things changed (REVA_CHANGES 51-53, build 41); the rest is the
+reasoning, kept short where the sheet already says it.
+
+**The receive chain, hop by hop.**  RX ANT -> L101 6.8 nH to ground (static off the cable; 400 ohm-1.5 k at 5.8
+GHz) -> C101 1.5 pF (series-resonant at 6.1 GHz: the best 0402 block there is) -> SKY65404 LNA with Skyworks' own
+0.5 pF shunt, 0.6 nH + 100 nF on VCC, 100 ohm on the enable -> block -> PE43711 DSA (serial mode, P/S 10 k up, the
+parallel pins grounded, powers up at -31.75 dB: the receiver wakes up deaf, which is the safe way) -> block ->
+ADL5611 -> block -> ADL5611 (each with its 43 nH bias tee and 68 pF / 1 nF / 1 uF) -> block -> the copper coupler
+(RX MON -20 dB, 49.9 ohm on the isolated port) -> the TDK balun -> two 1.5 pF blocks -> ADL5380 (ADJ open, the 5.8
+GHz spec condition; the DNP 1.5 k to drop the common mode if ever needed).  Right for the job: the LNA first sets NF
+2.0 dB, the attenuator between the LNA and the gain blocks is the only place it protects anything, 28.6 dB of gain
+puts -20 dBm on the demodulator from 3 m to 300 m, and the demodulator's 390 MHz output is the widest thing in the
+chain.  The one thing a student should be told, and the sheet says: +1 dBm absolute maximum at RX ANT, so the PA
+module across the room is dangerous to this input (the limiter note).
+
+**The arms and the decisions.**  Each pair through 1 k into the THS4541 with 1 k shunts holding the summing nodes
+at 1.9 V (the demodulator sits at 3.2-3.8 V; the amplifier's inputs are good to 2.0 V, 61 mV of margin at the worst
+corner), gain 4, VOCM open with its 100 nF (the THS4541 centres itself at mid-supply), outputs straight into the
+comparators and the taps: nothing in series with the data but copper and the 33 ohm at the FPGA.  That is the
+whole point of the board and it is intact: jack to FPGA register 15 ns on the PYNQ.  sign(I) on the clock-capable
+pin 18; the four windows on their own 16-bit thresholds, LE/HYS with the two DNP options; the slow path x20 at 4.8
+MHz with its own three comparators and its own DAC for the veto.  I looked for a place where a 100 nF or a 10 k had
+crept onto a fast node (Prompt 31's fault) and found none: every ADC input has its 10 k between the node and the
+capacitor, every tap its 1 k or 453 ohm.
+
+**The loop.**  Q+ / Q- through the two SIGN jumpers into the 3157's B1 / B2, the sign from CMP_I through JP103 (100
+k holding S low when the jumper is out), ERR through the TS5A3159's NC, V_MID on its NO, into the 10 k / 750 ohm /
+100 nF PI integrator about V_MID, the summing stage adding VC_OFF, VC to the VCXO's pin 1 and to its jack and the
+ADC.  3 kHz inside the synthesizer's 80 kHz; the VCXO's +-290 kHz guaranteed covers the 29 kHz between two TCXOs
+with ten to spare.  For QPV this is the right loop: analogue, visible at ERR MON and VC MON, holdable by a pin, and
+the data never passes through it.
+
+**The transmitter.**  Four FPGA pins through 2.2 k into 300 / 348 ohm references at 0.21 / 0.246 V, +-0.33 V about
+0.5 V on IBBP / QBBP, the N inputs on the 4.7 k / 750 divider that the pins' own 82 uA lands on 0.507 V; TX_DIS
+from the inverter with its 1 k pull-down (off whenever no gateware drives it); LO through the same choke-and-block
+tile as the receiver; RFOUT -> block -> ADL5611 -> bias tee -> block -> the 0 ohm pad (DNP shunts) -> coupler -> L202 to
+ground -> TX ANT at +9.8 dBm, the corners at the gain block's P1dB and no further.  The TRIG IN leg into the Q
+ladder is where the review changed something: with the leg always live, a detection on TRIG IN steps the air to +Q
+at once, and in the experiment where the FPGA must choose which of N points a detection sends (your N = 2 case), the
+FPGA could not stop it.  **JP203 TRIG>Q** is now in series with the leg: fitted (the default) for the lab's FPGA-free
+keying, open when the FPGA alone sets the point.  Seven shunts a board.
+
+**The one-antenna block, the triggers, the references.**  ANT -> L401 -> C401 -> HMC536 RFC; RF1 / RF2 through
+their blocks to SW TX / SW RX; A from header 27 through 100 ohm with 10 k up (rests in receive), B = not A from the
+inverter with 10 k down; J303 for an external switch.  TRIG A / B through 33 ohm; TRIG IN through 1 k into the
+Schmitt buffer with the 50 ohm jumper and the 100 k; REF IN through the DNP 49.9 ohm to JP201; REF OUT from the
+VCXO through its buffer and 33 ohm.  Here the review found the second change: **TR A's tap was 453 ohm**, and TR_A
+reaches the board through the PYNQ's 200 ohm, so a 50 ohm scope input on that jack would have held the control at
+2.4 V, under the HMC536's 3 V: watching the switch would have stopped it switching.  R490 is 4.7 k now (3.17 V at
+the switch with a 50 ohm load, 35 mV at the jack, the full swing on a 1 M probe; the silk says "3.3 V hi-Z, 35
+mV/50R").  The other logic taps (LD, TRIG IN MON, the comparators) sit on outputs that can source the 6.6 mA.
+
+**Power.**  USB-C (Rd 5.1 k on both CC) -> 2 A PTC -> Q301 (gate pulled down by Q303 when VBUS is there, up to +5V_HDR
+otherwise) and the header's 5 V -> JP301 -> PTC -> Q302 (gate lifted by VBUS through 1 k against 100 k): either
+source alone works, both together USB wins, neither back-feeds (I walked both FETs' gates for all four cases).  22
+uF x 2 + the 100 uF polymer damper + the TVS; the bead into +5V_RF with 22 uF + 10 uF; the five LDOs each with 2.2
+uF in and 2.2 uF + 10 uF out, the PLL ones behind 2.2 ohm for the heat; every chip's 100 nF at its pin on the
+sheet and (I checked the top render) within a few millimetres on the board, outside the fan band.  On the copper
++5V_RF is a pour on In2 and 0.8 mm on top; the 3.3 V rails are pours or 0.4 mm where there is room and 0.2 mm
+where there is not (5-15 mV).  The one structural thing left for rev B is still row 35: 1.4 A through single 0.25
+mm vias three times in series.  It works (15 mV, under a kelvin), and the bring-up measures V5_MON under load.
+
+**The board.**  Both 5.8 GHz chains straight, their fences and launches as the field solve wanted (the release's
+gate: planes 2.2 mm off every SMA pin, the top pour 1.9); the LO pairs equal; nothing but the planned line inside
+any SMA's legs; the In2 pours for the five supplies where their chips are; the back bare but for the socket, the
+instructions and the identity; the socket's model the right way.  DRC 0, every net joined, the label check 0, the
+launch check as designed, the documents' numbers 0 stale, the release passing: 4285 tracks, 1157 vias, 81 BOM lines, nothing consigned, 416 placements a board, 7 shunts and the socket loose; JLCPCB $689 of goods, $955-970 with duty and shipping.
+
+**Stock on the order day** (row 53): AD5696R C650158 has **2** in JLCPCB's stock for 2 boards (the release passes
+because stock >= the order, but JLCPCB may ask for attrition on a TSSOP-16); HMC536 has 5 for 2; the ADL5380 18, the
+ADL5375 654, the THS4541 262, the TLV3603 2844, the VCXO 408.  Re-run `python3 mfg/make_release.py` on the day: if
+the AD5696R line comes up short, Digi-Key stocks AD5696RARUZ (add a `consign=` fallback in gen/parts.py as for the
+ADI chips) or fit the second board's U605 at home.  And the CPL rotations off JLCPCB's preview, as agreed.
+
+**A bonus the review turned up**, now in BRINGUP.md 6.7: a prover with no FPGA at all.  A short lead from a
+board's QP MON (or CMP I MON) to its own TRIG IN with JP202 open: the tap's 453 ohm into the Schmitt input's 1 k +
+100 k gives 3.2 V, over its 2.19 V threshold, so a received event keys the reply +Q about 20 ns after the jack.
+The whole hardware round trip, verifier to prover and back, on one scope, with both FPGAs idle.
+
+**Verdict.**  Ready to order.  Nothing I traced is wrong for what the board is for; the two things the review
+changed were a measurement that would have disturbed the thing it measured and a leg the experiment needs to be
+able to open.  What remains is on record and either rev B (the 5 V vias, the 0.3 mm rails, the header's RC) or the
+order day (rotations, the AD5696R line).  My estimate of the first boards stands as in Response 31: they power up
+0.85, the synthesizers lock 0.75, the Costas loop locks over a cable 0.6, a bit crosses the bench 0.5, the room 0.4,
+and the board teaches something whatever happens 0.9.

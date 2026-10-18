@@ -34,6 +34,7 @@ changed: say so, and it goes into the code.
   J290   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (-0.763, -0.000) mm (x right, y up)
   JP201  C2937625   top    PinHeader_1x03_P2.54mm_Vertical              moved (+2.540, -0.000) mm (x right, y up)
   JP202  C492401    top    PinHeader_1x02_P2.54mm_Vertical              moved (-1.270, -0.000) mm (x right, y up)
+  JP203  C492401    top    PinHeader_1x02_P2.54mm_Vertical              moved (+1.270, -0.000) mm (x right, y up)
   U202   C208262    top    SOT-89-3                                     moved (+0.704, -0.000) mm (x right, y up)
   J303   C2937625   top    PinHeader_1x03_P2.54mm_Vertical              moved (+2.540, -0.000) mm (x right, y up)
   J502   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (+0.000, -0.763) mm (x right, y up)
@@ -55,7 +56,7 @@ into mfg/jlc_rotation.py.  Never turn or nudge a part in JLCPCB's viewer: the ne
 Placed as the CPL says, JLCPCB's own drawing lands pin for pin on our pads for 54 parts
 (make_release.py's simulation of their placement, both sides).
 
-NOT YET SEEN RIGHT in a preview (33 part numbers, 91 placements):
+NOT YET SEEN RIGHT in a preview (33 part numbers, 92 placements):
   C10425     74LVC1G17                  SOT-353_SC-70-5
       top:    U116 U205
       correction 180, predicted: JLCPCB's drawing turned 180 to lie on ours (top side, 5 pads by number, worst 0.32 mm)
@@ -126,8 +127,8 @@ NOT YET SEEN RIGHT in a preview (33 part numbers, 91 placements):
       top:    U113
       correction 270, predicted: JLCPCB's drawing turned 90 to lie on ours (top side, 10 pads by number, worst 0.07 mm)
       look for: pin 1 by the silk mark (the MCP4728s)
-  C492401    50R/HDR 5V/SDA PU/SCL PU   PinHeader_1x02_P2.54mm_Vertical
-      top:    JP202 JP301 JP302 JP303
+  C492401    50R/TRIG>Q/HDR 5V/SDA PU/S PinHeader_1x02_P2.54mm_Vertical
+      top:    JP202 JP203 JP301 JP302 JP303
       correction 270 (predicted): 1x2 header PZ254V-11-02P: JLCPCB's drawing lies along +x with pin 1 left, KiCad's stands along +y with pin 1 at the top (the 1x3 and 1x6 headers predict 270 by pin number; two pads predict nothing)
       look for: pin 1 at the square pad; a header is the same turned half round, not a quarter
   C496551    RX ANT/TX ANT/REF IN/TRIG  SMA_BWSMA-KWE-Z001
@@ -215,6 +216,7 @@ THROUGH-HOLE parts JLCPCB fits by hand (they go in one way by their pins, but lo
   JP103  top    PinHeader_1x03_P2.54mm_Vertical                3 joints; pin 1 at the square pad; the three in a line along the board's edge
   JP201  top    PinHeader_1x03_P2.54mm_Vertical                3 joints; pin 1 at the square pad; the three in a line along the board's edge
   JP202  top    PinHeader_1x02_P2.54mm_Vertical                2 joints; pin 1 at the square pad; a header is the same turned half round, not a quarter
+  JP203  top    PinHeader_1x02_P2.54mm_Vertical                2 joints; pin 1 at the square pad; a header is the same turned half round, not a quarter
   JP301  top    PinHeader_1x02_P2.54mm_Vertical                2 joints; pin 1 at the square pad; a header is the same turned half round, not a quarter
   JP302  top    PinHeader_1x02_P2.54mm_Vertical                2 joints; pin 1 at the square pad; a header is the same turned half round, not a quarter
   JP303  top    PinHeader_1x02_P2.54mm_Vertical                2 joints; pin 1 at the square pad; a header is the same turned half round, not a quarter

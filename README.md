@@ -49,7 +49,10 @@ comparators' thresholds wired from the DAC; TRIG IN summed into the Q ladder (an
 I2C pull-ups behind jumpers (PYNQ-Z2 / Icepi Zero); the test pads an instrument cannot hold became jacks (LD RX, LD TX, LOG Q on U.FL, TR A on MMCX)
 and the seven rails got U.FL monitors beside their pads; the one-antenna mode spelled out (one board carries the REF OUT -> REF IN lead);
 the board's rails routed at 0.3 mm; the user's instructions on the back silkscreen; the socket's 3D model turned the right way
-(REVA_CHANGES.md rows 43-50).  Nothing ordered.
+(REVA_CHANGES.md rows 43-50).  Prompt 36 (2026-10-17 evening) was the design review before the order, every path traced on the sheets and
+the copper: two changes (TR A's tap 4.7 k so a 50 ohm scope cannot pull the switch control under 3 V; JP203 in the TRIG IN leg so the
+FPGA can own the constellation point), one order-day note (the AD5696R's stock), and the verdict **ready to order** (CLAUDE_CODE_CHAT.md
+Response 36; build 41: DRC 0, every gate passing).  Nothing ordered.
 
 * [`PLAN.md`](PLAN.md): the idea, the numbers, the antenna question, the parts with the reasons and
   the rejected alternatives, the header pin map, power, the board, bring-up, what could go wrong.

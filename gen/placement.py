@@ -258,6 +258,7 @@ ANCHORS = {
     "JP302": at(113.5, 27.0, 0), "JP303": at(113.5, 34.5, 0),   # the I2C pull-up jumpers (Prompt 35), in the free strip under the switch block (pin 1 at the anchor, 6.2 mm of courtyard)
     "R312": at(109.5, 30.5, 90), "R313": at(109.5, 37.5, 90),    # their 4.7 k beside them (by rule they went to the ADC's SDA pin, into the window monitors' limit strip)
     "R215": at(61.5, 57.0, 0),               # U203's CE pull-up, straight out of its pin 4 (by rule it stood under Y201 and did not route: build 40a)
+    "JP203": at(70.0, 41.0, 90),             # TRIG>Q (Prompt 36): the Q ladder's third leg's jumper, between the rail jacks' name columns and JP201
     "R211": at(58.5, 19.15, 0),              # the pi pad's DNP shunts stand beside the line, not on it
     "R210": at(58.5, 24.5, 0),
     "R213": at(53.5, 13.0, 0),               # the TX coupler's isolated-port load, clear of the SMA's leg
@@ -355,6 +356,7 @@ HEADER_LABELS = (
     ("J303", ("TR A", "TR B", "GND"), "pins"),
     ("JP202", ("50R",), "S"),
     ("JP302", ("SDA PU",), "N"), ("JP303", ("SCL PU",), "S"),       # the I2C pull-ups: fitted for the Icepi Zero, open for the PYNQ-Z2
+    ("JP203", ("TRIG>Q",), "S"),                                    # the Q ladder's TRIG IN leg: fitted = TRIG IN keys +Q by itself
     ("JP301", ("HDR 5V",), "S"),
 )
 HEADER_SIZE = (0.8, 0.7)                 # the smaller of gen/silk_jacks.HEADER: what must fit

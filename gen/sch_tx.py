@@ -29,7 +29,14 @@ def ladder(S, x, y, bits, ref_name, name, extra=None, rr_key=None):
             label(x - 33.02, yb, net, size=1.0, justify="right bottom")
         third = bool(extra) and net == extra[0]
         ra, rb = series(extra[1] if third else LV.VAL["dac_Rb"], x - 20.32, yb, ref="R291" if third else None)   # explicit: nothing after it renumbers
-        W((x - 33.02, yb), ra)
+        if third:
+            # JP203 in the leg (Prompt 36): fitted, TRIG IN keys +Q by itself; open, the FPGA alone sets the point
+            # (the N-detector experiment, where the FPGA chooses which of N points a detection sends)
+            jp = part("HDR1x2", "JP203", x - 30.48, yb - 5.08, rot=90, value="TRIG>Q", text="hide")
+            W((x - 33.02, yb), jp.pin("1"))
+            W(jp.pin("2"), ra)
+        else:
+            W((x - 33.02, yb), ra)
         W(rb, (x, yb))
     ylast = y + rows[-1][1]
     W((x, y - 7.62), (x, ylast))
@@ -72,7 +79,9 @@ def build(S):
          "steps the transmitter from idle to +Q by itself (%.2f V a step, like a bit), %.0f ns after the jack, with no FPGA in the path; "
          "with the FPGA driving the bits it adds to them (an OR by summing).  %s instead of the I ladder's %s keeps this ladder's "
          "conductance, step and impedance equal to the I ladder's with the extra leg; VR_Q = %.3f V (VR_I x %.2f) centres it.  "
-         "Keep TX_Q1 low while a trigger is in use: both high puts the node %.2f V over the 1 V range (2 V absolute maximum)."
+         "Keep TX_Q1 low while a trigger is in use: both high puts the node %.2f V over the 1 V range (2 V absolute maximum).  "
+         "JP203 TRIG>Q fitted = this leg live (the lab's FPGA-free keying); open = the FPGA alone sets the point and TRIG IN only "
+         "reaches header 26 (the experiment where a detection must choose one of N points)."
          % (LV.B["dac_trig_step"], LV.P["trig_tpd_ns"], LV.VAL["dac_RrQ"][2:], LV.VAL["dac_Rr"][2:], LV.B["dac_VrQ"],
             LV.B["dac_VrQ"] / LV.B["dac_Vr"], LV.B["dac_levels_q"][2] + LV.B["dac_trig_step"] - 1.0), cols=34)
     # the N inputs at the ladders' centre level: the divider sim/budget.py section 1 chose with the pins' own

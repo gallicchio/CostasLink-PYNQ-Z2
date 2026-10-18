@@ -15,27 +15,27 @@ Written by `mfg/make_release.py` on 2026-10-17.  Parts: JLCPCB's live prices and
 | | PCB assembly fixture | $16.54 |
 | | feeder loading, 53 Extended codes x $2.70 (Basic and Preferred parts are free; the 0 consigned lines may be charged the same) | $143.10 |
 | | SMT, 1164 pads a board x $0.0017 + $1.50 a board, x 2 | $6.96 |
-| | through-hole: $3.61 labour an order + 102 joints a board (25 parts) x 2 x $0.0157 | $6.81 |
+| | through-hole: $3.61 labour an order + 104 joints a board (26 parts) x 2 x $0.0157 | $6.88 |
 | | packaging | $0.51 |
 | | special components | $0.12 |
 | | depanel: JLCPCB's assembly rails taken off before delivery (the ECP5 cart's $2.32) | $2.32 |
-| | their parts: 81 BOM lines, 415 placements a board, for 2 boards with attrition, x 1.0066 | $430.59 |
-| | **goods before duty and shipping** | **$688.89** |
-| | US duty, 35 % of the goods, collected under DDP | $241.11 |
+| | their parts: 81 BOM lines, 416 placements a board, for 2 boards with attrition, x 1.0066 | $430.62 |
+| | **goods before duty and shipping** | **$689.00** |
+| | US duty, 35 % of the goods, collected under DDP | $241.15 |
 | | shipping, UPS Express Saver DDP | $25.00-$40.00 |
-| | **JLCPCB total** | **$955.01-$970.01** |
+| | **JLCPCB total** | **$955.14-$970.14** |
 | **Digi-Key** | nothing consigned (CONSIGNMENT.md): every part is on JLCPCB's shelf | **$0.00** |
 | | shipping a consignment to JLCPCB | $0.00-$0.00 |
 | **other** | the bench and the field (mfg/cost_estimate.py's list) | **$141.50-$271.00** |
-| | **everything** | **$1096.51-$1241.01** |
+| | **everything** | **$1096.64-$1241.14** |
 
-An assembled board: about $344.45 of the JLCPCB goods.  The range on the bare boards moves the goods from $670.51 to $707.28.
+An assembled board: about $344.50 of the JLCPCB goods.  The range on the bare boards moves the goods from $670.61 to $707.38.
 
 ## Per-part fees: Basic, Preferred, Extended
 
 | library | distinct parts | placements a board |
 |---|--:|--:|
-| Basic | 25 | 244 |
+| Basic | 25 | 245 |
 | Preferred | 3 | 28 |
 | **Extended** | **53** | 143 |
 | consigned | 0 | 0 |
@@ -114,8 +114,8 @@ The 53 distinct Extended parts: C10425 (SN74LVC1G17DCKR), C113126 (LQW18AN43NG00
 | C113952 | SMAJ5.0A (SMAJ5.0A) | 1 | 6 | Extended | $0.0412 | $0.25 | 524,269 | 524,263 | 2026-10-17 17:13 |
 | C2937625 | PZ254V-11-03P (TR/SIGN/SEL/REF) | 5 | 12 | Extended | $0.0198 | $0.24 | 931,581 | 931,569 | 2026-10-17 17:14 |
 | C81598 | 1N4148W (1N4148W) | 1 | 16 | Basic | $0.0124 | $0.20 | 4,480,335 | 4,480,319 | 2026-10-17 17:13 |
+| C492401 | PZ254V-11-02P (50R/TRIG>Q/HDR 5V/SDA PU) | 5 | 10 | Extended | $0.0187 | $0.19 | 1,093,416 | 1,093,406 | 2026-10-17 17:14 |
 | C2188753 | GCM1555C1H161JA16D (160pF) | 2 | 14 | Extended | $0.0123 | $0.17 | 8,607 | 8,593 | 2026-10-17 17:13 |
-| C492401 | PZ254V-11-02P (50R/HDR 5V/SDA PU/SCL PU) | 4 | 8 | Extended | $0.0187 | $0.15 | 1,093,416 | 1,093,408 | 2026-10-17 17:14 |
 | C14441 | CL05C680JB5NNNC (68pF) | 3 | 18 | Preferred | $0.0081 | $0.15 | 117,219 | 117,201 | 2026-10-17 17:13 |
 | C8545 | 2N7002 (2N7002) | 1 | 7 | Basic | $0.0175 | $0.12 | 2,596,923 | 2,596,916 | 2026-10-17 17:14 |
 | C2286 | KT-0603R (5V/3V3) | 2 | 14 | Basic | $0.0076 | $0.11 | 7,574,260 | 7,574,246 | 2026-10-17 17:13 |
@@ -132,9 +132,9 @@ The 53 distinct Extended parts: C10425 (SN74LVC1G17DCKR), C113126 (LQW18AN43NG00
 | C1546 | 0402CG101J500NT (100pF) | 1 | 12 | Basic | $0.0033 | $0.04 | 3,787,231 | 3,787,219 | 2026-10-17 17:13 |
 | C25105 | 0402WGF330JTCE (33R) | 11 | 32 | Basic | $0.0012 | $0.04 | 1,682,524 | 1,682,492 | 2026-10-17 17:14 |
 | C137968 | RC0402FR-074K02L (4.02k) | 4 | 18 | Extended | $0.0021 | $0.04 | 319,818 | 319,800 | 2026-10-17 17:14 |
+| C25900 | 0402WGF4701TCE (4.7k) | 4 | 18 | Basic | $0.0021 | $0.04 | 15,982,465 | 15,982,447 | 2026-10-17 17:14 |
 | C4109 | 0402WGF2001TCE (2k) | 2 | 14 | Basic | $0.0026 | $0.04 | 7,682,293 | 7,682,279 | 2026-10-17 17:14 |
-| C25900 | 0402WGF4701TCE (4.7k) | 3 | 16 | Basic | $0.0021 | $0.03 | 15,982,465 | 15,982,449 | 2026-10-17 17:14 |
-| C5126227 | FRC0402F4530TS (453R) | 9 | 28 | Extended | $0.0012 | $0.03 | 73,705 | 73,677 | 2026-10-17 17:14 |
+| C5126227 | FRC0402F4530TS (453R) | 8 | 26 | Extended | $0.0012 | $0.03 | 73,705 | 73,679 | 2026-10-17 17:14 |
 | C25102 | 0402WGF3000TCE (300R) | 1 | 12 | Preferred | $0.0021 | $0.03 | 730,645 | 730,633 | 2026-10-17 17:14 |
 | C25135 | 0402WGF8200TCE (820R) | 2 | 14 | Extended | $0.0018 | $0.03 | 106,979 | 106,965 | 2026-10-17 17:14 |
 | C474132 | 0402WGF4704TCE (4.7M) | 1 | 12 | Extended | $0.0020 | $0.02 | 40,810 | 40,798 | 2026-10-17 17:15 |
@@ -147,5 +147,5 @@ The 53 distinct Extended parts: C10425 (SN74LVC1G17DCKR), C113126 (LQW18AN43NG00
 
 "ordered" is what JLCPCB charges for: the placements on 2 boards plus its attrition (`lossNumber`) or minimum purchase, at the price break for that quantity; for a consigned line it is what we send (CONSIGNMENT.md).  A Preferred part is an Extended part JLCPCB keeps on its machines.
 
-`mfg/cost_estimate.py`'s last run (build/COST_ESTIMATE.md) put the JLCPCB goods at $680.46 (boards $46.88, assembly $208.24, parts $425.34); this release $688.89.  The two share the fees, the prices and the pad count, so they differ only when the prices were asked at different times.
+`mfg/cost_estimate.py`'s last run (build/COST_ESTIMATE.md) put the JLCPCB goods at $680.46 (boards $46.88, assembly $208.24, parts $425.34); this release $689.00.  The two share the fees, the prices and the pad count, so they differ only when the prices were asked at different times.
 

@@ -112,5 +112,7 @@ def build(S):
     # TR A's jack (Prompt 35: it was a test pad), drawn last with explicit references
     J(*tr_tap)
     W(tr_tap, (tr_tap[0], tr_tap[1] - 12.7))        # two rows up: the jack's ground (5.08 under its pin) stays off TR_A's line
-    B.tap(tr_tap[0], tr_tap[1] - 12.7, "TR A", rkey=LV.VAL["tap_R"], ref="J490", rref="R490")
+    # 4.7 k, not the taps' 453 ohm (Prompt 36): TR_A comes through the PYNQ's 200 ohm, and 453 into a 50 ohm scope would hold
+    # it at 2.4 V, under the HMC536's 3 V control level; 4.7 k leaves 3.17 V (35 mV at a 50 ohm input, the full 3.3 V at 1 M)
+    B.tap(tr_tap[0], tr_tap[1] - 12.7, "TR A", rkey="R 4.7k", ref="J490", rref="R490")
     return S

@@ -438,6 +438,7 @@ INSTRUCTIONS = (
      "Icepi Zero: USB-C here, JP301 open, JP302/JP303 fitted."),
     ("JUMPERS: JP101 SIGN B1 on Q-, JP102 SIGN B2 on Q+ (opposite",
      "ways); JP103 SEL on CMP; JP201 REF on TCXO; JP202 50R open;",
+     "JP203 TRIG>Q fitted (TRIG IN keys +Q by itself; open: FPGA only);",
      "JP301 open; JP302/JP303 I2C pull-ups open on the PYNQ-Z2.",
      "Every jack is labelled with what it takes or gives."),
 )

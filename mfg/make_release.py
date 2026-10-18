@@ -124,10 +124,10 @@ HAND_SOLDER = {
 assert set(HAND_SOLDER) == set(CE.HAND_SOLDER_REFS), "make_release.HAND_SOLDER and cost_estimate.HAND_SOLDER_REFS disagree"
 # What ships loose: the jumper shunts (BRINGUP.md stage 3 names the positions)
 LOOSE = [
-    ("(not on the board)", "2.54 mm jumper shunt", "", "C5305", "", "6 a board",
-     "JP101 SIGN B1 on Q-, JP102 SIGN B2 on Q+, JP103 SEL on CMP, JP201 REF on TCXO before the first power-up "
-     "(BRINGUP.md stage 3); JP202 (50R on TRIG IN) and JP301 (HDR 5V: the board powered from the PYNQ's header) "
-     "only when wanted.  Order a few spare"),
+    ("(not on the board)", "2.54 mm jumper shunt", "", "C5305", "", "7 a board",
+     "JP101 SIGN B1 on Q-, JP102 SIGN B2 on Q+, JP103 SEL on CMP, JP201 REF on TCXO, JP203 TRIG>Q before the first power-up "
+     "(BRINGUP.md stage 3); JP202 (50R on TRIG IN), JP301 (HDR 5V: the board powered from the PYNQ's header) and "
+     "JP302 / JP303 (the I2C pull-ups, for the Icepi Zero) only when wanted.  Order a few spare"),
 ]
 # the same parts at Digi-Key, so that they go into the consigned parts' cart (Digi-Key's pages, 2026-10-12): by
 # designator or LCSC code -> (MPN, Digi-Key number, unit price, why it is the same part)

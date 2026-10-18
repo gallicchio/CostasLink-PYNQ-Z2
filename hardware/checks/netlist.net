@@ -2,7 +2,7 @@
 	(version "E")
 	(design
 		(source "../CostasLink-PYNQ-Z2.kicad_sch")
-		(date "2026-10-17T16:06:13")
+		(date "2026-10-17T18:12:59")
 		(tool "Eeschema 10.0.6")
 		(textvar
 			(name "DATE") "2026-10-09")
@@ -15891,7 +15891,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "9624d400-7362-1e43-2de6-5ba96e206ac2")
+			(tstamps "d66eeb74-e3a4-51e9-cc6e-88dad1981b11")
 			(units
 				(unit
 					(name "A")
@@ -15957,7 +15957,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "753c4c12-5341-96ea-e839-1cb36b481750")
+			(tstamps "0402ee62-80e7-706a-abed-0cbe27411223")
 			(units
 				(unit
 					(name "A")
@@ -16023,7 +16023,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "e122c231-5638-c88a-9b1e-25492aa1d071")
+			(tstamps "c3507227-a97d-417a-2272-bd21a2c2375d")
 			(units
 				(unit
 					(name "A")
@@ -16089,7 +16089,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "4a5a4280-9a01-0960-a8ba-fc0222431f9b")
+			(tstamps "1ff74bba-7b32-ac61-3f1a-8e0869b56dc1")
 			(units
 				(unit
 					(name "A")
@@ -16155,7 +16155,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "65043bd8-a5b3-6960-4abf-ea982cfebc86")
+			(tstamps "213d3a02-6daf-8a67-c9d3-c7ea0ca2b24b")
 			(units
 				(unit
 					(name "A")
@@ -16221,7 +16221,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "7245039a-04be-9bc8-ea11-b88df57985ba")
+			(tstamps "af804b67-20b2-a115-4056-8fd32a9a940e")
 			(units
 				(unit
 					(name "A")
@@ -16287,7 +16287,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "27eea15e-f034-3168-c9db-05d769472f02")
+			(tstamps "c3fffac1-a06f-1d63-3678-9fe162783633")
 			(units
 				(unit
 					(name "A")
@@ -16353,7 +16353,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "1896e598-3697-255a-c898-fa20a64ec8e6")
+			(tstamps "775335b7-94e6-3638-a95a-9787ffc29937")
 			(units
 				(unit
 					(name "A")
@@ -16419,7 +16419,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "c651da81-0ad8-0ec5-9e6b-872c36643c76")
+			(tstamps "5c9ab4a4-0bbc-144b-37f5-7160ff83a0ca")
 			(units
 				(unit
 					(name "A")
@@ -16485,7 +16485,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "bf39b5aa-6cd1-238f-195d-49268a2d290b")
+			(tstamps "df9a509f-24ee-a23f-e041-a08d1ee42b2f")
 			(units
 				(unit
 					(name "A")
@@ -16551,7 +16551,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "2a845db7-796a-5240-d8a2-c94dd9bfadde")
+			(tstamps "b092ce8d-8ab0-60ae-0eae-073a3e088e07")
 			(units
 				(unit
 					(name "A")
@@ -16617,7 +16617,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "df109e24-7623-7a3a-7628-5c25654d6c6c")
+			(tstamps "c02e26f7-3f7d-62d2-b04e-6e7d8b375b14")
 			(units
 				(unit
 					(name "A")
@@ -16683,7 +16683,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "1c5ae198-b277-3128-792a-1a445e9a907f")
+			(tstamps "752596ed-86fe-6123-b98e-b25bf2611d2b")
 			(units
 				(unit
 					(name "A")
@@ -16749,7 +16749,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "690dd4ed-fe12-de74-9288-b944c5648f01")
+			(tstamps "70f368e3-0248-aead-2cf1-7dbf95812753")
 			(units
 				(unit
 					(name "A")
@@ -16815,7 +16815,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "a50b079a-660a-581a-d8fa-e0dc36aa38f4")
+			(tstamps "eaaaef93-9215-3360-4b68-fafabc683e2b")
 			(units
 				(unit
 					(name "A")
@@ -16881,7 +16881,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "e85f8bca-e2d0-f336-f576-abd2ca0bc6dc")
+			(tstamps "b7799391-81cb-575a-ba37-50a944044f51")
 			(units
 				(unit
 					(name "A")
@@ -16947,7 +16947,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "3e38bddc-8e4c-1d94-f97c-d2f71f462cbb")
+			(tstamps "1c80b82d-ccb3-17cd-fcd4-d0fb923a8a85")
 			(units
 				(unit
 					(name "A")
@@ -17013,7 +17013,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "63324226-49df-2d46-8408-cc0bc5cbe8a1")
+			(tstamps "b17f57d9-c16d-c7fc-f77d-9812b6eb61ac")
 			(units
 				(unit
 					(name "A")
@@ -17079,7 +17079,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "2dcfd9f8-c0f7-4e16-0d4a-1c7f3f29efec")
+			(tstamps "26f676a2-d75b-0bdb-b71d-70ab0516d127")
 			(units
 				(unit
 					(name "A")
@@ -17145,7 +17145,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "afba3213-e6e8-c899-6d4e-e2f6e76b9ba4")
+			(tstamps "849ba04d-cc5d-0c89-2147-b8857f2f41f8")
 			(units
 				(unit
 					(name "A")
@@ -17211,7 +17211,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "e703e09b-7c0f-b6ae-4d69-de428672e541")
+			(tstamps "622dd51e-8d32-c9a9-dbd4-1f9841a0ba94")
 			(units
 				(unit
 					(name "A")
@@ -17277,7 +17277,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "269eaa69-8275-7c79-eab3-cdc710838b07")
+			(tstamps "ddcf521b-8a3a-93d2-f201-0f90d89f5d0d")
 			(units
 				(unit
 					(name "A")
@@ -17343,7 +17343,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "bde35dfc-09dc-7a65-f8ec-1ad397ec9918")
+			(tstamps "96045e74-b3d6-8b11-8529-572e785a7cae")
 			(units
 				(unit
 					(name "A")
@@ -17409,7 +17409,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "b18e8246-91d5-b865-277d-eb84ea0c1c9a")
+			(tstamps "ec285f49-c964-3cc5-d005-4e2eadb00515")
 			(units
 				(unit
 					(name "A")
@@ -17475,7 +17475,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "926ed804-1d3f-d4d5-512c-f6861a10f1e3")
+			(tstamps "5df68873-73de-b07f-6511-71b68d9d2c5c")
 			(units
 				(unit
 					(name "A")
@@ -17541,7 +17541,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "2fe139af-9c0f-1f6a-a06a-48dd32e03a19")
+			(tstamps "ede0ce93-5f71-253e-a37d-445994984520")
 			(units
 				(unit
 					(name "A")
@@ -17607,7 +17607,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "2617a651-33cf-82eb-d876-0dc36eed0ac1")
+			(tstamps "b7301eb1-82f9-a21f-aa41-fc0bac7b2c7e")
 			(units
 				(unit
 					(name "A")
@@ -17673,7 +17673,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "ef6ac73a-5589-3b28-0b92-56174a08b3e6")
+			(tstamps "6caa4409-cbc9-114d-1592-b5ef9190c307")
 			(units
 				(unit
 					(name "A")
@@ -17739,7 +17739,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "dc401f6e-709a-2c30-7de4-3bb898a24c30")
+			(tstamps "571e5507-33e2-9b29-b0cb-2ec4a14e513e")
 			(units
 				(unit
 					(name "A")
@@ -17805,7 +17805,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "a066be6d-8e8f-4a66-8d1e-0b4e781689fa")
+			(tstamps "b6117cf0-620d-0741-241b-74836655726a")
 			(units
 				(unit
 					(name "A")
@@ -17871,7 +17871,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "6e256ff2-901f-d187-1622-b37448b5b46c")
+			(tstamps "0873a669-60b0-f8d5-4b52-690ca2d35a3a")
 			(units
 				(unit
 					(name "A")
@@ -17937,7 +17937,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "080ad2a0-515b-95dc-288d-334d3ac8d8ec")
+			(tstamps "b37b9bb6-56b0-986f-ffe5-a12451135c47")
 			(units
 				(unit
 					(name "A")
@@ -18003,7 +18003,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "8d82ace5-f658-16ce-9700-89f8842c75df")
+			(tstamps "baaa1180-1926-369e-f22a-4d37c450ede0")
 			(units
 				(unit
 					(name "A")
@@ -18069,7 +18069,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "a21d410c-2f6e-b8e3-07c8-b27dc548c951")
+			(tstamps "9e4dba19-9eca-1e5d-113e-598a90e821f6")
 			(units
 				(unit
 					(name "A")
@@ -18118,7 +18118,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "aab74a67-9e1e-e8a3-108a-87f6878be895")
+			(tstamps "ed4fe7eb-db3f-2557-e7a1-e030e932e919")
 			(units
 				(unit
 					(name "A")
@@ -18190,7 +18190,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "2720d022-fa78-a0da-593d-85e69bf6c650")
+			(tstamps "a6ee0387-aafc-e289-52fb-9792fc681eba")
 			(units
 				(unit
 					(name "A")
@@ -18256,7 +18256,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "8ba1ede3-7be5-a0bb-ca45-4172a26a7738")
+			(tstamps "f25cb7cb-62c8-5e85-0132-c74bb85200de")
 			(units
 				(unit
 					(name "A")
@@ -18322,7 +18322,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "f8c09867-5804-3a04-8153-d3503712b816")
+			(tstamps "e4229ebe-9df0-16c7-721a-0a601207b375")
 			(units
 				(unit
 					(name "A")
@@ -18388,7 +18388,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "b68818e4-bcc4-0021-a429-d746abe77358")
+			(tstamps "1764dce4-f69f-cf7a-3288-5680afc13969")
 			(units
 				(unit
 					(name "A")
@@ -18454,7 +18454,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "3cb7d6c8-2bf6-ce44-e174-03afd08436c8")
+			(tstamps "d011a89d-eb4f-e968-a67e-229d9d5dfeaf")
 			(units
 				(unit
 					(name "A")
@@ -18520,7 +18520,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "84c31373-317c-e653-2519-2010035ff3a3")
+			(tstamps "ad8bc865-a20b-7803-5d05-2705dc3befd8")
 			(units
 				(unit
 					(name "A")
@@ -18586,7 +18586,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "4ed17656-c8ad-5c67-61d7-6858b5f56305")
+			(tstamps "b961ff8a-05ac-95a7-a7f3-d0c17a44c5d4")
 			(units
 				(unit
 					(name "A")
@@ -18652,7 +18652,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "2adb3ec2-65df-6c66-a3ad-71e6aba77c18")
+			(tstamps "f51e74d6-6bb6-23b9-9ba1-d7a453a54082")
 			(units
 				(unit
 					(name "A")
@@ -18718,7 +18718,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "5231e7a5-1378-35a3-9faa-f9ebbb88eb4d")
+			(tstamps "28459e36-99da-bf0e-e2e0-cb860dc5c48b")
 			(units
 				(unit
 					(name "A")
@@ -18784,7 +18784,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "83ffeaaa-1511-b260-59d9-ed322d078725")
+			(tstamps "5da7cade-04ac-c45a-f313-d05a4a35828c")
 			(units
 				(unit
 					(name "A")
@@ -18853,7 +18853,73 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "3be8571d-f4e6-1663-a2eb-f1997bb3a65e")
+			(tstamps "b98e7006-2bbb-27da-a18f-ea2172c13c7b")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "JP203")
+			(value "TRIG>Q")
+			(footprint "CostasLink:PinHeader_1x02_P2.54mm_Vertical")
+			(fields
+				(field
+					(name "LCSC") "C492401")
+				(field
+					(name "MPN") "PZ254V-11-02P")
+				(field
+					(name "Footprint") "CostasLink:PinHeader_1x02_P2.54mm_Vertical")
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "CostasLink")
+				(part "Conn_01x02")
+				(description "Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)")
+			)
+			(property
+				(name "LCSC")
+				(value "C492401")
+			)
+			(property
+				(name "MPN")
+				(value "PZ254V-11-02P")
+			)
+			(property
+				(name "Sheetname")
+				(value "Transmitter and triggers")
+			)
+			(property
+				(name "Sheetfile")
+				(value "tx.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "connector")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "Connector*:*_1x??_*")
+			)
+			(sheetpath
+				(names "/Transmitter and triggers/")
+				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
+			)
+			(tstamps "27d21338-1b6a-4726-55c8-72d293efca1f")
 			(units
 				(unit
 					(name "A")
@@ -18919,7 +18985,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "f25a1f73-75be-a874-4db1-a02a656a38ea")
+			(tstamps "e746a7db-0568-0a4b-895a-04034ea8df4d")
 			(units
 				(unit
 					(name "A")
@@ -18985,7 +19051,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "56d8b15b-2d9d-ea06-42b3-ea8069a63abb")
+			(tstamps "51365a9b-9ffa-e92b-bf01-2ec3201e8ae0")
 			(units
 				(unit
 					(name "A")
@@ -19051,7 +19117,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "e21a6637-44bf-3afd-c374-3b1e006b014c")
+			(tstamps "d5290f88-c037-9c59-8b42-d93a3d51a963")
 			(units
 				(unit
 					(name "A")
@@ -19117,7 +19183,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "b82f2f52-4766-8004-3d0c-ba46ac836b02")
+			(tstamps "f9391506-4786-a11c-9428-b2844e8565b4")
 			(units
 				(unit
 					(name "A")
@@ -19183,7 +19249,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "9e78dcbb-5ff7-5858-adb8-db236a556a7a")
+			(tstamps "35ee8eb0-2f84-dea8-6f58-66fd8b78bae0")
 			(units
 				(unit
 					(name "A")
@@ -19249,7 +19315,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "2a5ced80-5adf-38fe-e4af-a71a6a6508dd")
+			(tstamps "f8e5df42-0d28-ff13-3edc-c8de543ae0f9")
 			(units
 				(unit
 					(name "A")
@@ -19645,7 +19711,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "da339dff-8f04-8007-d545-71ed60c0ba4b")
+			(tstamps "341af933-5a56-ba96-5430-434dadb7b37c")
 			(units
 				(unit
 					(name "A")
@@ -19711,7 +19777,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "defef11c-3e71-6fa1-a055-10b0bb63f9cb")
+			(tstamps "0d8ee396-157d-c92d-9bdc-dec316645d1b")
 			(units
 				(unit
 					(name "A")
@@ -19777,7 +19843,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "584dadd8-e474-f214-5ef1-023f08875e3d")
+			(tstamps "43afb4f2-14c3-55e2-1fd0-411e56a171d3")
 			(units
 				(unit
 					(name "A")
@@ -19843,7 +19909,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "f7ead996-7b03-57f8-893b-8ddde131b242")
+			(tstamps "c165b399-486b-c1f4-696d-f39fbda5883a")
 			(units
 				(unit
 					(name "A")
@@ -19912,7 +19978,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "5d88b769-bf43-4432-1b5d-0c661dfa88c4")
+			(tstamps "8fba029b-c23f-23c1-7e55-9bcc533385db")
 			(units
 				(unit
 					(name "A")
@@ -19981,7 +20047,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "47678e72-058f-9661-443b-63eb6489cab5")
+			(tstamps "cb0afcb6-7997-7323-bfd9-d3268d18b017")
 			(units
 				(unit
 					(name "A")
@@ -20047,7 +20113,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "891353b1-59ef-4316-b3c6-2c140a70bff1")
+			(tstamps "a25656ae-86b6-0772-0c1a-8d36adf57a0f")
 			(units
 				(unit
 					(name "A")
@@ -20113,7 +20179,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "a56a7cf4-7adb-8750-922b-68dea6e9d98d")
+			(tstamps "25b7a71c-0d83-4b99-dc15-cffaf84ff251")
 			(units
 				(unit
 					(name "A")
@@ -20182,7 +20248,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "36f1f1c3-0a07-e48e-6974-6e67bb14ad66")
+			(tstamps "b508698b-a760-e2b8-0bc5-31a1915ef3c6")
 			(units
 				(unit
 					(name "A")
@@ -20248,7 +20314,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "d2dfaadd-e205-bb0b-9630-24974cf9b24f")
+			(tstamps "1cc54289-4a18-0d53-5891-cf2eeed9d31d")
 			(units
 				(unit
 					(name "A")
@@ -20314,7 +20380,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "74b59b7a-8f29-b731-1700-c3c7303ddeb7")
+			(tstamps "0260988f-2004-7c33-9c36-ef80df98afb1")
 			(units
 				(unit
 					(name "A")
@@ -20380,7 +20446,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "dbfa426b-2b7e-2e1c-e090-813537c907ac")
+			(tstamps "34628e59-94cb-254a-cedc-5825a7b864c3")
 			(units
 				(unit
 					(name "A")
@@ -20446,7 +20512,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "eb3ec263-a06d-ef7d-9c9f-56522e0a0d30")
+			(tstamps "090a43ef-4bee-cee0-e773-c2185b8b90c8")
 			(units
 				(unit
 					(name "A")
@@ -20512,7 +20578,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "90383d7d-5c63-df47-a18c-e153ea0a94bd")
+			(tstamps "ecbe2b37-fa99-903a-9a43-e81dc2eb6aed")
 			(units
 				(unit
 					(name "A")
@@ -20578,7 +20644,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "fa4b58a9-a879-62a5-b1c4-e20346358fff")
+			(tstamps "070ee0f1-4940-b838-50f8-ab20542112c2")
 			(units
 				(unit
 					(name "A")
@@ -20644,7 +20710,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "7e6c1c1c-6b4f-1d92-608b-b0022f8e6734")
+			(tstamps "7cae951a-e039-c82d-320f-bcbbca4538a9")
 			(units
 				(unit
 					(name "A")
@@ -20710,7 +20776,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "da1280ed-4830-801a-e1c9-8f707c6c56f4")
+			(tstamps "26f6ec8f-cb86-dc09-3c13-006f556440e0")
 			(units
 				(unit
 					(name "A")
@@ -20776,7 +20842,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "e7b00eca-4cf9-de7f-af66-84cc854c0035")
+			(tstamps "0aa48144-b07b-7fac-11c5-7a32ffee585b")
 			(units
 				(unit
 					(name "A")
@@ -20842,7 +20908,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "cfda7f07-a0bc-a26c-e08c-90bccdd9d368")
+			(tstamps "755a8a5e-f086-083f-9c34-5b857de88bd4")
 			(units
 				(unit
 					(name "A")
@@ -20908,7 +20974,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "9dfad624-ca0d-2164-efa4-45c741743a26")
+			(tstamps "e1f754ce-6cfc-9938-a627-3f9364dada43")
 			(units
 				(unit
 					(name "A")
@@ -20974,7 +21040,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "5ca80aa1-beb8-3b13-a0e2-bdafeececd43")
+			(tstamps "b55fef3f-db13-d753-5f9d-20042ba34863")
 			(units
 				(unit
 					(name "A")
@@ -21040,7 +21106,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "1a56589a-e828-753e-9414-ae1560f5b746")
+			(tstamps "6e37dfd9-9c06-822d-806a-fdd8813a43c9")
 			(units
 				(unit
 					(name "A")
@@ -21109,7 +21175,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "582b2678-726e-7733-37a4-abd3ec2e34ca")
+			(tstamps "311b3f28-f034-6318-3585-9422d308500f")
 			(units
 				(unit
 					(name "A")
@@ -21175,7 +21241,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "ffd72a09-88ec-ca31-8a05-098d87dfc4a5")
+			(tstamps "dcaf735f-9a79-5b21-f574-1000aac37d2f")
 			(units
 				(unit
 					(name "A")
@@ -21426,7 +21492,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "8393a428-4119-6e39-6f18-69f049801ea3")
+			(tstamps "337c66e0-d775-f983-dca3-8f8159c09f95")
 			(units
 				(unit
 					(name "A")
@@ -21487,7 +21553,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "39409c29-162f-9fb8-e158-bf94be910c2d")
+			(tstamps "6e866d29-c4f7-2929-2ddf-9784dd836e8b")
 			(units
 				(unit
 					(name "A")
@@ -21646,8 +21712,8 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "dfbdf55b-fd2e-402f-083a-c9b860280e61" "fade75c4-b2e7-68c4-fa51-fdca8bc319fa"
-				"aed82d51-4ee7-32e0-1b39-391beeafdf9d"
+			(tstamps "a69049e2-e2af-92a1-fa78-c1a0cdc7fe74" "92b5a6bf-5654-fda1-785e-c58aae18eacb"
+				"3be347b9-be4d-15fe-fe0d-0ff5ea2adb78"
 			)
 			(units
 				(unit
@@ -21736,7 +21802,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "2b37bc1a-d60a-2a0e-005e-9254fe67d440")
+			(tstamps "caf7d8ed-6a0d-def7-0dfe-9ff805527545")
 			(units
 				(unit
 					(name "A")
@@ -21811,7 +21877,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "82e330a8-57ca-b2fc-a6c4-0e258aa82616")
+			(tstamps "ba423521-6abb-faa7-9b81-25ae82cd2dfa")
 			(units
 				(unit
 					(name "A")
@@ -21878,7 +21944,7 @@
 				(names "/Transmitter and triggers/")
 				(tstamps "/fa307601-ad48-86c4-a774-b26037a4fdb4/")
 			)
-			(tstamps "4dfddbbb-105d-aeee-0ceb-99dc9fea19f4")
+			(tstamps "0acfa978-df30-0178-ba99-373fca9460ca")
 			(units
 				(unit
 					(name "A")
@@ -22828,13 +22894,13 @@
 		)
 		(comp
 			(ref "R490")
-			(value "453R")
+			(value "4.7k")
 			(footprint "CostasLink:R_0402_1005Metric")
 			(fields
 				(field
-					(name "LCSC") "C5126227")
+					(name "LCSC") "C25900")
 				(field
-					(name "MPN") "FRC0402F4530TS")
+					(name "MPN") "0402WGF4701TCE")
 				(field
 					(name "Footprint") "CostasLink:R_0402_1005Metric")
 				(field
@@ -22851,11 +22917,11 @@
 			)
 			(property
 				(name "LCSC")
-				(value "C5126227")
+				(value "C25900")
 			)
 			(property
 				(name "MPN")
-				(value "FRC0402F4530TS")
+				(value "0402WGF4701TCE")
 			)
 			(property
 				(name "Sheetname")
@@ -35858,12 +35924,13 @@
 				(pintype "bidirectional")
 			)
 			(node
-				(ref "R225")
+				(ref "JP203")
 				(pin "1")
+				(pinfunction "Pin_1_1")
 				(pintype "passive")
 			)
 			(node
-				(ref "R291")
+				(ref "R225")
 				(pin "1")
 				(pintype "passive")
 			)
@@ -39018,6 +39085,22 @@
 		)
 		(net
 			(code "140")
+			(name "Net-(JP203-Pin_2)")
+			(class "Default")
+			(node
+				(ref "JP203")
+				(pin "2")
+				(pinfunction "Pin_2_2")
+				(pintype "passive")
+			)
+			(node
+				(ref "R291")
+				(pin "1")
+				(pintype "passive")
+			)
+		)
+		(net
+			(code "141")
 			(name "Net-(JP301-Pin_2)")
 			(class "Default")
 			(node
@@ -39033,7 +39116,7 @@
 			)
 		)
 		(net
-			(code "141")
+			(code "142")
 			(name "Net-(JP302-Pin_2)")
 			(class "Default")
 			(node
@@ -39049,7 +39132,7 @@
 			)
 		)
 		(net
-			(code "142")
+			(code "143")
 			(name "Net-(JP303-Pin_2)")
 			(class "Default")
 			(node
@@ -39065,7 +39148,7 @@
 			)
 		)
 		(net
-			(code "143")
+			(code "144")
 			(name "Net-(Q301-D)")
 			(class "Default")
 			(node
@@ -39081,7 +39164,7 @@
 			)
 		)
 		(net
-			(code "144")
+			(code "145")
 			(name "Net-(Q301-G)")
 			(class "Default")
 			(node
@@ -39103,7 +39186,7 @@
 			)
 		)
 		(net
-			(code "145")
+			(code "146")
 			(name "Net-(Q302-D)")
 			(class "Default")
 			(node
@@ -39119,7 +39202,7 @@
 			)
 		)
 		(net
-			(code "146")
+			(code "147")
 			(name "Net-(Q302-G)")
 			(class "Default")
 			(node
@@ -39140,7 +39223,7 @@
 			)
 		)
 		(net
-			(code "147")
+			(code "148")
 			(name "Net-(Q303-G)")
 			(class "Default")
 			(node
@@ -39161,7 +39244,7 @@
 			)
 		)
 		(net
-			(code "148")
+			(code "149")
 			(name "Net-(R134-Pad1)")
 			(class "Default")
 			(node
@@ -39176,7 +39259,7 @@
 			)
 		)
 		(net
-			(code "149")
+			(code "150")
 			(name "Net-(R221-Pad1)")
 			(class "Default")
 			(node
@@ -39191,7 +39274,7 @@
 			)
 		)
 		(net
-			(code "150")
+			(code "151")
 			(name "Net-(R222-Pad1)")
 			(class "Default")
 			(node
@@ -39206,7 +39289,7 @@
 			)
 		)
 		(net
-			(code "151")
+			(code "152")
 			(name "Net-(R223-Pad2)")
 			(class "Default")
 			(node
@@ -39226,7 +39309,7 @@
 			)
 		)
 		(net
-			(code "152")
+			(code "153")
 			(name "Net-(T101-BAL1)")
 			(class "RF")
 			(node
@@ -39242,7 +39325,7 @@
 			)
 		)
 		(net
-			(code "153")
+			(code "154")
 			(name "Net-(T101-BAL2)")
 			(class "RF")
 			(node
@@ -39258,7 +39341,7 @@
 			)
 		)
 		(net
-			(code "154")
+			(code "155")
 			(name "Net-(U101-RF_IN)")
 			(class "RF")
 			(node
@@ -39279,7 +39362,7 @@
 			)
 		)
 		(net
-			(code "155")
+			(code "156")
 			(name "Net-(U101-RF_OUT)")
 			(class "RF")
 			(node
@@ -39295,7 +39378,7 @@
 			)
 		)
 		(net
-			(code "156")
+			(code "157")
 			(name "Net-(U101-VCC)")
 			(class "Default")
 			(node
@@ -39312,7 +39395,7 @@
 			)
 		)
 		(net
-			(code "157")
+			(code "158")
 			(name "Net-(U101-V_ENABLE)")
 			(class "Default")
 			(node
@@ -39328,7 +39411,7 @@
 			)
 		)
 		(net
-			(code "158")
+			(code "159")
 			(name "Net-(U102-P{slash}S)")
 			(class "Default")
 			(node
@@ -39344,7 +39427,7 @@
 			)
 		)
 		(net
-			(code "159")
+			(code "160")
 			(name "Net-(U102-RF1)")
 			(class "RF")
 			(node
@@ -39360,7 +39443,7 @@
 			)
 		)
 		(net
-			(code "160")
+			(code "161")
 			(name "Net-(U102-RF2)")
 			(class "RF")
 			(node
@@ -39376,7 +39459,7 @@
 			)
 		)
 		(net
-			(code "161")
+			(code "162")
 			(name "Net-(U103-RFIN)")
 			(class "RF")
 			(node
@@ -39392,7 +39475,7 @@
 			)
 		)
 		(net
-			(code "162")
+			(code "163")
 			(name "Net-(U103-RFOUT)")
 			(class "RF")
 			(node
@@ -39414,7 +39497,7 @@
 			)
 		)
 		(net
-			(code "163")
+			(code "164")
 			(name "Net-(U104-ADJ)")
 			(class "Default")
 			(node
@@ -39430,7 +39513,7 @@
 			)
 		)
 		(net
-			(code "164")
+			(code "165")
 			(name "Net-(U104-IHI)")
 			(class "Default")
 			(node
@@ -39446,7 +39529,7 @@
 			)
 		)
 		(net
-			(code "165")
+			(code "166")
 			(name "Net-(U104-ILO)")
 			(class "Default")
 			(node
@@ -39462,7 +39545,7 @@
 			)
 		)
 		(net
-			(code "166")
+			(code "167")
 			(name "Net-(U104-LOIN)")
 			(class "LO")
 			(node
@@ -39478,7 +39561,7 @@
 			)
 		)
 		(net
-			(code "167")
+			(code "168")
 			(name "Net-(U104-LOIP)")
 			(class "LO")
 			(node
@@ -39494,7 +39577,7 @@
 			)
 		)
 		(net
-			(code "168")
+			(code "169")
 			(name "Net-(U104-QHI)")
 			(class "Default")
 			(node
@@ -39510,7 +39593,7 @@
 			)
 		)
 		(net
-			(code "169")
+			(code "170")
 			(name "Net-(U104-QLO)")
 			(class "Default")
 			(node
@@ -39526,7 +39609,7 @@
 			)
 		)
 		(net
-			(code "170")
+			(code "171")
 			(name "Net-(U104-RFIN)")
 			(class "RF")
 			(node
@@ -39542,7 +39625,7 @@
 			)
 		)
 		(net
-			(code "171")
+			(code "172")
 			(name "Net-(U104-RFIP)")
 			(class "RF")
 			(node
@@ -39558,7 +39641,7 @@
 			)
 		)
 		(net
-			(code "172")
+			(code "173")
 			(name "Net-(U105-FB+)")
 			(class "Default")
 			(node
@@ -39574,7 +39657,7 @@
 			)
 		)
 		(net
-			(code "173")
+			(code "174")
 			(name "Net-(U105-FB-)")
 			(class "Default")
 			(node
@@ -39590,7 +39673,7 @@
 			)
 		)
 		(net
-			(code "174")
+			(code "175")
 			(name "Net-(U105-IN+)")
 			(class "Default")
 			(node
@@ -39616,7 +39699,7 @@
 			)
 		)
 		(net
-			(code "175")
+			(code "176")
 			(name "Net-(U105-PD)")
 			(class "Default")
 			(node
@@ -39632,7 +39715,7 @@
 			)
 		)
 		(net
-			(code "176")
+			(code "177")
 			(name "Net-(U105-Vocm)")
 			(class "Default")
 			(node
@@ -39648,7 +39731,7 @@
 			)
 		)
 		(net
-			(code "177")
+			(code "178")
 			(name "Net-(U106-FB+)")
 			(class "Default")
 			(node
@@ -39664,7 +39747,7 @@
 			)
 		)
 		(net
-			(code "178")
+			(code "179")
 			(name "Net-(U106-FB-)")
 			(class "Default")
 			(node
@@ -39680,7 +39763,7 @@
 			)
 		)
 		(net
-			(code "179")
+			(code "180")
 			(name "Net-(U106-IN+)")
 			(class "Default")
 			(node
@@ -39706,7 +39789,7 @@
 			)
 		)
 		(net
-			(code "180")
+			(code "181")
 			(name "Net-(U106-IN-)")
 			(class "Default")
 			(node
@@ -39737,7 +39820,7 @@
 			)
 		)
 		(net
-			(code "181")
+			(code "182")
 			(name "Net-(U106-PD)")
 			(class "Default")
 			(node
@@ -39753,7 +39836,7 @@
 			)
 		)
 		(net
-			(code "182")
+			(code "183")
 			(name "Net-(U106-Vocm)")
 			(class "Default")
 			(node
@@ -39769,7 +39852,7 @@
 			)
 		)
 		(net
-			(code "183")
+			(code "184")
 			(name "Net-(U107-OUT)")
 			(class "Default")
 			(node
@@ -39790,7 +39873,7 @@
 			)
 		)
 		(net
-			(code "184")
+			(code "185")
 			(name "Net-(U111-COM)")
 			(class "Default")
 			(node
@@ -39806,7 +39889,7 @@
 			)
 		)
 		(net
-			(code "185")
+			(code "186")
 			(name "Net-(U112A--)")
 			(class "Default")
 			(node
@@ -39827,7 +39910,7 @@
 			)
 		)
 		(net
-			(code "186")
+			(code "187")
 			(name "Net-(U112B--)")
 			(class "Default")
 			(node
@@ -39853,7 +39936,7 @@
 			)
 		)
 		(net
-			(code "187")
+			(code "188")
 			(name "Net-(U114-AIN0)")
 			(class "Default")
 			(node
@@ -39874,7 +39957,7 @@
 			)
 		)
 		(net
-			(code "188")
+			(code "189")
 			(name "Net-(U114-AIN1)")
 			(class "Default")
 			(node
@@ -39895,7 +39978,7 @@
 			)
 		)
 		(net
-			(code "189")
+			(code "190")
 			(name "Net-(U114-AIN2)")
 			(class "Default")
 			(node
@@ -39916,7 +39999,7 @@
 			)
 		)
 		(net
-			(code "190")
+			(code "191")
 			(name "Net-(U114-AIN3)")
 			(class "Default")
 			(node
@@ -39937,7 +40020,7 @@
 			)
 		)
 		(net
-			(code "191")
+			(code "192")
 			(name "Net-(U115-BIAS_FILT)")
 			(class "Default")
 			(node
@@ -39953,7 +40036,7 @@
 			)
 		)
 		(net
-			(code "192")
+			(code "193")
 			(name "Net-(U115-CE)")
 			(class "Default")
 			(node
@@ -39969,7 +40052,7 @@
 			)
 		)
 		(net
-			(code "193")
+			(code "194")
 			(name "Net-(U115-CP_OUT)")
 			(class "Default")
 			(node
@@ -39995,7 +40078,7 @@
 			)
 		)
 		(net
-			(code "194")
+			(code "195")
 			(name "Net-(U115-LD)")
 			(class "Default")
 			(node
@@ -40011,7 +40094,7 @@
 			)
 		)
 		(net
-			(code "195")
+			(code "196")
 			(name "Net-(U115-NOISE_FILT)")
 			(class "Default")
 			(node
@@ -40027,7 +40110,7 @@
 			)
 		)
 		(net
-			(code "196")
+			(code "197")
 			(name "Net-(U115-REF_IN)")
 			(class "Default")
 			(node
@@ -40043,7 +40126,7 @@
 			)
 		)
 		(net
-			(code "197")
+			(code "198")
 			(name "Net-(U115-REG)")
 			(class "Default")
 			(node
@@ -40059,7 +40142,7 @@
 			)
 		)
 		(net
-			(code "198")
+			(code "199")
 			(name "Net-(U115-RFOUTA_N)")
 			(class "LO")
 			(node
@@ -40081,7 +40164,7 @@
 			)
 		)
 		(net
-			(code "199")
+			(code "200")
 			(name "Net-(U115-RFOUTA_P)")
 			(class "LO")
 			(node
@@ -40103,7 +40186,7 @@
 			)
 		)
 		(net
-			(code "200")
+			(code "201")
 			(name "Net-(U115-RFOUTB_N)")
 			(class "Default")
 			(node
@@ -40125,7 +40208,7 @@
 			)
 		)
 		(net
-			(code "201")
+			(code "202")
 			(name "Net-(U115-RFOUTB_P)")
 			(class "Default")
 			(node
@@ -40147,7 +40230,7 @@
 			)
 		)
 		(net
-			(code "202")
+			(code "203")
 			(name "Net-(U115-RFOUT_EN)")
 			(class "Default")
 			(node
@@ -40163,7 +40246,7 @@
 			)
 		)
 		(net
-			(code "203")
+			(code "204")
 			(name "Net-(U115-RSET)")
 			(class "Default")
 			(node
@@ -40179,7 +40262,7 @@
 			)
 		)
 		(net
-			(code "204")
+			(code "205")
 			(name "Net-(U115-TUNE)")
 			(class "Default")
 			(node
@@ -40200,7 +40283,7 @@
 			)
 		)
 		(net
-			(code "205")
+			(code "206")
 			(name "Net-(U117-RFIN)")
 			(class "RF")
 			(node
@@ -40216,7 +40299,7 @@
 			)
 		)
 		(net
-			(code "206")
+			(code "207")
 			(name "Net-(U117-RFOUT)")
 			(class "RF")
 			(node
@@ -40238,7 +40321,7 @@
 			)
 		)
 		(net
-			(code "207")
+			(code "208")
 			(name "Net-(U201-LOIN)")
 			(class "LO")
 			(node
@@ -40254,7 +40337,7 @@
 			)
 		)
 		(net
-			(code "208")
+			(code "209")
 			(name "Net-(U201-LOIP)")
 			(class "LO")
 			(node
@@ -40270,7 +40353,7 @@
 			)
 		)
 		(net
-			(code "209")
+			(code "210")
 			(name "Net-(U201-RFOUT)")
 			(class "RF")
 			(node
@@ -40286,7 +40369,7 @@
 			)
 		)
 		(net
-			(code "210")
+			(code "211")
 			(name "Net-(U202-RFIN)")
 			(class "RF")
 			(node
@@ -40302,7 +40385,7 @@
 			)
 		)
 		(net
-			(code "211")
+			(code "212")
 			(name "Net-(U202-RFOUT)")
 			(class "RF")
 			(node
@@ -40324,7 +40407,7 @@
 			)
 		)
 		(net
-			(code "212")
+			(code "213")
 			(name "Net-(U203-BIAS_FILT)")
 			(class "Default")
 			(node
@@ -40340,7 +40423,7 @@
 			)
 		)
 		(net
-			(code "213")
+			(code "214")
 			(name "Net-(U203-CE)")
 			(class "Default")
 			(node
@@ -40356,7 +40439,7 @@
 			)
 		)
 		(net
-			(code "214")
+			(code "215")
 			(name "Net-(U203-CP_OUT)")
 			(class "Default")
 			(node
@@ -40382,7 +40465,7 @@
 			)
 		)
 		(net
-			(code "215")
+			(code "216")
 			(name "Net-(U203-LD)")
 			(class "Default")
 			(node
@@ -40398,7 +40481,7 @@
 			)
 		)
 		(net
-			(code "216")
+			(code "217")
 			(name "Net-(U203-NOISE_FILT)")
 			(class "Default")
 			(node
@@ -40414,7 +40497,7 @@
 			)
 		)
 		(net
-			(code "217")
+			(code "218")
 			(name "Net-(U203-REF_IN)")
 			(class "Default")
 			(node
@@ -40430,7 +40513,7 @@
 			)
 		)
 		(net
-			(code "218")
+			(code "219")
 			(name "Net-(U203-REG)")
 			(class "Default")
 			(node
@@ -40446,7 +40529,7 @@
 			)
 		)
 		(net
-			(code "219")
+			(code "220")
 			(name "Net-(U203-RFOUTA_N)")
 			(class "LO")
 			(node
@@ -40468,7 +40551,7 @@
 			)
 		)
 		(net
-			(code "220")
+			(code "221")
 			(name "Net-(U203-RFOUTA_P)")
 			(class "LO")
 			(node
@@ -40490,7 +40573,7 @@
 			)
 		)
 		(net
-			(code "221")
+			(code "222")
 			(name "Net-(U203-RFOUTB_N)")
 			(class "Default")
 			(node
@@ -40512,7 +40595,7 @@
 			)
 		)
 		(net
-			(code "222")
+			(code "223")
 			(name "Net-(U203-RFOUTB_P)")
 			(class "Default")
 			(node
@@ -40534,7 +40617,7 @@
 			)
 		)
 		(net
-			(code "223")
+			(code "224")
 			(name "Net-(U203-RFOUT_EN)")
 			(class "Default")
 			(node
@@ -40550,7 +40633,7 @@
 			)
 		)
 		(net
-			(code "224")
+			(code "225")
 			(name "Net-(U203-RSET)")
 			(class "Default")
 			(node
@@ -40566,7 +40649,7 @@
 			)
 		)
 		(net
-			(code "225")
+			(code "226")
 			(name "Net-(U203-TUNE)")
 			(class "Default")
 			(node
@@ -40587,7 +40670,7 @@
 			)
 		)
 		(net
-			(code "226")
+			(code "227")
 			(name "Net-(U301-EN)")
 			(class "Default")
 			(node
@@ -40609,7 +40692,7 @@
 			)
 		)
 		(net
-			(code "227")
+			(code "228")
 			(name "Net-(U302-EN)")
 			(class "Default")
 			(node
@@ -40631,7 +40714,7 @@
 			)
 		)
 		(net
-			(code "228")
+			(code "229")
 			(name "Net-(U401-A)")
 			(class "Default")
 			(node
@@ -40647,7 +40730,7 @@
 			)
 		)
 		(net
-			(code "229")
+			(code "230")
 			(name "Net-(U401-B)")
 			(class "Default")
 			(node
@@ -40663,7 +40746,7 @@
 			)
 		)
 		(net
-			(code "230")
+			(code "231")
 			(name "Net-(U401-RF1)")
 			(class "RF")
 			(node
@@ -40679,7 +40762,7 @@
 			)
 		)
 		(net
-			(code "231")
+			(code "232")
 			(name "Net-(U401-RF2)")
 			(class "RF")
 			(node
@@ -40695,7 +40778,7 @@
 			)
 		)
 		(net
-			(code "232")
+			(code "233")
 			(name "Net-(U401-RFC)")
 			(class "RF")
 			(node
@@ -40711,7 +40794,7 @@
 			)
 		)
 		(net
-			(code "233")
+			(code "234")
 			(name "Net-(U501-FB+)")
 			(class "Default")
 			(node
@@ -40727,7 +40810,7 @@
 			)
 		)
 		(net
-			(code "234")
+			(code "235")
 			(name "Net-(U501-FB-)")
 			(class "Default")
 			(node
@@ -40743,7 +40826,7 @@
 			)
 		)
 		(net
-			(code "235")
+			(code "236")
 			(name "Net-(U501-IN+)")
 			(class "Default")
 			(node
@@ -40764,7 +40847,7 @@
 			)
 		)
 		(net
-			(code "236")
+			(code "237")
 			(name "Net-(U501-IN-)")
 			(class "Default")
 			(node
@@ -40790,7 +40873,7 @@
 			)
 		)
 		(net
-			(code "237")
+			(code "238")
 			(name "Net-(U501-PD)")
 			(class "Default")
 			(node
@@ -40806,7 +40889,7 @@
 			)
 		)
 		(net
-			(code "238")
+			(code "239")
 			(name "Net-(U501-Vocm)")
 			(class "Default")
 			(node
@@ -40822,7 +40905,7 @@
 			)
 		)
 		(net
-			(code "239")
+			(code "240")
 			(name "Net-(U502-FB+)")
 			(class "Default")
 			(node
@@ -40838,7 +40921,7 @@
 			)
 		)
 		(net
-			(code "240")
+			(code "241")
 			(name "Net-(U502-FB-)")
 			(class "Default")
 			(node
@@ -40854,7 +40937,7 @@
 			)
 		)
 		(net
-			(code "241")
+			(code "242")
 			(name "Net-(U502-IN+)")
 			(class "Default")
 			(node
@@ -40875,7 +40958,7 @@
 			)
 		)
 		(net
-			(code "242")
+			(code "243")
 			(name "Net-(U502-IN-)")
 			(class "Default")
 			(node
@@ -40901,7 +40984,7 @@
 			)
 		)
 		(net
-			(code "243")
+			(code "244")
 			(name "Net-(U502-PD)")
 			(class "Default")
 			(node
@@ -40917,7 +41000,7 @@
 			)
 		)
 		(net
-			(code "244")
+			(code "245")
 			(name "Net-(U502-Vocm)")
 			(class "Default")
 			(node
@@ -40933,7 +41016,7 @@
 			)
 		)
 		(net
-			(code "245")
+			(code "246")
 			(name "Net-(U503-IN+)")
 			(class "Default")
 			(node
@@ -40954,7 +41037,7 @@
 			)
 		)
 		(net
-			(code "246")
+			(code "247")
 			(name "Net-(U503-IN-)")
 			(class "Default")
 			(node
@@ -40975,7 +41058,7 @@
 			)
 		)
 		(net
-			(code "247")
+			(code "248")
 			(name "Net-(U503-OUT)")
 			(class "Default")
 			(node
@@ -40991,7 +41074,7 @@
 			)
 		)
 		(net
-			(code "248")
+			(code "249")
 			(name "Net-(U504-IN+)")
 			(class "Default")
 			(node
@@ -41012,7 +41095,7 @@
 			)
 		)
 		(net
-			(code "249")
+			(code "250")
 			(name "Net-(U504-OUT)")
 			(class "Default")
 			(node
@@ -41028,7 +41111,7 @@
 			)
 		)
 		(net
-			(code "250")
+			(code "251")
 			(name "Net-(U505-IN+)")
 			(class "Default")
 			(node
@@ -41049,7 +41132,7 @@
 			)
 		)
 		(net
-			(code "251")
+			(code "252")
 			(name "Net-(U505-OUT)")
 			(class "Default")
 			(node
@@ -41065,7 +41148,7 @@
 			)
 		)
 		(net
-			(code "252")
+			(code "253")
 			(name "Net-(U507-BFIN)")
 			(class "Default")
 			(node
@@ -41081,7 +41164,7 @@
 			)
 		)
 		(net
-			(code "253")
+			(code "254")
 			(name "Net-(U507-INHI)")
 			(class "Default")
 			(node
@@ -41097,7 +41180,7 @@
 			)
 		)
 		(net
-			(code "254")
+			(code "255")
 			(name "Net-(U507-INLO)")
 			(class "Default")
 			(node
@@ -41113,7 +41196,7 @@
 			)
 		)
 		(net
-			(code "255")
+			(code "256")
 			(name "Net-(U507-OFLT)")
 			(class "Default")
 			(node
@@ -41129,7 +41212,7 @@
 			)
 		)
 		(net
-			(code "256")
+			(code "257")
 			(name "Net-(U508A--)")
 			(class "Default")
 			(node
@@ -41150,7 +41233,7 @@
 			)
 		)
 		(net
-			(code "257")
+			(code "258")
 			(name "Net-(U510-AIN0)")
 			(class "Default")
 			(node
@@ -41171,7 +41254,7 @@
 			)
 		)
 		(net
-			(code "258")
+			(code "259")
 			(name "Net-(U510-AIN1)")
 			(class "Default")
 			(node
@@ -41192,7 +41275,7 @@
 			)
 		)
 		(net
-			(code "259")
+			(code "260")
 			(name "Net-(U510-AIN2)")
 			(class "Default")
 			(node
@@ -41213,7 +41296,7 @@
 			)
 		)
 		(net
-			(code "260")
+			(code "261")
 			(name "Net-(U510-AIN3)")
 			(class "Default")
 			(node
@@ -41234,7 +41317,7 @@
 			)
 		)
 		(net
-			(code "261")
+			(code "262")
 			(name "Net-(U601-LE{slash}HYS)")
 			(class "Default")
 			(node
@@ -41255,7 +41338,7 @@
 			)
 		)
 		(net
-			(code "262")
+			(code "263")
 			(name "Net-(U601-OUT)")
 			(class "Default")
 			(node
@@ -41276,7 +41359,7 @@
 			)
 		)
 		(net
-			(code "263")
+			(code "264")
 			(name "Net-(U602-LE{slash}HYS)")
 			(class "Default")
 			(node
@@ -41297,7 +41380,7 @@
 			)
 		)
 		(net
-			(code "264")
+			(code "265")
 			(name "Net-(U602-OUT)")
 			(class "Default")
 			(node
@@ -41318,7 +41401,7 @@
 			)
 		)
 		(net
-			(code "265")
+			(code "266")
 			(name "Net-(U603-LE{slash}HYS)")
 			(class "Default")
 			(node
@@ -41339,7 +41422,7 @@
 			)
 		)
 		(net
-			(code "266")
+			(code "267")
 			(name "Net-(U603-OUT)")
 			(class "Default")
 			(node
@@ -41360,7 +41443,7 @@
 			)
 		)
 		(net
-			(code "267")
+			(code "268")
 			(name "Net-(U604-LE{slash}HYS)")
 			(class "Default")
 			(node
@@ -41381,7 +41464,7 @@
 			)
 		)
 		(net
-			(code "268")
+			(code "269")
 			(name "Net-(U604-OUT)")
 			(class "Default")
 			(node
@@ -41402,7 +41485,7 @@
 			)
 		)
 		(net
-			(code "269")
+			(code "270")
 			(name "Net-(Y101-OUT)")
 			(class "Default")
 			(node
@@ -41423,7 +41506,7 @@
 			)
 		)
 		(net
-			(code "270")
+			(code "271")
 			(name "Net-(Y201-VC{slash}NC)")
 			(class "Default")
 			(node
@@ -41439,7 +41522,7 @@
 			)
 		)
 		(net
-			(code "271")
+			(code "272")
 			(name "unconnected-(J301-D+-PadA6)")
 			(class "Default")
 			(node
@@ -41450,7 +41533,7 @@
 			)
 		)
 		(net
-			(code "272")
+			(code "273")
 			(name "unconnected-(J301-D+-PadB6)")
 			(class "Default")
 			(node
@@ -41461,7 +41544,7 @@
 			)
 		)
 		(net
-			(code "273")
+			(code "274")
 			(name "unconnected-(J301-D--PadA7)")
 			(class "Default")
 			(node
@@ -41472,7 +41555,7 @@
 			)
 		)
 		(net
-			(code "274")
+			(code "275")
 			(name "unconnected-(J301-D--PadB7)")
 			(class "Default")
 			(node
@@ -41483,7 +41566,7 @@
 			)
 		)
 		(net
-			(code "275")
+			(code "276")
 			(name "unconnected-(J301-SBU1-PadA8)")
 			(class "Default")
 			(node
@@ -41494,7 +41577,7 @@
 			)
 		)
 		(net
-			(code "276")
+			(code "277")
 			(name "unconnected-(J301-SBU2-PadB8)")
 			(class "Default")
 			(node
@@ -41505,7 +41588,7 @@
 			)
 		)
 		(net
-			(code "277")
+			(code "278")
 			(name "unconnected-(J302-1_3V3-Pad1)")
 			(class "Default")
 			(node
@@ -41516,7 +41599,7 @@
 			)
 		)
 		(net
-			(code "278")
+			(code "279")
 			(name "unconnected-(J302-17_3V3-Pad17)")
 			(class "Default")
 			(node
@@ -41527,7 +41610,7 @@
 			)
 		)
 		(net
-			(code "279")
+			(code "280")
 			(name "unconnected-(U104-NC-Pad12)")
 			(class "Default")
 			(node
@@ -41538,7 +41621,7 @@
 			)
 		)
 		(net
-			(code "280")
+			(code "281")
 			(name "unconnected-(U113-RDY{slash}~{BSY}-Pad5)")
 			(class "Default")
 			(node
@@ -41549,7 +41632,7 @@
 			)
 		)
 		(net
-			(code "281")
+			(code "282")
 			(name "unconnected-(U114-ALERT{slash}RDY-Pad2)")
 			(class "Default")
 			(node
@@ -41560,7 +41643,7 @@
 			)
 		)
 		(net
-			(code "282")
+			(code "283")
 			(name "unconnected-(U115-SW-Pad5)")
 			(class "Default")
 			(node
@@ -41571,7 +41654,7 @@
 			)
 		)
 		(net
-			(code "283")
+			(code "284")
 			(name "unconnected-(U116-NC-Pad1)")
 			(class "Default")
 			(node
@@ -41582,7 +41665,7 @@
 			)
 		)
 		(net
-			(code "284")
+			(code "285")
 			(name "unconnected-(U201-NC-Pad6)")
 			(class "Default")
 			(node
@@ -41593,7 +41676,7 @@
 			)
 		)
 		(net
-			(code "285")
+			(code "286")
 			(name "unconnected-(U201-NC-Pad7)")
 			(class "Default")
 			(node
@@ -41604,7 +41687,7 @@
 			)
 		)
 		(net
-			(code "286")
+			(code "287")
 			(name "unconnected-(U201-NC-Pad13)")
 			(class "Default")
 			(node
@@ -41615,7 +41698,7 @@
 			)
 		)
 		(net
-			(code "287")
+			(code "288")
 			(name "unconnected-(U201-NC-Pad15)")
 			(class "Default")
 			(node
@@ -41626,7 +41709,7 @@
 			)
 		)
 		(net
-			(code "288")
+			(code "289")
 			(name "unconnected-(U203-SW-Pad5)")
 			(class "Default")
 			(node
@@ -41637,7 +41720,7 @@
 			)
 		)
 		(net
-			(code "289")
+			(code "290")
 			(name "unconnected-(U205-NC-Pad1)")
 			(class "Default")
 			(node
@@ -41648,7 +41731,7 @@
 			)
 		)
 		(net
-			(code "290")
+			(code "291")
 			(name "unconnected-(U206-NC-Pad1)")
 			(class "Default")
 			(node
@@ -41659,7 +41742,7 @@
 			)
 		)
 		(net
-			(code "291")
+			(code "292")
 			(name "unconnected-(U301-NC-Pad4)")
 			(class "Default")
 			(node
@@ -41670,7 +41753,7 @@
 			)
 		)
 		(net
-			(code "292")
+			(code "293")
 			(name "unconnected-(U302-NC-Pad4)")
 			(class "Default")
 			(node
@@ -41681,7 +41764,7 @@
 			)
 		)
 		(net
-			(code "293")
+			(code "294")
 			(name "unconnected-(U303-NC-Pad4)")
 			(class "Default")
 			(node
@@ -41692,7 +41775,7 @@
 			)
 		)
 		(net
-			(code "294")
+			(code "295")
 			(name "unconnected-(U304-NC-Pad4)")
 			(class "Default")
 			(node
@@ -41703,7 +41786,7 @@
 			)
 		)
 		(net
-			(code "295")
+			(code "296")
 			(name "unconnected-(U305-NC-Pad4)")
 			(class "Default")
 			(node
@@ -41714,7 +41797,7 @@
 			)
 		)
 		(net
-			(code "296")
+			(code "297")
 			(name "unconnected-(U401-NC-Pad4)")
 			(class "Default")
 			(node
@@ -41725,7 +41808,7 @@
 			)
 		)
 		(net
-			(code "297")
+			(code "298")
 			(name "unconnected-(U402-NC-Pad1)")
 			(class "Default")
 			(node
@@ -41736,7 +41819,7 @@
 			)
 		)
 		(net
-			(code "298")
+			(code "299")
 			(name "unconnected-(U506-RDY{slash}~{BSY}-Pad5)")
 			(class "Default")
 			(node
@@ -41747,7 +41830,7 @@
 			)
 		)
 		(net
-			(code "299")
+			(code "300")
 			(name "unconnected-(U510-ALERT{slash}RDY-Pad2)")
 			(class "Default")
 			(node
@@ -41758,7 +41841,7 @@
 			)
 		)
 		(net
-			(code "300")
+			(code "301")
 			(name "unconnected-(U605-VREF-Pad1)")
 			(class "Default")
 			(node
