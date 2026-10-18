@@ -3,7 +3,7 @@ FOOTPRINT vs ORDERED PART -- does the part fit the copper?
 
 board  hardware/CostasLink-PYNQ-Z2.kicad_pcb
 BOM    release/BOM_JLCPCB.csv
-run    2026-10-17T18:22:58-07:00
+run    2026-10-17T22:56:43-07:00
 444 footprint(s) placed, 1297 drill(s) on the board
 
   ok C1525       C_0402_1005Metric                            C0402              68 placement(s)

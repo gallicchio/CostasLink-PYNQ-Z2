@@ -194,9 +194,10 @@ JLC_ROTATION_BY_PART = {
     # (its mfg/jlc_rotation.py, build 34; CLAUDE_PCB.md section 8's table), for the parts a fit by pin number
     # cannot judge: the SMA's five holes are a square and the 1x2 header's two holes say nothing.  Neither has
     # been seen in a preview yet; both are listed in PLACEMENT_CHECKS.txt.
-    "C496551": (90, "predicted", "edge SMA BWSMA-KWE-Z001: JLCPCB's drawing has the barrel along +x at 0, KiCad's "
-                                 "along -y (its courtyard runs 12 mm up); +0 put the ECP5 board's six along its edge "
-                                 "in build 33's preview.  Here the barrels must point off the TOP edge"),
+    "C496551": (0, "read", "edge SMA BWSMA-KWE-Z001: READ in JLCPCB's viewer (CostasLink rev A, 2026-10-17): at +90 "
+                           "every one of the nine SMAs needed a quarter turn clockwise, so +0 is right.  The footprint "
+                           "agrees: its body (F.Fab) runs from x 3.78 to 11.6, the barrel along +x at 0, the same as "
+                           "JLCPCB's drawing; the +90 was predicted from a misreading of KiCad's barrel as along -y"),
     "C492401": (270, "predicted", "1x2 header PZ254V-11-02P: JLCPCB's drawing lies along +x with pin 1 left, KiCad's "
                                   "stands along +y with pin 1 at the top (the 1x3 and 1x6 headers predict 270 by pin "
                                   "number; two pads predict nothing)"),

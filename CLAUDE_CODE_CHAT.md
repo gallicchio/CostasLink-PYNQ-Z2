@@ -4261,7 +4261,7 @@ me to confirm. Check if there is any reason I should modify these. If not, I'll 
 The zip is JLCPCB's CAM output for order 13544840A_Y21 (their `ok/` layers, our upload echoed back byte for byte,
 and the order record `4te.json` in GBK).  I rendered each of their layers over ours in one frame with gerbonara,
 diffed them pixel by pixel at 20 px/mm, eroded the 0.1 mm slivers of polygon conversion, and matched every
-difference that survived to a pad with pcbnew.  Written up as `mfg/release/PRODUCTION_FILE_CHECK.md`.
+difference that survived to a pad with pcbnew.  Written up as `mfg/PRODUCTION_FILE_CHECK.md`.
 
 Nothing to change.  Outer copper, both masks, both silks, the outline and every hole position are the upload's.
 JLCPCB changed three things, all standard: (1) non-functional pad removal on L2/L3: 62 / 59 through-hole pins
@@ -4277,3 +4277,34 @@ where JLC04161H-7628 shows.
 
 Bookkeeping: the 17 MB vendor zip stays on disk but is ignored by git (`*_gerbers_Y*.zip` in the repository's
 .gitignore); the method is in CLAUDE_PCB.md section 8 so the next board's confirmation takes ten minutes.
+
+## Prompt 38 (2026-10-17 ~22:45 PDT)
+
+"Final notes on this revA board JLCPCB submission, which you might want to tweak and update CLAUDE_PCB:
+
+JLCPCB does not allow a "Tented" via option for some boards. I hover over Tented and it says, "The Via Tented
+option is upgraded to Via Plugged for free." so say "either Tented or Plugged" in the ORDER_SETTINGS.md when
+either are ok.
+
+Parts that I needed to rotate even with the jlcpcb specific CPL:
+J101 and all SMAs has to rotate 90 degrees CW "to the right""
+
+## Response 38 (2026-10-17 22:45 - 23:10 PDT): the order's two readings folded back into the generator
+
+Via covering: ORDER_SETTINGS.md's row now reads "Tented or Plugged" with the form's own words and why either is fine
+(plugged ink in the exposed pads' thermal vias stops the wicking, tented they wick a little); the defaults table
+carries the same so the row is not flagged as a change.  The production record already said 过孔塞油, plugged.
+CLAUDE_PCB.md section 8 says to write the field that way wherever either is fine.
+
+The SMAs: the CPL carried +90 for C496551, predicted on 2026-10-09 from "JLCPCB's barrel along +x, KiCad's along
+-y".  The footprint says otherwise: its body (F.Fab) runs from x 3.78 to 11.6 at 0, the barrel along +x, the same
+as JLCPCB's drawing, so the right correction is 0, and a quarter turn clockwise from +90 in JLCPCB's viewer
+(counter-clockwise positive, as KiCad) is exactly 0.  mfg/jlc_rotation.py now carries 0 "read" with the evidence;
+the release regenerated (the SMAs' upload angle is KiCad's own; PLACEMENT_CHECKS.txt lists 32 unseen part numbers
+instead of 33); CLAUDE_PCB.md's rotation table has the row and a rule above it: a prediction is a placeholder, and
+when predicting, read the footprint's own body outline for its direction at 0, not a description of it.  The ECP5
+board uses the same vendored footprint and its table had the same +90 (and a build 33 note that "+0 lay along the
+edge", which this reading contradicts): its mfg/jlc_rotation.py entry is corrected to 0 "read" with a note to re-read
+in its own preview and regenerate its release before ordering; nothing else of ECP5's was touched.  REVA_CHANGES
+rows 54-55.  The uploaded Gerbers are kept as uploaded: the regenerated zip and gerbers/ were restored from git so
+mfg/release/ still holds the files JLCPCB has.

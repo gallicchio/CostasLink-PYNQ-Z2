@@ -56,7 +56,7 @@ into mfg/jlc_rotation.py.  Never turn or nudge a part in JLCPCB's viewer: the ne
 Placed as the CPL says, JLCPCB's own drawing lands pin for pin on our pads for 54 parts
 (make_release.py's simulation of their placement, both sides).
 
-NOT YET SEEN RIGHT in a preview (33 part numbers, 92 placements):
+NOT YET SEEN RIGHT in a preview (32 part numbers, 83 placements):
   C10425     74LVC1G17                  SOT-353_SC-70-5
       top:    U116 U205
       correction 180, predicted: JLCPCB's drawing turned 180 to lie on ours (top side, 5 pads by number, worst 0.32 mm)
@@ -131,10 +131,6 @@ NOT YET SEEN RIGHT in a preview (33 part numbers, 92 placements):
       top:    JP202 JP203 JP301 JP302 JP303
       correction 270 (predicted): 1x2 header PZ254V-11-02P: JLCPCB's drawing lies along +x with pin 1 left, KiCad's stands along +y with pin 1 at the top (the 1x3 and 1x6 headers predict 270 by pin number; two pads predict nothing)
       look for: pin 1 at the square pad; a header is the same turned half round, not a quarter
-  C496551    RX ANT/TX ANT/REF IN/TRIG  SMA_BWSMA-KWE-Z001
-      top:    J101 J202 J203 J205 J206 J207 J401 J402 J403
-      correction 90 (predicted): edge SMA BWSMA-KWE-Z001: JLCPCB's drawing has the barrel along +x at 0, KiCad's along -y (its courtyard runs 12 mm up); +0 put the ECP5 board's six along its edge in build 33's preview.  Here the barrels must point off the TOP edge
-      look for: the barrel points OFF the top edge (ECP5 build 33's preview showed them along the edge at +0)
   C5119013   TCXO 25MHz                 Crystal_SMD_3225-4Pin_3.2x2.5mm
       top:    Y201
       correction 0, predicted: JLCPCB's drawing turned 0 to lie on ours (top side, 4 pads by number, worst 0.03 mm)
@@ -189,26 +185,27 @@ READ RIGHT in an earlier preview (the same part number, this footprint or its tw
   C165948    USB_C_Receptacle_HRO_TYPE-C-31-M-12      correction   0 (built); JLCPCB's drawing agrees: J301
   C23380874  SOT-23-5                                 correction 180 (sure); JLCPCB's drawing agrees: U305
   C2862740   SOT-23-5                                 correction 180 (sure); JLCPCB's drawing agrees: U301 U302 U303 U304
+  C496551    SMA_BWSMA-KWE-Z001                       correction   0 (read): J101 J202 J203 J205 J206 J207 J401 J402 J403
   C8545      SOT-23                                   correction 180 (read); JLCPCB's drawing agrees: Q303
 
 No orientation to get wrong (two pads, no polarity): C_0402_1005Metric, C_0603_1608Metric, C_0805_2012Metric, C_1206_3216Metric, Fuse_1812_4532Metric, L_0402_1005Metric, L_0603_1608Metric, L_0805_2012Metric, R_0402_1005Metric, R_0603_1608Metric, R_1206_3216Metric
 
 THROUGH-HOLE parts JLCPCB fits by hand (they go in one way by their pins, but look):
-  J101   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the top edge (ECP5 build 33's preview showed them along the edge at +0)
+  J101   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
   J106   top    MMCX_BWMMCX-KE_Vertical                        5 joints
   J107   top    MMCX_BWMMCX-KE_Vertical                        5 joints
   J108   top    MMCX_BWMMCX-KE_Vertical                        5 joints
-  J202   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the top edge (ECP5 build 33's preview showed them along the edge at +0)
-  J203   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the top edge (ECP5 build 33's preview showed them along the edge at +0)
-  J205   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the top edge (ECP5 build 33's preview showed them along the edge at +0)
-  J206   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the top edge (ECP5 build 33's preview showed them along the edge at +0)
-  J207   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the top edge (ECP5 build 33's preview showed them along the edge at +0)
+  J202   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
+  J203   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
+  J205   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
+  J206   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
+  J207   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
   J208   top    MMCX_BWMMCX-KE_Vertical                        5 joints
   J301   top    USB_C_Receptacle_HRO_TYPE-C-31-M-12            4 joints; the receptacle's mouth flush with the right edge, on its pads
   J303   top    PinHeader_1x03_P2.54mm_Vertical                3 joints; pin 1 at the square pad; the three in a line along the board's edge
-  J401   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the top edge (ECP5 build 33's preview showed them along the edge at +0)
-  J402   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the top edge (ECP5 build 33's preview showed them along the edge at +0)
-  J403   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the top edge (ECP5 build 33's preview showed them along the edge at +0)
+  J401   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
+  J402   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
+  J403   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
   J490   top    MMCX_BWMMCX-KE_Vertical                        5 joints
   J501   top    MMCX_BWMMCX-KE_Vertical                        5 joints
   JP101  top    PinHeader_1x03_P2.54mm_Vertical                3 joints; pin 1 at the square pad; the three in a line along the board's edge

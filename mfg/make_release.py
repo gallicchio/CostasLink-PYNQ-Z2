@@ -54,7 +54,7 @@ Gates: the release stops, and leaves mfg/release/ as it was, if any of these fai
     lacks, bottom footprints stored as KiCad's own flip stores them;
   * no ordered part wants a hole the board lacks (FOOTPRINT_CHECK.txt);
   * every part of three or more pads has a rotation correction somebody read or one predicted
-    from JLCPCB's drawing (never KiCad's bare angle: the ECP5 board's SMAs lay along the edge);
+    from JLCPCB's drawing (never KiCad's bare angle without a reading: rev A's SMAs at a predicted +90 lay along the edge);
   * the CPL agrees with KiCad's own position export, and JLCPCB's drawing of each chip, placed
     as the CPL tells JLCPCB to place it, lands on our pads pin for pin, on both sides;
   * no output names a place on this machine (relative paths only).
@@ -827,7 +827,7 @@ LOOK = {
     "LED_0603_1608Metric": "the cathode (pad 1) at the silk bracket's end; JLCPCB marks the cathode",
     "D_SMA": "the cathode bar at pad 1 (the TVS: unidirectional, so it matters)",
     "USB_C_Receptacle_HRO_TYPE-C-31-M-12": "the receptacle's mouth flush with the right edge, on its pads",
-    "SMA_BWSMA-KWE-Z001": "the barrel points OFF the top edge (ECP5 build 33's preview showed them along the edge at +0)",
+    "SMA_BWSMA-KWE-Z001": "the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)",
     "U.FL_Hirose_U.FL-R-SMT-1_Vertical": "the signal pad (pin 1) on the track side",
     "RPi_Socket_2x20_P2.54mm_Underside": "ON THE BACK: pin 1 at the RIGHT-HAND end of the bottom edge, odd row outer "
                                          "(gen/placement.py); the socket is keyed by nothing but this",
@@ -1111,7 +1111,7 @@ JLC_PCB_FORM = [
     ("High-spec Options", "Specify Layer Sequence", "No", "the Gerber names and the job file give the order"),
     ("High-spec Options", "Specify Stackup", "Yes: <stackup>", "the 50 ohm lines (sim/rf_lines.py: <rfw> mm CPWG with <rfgap> mm gaps over the L2 ground) are drawn for its 0.2104 mm of 7628 prepreg under L1.  It is JLCPCB's standard 4-layer 1.6 mm stack (no stack-up fee; 'No' builds the same), so choosing it only pins the prepreg.  If it is not offered, STOP and ask"),
     ("High-spec Options", "Impedance Control", "No requirement", "appears once a stack-up is chosen.  +-10%% obliges an impedance table in the zip or the order waits on an engineering question; 'No requirement' still holds width and spacing to +-20%% and the stack-up fixes the dielectric.  The RF lines are short against their edges (each a few mm to about 20 mm of <rfw> mm CPWG with <rfgap> mm gaps, sim/rf_lines.py; a quarter wave at 5.8 GHz is <qw> mm in this dielectric, and JLCPCB's own tool gives 0.345 mm for a 50 ohm microstrip on this stack), so a few ohms of mismatch costs a tenth of a dB"),
-    ("High-spec Options", "Via Covering", "Tented", "the default for 4 layers; the exposed pads' thermal vias (0.45/0.25 mm) wick a little solder, as intended; no via-in-pad"),
+    ("High-spec Options", "Via Covering", "Tented or Plugged", "either is fine.  The form may say 'The Via Tented option is upgraded to Via Plugged for free' (rev A's order, 2026-10-17; its production record says 过孔塞油, plugged): take it.  Plugged ink in the exposed pads' thermal vias (0.45/0.25 mm) stops them wicking solder; tented they wick a little, which is also fine; no via-in-pad"),
     ("High-spec Options", "Min via hole size/diameter", "<minvia>", "the board's smallest via is <smallvia>: the option that covers a 0.25 mm drill.  The page may fill this in from the drill file; check that it agrees.  It may add a small charge for 4 layers; the cart says"),
     ("High-spec Options", "Board Outline Tolerance", "+-0.2mm (Regular)", ""),
     ("High-spec Options", "Confirm Production file", "Yes", "about $1: JLCPCB's production Gerbers come back to check before they make it"),
@@ -1153,13 +1153,14 @@ JLC_PCBA_FORM = [
     ("Files", "CPL", CPL_UPLOAD, "not " + CPL_NATIVE + ", which is KiCad's own numbers for reference"),
 ]
 # JLCPCB's defaults as the form opens (the ECP5 board's screenshots of 2026-10-09; Via Covering is
-# "Tented" for 4 layers where the 6-layer form opens on "Epoxy Filled & Capped").
+# "Tented" for 4 layers where the 6-layer form opens on "Epoxy Filled & Capped"; on some boards the form
+# upgrades Tented to Plugged for free, so either is the default here and neither is flagged).
 JLC_DEFAULTS = {
     "Layers": "2", "PCB Qty": "5", "Product Type": "Industrial/Consumer electronics", "Different Design": "1",
     "Delivery Format": "Single PCB", "PCB Thickness": "1.6mm", "PCB Color": "Green", "Silkscreen": "White",
     "Material Type": "FR4 TG135", "Surface Finish": "OSP", "Gold Thickness": "1 U\"", "Outer Copper Weight": "1 oz",
     "Inner Copper Weight": "0.5 oz", "Specify Layer Sequence": "No", "Specify Stackup": "No", "Impedance Control": "No requirement",
-    "Via Covering": "Tented", "Min via hole size/diameter": "0.3mm/(0.4/0.45mm)",
+    "Via Covering": "Tented or Plugged", "Min via hole size/diameter": "0.3mm/(0.4/0.45mm)",
     "Board Outline Tolerance": "+-0.2mm (Regular)", "Confirm Production file": "No", "Mark on PCB": "Remove Mark",
     "Electrical Test": "Flying Probe Fully Test", "Gold Fingers": "No", "Castellated Holes": "No", "Press-Fit Hole": "No",
     "Edge Plating": "No", "Blind Slots": "No", "UL Marking": "No", "Backdrill": "No", "Humidity Indicator Card": "No",

@@ -1,10 +1,10 @@
 # JLCPCB's production files for CostasLink-PYNQ-Z2 rev A, checked (2026-10-17)
 
 JLCPCB's "Confirm Production file" step returned `CostasLink-PYNQ-Z2_gerbers_Y21.zip` (order
-13544840A_Y21; the zip is kept beside this file but not in git, 17 MB).  It holds JLCPCB's CAM output
+13544840A_Y21; the zip is kept in mfg/release/ but not in git, 17 MB; this file lives one level up because make_release.py clears mfg/release/ on every run).  It holds JLCPCB's CAM output
 (`ok/`: `tl bl l2 l3` copper, `ts bs` solder mask, `to bo` silkscreen, `drl`, `ko` outline, `vcut`,
 `sk` the tented vias, `qrt qrb` the QR-code places), the upload echoed back (`YG/`, byte-identical to
-`CostasLink-PYNQ-Z2_gerbers.zip`) and the order record (`YG/4te.json`, GBK text).
+`mfg/release/CostasLink-PYNQ-Z2_gerbers.zip` as committed on 2026-10-17, which is kept as uploaded) and the order record (`YG/4te.json`, GBK text).
 
 Every one of their layers was rendered (gerbonara 1.5.0) over ours at 20 px/mm in the same frame and
 diffed pixel by pixel; the 2 px (0.1 mm) edge slivers of polygon conversion were eroded away and what

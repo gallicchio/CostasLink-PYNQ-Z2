@@ -36,7 +36,7 @@ Written by `mfg/make_release.py` on 2026-10-17.  On jlcpcb.com, **Order now**, u
 | Specify Layer Sequence | No | No | the Gerber names and the job file give the order |
 | >> Specify Stackup | **Yes: JLC04161H-7628** | No | the 50 ohm lines (sim/rf_lines.py: 0.29 mm CPWG with 0.25 mm gaps over the L2 ground) are drawn for its 0.2104 mm of 7628 prepreg under L1.  It is JLCPCB's standard 4-layer 1.6 mm stack (no stack-up fee; 'No' builds the same), so choosing it only pins the prepreg.  If it is not offered, STOP and ask |
 | Impedance Control | No requirement | No requirement | appears once a stack-up is chosen.  +-10% obliges an impedance table in the zip or the order waits on an engineering question; 'No requirement' still holds width and spacing to +-20% and the stack-up fixes the dielectric.  The RF lines are short against their edges (each a few mm to about 20 mm of 0.29 mm CPWG with 0.25 mm gaps, sim/rf_lines.py; a quarter wave at 5.8 GHz is 7.3 mm in this dielectric, and JLCPCB's own tool gives 0.345 mm for a 50 ohm microstrip on this stack), so a few ohms of mismatch costs a tenth of a dB |
-| Via Covering | Tented | Tented | the default for 4 layers; the exposed pads' thermal vias (0.45/0.25 mm) wick a little solder, as intended; no via-in-pad |
+| Via Covering | Tented or Plugged | Tented or Plugged | either is fine.  The form may say 'The Via Tented option is upgraded to Via Plugged for free' (rev A's order, 2026-10-17; its production record says 过孔塞油, plugged): take it.  Plugged ink in the exposed pads' thermal vias (0.45/0.25 mm) stops them wicking solder; tented they wick a little, which is also fine; no via-in-pad |
 | >> Min via hole size/diameter | **0.25mm/(0.35/0.4mm)** | 0.3mm/(0.4/0.45mm) | the board's smallest via is 0.45 mm across, 0.25 mm drill: the option that covers a 0.25 mm drill.  The page may fill this in from the drill file; check that it agrees.  It may add a small charge for 4 layers; the cart says |
 | Board Outline Tolerance | +-0.2mm (Regular) | +-0.2mm (Regular) |  |
 | >> Confirm Production file | **Yes** | No | about $1: JLCPCB's production Gerbers come back to check before they make it |
@@ -62,7 +62,7 @@ Written by `mfg/make_release.py` on 2026-10-17.  On jlcpcb.com, **Order now**, u
 | Assembly Side | Top Side | Top Side | every part on one side |
 | >> PCBA Qty | **2** | 5 | of the 5 boards; the other 3 are bare spares |
 | Edge Rails/Fiducials | Added by JLCPCB | Added by JLCPCB | the board carries no rails of its own; its 3 fiducials (1 mm copper in 2 mm mask openings, at (11.0, 11.0), (115.5, 15.0), (116.5, 87.5) mm from the top-left corner) sit inside the outline; JLCPCB adds two rails with its fiducials, and Depanel below takes them off.  Parts hang over the edge (J101, J202, J401, J402, J403 4.6 mm past the top edge; J203, J301 1.7/4.6 mm past the right edge; J205, J206, J207 4.6 mm past the left edge): the Assembly remark below says so |
-| >> Confirm Parts Placement | **Yes** | No | free: the placement preview, read against PLACEMENT_CHECKS.txt (33 part numbers have predicted, unseen rotations) |
+| >> Confirm Parts Placement | **Yes** | No | free: the placement preview, read against PLACEMENT_CHECKS.txt (32 part numbers have predicted, unseen rotations) |
 | Stencil Storage | No | No |  |
 | Fixture Storage | No | No |  |
 | Parts Selection | By Customer (Self-Service) | By Customer (Self-Service) | the BOM carries every LCSC code and every line matches JLCPCB's shelf (nothing is consigned) |
