@@ -52,7 +52,10 @@ the board's rails routed at 0.3 mm; the user's instructions on the back silkscre
 (REVA_CHANGES.md rows 43-50).  Prompt 36 (2026-10-17 evening) was the design review before the order, every path traced on the sheets and
 the copper: two changes (TR A's tap 4.7 k so a 50 ohm scope cannot pull the switch control under 3 V; JP203 in the TRIG IN leg so the
 FPGA can own the constellation point), one order-day note (the AD5696R's stock), and the verdict **ready to order** (CLAUDE_CODE_CHAT.md
-Response 36; build 41: DRC 0, every gate passing).  Nothing ordered.
+Response 36; build 41: DRC 0, every gate passing).  **Ordered 2026-10-17** (Prompts 37-38: JLCPCB order 13544840A_Y21, 5 boards,
+2 assembled, nothing consigned; the production files checked layer by layer, `mfg/PRODUCTION_FILE_CHECK.md`; the preview's two readings,
+the SMAs' rotation and the plugged vias, folded back into the generator, REVA_CHANGES.md rows 54-55).  BRINGUP.md's stage 1.0 reads
+the delivered boards against the order (Prompt 39).
 
 * [`PLAN.md`](PLAN.md): the idea, the numbers, the antenna question, the parts with the reasons and
   the rejected alternatives, the header pin map, power, the board, bring-up, what could go wrong.

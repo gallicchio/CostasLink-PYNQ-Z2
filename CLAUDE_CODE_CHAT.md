@@ -4308,3 +4308,25 @@ edge", which this reading contradicts): its mfg/jlc_rotation.py entry is correct
 in its own preview and regenerate its release before ordering; nothing else of ECP5's was touched.  REVA_CHANGES
 rows 54-55.  The uploaded Gerbers are kept as uploaded: the regenerated zip and gerbers/ were restored from git so
 mfg/release/ still holds the files JLCPCB has.
+
+## Prompt 39 (2026-10-18 ~07:30 PDT)
+
+"Incorporate your recent changes into the bring up instructions."
+
+## Response 39 (2026-10-18 07:30 - 07:50 PDT): the order folded into BRINGUP.md
+
+BRINGUP.md was written before the order and still said stage 0 was ahead.  Now: a paragraph under the heading says
+the boards were ordered 2026-10-17 (order 13544840A_Y21, 5 boards, 2 assembled, nothing consigned, ENIG, the vias
+plugged, the rails taken off, the production files confirmed against mfg/PRODUCTION_FILE_CHECK.md); stage 0 is
+marked done with the order-day facts (every line on the shelf, the two review changes, the SMAs' quarter turn
+caught in the preview and corrected to 0 in jlc_rotation.py, the 32 predicted rotations never recorded as read).
+Stage 1.0 gains the receiving inspection, before anything is soldered: the SMAs' barrels off the edges; the
+polarities a preview cannot check (D303's cathode bar, C320's stripe, the LEDs, D501) with what each costs
+backwards; pin 1 on every QFN and MSOP by reference; the SC-70s, the ADL5611s' tab, the oscillators, the U.FL
+signal pads, the headers' square pads; a reversed part is a rework before power, and every reading goes into
+mfg/jlc_rotation.py as read so the next order's PLACEMENT_CHECKS.txt is short; and the two normal CAM changes
+(no inner rings on the unconnected through-hole pins, plugged vias) named so nobody worries about them.  Stage 4.4's
+TR A line said "/10 into 50 ohm", which Prompt 36's 4.7 k made wrong: it now says the full swing on a 1 M probe
+and 35 mV into 50 ohm, and why.  Risk row 10 (parts and the order) retires at stage 0 and 1.0 with the same facts;
+the bench table lists the loupe, the assembly drawing and PLACEMENT_CHECKS.txt, and the shunts' count is seven.
+README.md's "Nothing ordered" line now says ordered.
