@@ -4349,3 +4349,24 @@ of the footprint was the wrong one.  BRINGUP.md: stage 0.3 says every rotation i
 is now a check that JLCPCB placed what the preview showed (the SMAs, the polarity marks, pin 1 on the QFNs that are
 hardest to rework, the ADL5611s' tab, the U.FL pads), and a difference is JLCPCB's placement error rather than a
 reading to record.
+
+## Prompt 41 (2026-10-18 ~21:45 PDT)
+
+"I got the following question from JLCPCB: [...] Since we are not so sure about the polarities of the T101、L102
+components are correct or not. Could you please kindly check if the polarities and placements of the components are
+correct in the below picture? Is it okay to proceed with production? [...] I saved the file that they sent in:
+8800044796977946624-Produce_DanZhi.SMT_Snapshot.Top.13544840A_Y21.SMT026101860285.png"
+
+## Response 41 (2026-10-18 21:45 - 22:15 PDT): T101 and L102 confirmed from the snapshot
+
+The snapshot (saved under build/, so copied to mfg/jlcpcb_order/ with two crops) was read against the board file
+rather than by eye alone.  T101 is placed at -90, so its pad 1, the unbalanced port carrying CP101's line from the
+LNA, is the top-left pad beside the footprint's silkscreen dot; pad 4 (GND, with its via) is top-right; pads 2 and 3,
+the balanced pair to C159 / C160 and the ADL5380, are at the bottom.  TDK's drawing puts the package marking at the
+pin 1 / 4 end, and JLCPCB's red pin-1 mark sits on exactly that end in their picture, so their placement agrees with
+the design.  L102 (TDK MLG1005S0N6, C95042) is an 0402 chip inductor with no polarity; their red mark is on its
+right-hand end, where our pad 1 (+3V3_ANA) is, and either way round is the same part.  The answer to JLCPCB is yes
+on both, proceed; the text is in the reply.  Nothing in the design or the release changes.  Recorded: REVA_CHANGES
+row 57, the rotation table's C531388 entry, BRINGUP.md's order paragraph and stage 1.0 (c) (the balun joins the
+pin-1 check, under the microscope), CLAUDE_PCB.md section 3 (JLCPCB's engineers ask about polarity before
+production; answer from the net on pin 1, not from the picture's look).

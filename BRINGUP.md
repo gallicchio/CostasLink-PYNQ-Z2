@@ -14,7 +14,10 @@ from tented: either is fine on this board), no order number, JLCPCB's assembly r
 Their production files were checked layer by layer against the upload (`mfg/PRODUCTION_FILE_CHECK.md`) and
 confirmed.  Stage 0 is therefore done.  Jason read every part in the placement preview: the SMAs were a quarter
 turn off and were turned by hand before production (the table now says 0), and the 32 other predicted part numbers
-sat right, so every rotation on the board is a reading now (`mfg/jlc_rotation.py`; REVA_CHANGES 55-56).  Stage 1.0
+sat right, so every rotation on the board is a reading now (`mfg/jlc_rotation.py`; REVA_CHANGES 55-56).  On
+2026-10-18, before production, JLCPCB's engineer asked whether T101's and L102's polarities in their placement
+snapshot were right (`mfg/jlcpcb_order/`): the balun's pin 1 sat at its top end beside the silkscreen dot, as
+designed, and the 0402 inductor has no polarity, so the answer was yes (Prompt 41, REVA_CHANGES 57).  Stage 1.0
 checks the delivered boards against that preview.
 
 ## What to have on the bench
@@ -85,7 +88,9 @@ Nothing plugged into the header yet; the board alone on the bench supply through
    fails), D301 / D302 (the LEDs: backwards they stay dark, no harm) and D501 (the slow sheet's peak-detector diode:
    backwards `detectors()` reads no peak);
    (c) pin 1 by the dot on the QFNs that matter most and are hardest to rework: U104 ADL5380, U201 ADL5375, U102
-   PE43711, U115 / U203 MAX2871, U101 the LNA, the four THS4541s, U401 HMC536;
+   PE43711, U115 / U203 MAX2871, U101 the LNA, the four THS4541s, U401 HMC536; and T101 the balun, the part JLCPCB
+   asked about: its marked end (pins 1 and 4) at the top beside the silkscreen dot, the balanced pair at the bottom
+   toward C159 / C160 (a 1.0 x 0.5 mm part: the microscope, not the loupe);
    (d) the three ADL5611s' wide tab toward their RF output, and the U.FL jacks' signal pad on the track side.
    A part that differs from the preview is JLCPCB's placement, not the CPL (`mfg/jlc_rotation.py` holds the
    readings): a photo to their support, and a rework before power if the part can be had.  Two things JLCPCB's CAM

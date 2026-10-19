@@ -261,7 +261,11 @@ JLC_ROTATION_BY_PART = {
     "C5119013": (0, "read", "TCXO 3225 4-pin (Y201; pin 1 VC/NC, 2 GND, 3 OUT, 4 VDD): " + REVA_READ),
     "C5179998": (0, "read", "VCXO 3225 4-pin (Y101): " + REVA_READ),
     "C5213955": (180, "read", "TLV3603 SOT-363 SC-70-6 (U601-U604): " + REVA_READ),
-    "C531388": (0, "read", "HHM1907B1 balun (T101): " + REVA_READ),
+    # 2026-10-18, before production: JLCPCB's engineer asked whether T101's and L102's polarities in their
+    # placement snapshot were right (mfg/jlcpcb_order/).  Their red pin-1 mark sat on the balun's top end,
+    # beside our silkscreen dot, where pad 1 (the unbalanced port) is; L102 (C95042, an 0402 chip inductor)
+    # has no polarity.  Answered yes (Prompt 41).
+    "C531388": (0, "read", "HHM1907B1 balun (T101): " + REVA_READ + "; JLCPCB asked before production, confirmed"),
     "C579150": (270, "read", "ADL5375-05 QFN-24-1EP 4x4 (U201): " + REVA_READ),
     "C579152": (270, "read", "ADL5380 QFN-24-1EP 4x4 (U104): " + REVA_READ),
     "C627342": (270, "read", "MCP4728A1 MSOP-10 3x3 (U506): " + REVA_READ),
