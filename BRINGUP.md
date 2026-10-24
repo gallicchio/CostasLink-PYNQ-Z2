@@ -18,7 +18,8 @@ sat right, so every rotation on the board is a reading now (`mfg/jlc_rotation.py
 2026-10-18, before production, JLCPCB's engineer asked whether T101's and L102's polarities in their placement
 snapshot were right (`mfg/jlcpcb_order/`): the balun's pin 1 sat at its top end beside the silkscreen dot, as
 designed, and the 0402 inductor has no polarity, so the answer was yes (Prompt 41, REVA_CHANGES 57).  Stage 1.0
-checks the delivered boards against that preview.
+checks the delivered boards against that preview.  **The boards are in transit (2026-10-24).**  Meanwhile the accessories
+were measured on a VNA (2026-10-20/21): the table after the bench list says what, and the stages quote it (Prompt 42).
 
 ## What to have on the bench
 
@@ -27,18 +28,54 @@ checks the delivered boards against that preview.
 | bench supply, **5.1-5.25 V**, current limit 1.5 A, into a short USB-A-to-C cable (or a USB-C PD supply rated 3 A) | stage 1; the board draws 1.37 A with both synthesizers running; the PTC, the FET and the bead drop up to 0.21 V at their maximum resistances, and the ADL53xx and ADL5611 want 4.75 V: 5.10 V at the plug leaves 4.89 V.  A laptop's port or a thin cable is not enough (the design review; sim/budget.py section 9) | have |
 | the 6 GHz scope (or a spectrum analyser, or the B210 at 5.8 GHz) | the LO and TX monitors; the loop's analog nodes | have |
 | U.FL-to-SMA pigtails, 6 or more (Hirose U.FL-LP-088 leads, 100-200 mm) | twelve monitors are U.FL, rated for 30 matings, so leave the leads on the taps you use most; five are MMCX (REF OUT, ERR, VC, TRIG IN and I SLOW MON): 5 MMCX-to-SMA leads too | buy, about $15 for 10 |
-| SMA attenuators: **40 dB** (board-to-board loopback: the LNA's absolute maximum input is +1 dBm and the transmitter gives +9.8; 30 dB leaves the receiver 7 dB above the top of its regulated range, Prompt 31's review C; never under 20), **20 dB x 2** (in front of each PA module, and one in the TX lead for the two-whip test), 1 W rating is plenty | stages 3 and 5 | buy if not in the drawer, $10-20 each |
+| SMA attenuators: **40 dB** (board-to-board loopback: the LNA's absolute maximum input is +1 dBm and the transmitter gives +9.8; 30 dB leaves the receiver 7 dB above the top of its regulated range, Prompt 31's review C; never under 20), **26-30 dB in front of each PA module** (20 + 6 or 20 + 10: its gain measured 46 dB, not 40), one 20 dB for the TX lead in the two-whip test | stages 3 and 5 | have: two Nooelec kits (1, 2, 3, 6, 10, 20 dB; 2 W; DC-6 GHz), four 20 dB pads in all, every one measured (the VNA table below); the 2 W rating is the limit on a PA's output side |
 | SMA male-male leads, 3 x 150 mm (the switch block's jumpers; loopback) and 2 x 1 m | stages 3 and 4 | have / buy |
 | 50 ohm SMA terminations x 2 | an unused SMA (RX ANT when the switch block is cabled) | have |
 | 2 dBi 5.8 GHz whips, SMA male, x 4 | the lab antennas | buy, $5 each |
-| the four 24 dBi panels with their 10 m cables (N at the panel, SMA at the board), N-to-SMA adapters | stage 5 | have |
-| the two 30 dBi dishes | stage 6 | have |
-| the two USB-C modules: SBB5089+SE5004 2 W PA, SAW filter + LNA (5.8 GHz) | stages 5 and 6; a second PA and LNA for the far end as the tests demand | have one each |
+| the four 24 dBi "panels" with their 10 m cables (N at the antenna, SMA at the board), N-to-SMA adapters.  They are 5.15-5.85 GHz **grid parabolics** (AliExpress, 2026-03-07: 24 dBi, 8 degree beam, "with cable 10m"), vertically polarised by their bars; the plan's word for them stays *panel* | stages 4.0 and 5 | have; two measured as a pair across the lab, the other two with their feeds turned against the bars: **turn the feeds back** (the VNA table) |
+| the two 30 dBi dishes: the 2021 **4.9-6.2 GHz** ones (a 30 dBi bipolar parabola and a 60 cm MIMO dish, AliExpress 2021-05-17), not the 2026 "2 x 30 dBi, 600-6000 MHz" LTE grids, one of which measured about 8.6 dBi at 5.8 GHz (the VNA table) | stage 6 | have; unmeasured: a pair across the lab, peaked, before the mountain (stage 6.0) |
+| the USB-C modules: the SBB5089+SE5004 2 W PA (**+46 dB** at 5.8 GHz, 830 mA idle) and the five "SAW filter + LNA" 5.8 GHz modules marked A-E (**+28.4 to +29.6 dB**, flat 5.45-6.0 GHz, 100-108 mA): the VNA table | stages 5 and 6; B is the strongest LNA, D the weakest, A and E the widest | have: one PA, five LNAs |
+| the VNA files: `~/DroneSDR/vna/vna_measurements/` (`README.md` the log, `plot_vna.py` the reader, `manifest.csv` every file's S-parameters at 5.8 GHz) | every accessory's value is a Touchstone file, read at the carrier frequency in use rather than a label or a nameplate | have |
 | USB-C PD power banks, 5 V / 3 A, x 2, and a small heatsink or fan for the PA (it dissipates about 9 W) | the amplifiers in the field | buy |
 | two PYNQ-Z2 (or one PYNQ and one Icepi Zero), their supplies, a laptop | both ends | have |
 | an IR thermometer or camera | stage 1 (heat) | have |
 | the 2x20 socket J302 (LCSC C2977589, 2.54 mm, about 8.5 mm tall) and 2.54 mm jumper shunts (C5305), from `mfg/release/hand_solder_bom.csv` | J302 is soldered at home (Prompt 15: fitting it made JLCPCB's order two-sided, about $51 with duty); the shunts set JP101-JP103, JP201 and JP203 (seven a board) | buy with the order |
 | a loupe or the USB microscope, the top assembly drawing (`mfg/release/CostasLink-PYNQ-Z2_assembly_top.pdf`) and `mfg/release/PLACEMENT_CHECKS.txt`, printed | stage 1.0: the delivered boards against the drawing.  JLCPCB places what the preview showed, but the look is free, and a reversed part found there costs nothing where at step 1 it costs a chip | have |
+
+## What the VNA already measured (2026-10-20/21, before the boards arrived; Prompt 42)
+
+Jason measured the accessories on the RACON room's Agilent 8720ES (full two-port calibration `CAL1020B` with isolation, the
+85052D 3.5 mm kit, 50 MHz-20 GHz, 1601 points, +5 dBm; its fixture and what to trust are in the log) in the days before
+delivery.  Three of the budget's assumptions (`sim/budget.py` section 2c, marked *assumed*) were wrong, each in the direction
+that changes a step below: the LNA module has **29 dB** of gain, not 15; the PA module **46 dB**, not 40; the 10 m antenna
+cables cost **10 dB** each at 5.8 GHz, not 5.  This table is what the stages quote; the budget's own section 2c is updated
+together with the board's measured chain gain after stage 3 (a rebuild: the sheets' blue boxes and PLAN.md's range tables
+follow it), so until then PLAN.md's "amplifiers at the board" rows are about 10 dB optimistic and its PA pad reads 20 dB.
+
+| what | measured (file `2026-10-2x_HP8720ES_...`) | what it changes |
+|---|---|---|
+| the two 10 m feed cables, each with its N-to-SMA adapter | **10.01 / 9.80 dB at 5.8 GHz** (10.1 / 9.9 mean over 5.7-5.9), one-way delay 42.60 / 42.71 ns: 10 m at a velocity factor of 0.78, foam RG-58-class, about 1.0 dB/m; return loss in band only -8 to -9 dB at the N end.  `cable_{left,right}_10m_plus_NtoSMA` (`_5to6GHz`: the right one at 0.625 MHz spacing) | stage 5.1: 10 dB less at the receiver than the budget's -49 dBm with a cable at each board; the amplifiers belong at the antenna more than ever |
+| two 24 dBi grids, both vertical, peaked at each other across the 16.4 m room, through both cables | **S21 -46.8 dB at 5.800 GHz**, -46.7 mean over 5.7-5.9 GHz with 2.7 dB of multipath ripple (-48.4 to -45.7); delay 135.6 ns.  Less the cables: -27.0 dB antenna to antenna against 72.0 dB of free-space loss, so **22.5 dBi each** by Friis (a 24 dBi grid is 30-45 cm across and its far field starts 4-8 m out, so Friis applies).  `ant_pair_VV_24dBi_grid_{5p7to5p9GHz,5to6GHz,full}` | **the calibrated room link** (stage 4.0): the level at RX ANT and the propagation time are known before a board is powered |
+| the other two grids ("H": their feeds were turned 90 degrees by the students while the bars stayed vertical) | 18 dB (HV), 28 dB (VH) and 27 dB (HH) **below the VV pair**: a horizontal feed behind vertical bars radiates through them.  `ant_pair_{HV,VH,HH}_24dBi_grid_*` | **turn both feeds back** (or turn a whole grid, bars and all, for a cross-polarised pair) and re-measure the pair before stage 5 needs four antennas |
+| the "5G Revolution" dual-feed grid (one of the 2026 "2 x 30 dBi, 600-6000 MHz" LTE antennas) | its V and H ports isolated by **29.5 dB** at 5.7-5.9 GHz (24 dB over 5-6 GHz, 12-17 below 5 GHz), the coupling inside the feed puck, not the room; the puck's return loss 2-4 dB over 5-6 GHz; its V feed across the room 12.6 dB below the 24 dBi grid, unpeaked: about **8.6 dBi, provisionally**.  `mimo5G_portisolation_VtoH_*`, `ant_pair_mimoV_to_grid24V_*` | not a 5.8 GHz antenna on this evidence: stage 6's dishes are the 2021 4.9-6.2 GHz ones, to be measured the same way (stage 6.0) |
+| five "SAW + LNA" 5.8 GHz modules marked A-E, at 5.000 V | gain at 5.8 GHz **29.1 / 29.6 / 29.2 / 28.4 / 29.3 dB** (A-E; 29.2 mean over 5.6-6.0, sd 0.5); flat within about 1.5 dB from 5.45 to 6.0 GHz, peaking at 5.90-5.96; **at 5.2 GHz +9 to +14 dB, only 16-20 dB of rejection, on a skirt of 10 dB per 100 MHz**; -5 to -11 dB at 5.0 GHz; reverse isolation -47 to -49 dB; 0.2-0.35 dB of compression at -15 dBm in (+14 dBm out); 100-108 mA; -17 to -22 dB at 11.6 GHz.  `lna_saw_5p8g_{A..E}_-13dBm` (gain), `_5dBm` (S12, compression); `_padded_` as measured | stages 4-5: the DSA absorbs 29 dB, not 15; the module's filter does not give the 30 dB the budget assumed 600 MHz away, and nothing 100 MHz away; the noise figure is still to be measured (stage 5.2) |
+| the SBB5089 + SE5004 2 W PA module, 5.000 V, on a heatsink with a fan | **+46.2 dB at 5.8 GHz** (+45.9 mean 5.6-6.0; +47 at 5.7, +45.0 at 5.9, +44.0 at 6.0), uncertain by 1-2 dB until its 70 dB pad chain is measured end to end; about +7 dB at 11.6 GHz (rough: the pads are past their band there); quiescent 830 mA, 4.15 W, 20 s to settle; rated 2 W (+33 dBm).  `pa_wydz_5g6g_2w_padded_{-13,5}dBm` (raw; the gain is the pads subtracted in dB, `deembed_gain_db()`) | stage 5.3: the input pad is 26-30 dB, not 20; the board alone would drive it 23 dB into compression |
+| the Nooelec SMA attenuator kits (1, 2, 3, 6, 10, 20 dB; 2 W; DC-6 GHz), two kits, four 20 dB pads in all | at 5.8 GHz the 20s read **19.73-19.89 dB**, the 10 dB 10.07, the 6 dB 6.05, the 3 dB 3.12; every pad's return loss better than -26 dB in band; the 10 dB is the most accurate and the best matched (VSWR 1.03); the low values read 0.03-0.15 dB high at 5.8 GHz and the 6 dB 0.2 dB low at DC; the 20s and the 10 hold to within 0.5 dB at 11.6 GHz, the small ones do not.  `nooelec_att*_cal1020b`, `att10db`, `att20db_{notape,yellowtape}`, kit 2's `_kit2*`; `plot_vna.py --identify` names an unlabelled pad from its own file | stages 3-5: two 20s are the 40 dB loopback (39.6-39.8), three are 60 dB (59.5); the 2 W rating means a kit pad is not the first thing after a PA at +33 dBm |
+| three SMA DC blocks (SMA-JK-6, A-C), six SMA F-F barrels (marked 1-6) | the blocks **0.27-0.37 dB** at 5.8 GHz and no attenuation despite their listing's "10 dB"; the barrels 0.00-0.05 dB and -24 to -37 dB at 5.8 GHz (barrel 6 the best); a badly made joint reads as a lossy resonance (1.3 dB at 5.8 GHz: the log's dissipation test, the power neither reflected nor passed).  `dcblock_smajk6_{a,b,c}`, `sma_barrel_ff*` | the board's three antenna jacks are DC-grounded through 6.8 nH (L101 / L202 / L401), so a block goes in the lead of anything that puts DC on its coax; a level that reads a dB low is a joint before it is a part |
+
+Two caveats on the room link, for the first measurement with a board to close.  (1) The antenna-pair sweeps were taken with
+the calibration's port-2 cable (the Mini-Circuits CBL-3FT) out of the fixture, and the delay says so: 135.6 ns measured
+against 85.3 ns of feed cable plus 54.7 ns for 16.4 m of air is 4.4 ns short, a 3 ft cable's worth; so the pair's true loss
+is about 1 dB more than the files say, **-47.7 dB**, and the grids about 22 dBi.  Re-measure with the blue cable in place
+(barrel 6 between it and the feed cable's SMA) when the grids are next on the analyser.  (2) The number is for 5.800 GHz
+exactly; the ripple moves it a dB over 20 MHz, so read the file at the carrier frequency in use, not the band mean.
+
+Still wanted from the VNA before the field, in the order they matter: the two "H" grids with their feeds turned back,
+measured as a pair; **two grids side by side on one mast**, both pointed the same way, S21 between them at 5.2 and 5.8 GHz
+in V-V and in V-H (a grid turned bodily), which is the number DOA 6 has only guessed at (52 dB wanted 600 MHz apart,
+65-70 dB at 100-200 MHz); the 2021 dishes as a pair, peaked (stage 6.0); the whips when they arrive, S11 at 5.8 GHz and the
+coupling between two of them a metre apart (stage 4's isolation); the PA's 70 dB chain with no device in it (the 1-2 dB);
+the "H" feed of the dual-feed grid across the room (is the pair V/H or a slant pair); the left cable's 5-6 GHz sweep.
 
 ## Stage 0: before the order (the gates; done, the boards ordered 2026-10-17)
 
@@ -159,7 +196,8 @@ Nothing plugged into the header yet; the board alone on the bench supply through
 ## Stage 3: loopback, one board (the day the loop locks)
 
 TX ANT through a **40 dB attenuator** into RX ANT (30 dB works but leaves the receiver 7 dB above the top of
-`received_dBm()`'s range, the DSA pinned at 31.75 dB and the slow path saturated: Prompt 31).  Never a bare
+`received_dBm()`'s range, the DSA pinned at 31.75 dB and the slow path saturated: Prompt 31).  The 40 dB is two of the
+kit's 20 dB pads (39.6-39.8 dB at 5.8 GHz, measured: the VNA table), 60 dB is three.  Never a bare
 cable: the LNA dies at +1 dBm.  Before the gateware holds the loop, VC sits at a rail (0 or 3.3 V), not at
 1.65 V: the closed loop integrates the arm's offset with no carrier; that is normal.
 
@@ -199,7 +237,7 @@ cable: the LNA dies at +1 dBm.  Before the gateware holds the loop, VC sits at a
    set at a/2 to begin with; V_T2 for the slow Q
    window above x20 the static error.  FSK: the ladders rotate; the edge order on CMP I / CMP QP gives
    the direction.  OOK: both ladders at 0 and back.
-6. The confirm-or-veto counters: with the attenuator raised to 60 dB (two pads) the fast path is near
+6. The confirm-or-veto counters: with the attenuator raised to 60 dB (three of the kit's 20 dB pads, 59.5 dB) the fast path is near
    its floor (-81 dBm at the antenna): count fast flags, slow confirmations and vetoes over 10^6 trials.
 7. The window thresholds by counting (sheet 7; PLAN.md section 18): the loop locked on the idle, step
    each window threshold across the idle in 16-bit codes and read its comparator's edge count a second
@@ -220,13 +258,29 @@ cable: the LNA dies at +1 dBm.  Before the gateware holds the loop, VC sits at a
 
 ## Stage 4: two boards across the lab (whips, 3 to 30 m)
 
-Two boards on two PYNQ-Z2s, whips on both SMAs of each.  Frequencies: board A transmits at 5.80 GHz and
+Two boards on two PYNQ-Z2s, whips on both SMAs of each (the whips are still to be bought and are unmeasured; step 0
+uses the grids, which are on hand and measured).  Frequencies: board A transmits at 5.80 GHz and
 receives at 5.20 GHz, board B the other way round (two antennas each, both carriers on all the time: the
-600 MHz split the fast arm rejects by 31 dB).  The budget wants 42 dB of isolation between a board's own
+600 MHz split the fast arm and the demodulator reject by 21 dB, sim/budget.py section 4).  The budget wants 52 dB of isolation between a board's own
 two whips 600 MHz apart; two whips on one board's SMAs 32 mm apart give about 15 dB (stage 5), so **put each
 board's transmit whip on a 1 m lead**, a metre from its receive whip, or run the first tests with
 the switch block cabled in and time division (stage 4.4).
 
+0. **The calibrated link first.**  Before the whips: the two vertical 24 dBi grids where they stand across the 16.4 m room,
+   each board at the SMA end of one 10 m cable, one antenna per board: board A transmitting into board B for the first
+   look, then the switch block cabled for time division (step 4).  The VNA measured this exact path between the two SMA
+   ends, **-46.8 dB at 5.800 GHz** (about -47.7 dB with the fixture caveat in the VNA table), so with the board's +9.8 dBm
+   (read it at TX MON first, stage 2.3) RX ANT sees **-37 to -38 dBm**: inside `received_dBm()`'s range with 10 dB to spare
+   at the top, the DSA at about 22 dB once `agc()` has settled (39.2 dB of chain gain, -20 dBm at the demodulator).
+   `received_dBm()` must agree with the VNA within 1.5 dB: that is the receiver's absolute calibration, done against a
+   two-port measurement instead of stage 5's generator, and the number that goes into `cal_db`.  Then the kit's pads in
+   the receive lead (their values are files too): -57 dBm with a 20, -77 with two, near the fast path's -81 dBm floor, so
+   every level of step 3's walk-down is known to a dB with no generator and no Friis.  The propagation time between the
+   two SMAs is known as well, **140.0 ns** (85.3 of cable, 54.7 of air): one point of step 2's latency line whose x is
+   measured to 0.1 ns, so the intercept comes out of this one setup.  The grids are 8 degree antennas and the room's
+   multipath is 2.7 dB of ripple across 200 MHz: move the carrier 20 MHz and the level moves a dB; that is the channel,
+   not the board.  Both directions at once (FDD, 5.8 and 5.2 GHz) need all four grids, so the two "H" feeds turned back
+   first; until then this link is one-way or time-division.
 1. Lock at 3 m: each receiver locks on the other's carrier (VC MON steady on both).  The RX synthesizer
    is re-centred by the FPGA when VC nears an end of its range (the two TCXOs may differ by 29 kHz).
 2. Latency: TRIG OUT A on board A (the mark of the flip) against TRIG OUT B on board B (the mark of the decode),
@@ -276,7 +330,7 @@ the switch block cabled in and time division (stage 4.4).
    Calibrate the boards' own asymmetry side by side with a 1 m cable and a 40 dB pad first.  Start RX_TIMING's
    confirm delay at 80 ns (the slow I stage's 20 ns overdrive recovery is not in the 37 ns model) and shorten it
    from the measurement; expect the bench's CFAR windows near 0.2 a, set by the oscillators' phase noise.
-   *Pass:* the latency line's intercept within 2 ns of the budget at both ends; BPSK quiet at 30 m
+   *Pass:* `received_dBm()` within 1.5 dB of the VNA's level on the grid link (step 0); the latency line's intercept within 2 ns of the budget at both ends; BPSK quiet at 30 m
    with 20 dB in the lead; the T/R exchange works at 10 m.
    *Retires:* own-transmitter leakage (DOA 6: at the bench level), the switch (DOA 10's HMC536), the
    Icepi Zero if one end is an Icepi (DOA 11).
@@ -291,7 +345,7 @@ EIRP.  The identification keys the carrier off and on: the far end's loop coasts
 **The received level, in operation** (Prompt 18).  The board has no detector chip.  With the loop
 locked, `received_dBm(ext_db=...)` reads the carrier's level from the DSA's setting and the I arm's
 amplitude on the ADC: at RX ANT, or at the antenna when `ext_db` is the gain of what sits between
-them (+15 for the LNA module, −30 for a pad).  `agc()` steps the DSA until the demodulator is back at
+them (+29 for the LNA module, measured; −30 for a pad).  `agc()` steps the DSA until the demodulator is back at
 its regulated −20 dBm, which also restores the loop's gain.  Together they cover about −99 to
 −27 dBm at RX ANT: 31.75 dB of DSA, plus about 40 dB of the arm read by the ADC below the regulated
 level (ten ADC steps at the bottom; sim/budget.py section 3).  For setup:
@@ -318,20 +372,40 @@ Before the first field day (the design review):
 * **Heat:** in a closed box in the sun the input PTC holds only about 1.3 A at 85 C against the
   board's 1.37 A: ventilate the box, or the PTC trips.
 * **The second harmonic** (11.6 GHz) on TX MON, if a 12 GHz analyser can be borrowed, before the PA
-  amplifies it; the PA module's own filter is not specified.  Choose the two frequencies after a scan with the B210 at both ends (UNII-2C 5.47-5.725 GHz is the
-quiet one for the 5.2 GHz direction if it is empty; 5.70 and 5.80 GHz keep both inside the amateur band and the LNA's 5.9 GHz rating).
+  amplifies it; the PA module has about +7 dB of gain there by the VNA sweep (39 dB less than at the carrier), the LNA
+  modules -17 to -22 dB.
+* **The frequency plan against the LNA modules' passband (the VNA table).**  The module is flat from 5.45 to 6.0 GHz and
+  16-20 dB down at 5.2 GHz on a skirt of 10 dB per 100 MHz: a carrier received at 5.2 GHz through it rides a slope and
+  the budget's 30 dB of own-transmitter rejection 600 MHz away is 16-20 dB in fact.  So with a module on a receiver both
+  carriers sit inside 5.5-6.0 GHz (5.70 and 5.80 GHz keep both inside the amateur band and the LNA's 5.9 GHz rating),
+  100-400 MHz apart, where the module's filter gives nothing and one-mast FDD needs 65-70 dB of antenna isolation that two
+  grids side by side will not give.  Hence, with the modules: time division on one antenna (stage 4.4's switch block),
+  or the two antennas on masts apart, or the module on the 5.8 GHz direction's receiver only and the 5.2 GHz direction
+  bare.  The side-by-side isolation is the VNA measurement still wanted.  Choose the two frequencies after a scan with the B210 at both ends (UNII-2C 5.47-5.725 GHz is the
+quiet one for the 5.2 GHz direction if it is empty).
 
 1. Board alone, panels on the 10 m cables at both ends, 300 m: the budget says -49 dBm at the receiver
-   and 43 dB of SNR: lock, latency and error rates as in stage 4.  Reach (quiet, BPSK): 3.1 km on the
-   fast path, 11 km on the slow one, with the 5 dB cables at the board (build/link_rates.md).
-2. The LNA module at the panel: first measure it on the bench (TX MON as a -10 dBm source into it, the
-   analyser on its output: gain, and its passband edges by stepping the TX synthesizer 5.5-6.0 GHz;
-   its noise figure from the receiver's noise floor with and without it).  Then at the panel's N
-   connector, powered by a PD bank: the DSA absorbs its 15 dB.  Reach grows by the cable's 5 dB and
-   the noise-figure difference; its filter adds 30 dB (assumed, measured in this step) of rejection of
-   the own transmitter 600 MHz away, which is what lets both panels sit on one mast.
-3. The PA module: **20 dB attenuator between TX ANT and the module** (the module's 40 dB would be
-   driven 17 dB into compression without it); +30 dBm out, 2 A from the PD bank, the heatsink on.
+   and 43 dB of SNR with its 5 dB cables; the cables measured 10 dB each, so expect **-59 dBm and 33 dB** (the
+   table's own numbers for the first measurement: Friis, 97.3 dB, with 22-24 dBi grids and 19.8 dB of cable):
+   lock, latency and error rates as in stage 4.  Reach (quiet, BPSK): 3.1 km on the
+   fast path, 11 km on the slow one, with the 5 dB cables at the board (build/link_rates.md); with the measured cables
+   about a third of that, until the budget's cable figure is updated at the rebuild.
+2. The LNA module at the panel: its gain and passband are measured (the VNA table: 29 dB, flat 5.45-6.0 GHz, per unit
+   A-E; B the strongest, D the weakest, A and E the widest), so the bench step is the one thing a VNA does not give, its
+   noise figure: the receiver's noise floor (`rssi_zero()`, the slow window's noise fit) with and without the module, at
+   the frequency in use.  Then at the panel's N connector, powered by a PD bank: the DSA absorbs its 29 dB.  At 300 m the
+   module puts about -30 dBm at RX ANT (the board's +9.8 dBm, two grids, 97.3 dB of air, 29 dB of gain, 10 dB of cable):
+   the DSA at about 29 of its 31.75 dB, 3 dB from the top of `received_dBm()`'s range; inside 200 m the module comes out or
+   a 20 dB pad goes in the lead.  Reach grows by the cable's 10 dB and the noise-figure difference.  Its filter does **not**
+   add the budget's 30 dB of rejection 600 MHz away (16-20 dB measured, and nothing 100-400 MHz away: the frequency-plan
+   note above), so both panels on one mast is time division or a measured isolation, not an assumption.
+3. The PA module: **26-30 dB of attenuator between TX ANT and the module** (its gain measured 46 dB, so the board's
+   +9.8 dBm alone would drive it 23 dB into compression; the budget's 20 dB pad, written for 40 dB, leaves it 3 dB
+   over its rating).  Start with 20 + 10 (29.9 dB measured): -20 dBm in, **+26 dBm out**, 0.4 W, linear; 20 + 6
+   (25.9 dB) for +30 dBm, 3 dB under the rating, once the output has been read.  Read it through a high-power attenuator
+   or the -20 dB coupler of a power meter, not through the kit's 2 W pads first (at +33 dBm a 20 dB pad dissipates its
+   whole rating), and never into an analyser above its +10 dBm.  830 mA idle and about 2 A at full output from the PD
+   bank, 20 s to settle, the heatsink and the fan on.
    TX MON before the pad reads the board's own level; at the far end `CostasLink.received_dBm()`
    reads the received level for pointing the panels (next paragraph).  EIRP with the 24 dBi panel is +54 dBm: aim it away from
    people and buildings as any amateur microwave station does.  Reach (quiet, BPSK, PA and LNA at the
@@ -339,14 +413,21 @@ quiet one for the 5.2 GHz direction if it is empty; 5.70 and 5.80 GHz keep both 
 4. Measurements: the latency line over 300 m, 1 km, 3 km (ground truth from GPS coordinates); error
    rates for each scheme at each distance with 10, 20, 30 dB of attenuator in the receive lead to walk
    down to each path's floor; the T/R mode at 1 km (the 30 ns turnaround against the 6.7 us round trip).
-   *Pass:* lock and quiet BPSK at 3 km with the board alone; the PA and LNA each give the budget's
-   gain within 3 dB.
+   *Pass:* lock and quiet BPSK at 3 km with the board alone; the PA and LNA each give the VNA's
+   gain (46 and 29 dB) within 1 dB on the air, and the LNA's noise figure is a number.
    *Retires:* own-transmitter leakage at PA levels (DOA 6: the demodulator must not compress; if it
    does, the DSA and the LNA module's filter are the knobs), the amplifier modules' real numbers (the
    budget's section 2c assumptions become measurements).
 
 ## Stage 6: into the mountains (dishes, 20 to 70 km)
 
+0. **Which dishes, and what they measure.**  The 30 dBi dishes are the 2021 4.9-6.2 GHz pair (a bipolar parabola and a
+   60 cm MIMO dish), not the 2026 "2 x 30 dBi, 600-6000 MHz" LTE grids: one of those measured about 8.6 dBi at 5.8 GHz
+   (provisional, unpeaked) with a feed puck returning 2-4 dB, and 29.5 dB between its two ports (the VNA table).  Before
+   the mountain, the 2021 pair across the 16.4 m room on the 10 m cables, peaked with `vna_peak.py`
+   (lab-instrument-control `hp/`): two 30 dBi dishes should read about -32 dB (72 dB of air, 60 dBi, 20 dB of cable), the
+   room just outside a 60 cm aperture's 14 m far field; a dual-polarised dish's port isolation the way the LTE grid's was
+   measured.  A pair that reads 10 dB short is not a mountain antenna.
 1. Choose the two sites from a terrain profile: line of sight with the first Fresnel zone clear (at
    5.8 GHz over 50 km the first zone's radius is 25 m at mid-path).
 2. Each end: the dish on a tripod, the LNA module and the PA module at the dish's feed (short SMA leads),
@@ -370,7 +451,7 @@ quiet one for the 5.2 GHz direction if it is empty; 5.70 and 5.80 GHz keep both 
 | 3 | the 3.8 V level shift into a 3.3 V FDA (the summing nodes 128 mV under the guaranteed 2.0 V; 61 mV at the worst corner) | the DNP 1.5 k on ADJ drops the common mode to 2.5 V; each arm's PD is separate | 3.2 | fit the 1.5 k (an 0402: JLCPCB's job, or a rework) |
 | 4 | 5.8 GHz layout: 28 dB of cascaded gain, the balun, the LO pairs, the LNA match, the couplers | CPWG with via fences, the vendors' layouts, the DSA between the stages, four RF monitors | 2.3, 3.1 | the DSA tames an oscillation; the TX pi pad; the couplers' real coupling is calibrated once |
 | 5 | the LO is wrong (registers, lock-detect polarity, Kvco, level) | MUX = lock detect; LO MON taps; every register is a write; REF IN | 2 | software; the loop filter values are 0402s |
-| 6 | own transmitter into own receiver | two antennas 600 MHz apart (31 dB from the arm), the DSA, the LNA module's filter, time division with the switch | 4.1, 5.3 | separate the whips; the switch block; the filter module |
+| 6 | own transmitter into own receiver | two antennas 600 MHz apart (21 dB from the arm and the demodulator; 52 dB of antenna isolation wanted), the DSA, time division with the switch.  The LNA module's filter is **not** a guard: 16-20 dB at 5.2 GHz, nothing 100-400 MHz away (the VNA table), and with a module both carriers must sit in 5.5-6.0 GHz | 4.1, 5.3; the side-by-side isolation on the VNA before the field | separate the whips; the switch block; masts apart; a grid turned bodily for cross-polarisation (not its feed) |
 | 7 | heat: 6.8 W | the PLL regulators' 2.2 ohm; exposed-pad vias; +5V_RF pour | 1.4 | a fan; TX_DIS and the DSA idle parts |
 | 8 | the slow path's offsets or saturation | I_OFF / Q_OFF, V_T2; the nulling routine | 3.2 | the fast path works without it |
 | 9 | the single-ended ladder drive wobbles the modulator's common mode | VR_I / VR_Q trims; the receiver cares about sign | 2.3, 3.5 | accept the -15 dBc feedthrough as a fixed vector |
@@ -379,3 +460,4 @@ quiet one for the 5.2 GHz direction if it is empty; 5.70 and 5.80 GHz keep both 
 | 12 | a generated symbol with pins swapped | the pin audit (done: two incomplete symbols found and fixed) | 0, 3 | a rework is unlikely to save a QFN with a swapped pair; order one board first if in doubt |
 | 13 | **new:** the TCXO's pin 1 is undocumented in its datasheet text (control or NC); the symbol leaves it open | nothing | 2.1 | if the TX synthesizer's reference is off frequency, pin 1 wants 1.65 V: a rework wire to the VCXO's divider |
 | 14 | **new:** the HMC536's control sense (A high = receive) and the mux's select sense (S low = B1) were written backwards in two notes | the notes and the jumper default corrected; the switch rests in receive by its pull-ups | 3.3, 4.4 | the gateware's T/R table is one line |
+| 15 | **new (Prompt 42):** the accessories' numbers were assumptions (PLAN.md section 11, question 3): the LNA module 15 dB, the PA 40 dB, the cables 5 dB, the panels flat 24 dBi | measured on the 8720ES before delivery (the VNA table): 29 dB, 46 dB, 10 dB each, 22-24 dBi grids with two feeds turned wrong; every pad a file | 0 (done, 2026-10-21); 4.0 checks the receiver against the room link | the PA's pad 26-30 dB; the frequency plan inside the module's passband; the amplifiers at the antenna; the budget's section 2c at the rebuild |

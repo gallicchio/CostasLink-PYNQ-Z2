@@ -4370,3 +4370,53 @@ on both, proceed; the text is in the reply.  Nothing in the design or the releas
 row 57, the rotation table's C531388 entry, BRINGUP.md's order paragraph and stage 1.0 (c) (the balun joins the
 pin-1 check, under the microscope), CLAUDE_PCB.md section 3 (JLCPCB's engineers ask about polarity before
 production; answer from the net on pin 1, not from the picture's look).
+
+## Prompt 42 (2026-10-24 ~09:30 PDT)
+
+These boards are on their way from JLCPCB. When they arrive, I want to make sure that we are ready to use them. I made some VNA measurements of various components I own. Those measurements are in `~/DroneSDR/vna/vna_measurements/`. There is a description there of what was done. For example, I measured the link between two 24 dBi parabplic dish antennas across a long lab room. Each had a cable that went to the antenna, and each cable had about 10 dB loss at 5.8 GHz. Take a look at all of this and incorporate anything that is relevant into the testing plan here.
+
+
+## Response 42 (2026-10-24 09:40 - 10:15 PDT): the VNA's measurements folded into the bring-up
+
+Read: `~/DroneSDR/vna/vna_measurements/README.md` (the log of 2026-10-20/21 on the RACON room's 8720ES: calibration CAL1020B
+with isolation, the fixture, what to trust), `manifest.csv`, and the Touchstone files themselves with a numpy reader (the
+numbers below are from the files at 5.800 GHz, not from the log's prose).  Three of the budget's section 2c assumptions were
+wrong, each in the direction that changes a step: the "SAW + LNA" module is 29 dB (28.4-29.6 across the five units A-E, flat
+5.45-6.0 GHz, and only 16-20 dB down at 5.2 GHz on a 10 dB per 100 MHz skirt), not 15; the PA is 46 dB (1-2 dB uncertain until
+its 70 dB pad chain is measured end to end), not 40; the 10 m cables are 10.0 / 9.8 dB at 5.8 GHz (42.6 ns, foam RG-58-class),
+not 5.  The four "24 dBi 40 x 30 cm panels" are 5.15-5.85 GHz grid parabolics (the 2026-03-07 receipt, "with cable 10m"), and
+two of them have their feeds turned 90 degrees against vertical bars by the students: measured as pairs across the 16.4 m room
+they sit 18-28 dB below the good pair.  The good pair, peaked, reads -46.8 dB SMA to SMA through both cables at 5.800 GHz
+(2.7 dB of multipath ripple over 5.7-5.9 GHz; 22.5 dBi each by Friis with 72.0 dB of air, where the log's own 21.2 dBi does not
+follow from its inputs), and the delay shows the calibration's port-2 cable was out of the fixture (135.6 ns against 85.3 of
+cable plus 54.7 of air, 4.4 ns short: a 3 ft cable), so the true link is about -47.7 dB and the grids about 22 dBi.  The
+"5G Revolution" dual-feed grid is one of the 2026 600-6000 MHz LTE antennas (29.5 dB between its ports at 5.7-5.9 GHz, the puck
+returning 2-4 dB, its V feed about 8.6 dBi provisionally): not a 5.8 GHz antenna, and not the plan's stage 6 dishes, which are
+the 2021 4.9-6.2 GHz pair.  The Nooelec pads, the DC blocks and the six barrels are measured too (the 20s 19.73-19.89 dB at
+5.8 GHz, the 10 dB the best of the kit; the "10 dB" DC blocks are 0.3 dB blocks).
+
+BRINGUP.md: a new section after the bench list, "What the VNA already measured", one table (what; the numbers with their file
+names; what each changes) plus the fixture caveat and the list of what is still wanted from the VNA before the field (the H
+feeds turned back and re-measured; two grids side by side on one mast at 5.2 / 5.8 GHz in V-V and V-H, which is DOA 6's number;
+the 2021 dishes as a pair; the whips; the PA's chain; the dual-feed grid's H across the room; the left cable's narrow sweep).
+The bench table's rows for the pads, the panels, the dishes and the modules carry the measured facts and a row points at the
+files.  Stage 3's 40 and 60 dB are two and three of the kit's 20s.  **Stage 4.0, new: the calibrated link.**  The two vertical
+grids where they stand, one per board: RX ANT sees -37 to -38 dBm from the board's +9.8 dBm, the DSA at about 22 dB, and
+`received_dBm()` must agree with the VNA within 1.5 dB, the receiver's absolute calibration against a two-port measurement
+instead of a generator; the kit's pads then put every level of the walk-down at a known dBm; and the propagation time between
+the SMAs is 140.0 ns, a latency-line point whose x is known to 0.1 ns.  Stage 4's header: the arm's 600 MHz rejection and the
+isolation it needs corrected from 31 / 42 dB to the budget's 21 / 52 (Prompt 31's numbers had not reached this file).  Stage 5:
+a bullet on the frequency plan against the module's passband (with a module on a receiver both carriers sit in 5.5-6.0 GHz,
+100-400 MHz apart, where the filter gives nothing and one-mast FDD needs 65-70 dB: time division, masts apart, or the module on
+one direction only); 5.1 expects -59 dBm and 33 dB at 300 m, not -49 / 43; 5.2 drops the bench gain measurement (done) and keeps
+the noise figure, and the DSA absorbing 29 dB sits 3 dB from the top at 300 m; 5.3's PA pad is 26-30 dB (20 + 10 for +26 dBm
+first, 20 + 6 for +30; the board alone would drive it 23 dB into compression), the output read through a high-power pad and not
+the kit's 2 W ones; the pass conditions ask for the VNA's gains within 1 dB on the air.  Stage 6.0: which dishes, and their pair
+across the room (about -32 dB expected) before the mountain.  DOA row 6 loses the module's filter as a guard; row 15 records the
+assumptions against the measurements.  PLAN.md section 3's antenna row, section 9's one-breath summary, section 11's question 3
+and the "Words" paragraph say the measured numbers and what the panels are.  REVA_CHANGES row 58.  README.md's status.
+CLAUDE_PCB.md section 9: measure the accessories on a VNA before the board arrives, the fixture with no device first, and let
+the plan quote the files.  **Not done:** `sim/budget.py` section 2c still carries 15 / 40 / 0.5 dB per m, marked assumed;
+replacing them regenerates the blue boxes and the range tables (PLAN.md's "amplifiers at the board" rows are about 10 dB
+optimistic until then), so it waits for the rebuild after stage 3, when the board's own chain gain joins them.
+`tools/doc_check.py`: 42 claims, 0 stale.  Nothing on the board changes; KiCad was not needed.

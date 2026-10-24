@@ -111,7 +111,7 @@ and the receiver now has two ADL5611 gain blocks.
 |---|---|---|
 | TX output at the SMA | **+9.8 dBm** | ADL5375 at 5.8 GHz with 0.7 V p-p differential drive (−3.1 dB from full scale) = −4.5 dBm, ADL5611 +14.3 dB at 5.8 GHz |
 | carrier feedthrough | −15 dBc | ADL5375 at 5.8 GHz is poor here (−19.5 dBm); irrelevant for a carrier that is on all the time, nulled by the Vr DAC channels for OOK tests |
-| antennas | 2 dBi whips (a quarter-wave stick on each SMA) on the bench; four **24 dBi 40 × 30 cm panels** with 10 m cables (N at the panel, SMA at the board); **30 dBi 60 cm dual-polarised dishes** as the big option | Jason, Prompt 2; a 10 m cable is 5 dB of LMR-200 at 5.8 GHz (12 dB of RG-58), so the amplifier belongs at the panel |
+| antennas | 2 dBi whips (a quarter-wave stick on each SMA) on the bench; four **24 dBi 40 × 30 cm panels** with 10 m cables (N at the panel, SMA at the board); **30 dBi 60 cm dual-polarised dishes** as the big option | Jason, Prompt 2; a 10 m cable is 5 dB of LMR-200 at 5.8 GHz (12 dB of RG-58), so the amplifier belongs at the panel.  Measured 2026-10-21 (Prompt 42): the cables are 10.0 / 9.8 dB each (foam RG-58-class), and the "panels" are 5.15-5.85 GHz grid parabolics, 22-24 dBi by the room link; the budget's section 2c takes the numbers at the rebuild after stage 3 |
 | across the room, 10 m, 2 dBi whips | RX −54 dBm, SNR 38 dB in 100 MHz | Friis; NF 2.0 dB; 30 m: SNR 29 dB |
 | across campus, 300 m, panels, 10 m cables, no amplifier | −49 dBm, SNR 43 dB | 3 km: SNR 23 dB (33 dB with the amplifiers at the panel) |
 | 20 km, panels, amplifiers at the panel, no PA | −76 dBm, SNR 16 dB | the board alone reaches a mountain; dishes: 28 dB; section 13 has the error rates against PA price |
@@ -425,7 +425,7 @@ LO monitors and the transmitter on TX MON; (3) loopback through a 30 dB pad: the
 nulled, the loop locked (the sign jumpers if it runs away), the latency on CMP I MON against TRIG A,
 every modulation, the confirm-or-veto counters; (4) two boards across the lab on whips, the latency
 line against distance, the error rates, time division with the switch; (5) across campus on the
-panels, first bare, then the LNA module at the panel, then the 2 W PA module through a 20 dB pad,
+panels, first bare, then the LNA module at the panel, then the 2 W PA module through a 26-30 dB pad (its gain measured 46 dB, Prompt 42),
 in the amateur band with the Morse identification; (6) the dishes between two hills.
 
 ## 10. What would make it come back dead, and what guards against it (Response 7)
@@ -562,7 +562,10 @@ and ISM both allowed on campus; the antennas (section 3). Still open:
    at 2.4 GHz: 17 dB, NF 1.6). `sim/budget.py` section 2c carries the PA's numbers and assumed ones
    for the LNA (15 dB, NF 2 dB, passband 5725-5875, 30 dB of rejection 600 MHz away) until stage 5 of
    `BRINGUP.md` measures them. The PA wants a **20 dB SMA attenuator** on its input to run at +30 dBm;
-   the board's +9.8 dBm alone would drive it 17 dB into compression.
+   the board's +9.8 dBm alone would drive it 17 dB into compression.  **Measured on the 8720ES before delivery (2026-10-20/21,
+   Prompt 42):** the LNA module 29 dB (five units within 1.3 dB, flat 5.45-6.0 GHz, 16-20 dB down at 5.2 GHz), the PA 46 dB
+   (so a 26-30 dB pad: 23 dB into compression bare), the 10 m cables 10 dB each; `BRINGUP.md`'s VNA table carries the numbers
+   and section 2c of the budget takes them at the rebuild after stage 3.
 4. The campus channel: a spectrum scan with the B210 at both ends before choosing between ISM
    (5.725-5.875) and UNII-2C (5.47-5.725; DFS, and usually empty indoors).
 5. ~~The licence~~ Settled (Prompt 5): W3JQ, granted 2020-05-05, expires 2030-05-05 (FCC ULS). The
@@ -632,11 +635,12 @@ sets the standard by false events an hour instead, which costs another 6 dB, and
 constellation from it.)
 The gateware's dwell requirement (a flip must persist N samples) buys quiet with latency.
 
-**Words (Prompt 3).** *Panel* = your 24 dBi 40 × 30 cm flat-panel antenna (an array of patches
-behind a radome; N connector; 8-10° beam). *Dish* = the 30 dBi 60 cm one. *Whip* = a quarter-wave
+**Words (Prompt 3).** *Panel* = your 24 dBi antenna (bought as a flat panel; the four that came are 5.15-5.85 GHz
+grid parabolics with an 8° beam and a 10 m cable each, vertically polarised by their bars, 22-24 dBi by the room link:
+Prompt 42, BRINGUP.md's VNA table; N connector). *Dish* = the 30 dBi 60 cm one. *Whip* = a quarter-wave
 stick screwed straight onto the board's SMA, about 2 dBi, the bench antenna. *Amplifiers at the
 panel* = the external PA and LNA mounted at the antenna's N connector, so the 10 m cable carries the
-PA's output and the LNA's output and its 5 dB costs nothing; *amplifiers at the board* = the same
+PA's output and the LNA's output and its 5 dB (10 dB measured, Prompt 42) costs nothing; *amplifiers at the board* = the same
 boxes at the SMA end, so the cable's 5 dB comes off the transmitted power and adds to the noise
 figure. The scenario column of the tables says which.
 

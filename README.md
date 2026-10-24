@@ -59,7 +59,10 @@ FPGA can own the constellation point), one order-day note (the AD5696R's stock),
 Response 36; build 41: DRC 0, every gate passing).  **Ordered 2026-10-17** (Prompts 37-38: JLCPCB order 13544840A_Y21, 5 boards,
 2 assembled, nothing consigned; the production files checked layer by layer, `mfg/PRODUCTION_FILE_CHECK.md`; the preview's two readings,
 the SMAs' rotation and the plugged vias, folded back into the generator, REVA_CHANGES.md rows 54-55).  BRINGUP.md's stage 1.0 reads
-the delivered boards against the order (Prompt 39).
+the delivered boards against the order (Prompt 39).  **Prompt 42 (2026-10-24, the boards in transit):** the accessories measured on
+the 8720ES before delivery (the LNA module 29 dB not 15, the PA 46 dB not 40, the 10 m cables 10 dB each not 5, two 24 dBi grids across
+the lab −46.8 dB SMA to SMA) folded into [`BRINGUP.md`](BRINGUP.md): a VNA table the stages quote, a calibrated room link at stage 4.0
+that sets the receiver's level scale, the PA's pad 26-30 dB, the frequency plan inside the LNA module's passband, the stage 6 dishes identified.
 
 * [`PLAN.md`](PLAN.md): the idea, the numbers, the antenna question, the parts with the reasons and
   the rejected alternatives, the header pin map, power, the board, bring-up, what could go wrong.
