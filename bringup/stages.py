@@ -497,6 +497,125 @@ def stage2_tx(b):
                     at_tx_ant_dbm=rows["(1, 0)"] + 20, text="TX ANT = TX MON + 20 dB (the coupler's nominal: calibrate it once)")
 
 
+TX_ANT_DBM = 9.8          # PATHS.md: the third ADL5611's +9.8 dBm, through the coupler's 0.3 dB, at the idle (1, 0)
+
+
+def stage2_tx_ant(b, cable_db=0.5, tx_mon_dbm=None):
+    """2.3 at the jack itself: TX ANT (J202) straight into the analyser (a short SMA lead, cable_db its loss), the
+    analyser's attenuator fixed at 30 dB and its reference at +20 dBm BEFORE the transmitter goes on (the ADL5611
+    can reach +15 dBm; the DSA875 takes +20).  The same points as stage2.tx, the carrier's 25 MHz reference spurs
+    in a 200 MHz span, and one 9 kHz-7.5 GHz sweep saved.  With tx_mon_dbm (stage2.tx's (1, 0), default the last one
+    logged), the coupler's coupling: TX MON less TX ANT.  Pass: +9.8 dBm +- 3 at the jack."""
+    import json
+    b.stage = b.stage or "2.3"
+    if tx_mon_dbm is None:
+        last = [json.loads(l) for l in open(b.log.path) if '"test": "tx_levels"' in l]
+        tx_mon_dbm = last[-1]["dbm"]["(1, 0)"] if last else None
+    b.board_call("safe")
+    b.sa_setup(F_LO, 20e6, ref=20.0, att=30)                  # safe for anything the chain can make, first
+    rows, spurs = {}, {}
+    try:
+        b.board_call("hold_point", 1, 0)
+        b.board_call("ctrl", tx_dis=0)
+        time.sleep(0.1)
+        b.sa.single()
+        f0, p0 = b.sa.peak()
+        load = {"psu": b.psu_read("TX on, (1, 0), TX ANT on the analyser"), "detectors": b.cl.detectors()}
+        b.sa_setup(f0, 100e3, rbw=1e3, ref=20.0, att=30)
+        for pt in ((1, 0), (-1, 0), (0, 1), (0, -1), (0, 0)):
+            b.board_call("hold_point", *pt)
+            time.sleep(0.05)
+            b.sa.single()
+            rows[str(pt)] = b.sa.peak()[1] + cable_db
+        b.board_call("hold_point", 1, 0)
+        for off in (-F_REF, F_REF, 2 * F_REF):                 # the reference's spurs on the transmitted carrier
+            b.sa_setup(f0 + off, 200e3, rbw=1e3, ref=20.0, att=30)
+            b.sa.single()
+            spurs["%+g MHz" % (off / 1e6)] = b.sa.peak()[1] + cable_db - rows["(1, 0)"]
+        wide = b.sa_trace(F_LO, 200e6, rbw=100e3, ref=20.0, att=30, label="TX ANT 5.7-5.9 GHz (1, 0)")
+        full = b.sa_trace(3.75e9, 7.5e9, ref=20.0, att=30, label="TX ANT 0-7.5 GHz (1, 0)")
+        b.board_call("ctrl", tx_dis=1)
+        time.sleep(0.05)
+        b.sa_setup(f0, 100e3, rbw=1e3, ref=20.0, att=30)
+        b.sa.single()
+        rows["tx_dis"] = b.sa.peak()[1] + cable_db
+    finally:
+        _tx_off(b)
+    axis = [rows[k] for k in ("(1, 0)", "(-1, 0)", "(0, 1)", "(0, -1)")]
+    coupling = None if tx_mon_dbm is None else tx_mon_dbm - rows["(1, 0)"]
+    checks = {"level": abs(rows["(1, 0)"] - TX_ANT_DBM) <= 3, "axis_flat_1db": max(axis) - min(axis) <= 1.0,
+              "ref_spurs_60dbc": max(spurs.values()) <= -60}
+    return b.record("verdict", test="tx_ant", ok=all(checks.values()), checks=checks, hz=f0, dbm=rows, cable_db=cable_db,
+                    ref_spurs_dbc=spurs, tx_mon_dbm=tx_mon_dbm, coupling_db=coupling, amps_tx_on=load["psu"]["amps"],
+                    v5_rf_tx_on=load["detectors"]["v5_rf"], traces=[wide["file"], full["file"]],
+                    text="levels at the jack: the analyser's reading plus cable_db; the analyser's attenuator 30 dB")
+
+
+def stage2_tx_spurs(b, cable_db=0.5, freqs_mhz=tuple(range(3000, 6001, 250))):
+    """The +-25 MHz sidebands on the transmitted carrier (board A, 2026-10-29: -36 / -39 dBc at TX ANT, none on LO TX
+    MON): where they come from.  TX ANT straight into the analyser, its attenuator at 30 dB and reference +20 dBm first.
+    (1) At 5.8 GHz, each sideband's absolute level at the ladder points (1, 0), (-1, 0), (0, 1), (0, 0) and with
+    TX_DIS high: a ripple on the ladders' lines stays while the carrier changes.  (2) The TX synthesizer's PFD at
+    5 MHz (R = 5): its own reference spurs move to +-5 MHz, the +-25 MHz pair stays if it is not the synthesizer's.
+    (3) +-50 and +-75 MHz: a square wave's harmonics.  (4) The carrier and both sidebands over freqs_mhz, at (1, 0).
+    1 kHz RBW throughout (the carrier drifts a few hundred Hz a minute while the board warms).  Levels at the jack."""
+    b.stage = b.stage or "2.3"
+    b.board_call("safe")
+    b.sa_setup(F_LO, 20e6, ref=20.0, att=30)
+    out = {"points": {}, "pfd5": {}, "harmonics": {}, "sweep": []}
+
+    def pk(center, span=200e3, rbw=1e3):
+        b.sa_setup(center, span, rbw=rbw, ref=20.0, att=30)
+        b.sa.single()
+        f, d = b.sa.peak()
+        return f, d + cable_db
+
+    def carrier(f_hz):
+        return pk(f_hz, 2e6, 10e3)[0]
+
+    try:
+        b.board_call("hold_point", 1, 0)
+        b.board_call("ctrl", tx_dis=0)
+        time.sleep(0.1)
+        f0 = carrier(F_LO)
+        for pt in ((1, 0), (-1, 0), (0, 1), (0, 0), "tx_dis"):
+            if pt == "tx_dis":
+                b.board_call("hold_point", 1, 0)
+                b.board_call("ctrl", tx_dis=1)
+            else:
+                b.board_call("hold_point", *pt)
+            time.sleep(0.05)
+            out["points"][str(pt)] = {"carrier": pk(f0)[1], "-25": pk(f0 - F_REF)[1], "+25": pk(f0 + F_REF)[1]}
+            print(pt, {k: round(v, 1) for k, v in out["points"][str(pt)].items()}, flush=True)
+        b.board_call("ctrl", tx_dis=0)
+        b.board_call("hold_point", 1, 0)
+        for off in (-75e6, -50e6, 50e6, 75e6):
+            out["harmonics"]["%+g" % (off / 1e6)] = pk(f0 + off)[1]
+        print("harmonics", {k: round(v, 1) for k, v in out["harmonics"].items()}, flush=True)
+        b.board_call("pll_tune", 0, F_LO / 1e6, 5.0, 15)          # R = 5: 5 MHz PFD, the survey's loop gain
+        time.sleep(RELOCK_S)
+        lock = b.board_call("pll_locked")["tx"]
+        f5 = carrier(F_LO)
+        out["pfd5"] = {"locked": lock, "carrier": pk(f5)[1], "-25": pk(f5 - F_REF)[1], "+25": pk(f5 + F_REF)[1],
+                       "-5": pk(f5 - 5e6)[1], "+5": pk(f5 + 5e6)[1]}
+        print("pfd 5 MHz", out["pfd5"], flush=True)
+        for fm in freqs_mhz:
+            b.board_call("pll_tune", 0, float(fm))
+            time.sleep(RELOCK_S)
+            lock = b.board_call("pll_locked")["tx"]
+            fc = carrier(fm * 1e6)
+            row = {"mhz": fm, "locked": lock, "carrier": pk(fc)[1], "-25": pk(fc - F_REF)[1], "+25": pk(fc + F_REF)[1]}
+            out["sweep"].append(row)
+            print({k: (round(v, 1) if isinstance(v, float) else v) for k, v in row.items()}, flush=True)
+    finally:
+        _tx_off(b)
+        b.board_call("pll_tune", 0, F_LO / 1e6)
+        time.sleep(RELOCK_S)
+    return b.record("verdict", test="tx_spurs", ok=None, cable_db=cable_db, **out,
+                    lock_after=b.board_call("pll_locked"),
+                    text="absolute levels at TX ANT (dBm), 1 kHz RBW; the analyser's attenuator 30 dB")
+
+
 def stage2_null(b, step_v=0.008, min_step_v=0.0008, max_iter=40):
     """2.3's null: the ladders at (0, 0), VR_I and VR_Q (DAC1 A, B) moved by coordinate descent for the least carrier at
     TX MON.  Pass: the null lands within a few mV of the printed Vr (VR_I_V, VR_Q_V: the divider carries the ADL5375's
@@ -591,7 +710,7 @@ PROCS = {
     "smoke": smoke, "stage1.ramp": ramp, "stage1.rails": rails_walk, "watch": watch, "stage1.heat": heat_log, "stage1.i2c": stage1_i2c,
     "stage2.pll": stage2_pll, "stage2.lo": stage2_lo, "stage2.vcxo": stage2_vcxo, "stage2.tx": stage2_tx,
     "stage2.null": stage2_null, "stage2.ref_in": stage2_ref_in, "stage2.ref_out": stage2_ref_out,
-    "stage2.vcxo_ref": stage2_vcxo_ref, "loop_center": loop_center,
+    "stage2.vcxo_ref": stage2_vcxo_ref, "loop_center": loop_center, "stage2.tx_ant": stage2_tx_ant, "stage2.tx_spurs": stage2_tx_spurs,
 }
 
 

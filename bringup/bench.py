@@ -22,6 +22,7 @@ The addresses are bench_config.json's (written with defaults the first time; edi
 changes an instrument except the command that says so; `check` sends *IDN? and nothing else.
 """
 import argparse
+import atexit
 import datetime as dt
 import fcntl
 import json
@@ -181,6 +182,7 @@ class Bench:
         self.stage = stage
         self.log = Log(self.board_name)
         self._open = {}
+        atexit.register(self.close)          # any script that opened the analyser leaves it live (sa_live), not paused
 
     # ---- the instruments ----
     def _get(self, name, factory):
@@ -248,6 +250,11 @@ class Bench:
         return self._get("cl", make)
 
     def close(self):
+        if "sa" in self._open:
+            try:
+                self.sa_live()
+            except Exception:                                           # noqa: BLE001 - closing what is open
+                pass
         for k, inst in list(self._open.items()):
             try:
                 inst.close()
@@ -318,6 +325,21 @@ class Bench:
         a = sa.amplitude(ref_level=ref, attenuation=att)
         return {"frequency": f, "bandwidth": bw, "amplitude": a}
 
+    def sa_live(self, center=None, span=None):
+        """Leave the analyser sweeping continuously, the whole 9 kHz-7.5 GHz unless a centre and span are given, the
+        bandwidths coupled, the reference level and attenuator as the last measurement had them (a strong input stays
+        safe).  Every run that used it ends here (close()): Jason, 2026-10-29: "When you leave the spectrum analyzer and
+        wait for me to do something that might take a while, try to leave it with a live view, preferably of its
+        entire spectral range ... But please don't leave it paused."
+        """
+        sa = self.sa
+        if center is None:
+            sa.frequency(start=9e3, stop=7.5e9)
+        else:
+            sa.frequency(center=center, span=span)
+        sa.bandwidth(rbw="auto", vbw="auto")
+        sa.run()
+
     def sa_peak(self, center, span, rbw=None, vbw=None, ref=10.0, label=None, record=True):
         settings = self.sa_setup(center, span, rbw, vbw, ref)
         self.sa.single()
@@ -326,8 +348,8 @@ class Bench:
             return f, dbm
         return self.record("sa_peak", label=label, hz=f, dbm=dbm, settings=settings)
 
-    def sa_trace(self, center, span, rbw=None, label=None, ref=10.0):
-        settings = self.sa_setup(center, span, rbw, None, ref)
+    def sa_trace(self, center, span, rbw=None, label=None, ref=10.0, att="auto"):
+        settings = self.sa_setup(center, span, rbw, None, ref, att)
         f, dbm = self.sa.trace(fresh=True, binary=True)
         d = os.path.join(os.path.dirname(self.log.path), "traces")
         os.makedirs(d, exist_ok=True)
