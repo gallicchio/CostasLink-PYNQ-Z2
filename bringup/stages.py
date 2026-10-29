@@ -396,9 +396,35 @@ def loop_center(b, target_v=V_MID, tol_v=0.04, max_steps=10):
             if abs(vc - target_v) <= tol_v:
                 break
             up = vc < target_v
-            cl.dac(DAC2, I_OFF_F=3.0 if up else 0.3)
+            # ERR must sit on the side of the integrator's reference that moves VC the right way.  The I trim flips
+            # sign(I) where the arm's offset allows (at 5.8 GHz; not at 3.5-4 GHz on board A, where opening the hold
+            # anyway drove the integrator onto its rail, 2026-10-29); else the Q trim moves Q itself.  The reference
+            # is the board's V_MID, about 15 mV under the ADC's 1.65 V, so each trim is tried with a 3 ms release and
+            # the one that moves VC the right way fastest is kept; none: give up
+            want = 1 if up else -1
+            best = None
+            for trims in ({"I_OFF_F": 3.0 if up else 0.3}, {"I_OFF_F": 0.3 if up else 3.0},
+                          {"I_OFF_F": 3.0 if up else 0.3, "Q_OFF_F": 0.3 if up else 3.0},
+                          {"I_OFF_F": 0.3 if up else 3.0, "Q_OFF_F": 0.3 if up else 3.0}):
+                cl.dac(DAC2, I_OFF_F=trims["I_OFF_F"])
+                cl.dac(DAC1, Q_OFF_F=trims.get("Q_OFF_F", V_MID))
+                time.sleep(0.03)
+                v_a = cl.adc("VC")
+                cl.seq_program([(0.003 / cl.t_clk, {"loop_hold": 0})])
+                cl.seq_run()
+                time.sleep(0.02)
+                dv = (cl.adc("VC") - v_a) * want
+                if dv > 0.002 and (best is None or dv > best[1]):
+                    best = (trims, dv)
+            if best is None:
+                steps.append({"vc": vc, "up": up, "error": "no trim moves VC the needed way"})
+                break
+            cl.dac(DAC2, I_OFF_F=best[0]["I_OFF_F"])
+            cl.dac(DAC1, Q_OFF_F=best[0].get("Q_OFF_F", V_MID))
             time.sleep(0.05)
             err = cl.adc("ERR")
+            vc = cl.adc("VC")
+            rate.setdefault(up, best[1] / 0.003)
             r = rate.get(up, abs(err - V_MID) / 1e-3)          # R126 10 k x C130 100 nF = 1 ms
             # a rail-stuck integrator needs the far side of mid first: aim at the target, at most 0.5 s
             dt = min(0.5, max(1e-4, abs(target_v - vc) / max(r, 1.0)))
@@ -406,6 +432,7 @@ def loop_center(b, target_v=V_MID, tol_v=0.04, max_steps=10):
             cl.seq_run()
             time.sleep(dt + 0.02)
             cl.dac(DAC2, I_OFF_F=V_MID)
+            cl.dac(DAC1, Q_OFF_F=V_MID)
             time.sleep(0.05)
             vc2 = cl.adc("VC")
             if abs(vc2 - vc) > 0.02 and 0.02 < abs(vc2 - target_v) and (vc2 - vc) * (target_v - vc) > 0:
@@ -414,6 +441,7 @@ def loop_center(b, target_v=V_MID, tol_v=0.04, max_steps=10):
             print(steps[-1], flush=True)
     finally:
         cl.dac(DAC2, I_OFF_F=V_MID)
+        cl.dac(DAC1, Q_OFF_F=V_MID)
         b.board_call("ctrl", loop_hold=1)
     vc = cl.adc("VC")
     return b.record("verdict", test="loop_center", ok=abs(vc - target_v) <= tol_v, vc=vc, target_v=target_v, steps=steps)
@@ -616,6 +644,85 @@ def stage2_tx_spurs(b, cable_db=0.5, freqs_mhz=tuple(range(3000, 6001, 250))):
                     text="absolute levels at TX ANT (dBm), 1 kHz RBW; the analyser's attenuator 30 dB")
 
 
+RX_CHAIN_DB = 38.9        # PATHS.md at 5.8 GHz, RX ANT to CP101's through port, the DSA at 0: LNA 13 - DSA 2.4 + 2 x 14.3 - 0.3
+
+
+def stage3_rx_mon(b, pad_db=40.2, coupling_db=20.0, tx_ant_dbm=None, fixed_dsa=20.0,
+                  freqs_mhz=tuple(range(3000, 6001, 250))):
+    """3.1: TX ANT through pad_db (the lead and two 20 dB pads: 0.5 + 39.7) into RX ANT, RX MON (J102) on the analyser.
+    The transmitter on at (1, 0), the loop held; the DSA walked through all 128 steps, 31.75 dB to 0, RX MON's level at
+    each (and the detectors every dB): its slope against the setting (-1 dB/dB) and the chain's gain, RX ANT to CP101's
+    through port (RX MON + coupling_db), against RX_CHAIN_DB.  Then the TX swept over freqs_mhz at fixed_dsa: the
+    chain's response, against stage2.tx_spurs' TX ANT levels at the same frequencies.  tx_ant_dbm: TX ANT at 5.8 GHz
+    (default the last stage2.tx_ant)."""
+    import json
+    import numpy as np
+    b.stage = b.stage or "3.1"
+    log = [json.loads(l) for l in open(b.log.path)]
+    if tx_ant_dbm is None:
+        ta = [e for e in log if e.get("test") == "tx_ant"]
+        tx_ant_dbm = ta[-1]["dbm"]["(1, 0)"] if ta else TX_ANT_DBM
+    sw = [e for e in log if e.get("test") == "tx_spurs"]
+    tx_vs_f = {r["mhz"]: r["carrier"] for r in sw[-1]["sweep"]} if sw else {}
+    rx_ant = tx_ant_dbm - pad_db
+    b.board_call("safe")
+    b.board_call("pll_tune", 0, F_LO / 1e6)
+    time.sleep(RELOCK_S)
+
+    def rxmon(f_hz, span=200e3):
+        b.sa_setup(f_hz, span, rbw=1e3, ref=0.0, att=10)
+        b.sa.single()
+        return b.sa.peak()
+
+    walk, sweep = [], []
+    try:
+        b.board_call("dsa", 31.75)
+        b.board_call("hold_point", 1, 0)
+        b.board_call("ctrl", tx_dis=0)
+        time.sleep(0.1)
+        b.sa_setup(F_LO, 2e6, rbw=10e3, ref=0.0, att=10)
+        b.sa.single()
+        f0 = b.sa.peak()[0]
+        for code in range(127, -1, -1):
+            db = b.cl.dsa(code * 0.25)
+            time.sleep(0.01)
+            f, d = rxmon(f0, 50e3)
+            row = {"dsa_db": db, "rx_mon_dbm": d}
+            if code % 4 == 0:
+                det = b.cl.detectors()
+                row.update(log_q_v=det["volts"]["LOG_Q"], peak_q_v=det["volts"]["PEAK_Q"], log_dbm=det.get("log_dbm"))
+            walk.append(row)
+            if code % 16 == 0:
+                print(row, flush=True)
+        b.cl.dsa(fixed_dsa)
+        for fm in freqs_mhz:
+            b.cl.pll_tune(0, float(fm))
+            time.sleep(RELOCK_S)
+            lk = b.cl.pll_locked()["tx"]
+            f, d = rxmon(fm * 1e6, 2e6)
+            r = {"mhz": fm, "locked": lk, "rx_mon_dbm": d}
+            if fm in tx_vs_f:
+                r["chain_db"] = d + coupling_db - (tx_vs_f[fm] - pad_db) + fixed_dsa
+            sweep.append(r)
+            print({k: (round(v, 2) if isinstance(v, float) else v) for k, v in r.items()}, flush=True)
+    finally:
+        _tx_off(b)
+        b.cl.dsa(31.75)
+        b.cl.pll_tune(0, F_LO / 1e6)
+        time.sleep(RELOCK_S)
+    x = np.array([r["dsa_db"] for r in walk]); y = np.array([r["rx_mon_dbm"] for r in walk])
+    lin = (y > -80)
+    slope, icpt = np.polyfit(x[lin], y[lin], 1)
+    resid = y[lin] - (icpt + slope * x[lin])
+    steps = np.diff(y[::-1])                      # each 0.25 dB step, from DSA 0 upward (should be -0.25)
+    gain = icpt + coupling_db - rx_ant
+    return b.record("verdict", test="rx_mon_dsa", ok=bool(abs(slope + 1) < 0.05 and abs(gain - RX_CHAIN_DB) <= 3),
+                    slope_db_per_db=float(slope), rx_mon_at_dsa0_dbm=float(icpt), fit_rms_db=float(np.std(resid)),
+                    worst_step_db=float(np.max(np.abs(steps + 0.25))), rx_ant_dbm=rx_ant, chain_db=float(gain),
+                    plan_chain_db=RX_CHAIN_DB, coupling_db=coupling_db, pad_db=pad_db, walk=walk, sweep=sweep,
+                    text="chain = RX MON at DSA 0 + the coupler's coupling - RX ANT's level (TX ANT - pad)")
+
+
 def stage2_null(b, step_v=0.008, min_step_v=0.0008, max_iter=40):
     """2.3's null: the ladders at (0, 0), VR_I and VR_Q (DAC1 A, B) moved by coordinate descent for the least carrier at
     TX MON.  Pass: the null lands within a few mV of the printed Vr (VR_I_V, VR_Q_V: the divider carries the ADL5375's
@@ -773,7 +880,7 @@ PROCS = {
     "smoke": smoke, "stage1.ramp": ramp, "stage1.rails": rails_walk, "watch": watch, "stage1.heat": heat_log, "stage1.i2c": stage1_i2c,
     "stage2.pll": stage2_pll, "stage2.lo": stage2_lo, "stage2.vcxo": stage2_vcxo, "stage2.tx": stage2_tx,
     "stage2.null": stage2_null, "stage2.ref_in": stage2_ref_in, "stage2.ref_out": stage2_ref_out,
-    "stage2.vcxo_ref": stage2_vcxo_ref, "loop_center": loop_center, "stage2.tx_ant": stage2_tx_ant, "stage2.tx_spurs": stage2_tx_spurs, "stage2.ref_in_tx": stage2_ref_in_tx,
+    "stage2.vcxo_ref": stage2_vcxo_ref, "loop_center": loop_center, "stage2.tx_ant": stage2_tx_ant, "stage2.tx_spurs": stage2_tx_spurs, "stage2.ref_in_tx": stage2_ref_in_tx, "stage3.rx_mon": stage3_rx_mon,
 }
 
 

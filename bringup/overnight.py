@@ -234,17 +234,37 @@ class Night:
 
     # ---- D: the loop ----
     def beat(self):
-        """the I arm's beat frequency on the scope, the timebase walked down for slow beats; None if no beat (DC)"""
+        """the I arm's beat on the scope: the channel scaled to the signal and the trigger at its mean first (a weak
+        beat at 40 mV p-p is invisible at 200 mV/div), then the timebase walked down for slow beats.  (Hz, p-p V) or
+        (None, p-p) for no beat"""
         s = self.s
+        s.timebase(scale=10e-6)
+        time.sleep(0.25)
+        pp, mean = s.pava("PKPK", 2) or 0.05, s.pava("MEAN", 2) or 1.65
+        s.channel(2, scale=max(0.005, min(0.5, pp / 5)), offset=-mean)
+        s.channel(3, scale=max(0.005, min(0.5, pp / 5)), offset=-(s.pava("MEAN", 3) or mean))
+        s.trigger(source=2, level=mean, slope="rising", mode="auto")
         for tdiv in (10e-6, 200e-6, 5e-3):
             s.timebase(scale=tdiv)
             time.sleep(max(0.3, 14 * tdiv))
             f = s.pava("FREQ", 2)
             if f and f > 2.0 / (10 * tdiv):
-                return f
-        return None
+                return f, s.pava("PKPK", 2)
+        return None, s.pava("PKPK", 2)
 
-    def loop(self, mhzs=(3500, 4000, 5000, 5800), settle_s=2.0):
+    def center(self, mhz):
+        """the integrator re-centred where the trims reach (5.8 GHz, the TX muted), then both synthesizers back at mhz:
+        the hold keeps U112A across the retune (measured 16:55)"""
+        self.tune(5800)
+        r = S.loop_center(self.b)
+        self.tune(mhz)
+        return r["ok"]
+
+    def u112a(self):
+        vc = self.cl.adc("VC")
+        return vc, 3 * S.V_MID - vc - self.cl.dac_volts()["VC_OFF"]
+
+    def loop(self, mhzs=(3500, 4000, 5000, 5800), settle_s=3.0, offsets_khz=(0, 2, 5, 10, 20, 40)):
         import numpy as np
         out = []
         self.scope_iq()
@@ -252,66 +272,214 @@ class Night:
             for mhz in mhzs:
                 if not self.alive():
                     break
-                lock = self.tune(mhz)
                 floor = self.dsa_min(mhz)
-                # the level: the DSA for the design's -20 dBm at the demodulator, or its floor / top
                 rx_ant = interp(self.tx_dbm, mhz) - PAD_DB
                 dsa = min(31.75, max(floor, math.ceil((rx_ant + interp(self.chain0, mhz) + 20) * 4) / 4))
+                rec = {"mhz": mhz, "dsa": dsa, "scan": [], "tries": []}
+                if not self.center(mhz):
+                    rec["error"] = "the integrator could not be centred"
+                    out.append(rec)
+                    continue
                 self.cl.dsa(dsa)
-                S.loop_center(self.b)
                 self.tx(True)
-                # the beat against VC_OFF, the loop held: find where it vanishes
-                scan = []
-                for v in np.arange(0.6, 2.71, 0.15):
+                # the beat against VC_OFF, held: |kv (v - v0)|; v0 from a fit to the points either side of the minimum
+                for v in np.arange(0.9, 2.41, 0.1):
                     self.cl.dac(S.DAC1, VC_OFF=float(v))
-                    time.sleep(0.2)
-                    scan.append({"vc_off": float(v), "vc": self.cl.adc("VC"), "beat_hz": self.beat()})
-                good = [p for p in scan if p["beat_hz"]]
-                best = min(good, key=lambda p: p["beat_hz"]) if good else None
-                tries = []
-                if best:
-                    for dv in (0.0, 0.05, -0.05, 0.1, -0.1, 0.2, -0.2):
-                        v0 = best["vc_off"] + dv
-                        self.cl.ctrl(loop_hold=1)
-                        S.loop_center(self.b)
-                        self.cl.dac(S.DAC1, VC_OFF=float(v0))
-                        time.sleep(0.2)
-                        b0 = self.beat()
-                        # release, and watch VC and the arms for settle_s
-                        self.s.timebase(scale=200e-3)
-                        self.s.trigger(source=2, level=1.65, slope="rising", mode="auto")
+                    time.sleep(0.15)
+                    f, pp = self.beat()
+                    vc, u = self.u112a()
+                    rec["scan"].append({"vc_off": float(v), "vc": vc, "u112a": u, "beat_hz": f, "pp": pp})
+                good = [p for p in rec["scan"] if p["beat_hz"]]
+                v0 = None
+                if len(good) >= 4:
+                    k = int(np.argmin([p["beat_hz"] for p in good]))
+                    xs = [p["vc_off"] for p in good]
+                    if 0 < k < len(good) - 1:
+                        # the minimum inside the scan: the beat's sign flips there; the minimum itself goes with the
+                        # side its neighbours' line passes nearer
+                        fits = []
+                        for kside in (-1, 1):
+                            ys = [(-1 if (j < k or (j == k and kside < 0)) else 1) * p["beat_hz"] for j, p in enumerate(good)]
+                            a, c = np.polyfit(xs, ys, 1)
+                            fits.append((float(np.sum((np.polyval([a, c], xs) - ys) ** 2)), -c / a, a))
+                        _, v0, kv = min(fits)
+                    else:                                       # zero beat beyond the scan: extrapolate
+                        a, c = np.polyfit(xs, [p["beat_hz"] for p in good], 1)
+                        v0, kv = -c / a, a
+                    rec.update(v0=float(v0), kv_hz_per_v=float(kv))
+                print(mhz, "dsa", dsa, "v0", v0, "beats", [(round(p["vc_off"], 2), p["beat_hz"] and round(p["beat_hz"] / 1e3, 1)) for p in rec["scan"]], flush=True)
+                if v0 is None or not 0.3 < v0 < 3.0:
+                    self.tx(False)
+                    out.append(rec)
+                    continue
+                for off_khz in offsets_khz:
+                    for sgn in ((1,) if off_khz == 0 else (1, -1)):
+                        v = v0 + sgn * off_khz * 1e3 / abs(rec["kv_hz_per_v"])
+                        self.tx(False)
+                        if not self.center(mhz):
+                            break
+                        self.cl.dsa(dsa)
+                        self.cl.dac(S.DAC1, VC_OFF=float(v))
+                        self.tx(True)
+                        time.sleep(0.15)
+                        b0, pp0 = self.beat()
+                        self.cl.ctrl(loop_hold=0)                       # release, the transmitter on
                         t0 = time.time()
-                        self.cl.ctrl(loop_hold=0)
                         trace = []
                         while time.time() - t0 < settle_s:
-                            trace.append((time.time() - t0, self.cl.adc("VC"), self.cl.adc("I"), self.cl.adc("Q")))
-                        b1 = self.beat()
-                        vc = [x[1] for x in trace[-10:]]
-                        locked = (b1 is None) and 0.2 < float(np.mean(vc)) < 3.1 and float(np.std(vc)) < 0.02
+                            vc, u = self.u112a()
+                            trace.append((time.time() - t0, vc, u, self.cl.adc("I"), self.cl.adc("Q")))
+                        b1, pp1 = self.beat()
+                        tail = trace[-8:]
+                        u_end = float(np.mean([x[2] for x in tail]))
+                        locked = (b1 is None) and 0.3 < u_end < 3.0 and float(np.std([x[1] for x in tail])) < 0.02
                         shot = None
                         if locked:
-                            shot = os.path.join(OUT, "loop_locked_%d_%s.png" % (mhz, stamp()))
-                            self.s.timebase(scale=200e-6)
-                            time.sleep(0.5)
                             os.makedirs(OUT, exist_ok=True)
-                            self.s.screenshot(shot)
-                            shot = os.path.relpath(shot, HERE)
-                        tries.append({"vc_off": float(v0), "beat_before_hz": b0, "beat_after_hz": b1, "locked": locked,
-                                      "vc_end": float(np.mean(vc)), "vc_std": float(np.std(vc)), "trace": trace, "shot": shot})
-                        print(mhz, "VC_OFF %.2f beat %s -> %s locked %s VC %.3f" % (v0, b0, b1, locked, float(np.mean(vc))), flush=True)
+                            self.s.timebase(scale=1e-3)
+                            time.sleep(0.5)
+                            shot = os.path.relpath(os.path.join(OUT, "loop_locked_%d_%s.png" % (mhz, stamp())), HERE)
+                            self.s.screenshot(os.path.join(HERE, shot))
+                        t = {"offset_khz": sgn * off_khz, "vc_off": float(v), "beat_before_hz": b0, "pp_before": pp0,
+                             "beat_after_hz": b1, "pp_after": pp1, "locked": locked, "u112a_end": u_end,
+                             "vc_end": float(np.mean([x[1] for x in tail])), "trace": trace, "shot": shot}
+                        if locked:                                      # how steady, and the reference: REF OUT
+                            hold = []
+                            for _ in range(10):
+                                time.sleep(0.5)
+                                hold.append(self.u112a())
+                            self.s.timebase(scale=10e-6)
+                            self.s.trigger(source=1, level=1.65, slope="rising", mode="auto")
+                            t["ref_out_hz"] = S._ref_hz(self.b, 1)[0]
+                            self.s.run()
+                            t["hold_10x0.5s"] = hold
+                            t["still_locked"] = self.beat()[0] is None
+                        rec["tries"].append(t)
+                        print(mhz, "offset %+d kHz: beat %s -> %s, U112A %.2f, VC %.3f, locked %s" % (
+                            sgn * off_khz, b0 and round(b0), b1 and round(b1), u_end, t["vc_end"], locked), flush=True)
                         self.cl.ctrl(loop_hold=1)
-                        if locked:
-                            break
                 self.tx(False)
-                self.cl.ctrl(loop_hold=1)
-                self.cl.dac(S.DAC1, VC_OFF=S.V_MID)
-                out.append({"mhz": mhz, "lock": lock, "dsa": dsa, "scan": scan, "best": best, "tries": tries})
+                out.append(rec)
         finally:
+            self.cl.ctrl(loop_hold=1)
             self.cl.dac(S.DAC1, VC_OFF=S.V_MID)
             self.quiet()
         path = save("loop", out)
         self.b.record("verdict", test="night_loop", ok=any(t["locked"] for o in out for t in o["tries"]), file=path,
-                      text="the Costas loop released from the held state near zero beat, per frequency")
+                      text="the Costas loop released (TX on) from held offsets of 0-40 kHz from zero beat, per frequency")
+        return out
+
+    # ---- D2: acquisition map, lock tests ----
+    def lock_state(self):
+        """'locked' (VC holds through a +-0.02 V VC_OFF step: the integrator takes it up; and no beat on the scope's I
+        arm), 'false' (VC holds but a beat is there: a false lock), 'unlocked' (VC follows the step), 'railed'
+        (U112A at a rail).  The board's ADC cannot tell: the ADS1115 averages a kHz beat to its mean."""
+        cl = self.cl
+        v = cl.dac_volts()["VC_OFF"]
+        vc0, u0 = self.u112a()
+        if not 0.25 < u0 < 3.05:
+            return "railed", {"vc": vc0, "u112a": u0}
+        cl.dac(S.DAC1, VC_OFF=v + 0.02)
+        time.sleep(0.35)
+        vc1, u1 = self.u112a()
+        cl.dac(S.DAC1, VC_OFF=v)
+        time.sleep(0.35)
+        s = self.s
+        s.timebase(scale=10e-6)
+        time.sleep(0.25)
+        pp_fast = s.pava("PKPK", 2)
+        s.timebase(scale=1e-3)
+        time.sleep(0.4)
+        pp_slow, f = s.pava("PKPK", 2), s.pava("FREQ", 2)
+        held = abs(vc1 - vc0) < 0.006
+        info = {"vc": vc0, "u112a": u0, "dvc_for_step": vc1 - vc0, "pp_10us": pp_fast, "pp_1ms": pp_slow, "freq_1ms": f,
+                "i": cl.adc("I"), "q": cl.adc("Q")}
+        if not held:
+            return "unlocked", info
+        # a beat shows as a swing on the fast window comparable with the slow one's; locked, both are just noise
+        return ("locked" if (pp_slow or 1) < 0.12 else "false"), info
+
+    def acquire(self, mhzs=(5000, 4500, 5500, 4000, 5800, 3500), grid=(0.9, 2.41, 0.05), settle_s=2.0):
+        import numpy as np
+        out = []
+        self.scope_iq(vdiv=0.1)
+        try:
+            for mhz in mhzs:
+                if not self.alive():
+                    break
+                floor = self.dsa_min(mhz)
+                rx_ant = interp(self.tx_dbm, mhz) - PAD_DB
+                dsa = min(31.75, max(floor, math.ceil((rx_ant + interp(self.chain0, mhz) + 20) * 4) / 4))
+                rows = []
+                for v in np.arange(*grid):
+                    self.tx(False)
+                    if not self.center(mhz):
+                        rows.append({"vc_off": float(v), "error": "not centred"})
+                        continue
+                    self.cl.dsa(dsa)
+                    self.cl.dac(S.DAC1, VC_OFF=float(v))
+                    vc_start = self.cl.adc("VC")
+                    self.tx(True)
+                    time.sleep(0.1)
+                    self.cl.ctrl(loop_hold=0)
+                    time.sleep(settle_s)
+                    st, info = self.lock_state()
+                    self.cl.ctrl(loop_hold=1)
+                    rows.append(dict(vc_off=float(v), vc_start=vc_start, state=st, **info))
+                    print(mhz, "start VC %.3f -> %s, VC %.3f U112A %.2f pp %s" % (vc_start, st, info["vc"], info["u112a"],
+                                                                                 info.get("pp_1ms")), flush=True)
+                self.tx(False)
+                rec = {"mhz": mhz, "dsa": dsa, "rows": rows}
+                locks = [r for r in rows if r.get("state") == "locked"]
+                if locks:                                    # the lock's DSA range and hold-in range, from the middle one
+                    r0 = locks[len(locks) // 2]
+                    self.center(mhz)
+                    self.cl.dsa(dsa)
+                    self.cl.dac(S.DAC1, VC_OFF=r0["vc_off"])
+                    self.tx(True)
+                    time.sleep(0.1)
+                    self.cl.ctrl(loop_hold=0)
+                    time.sleep(settle_s)
+                    st0, _ = self.lock_state()
+                    dsa_walk = []
+                    if st0 == "locked":
+                        for d in [x for x in np.arange(dsa, 31.76, 1.0)] + [x for x in np.arange(dsa, floor - 0.01, -1.0)]:
+                            self.cl.dsa(float(d))
+                            time.sleep(0.4)
+                            st, info = self.lock_state()
+                            dsa_walk.append(dict(dsa=float(d), state=st, **info))
+                            if st != "locked":
+                                self.cl.dsa(dsa)
+                                time.sleep(0.5)
+                                if self.lock_state()[0] != "locked":
+                                    break
+                    rec["dsa_walk"] = dsa_walk
+                    self.cl.dsa(dsa)
+                    hold = []
+                    if self.lock_state()[0] == "locked":
+                        for sgn in (1, -1):
+                            for k in range(1, 40):
+                                self.cl.dac(S.DAC1, VC_OFF=r0["vc_off"] + sgn * 0.05 * k)
+                                time.sleep(0.4)
+                                st, info = self.lock_state()
+                                hold.append(dict(dvc_off=sgn * 0.05 * k, state=st, **info))
+                                if st != "locked":
+                                    break
+                            self.cl.dac(S.DAC1, VC_OFF=r0["vc_off"])
+                            time.sleep(0.5)
+                    rec["hold_in"] = hold
+                    self.cl.ctrl(loop_hold=1)
+                    self.tx(False)
+                out.append(rec)
+                save("acquire_%d" % mhz, rec)
+        finally:
+            self.cl.ctrl(loop_hold=1)
+            self.cl.dac(S.DAC1, VC_OFF=S.V_MID)
+            self.quiet()
+        path = save("acquire", out)
+        self.b.record("verdict", test="night_acquire", ok=any(r.get("state") == "locked" for o in out for r in o["rows"]),
+                      file=path, text="released from a grid of VC_OFF (the integrator centred each time): locked / false / "
+                      "unlocked / railed after 2 s; then, locked, the DSA and VC_OFF stepped to the edges of the lock")
         return out
 
     # ---- E: drift ----
@@ -356,7 +524,7 @@ class Night:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("section", choices=["map", "iq", "loop", "drift"])
+    ap.add_argument("section", choices=["map", "iq", "loop", "acquire", "drift"])
     ap.add_argument("--step", type=int, default=None)
     ap.add_argument("--mhz", type=int, nargs="*")
     ap.add_argument("--hours", type=float, default=8.0)
@@ -368,6 +536,8 @@ def main():
         n.iq(step=a.step or 100)
     elif a.section == "loop":
         n.loop(mhzs=tuple(a.mhz) if a.mhz else (3500, 4000, 5000, 5800))
+    elif a.section == "acquire":
+        n.acquire(mhzs=tuple(a.mhz) if a.mhz else (5000, 4500, 5500, 4000, 5800, 3500))
     else:
         n.drift(hours=a.hours)
 
