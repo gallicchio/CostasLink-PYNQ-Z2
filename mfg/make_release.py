@@ -39,7 +39,8 @@ Writes mfg/release/:
     CONSIGNMENT.md                   the consigned parts: Digi-Key numbers, quantities, where to send
     excluded_from_assembly.csv       what is on the board but not placed, and why
     hand_solder_bom.csv              what is soldered or fitted at home: J302, and the jumper shunts
-    CostasLink-PYNQ-Z2_assembly_top.pdf, _bottom.pdf   designators, from the fab layers
+    CostasLink-PYNQ-Z2_assembly_top.pdf, _bottom.pdf   designators, from the fab layers, in black,
+                                     scaled to fill a Letter page (tools/fit_pdf.py)
 
 Gates: the release stops, and leaves mfg/release/ as it was, if any of these fails
 (CLAUDE_PCB.md sections 8 and 10):
@@ -81,6 +82,7 @@ for _p in (HERE, os.path.join(ROOT, "tools"), os.path.join(ROOT, "gen"), os.path
     if _p not in sys.path:
         sys.path.insert(0, _p)
 import kienv                                  # noqa: E402
+import fit_pdf                                # noqa: E402  (the assembly drawings fill their page)
 import jlc_api                                # noqa: E402
 import jlc_rotation                           # noqa: E402
 import footprint_check as FC                  # noqa: E402
@@ -776,11 +778,16 @@ def export_gerbers(pcb, out):
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
         for fn in files:
             z.write(os.path.join(gerb, fn), fn)
-    for side, layers, mirror in (("top", "F.Fab,F.Silkscreen,Edge.Cuts", False),
-                                 ("bottom", "B.Fab,B.Silkscreen,Edge.Cuts", True)):
+    # The assembly drawings fill a Letter page (tools/fit_pdf.py: kicad-cli plots 1:1 in a corner of its A4 sheet),
+    # in black: KiCad's pale yellow and pink silkscreen colours do not print (Jason, 2026-10-29)
+    for side, layers, mirror, what in (("top", "F.Fab,F.Silkscreen,Edge.Cuts", False, "top assembly (F.Fab, F.Silkscreen, Edge.Cuts)"),
+                                       ("bottom", "B.Fab,B.Silkscreen,Edge.Cuts", True, "bottom assembly, seen from below (mirrored)")):
         p = os.path.join(out, "%s_assembly_%s.pdf" % (NAME, side))
-        kienv.run_cli(["pcb", "export", "pdf", "-o", p, "--layers", layers, "--mode-single", "--exclude-value"]
-                      + (["--mirror"] if mirror else []) + [pcb])
+        kienv.run_cli(["pcb", "export", "pdf", "-o", p, "--layers", layers, "--mode-single", "--exclude-value",
+                       "--black-and-white"] + (["--mirror"] if mirror else []) + [pcb])
+        fit_pdf.fit(p, p, caption="%s rev %s: %s, scale {scale}:1" % (NAME, BI.REV, what))
+        if not fit_pdf.check(p):
+            raise Gate("%s does not fill its page" % os.path.basename(p))
     return zpath, files
 
 
