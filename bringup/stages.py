@@ -27,6 +27,8 @@ TX_MON_DBM = -10.0       # BRINGUP 2.3: +9.8 dBm at TX ANT through the -20 dB co
 KVCXO_HZ_V = 430e3       # sim/budget.py: the VCXO's pull at 5.8 GHz, 430 kHz/V
 CURRENT_BEFORE_PLL_A = (0.89, 0.89 + 0.40)   # BRINGUP 1.3: before the MAX2871s are programmed
 CURRENT_RUNNING_A = 1.37                     # both synthesizers at full output, the transmitter on
+RELOCK_S = 0.2           # a retune's wait: every write of the six words reruns the VCO autoselect, and with
+                         # VAS_TEMP = 1 that took 62 ms on board A (BRINGUP_LOG 2.1), not the 200 us without it
 
 
 def _fit_line(xs, ys):
@@ -282,7 +284,7 @@ def stage2_pll(b):
     b.stage = b.stage or "2.1"
     before = b.psu_read("before pll_init") if "psu" in b.cfg and b.cfg["psu"].get("serial") else None
     done = b.board_call("pll_init")
-    time.sleep(0.1)
+    time.sleep(RELOCK_S)
     lock = b.board_call("pll_locked")
     after = b.psu_read("after pll_init") if before else None
     return b.record("verdict", test="pll_init", ok=bool(done and lock["tx"] and lock["rx"]), done=done, lock=lock,
@@ -296,14 +298,16 @@ def stage2_lo(b, which="tx", f_hz=F_LO):
     b.stage = b.stage or "2.2"
     k = {"tx": 0, "rx": 1}[which]
     b.board_call("lo_mon", k, True)
-    time.sleep(0.05)
+    time.sleep(RELOCK_S)
     lock = b.board_call("pll_locked")
     coarse = b.sa_peak(f_hz, 20e6, ref=10.0, label="LO %s MON coarse" % which.upper())
     fine = b.sa_peak(coarse["hz"], 200e3, rbw=1e3, ref=10.0, label="LO %s MON carrier" % which.upper())
     spurs = []
+    ref = min(10.0, math.ceil(fine["dbm"] + 5))          # the floor follows the reference level (its attenuator)
     for off in (-F_REF, F_REF, 2 * F_REF):
-        s = b.sa_peak(fine["hz"] + off, 200e3, rbw=1e3, ref=10.0, label="LO %s MON at %+g MHz" % (which.upper(), off / 1e6))
-        spurs.append({"offset_mhz": off / 1e6, "dbm": s["dbm"], "dbc": s["dbm"] - fine["dbm"]})
+        s = b.sa_peak(fine["hz"] + off, 200e3, rbw=1e3, ref=ref, label="LO %s MON at %+g MHz" % (which.upper(), off / 1e6))
+        spurs.append({"offset_mhz": off / 1e6, "dbm": s["dbm"], "dbc": s["dbm"] - fine["dbm"],
+                      "atten_db": s["settings"]["amplitude"]["attenuation_dB"]})
     worst = max(s["dbc"] for s in spurs)
     ppm = (fine["hz"] - f_hz) / f_hz * 1e6
     ok = abs(fine["dbm"] - BPWR_DBM) <= 3.5 and worst <= -60 and bool(lock[which])
@@ -319,6 +323,7 @@ def stage2_vcxo(b, volts=(0.3, 0.6, 0.9, 1.2, 1.5, 1.65, 1.8, 2.1, 2.4, 2.7, 3.0
     b.stage = b.stage or "2.2"
     b.board_call("ctrl", loop_hold=1)
     b.board_call("lo_mon", 1, True)
+    time.sleep(RELOCK_S)
     pts = []
     try:
         for v in volts:
@@ -335,6 +340,104 @@ def stage2_vcxo(b, volts=(0.3, 0.6, 0.9, 1.2, 1.5, 1.65, 1.8, 2.1, 2.4, 2.7, 3.0
     span = max(p["hz"] for p in pts) - min(p["hz"] for p in pts)
     return b.record("verdict", test="vcxo_pull", ok=span >= 1.0e6, points=pts, slope_hz_per_v=slope,
                     plan_hz_per_v=KVCXO_HZ_V, span_hz=span, f_at_v_mid=a + slope * V_MID)
+
+
+def _ref_hz(b, ch=1):
+    """REF OUT's frequency from one scope record: 100 us at 2 GSa/s (2500 periods), the rising edges' times
+    interpolated at mid-swing and fitted to a line.  Repeats to about 1 Hz at 25 MHz (0.04 ppm) on the
+    SDS2104X Plus, against the scope's own timebase; its counter reads only 3 digits over SCPI.  Returns
+    (hz, edges, rms edge residual in s)."""
+    import numpy as np
+    s = b.scope
+    s.single()
+    t, v, _ = s.waveform(ch)
+    t, v = np.asarray(t), np.asarray(v)
+    th = 0.5 * (np.percentile(v, 95) + np.percentile(v, 5))
+    i = np.nonzero((v[:-1] < th) & (v[1:] >= th))[0]
+    tc = t[i] + (th - v[i]) / (v[i + 1] - v[i]) * (t[i + 1] - t[i])
+    k = np.round((tc - tc[0]) / np.median(np.diff(tc)))         # cycle numbers, robust to a missed edge
+    p = np.polyfit(k, tc, 1)
+    return float(1 / p[0]), len(tc), float(np.std(tc - np.polyval(p, k)))
+
+
+def loop_center(b, target_v=V_MID, tol_v=0.04, max_steps=10):
+    """Bring the loop integrator (U112A) back to mid-scale, so VC = target_v with VC_OFF at V_MID, with no carrier.
+    Held (LOOP_HOLD high) its input is V_MID against V_MID and it keeps its state, but it walks on its own ~30 pA
+    of offset and leakage: from mid to its 3.28 V rail in about 1.5 h on board A (VC = 3 V_MID - U112A - VC_OFF,
+    stuck near 0 V).  Here I_OFF_F pushes I to one side of the comparator, so ERR = sign(I) x Q sits ~20 mV to the
+    side of V_MID that moves VC the right way (I_OFF_F 3.0 V: ERR +19 mV, VC rises at ~19 V/s; 0.3 V: -25 mV), and
+    the sequencer releases the hold for a counted time; repeated with the rate it measured until VC is within tol_v.
+    I_OFF_F goes back to V_MID and the hold stays high.  Nothing cabled."""
+    cl = b.cl
+    b.board_call("ctrl", loop_hold=1, tx_dis=1)
+    cl.dac(DAC1, VC_OFF=V_MID)
+    steps = []
+    rate = {}                                                  # V/s of VC per direction, as measured
+    try:
+        for _ in range(max_steps):
+            time.sleep(0.05)
+            vc = cl.adc("VC")
+            if abs(vc - target_v) <= tol_v:
+                break
+            up = vc < target_v
+            cl.dac(DAC2, I_OFF_F=3.0 if up else 0.3)
+            time.sleep(0.05)
+            err = cl.adc("ERR")
+            r = rate.get(up, abs(err - V_MID) / 1e-3)          # R126 10 k x C130 100 nF = 1 ms
+            # a rail-stuck integrator needs the far side of mid first: aim at the target, at most 0.5 s
+            dt = min(0.5, max(1e-4, abs(target_v - vc) / max(r, 1.0)))
+            cl.seq_program([(dt / cl.t_clk, {"loop_hold": 0})])
+            cl.seq_run()
+            time.sleep(dt + 0.02)
+            cl.dac(DAC2, I_OFF_F=V_MID)
+            time.sleep(0.05)
+            vc2 = cl.adc("VC")
+            if abs(vc2 - vc) > 0.02 and 0.02 < abs(vc2 - target_v) and (vc2 - vc) * (target_v - vc) > 0:
+                rate[up] = abs(vc2 - vc) / dt
+            steps.append({"vc": vc, "err": err, "up": up, "open_s": dt, "vc_after": vc2, "rate_v_s": rate.get(up)})
+            print(steps[-1], flush=True)
+    finally:
+        cl.dac(DAC2, I_OFF_F=V_MID)
+        b.board_call("ctrl", loop_hold=1)
+    vc = cl.adc("VC")
+    return b.record("verdict", test="loop_center", ok=abs(vc - target_v) <= tol_v, vc=vc, target_v=target_v, steps=steps)
+
+
+def stage2_vcxo_ref(b, volts=(0.3, 0.6, 0.9, 1.2, 1.5, 1.65, 1.8, 2.1, 2.4, 2.7, 3.0), ch=1):
+    """2.2's pull, measured at the VCXO itself: the loop held (LOOP_HOLD high: VC follows VC_OFF, inverted), VC_OFF
+    stepped, REF OUT's frequency on the scope (`_ref_hz`) and VC on the ADC; the RX LO is 232 x REF OUT.  Pass
+    (BRINGUP 2): the RX LO reaches 500 kHz or more each side of 5.8 GHz (86 ppm; the datasheet's +-100 ppm over
+    0.3-3.0 V on VC, centred at 1.65 V, includes its tolerance).  Run loop_center first: a held integrator walks to a
+    rail and takes VC's range with it.  Cabled: REF OUT (J108) to scope channel `ch`.  Needs no analyser."""
+    b.stage = b.stage or "2.2"
+    s = b.scope
+    s.timebase(scale=10e-6)
+    s.trigger(source=ch, level=1.65, slope="rising", mode="auto")
+    b.board_call("ctrl", loop_hold=1)
+    pts = []
+    try:
+        for v in volts:
+            b.cl.dac(DAC1, VC_OFF=v)
+            time.sleep(0.3)
+            vc = b.cl.adc("VC")
+            hz, n, res = _ref_hz(b, ch)
+            pts.append({"vc_off": v, "vc_adc": vc, "hz": hz, "ppm": (hz - F_REF) / F_REF * 1e6, "edges": n, "edge_rms_s": res})
+            print({k: round(x, 4) if isinstance(x, float) else x for k, x in pts[-1].items()}, flush=True)
+    finally:
+        b.cl.dac(DAC1, VC_OFF=V_MID)
+        s.run()
+    a, slope = _fit_line([p["vc_adc"] for p in pts], [p["hz"] for p in pts])
+    f_mid = a + slope * V_MID
+    span = max(p["hz"] for p in pts) - min(p["hz"] for p in pts)
+    ppm = lambda hz: (hz - F_REF) / F_REF * 1e6                                    # noqa: E731
+    lo_ppm, hi_ppm = min(ppm(p["hz"]) for p in pts), max(ppm(p["hz"]) for p in pts)
+    reach_khz = [lo_ppm * F_LO * 1e-9, hi_ppm * F_LO * 1e-9]                   # the RX LO's reach from 5.8 GHz
+    ok = reach_khz[0] <= -500 and reach_khz[1] >= 500                          # BRINGUP 2's pass: +-500 kHz or more
+    return b.record("verdict", test="vcxo_pull_ref_out", ok=ok, points=pts, slope_hz_per_v=slope,
+                    slope_ppm_per_v=slope / F_REF * 1e6, plan_ppm_per_v=KVCXO_HZ_V / F_LO * 1e6, span_ppm=span / F_REF * 1e6,
+                    ppm_range=[lo_ppm, hi_ppm], rx_lo_reach_khz=reach_khz, ppm_at_vc_1v65=ppm(f_mid),
+                    rx_lo_hz_at_vc_1v65=232 * f_mid,
+                    text="against the scope's timebase; the RX LO's leak on LO TX MON (the analyser) agreed within 1 ppm at VC_OFF 1.65")
 
 
 def _tx_off(b):
@@ -439,7 +542,7 @@ def stage2_ref_in(b, vpp=1.0, ch=1):
         time.sleep(0.2)
         b.board_call("lo_mon", 0, True)
         b.board_call("pll_tune", 0, F_LO / 1e6)              # the VCO autoselect again, on the new reference
-        time.sleep(0.1)
+        time.sleep(RELOCK_S)
         lock = b.board_call("pll_locked")
         f0, _ = b.sa_peak(F_LO, 4e6, rbw=10e3, record=False)
         pk = b.sa_peak(f0, 40e3, rbw=300, label="LO TX MON on REF IN")
@@ -467,6 +570,7 @@ PROCS = {
     "smoke": smoke, "stage1.ramp": ramp, "stage1.rails": rails_walk, "watch": watch, "stage1.heat": heat_log, "stage1.i2c": stage1_i2c,
     "stage2.pll": stage2_pll, "stage2.lo": stage2_lo, "stage2.vcxo": stage2_vcxo, "stage2.tx": stage2_tx,
     "stage2.null": stage2_null, "stage2.ref_in": stage2_ref_in, "stage2.ref_out": stage2_ref_out,
+    "stage2.vcxo_ref": stage2_vcxo_ref, "loop_center": loop_center,
 }
 
 
