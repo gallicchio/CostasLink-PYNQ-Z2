@@ -692,6 +692,69 @@ def stage2_ref_in(b, vpp=1.0, ch=1):
                     gen={"ch": ch, "hz": F_REF, "vpp_open": vpp}, text="move JP201 back to TCXO after")
 
 
+def stage2_ref_in_tx(b, vpp=1.0, ch=1, gen_hz=(25.000e6, 25.002e6), cable_db=0.5):
+    """2.4 with the analyser on TX ANT (as stage2.tx_ant has it), and the test of where the +-25 MHz sidebands come
+    from (REVB row 5).  JP201 moved to REF IN by hand first, the generator's output into REF IN (J203; high
+    impedance, R214 DNP, so vpp is open-circuit).  For each generator frequency: the TX synthesizer retuned (N = 232)
+    and its lock read, the TX on at (1, 0), the carrier found (232 x the generator), then every line within
+    +-5 kHz of each sideband listed against the generator's frequency and the TCXO's (still running, unconnected).
+    Lines at the generator's offset: the coupling is in the REF_IN path (JP201.2, C222, U203's reference buffer);
+    at the TCXO's: the TCXO and its own copper; neither: elsewhere (the PYNQ).  The generator goes off after.
+    Pass (BRINGUP 2.4): the TX synthesizer locks to REF IN."""
+    import json
+    import numpy as np
+    b.stage = b.stage or "2.4"
+    tc = [json.loads(l) for l in open(b.log.path) if '"test": "tx_25mhz_vs_tcxo"' in l]
+    tcxo_hz = float(np.mean([r["tcxo_hz"] for r in tc[-1]["rows"]])) if tc else F_REF
+    g = b.gen
+    b.board_call("safe")
+    b.sa_setup(F_LO, 20e6, ref=20.0, att=30)
+    g.output(ch, False, load="HZ")
+    out = []
+    try:
+        for fg in gen_hz:
+            g.sine(ch, freq=fg, vpp=vpp)
+            g.output(ch, True)
+            time.sleep(0.2)
+            b.board_call("pll_tune", 0, F_LO / 1e6)                # N = 232 on whatever REF IN carries
+            time.sleep(RELOCK_S)
+            lock = b.board_call("pll_locked")["tx"]
+            row = {"gen_hz": fg, "locked": lock}
+            if lock:
+                b.board_call("hold_point", 1, 0)
+                b.board_call("ctrl", tx_dis=0)
+                time.sleep(0.1)
+                b.sa_setup(232 * fg, 2e6, rbw=10e3, ref=20.0, att=30)
+                b.sa.single()
+                fc, pc = b.sa.peak()
+                b.sa_setup(fc, 2e3, rbw=30, ref=20.0, att=30)
+                b.sa.single()
+                fc, pc = b.sa.peak()
+                row.update(carrier_hz=fc, carrier_dbm=pc + cable_db, expected_hz=232 * fg)
+                for side in (-1, 1):
+                    mid = fc + side * 0.5 * (fg + tcxo_hz)
+                    b.sa_setup(mid, 10e3, rbw=100, ref=20.0, att=30)
+                    f, d = b.sa.trace(fresh=True, binary=True)
+                    f, d = np.asarray(f), np.asarray(d)
+                    floor = float(np.median(d))
+                    lines = []
+                    for i in range(1, len(d) - 1):
+                        if d[i] > floor + 12 and d[i] >= d[i - 1] and d[i] >= d[i + 1]:
+                            off = abs(f[i] - fc)
+                            lines.append({"offset_hz": float(off), "dbc": float(d[i] - pc), "vs_gen_hz": float(off - fg),
+                                          "vs_tcxo_hz": float(off - tcxo_hz)})
+                    row["%+d" % side] = {"floor_dbm": floor + cable_db, "lines": lines}
+                b.board_call("ctrl", tx_dis=1)
+            out.append(row)
+            print(json.dumps(row, default=float)[:600], flush=True)
+    finally:
+        g.output(ch, False)
+        _tx_off(b)
+    ok = all(r["locked"] for r in out)
+    return b.record("verdict", test="ref_in_tx", ok=ok, rows=out, tcxo_hz=tcxo_hz, vpp_open=vpp,
+                    text="move JP201 back to TCXO after: with REF IN dark the TX synthesizer has no reference")
+
+
 def stage2_ref_out(b, ch=1):
     """2.2's REF OUT (J108, MMCX -> the scope, 50 ohm input): 25 MHz, about 1.7 V p-p into 50 ohm (33 ohm + the
     LVC's own); 3.3 V into 1 M."""
@@ -710,7 +773,7 @@ PROCS = {
     "smoke": smoke, "stage1.ramp": ramp, "stage1.rails": rails_walk, "watch": watch, "stage1.heat": heat_log, "stage1.i2c": stage1_i2c,
     "stage2.pll": stage2_pll, "stage2.lo": stage2_lo, "stage2.vcxo": stage2_vcxo, "stage2.tx": stage2_tx,
     "stage2.null": stage2_null, "stage2.ref_in": stage2_ref_in, "stage2.ref_out": stage2_ref_out,
-    "stage2.vcxo_ref": stage2_vcxo_ref, "loop_center": loop_center, "stage2.tx_ant": stage2_tx_ant, "stage2.tx_spurs": stage2_tx_spurs,
+    "stage2.vcxo_ref": stage2_vcxo_ref, "loop_center": loop_center, "stage2.tx_ant": stage2_tx_ant, "stage2.tx_spurs": stage2_tx_spurs, "stage2.ref_in_tx": stage2_ref_in_tx,
 }
 
 
