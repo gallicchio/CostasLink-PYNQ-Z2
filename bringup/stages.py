@@ -27,6 +27,7 @@ TX_MON_DBM = -10.0       # BRINGUP 2.3: +9.8 dBm at TX ANT through the -20 dB co
 KVCXO_HZ_V = 430e3       # sim/budget.py: the VCXO's pull at 5.8 GHz, 430 kHz/V
 CURRENT_BEFORE_PLL_A = (0.89, 0.89 + 0.40)   # BRINGUP 1.3: before the MAX2871s are programmed
 CURRENT_RUNNING_A = 1.37                     # both synthesizers at full output, the transmitter on
+VR_MAX_V = 0.55          # the null search's ceiling on VR_I / VR_Q (the rule: never above 0.6 V)
 RELOCK_S = 0.2           # a retune's wait: every write of the six words reruns the VCO autoselect, and with
                          # VAS_TEMP = 1 that took 62 ms on board A (BRINGUP_LOG 2.1), not the 200 us without it
 
@@ -182,8 +183,23 @@ def watch(b, hours=3.0, dt_s=10.0, amps_lo=0.6, amps_hi=1.2, pynq_misses=3, det_
     p = b.psu
     out = b.cfg["psu"].get("out", 1)
     t_end, misses, n, why = time.time() + hours * 3600, 0, 0, None
+    psu_fails = 0
     while time.time() < t_end:
-        r = b.psu_read("watch")
+        try:
+            r = b.psu_read("watch")
+            psu_fails = 0
+        except Exception as e:                                   # noqa: BLE001 - a garbled reply is not the end
+            psu_fails += 1
+            b.record("psu", label="watch", error=str(e)[:200], fails=psu_fails)
+            if psu_fails >= 3:                                   # three in a row: no longer watching; try to stop
+                why = "the supply has not answered for %d readings: %s" % (psu_fails, str(e)[:80])
+                try:
+                    b.psu_output(False)
+                except Exception:                                # noqa: BLE001
+                    why += " (and switching it off failed)"
+                break
+            time.sleep(dt_s)
+            continue
         n += 1
         alive = False
         for attempt in (0, 1):                                   # a restarted server breaks the old connection:
@@ -458,6 +474,7 @@ def stage2_tx(b):
         b.board_call("ctrl", tx_dis=0)
         time.sleep(0.1)
         f0 = b.sa_peak(F_LO, 20e6, ref=0.0, label="TX MON coarse")["hz"]
+        load = {"psu": b.psu_read("TX on, (1, 0)"), "detectors": b.cl.detectors()}    # BRINGUP 1.2: +5V_RF at full load
         b.sa_setup(f0, 100e3, rbw=1e3, ref=0.0)
         for pt in ((1, 0), (-1, 0), (0, 1), (0, -1), (0, 0)):
             b.board_call("hold_point", *pt)
@@ -473,8 +490,10 @@ def stage2_tx(b):
         _tx_off(b)
     axis = [rows[k] for k in ("(1, 0)", "(-1, 0)", "(0, 1)", "(0, -1)")]
     checks = {"level": abs(rows["(1, 0)"] - TX_MON_DBM) <= 3, "axis_flat_1db": max(axis) - min(axis) <= 1.0,
-              "ook_null_15db": rows["(1, 0)"] - rows["(0, 0)"] >= 15, "tx_dis_mutes_30db": rows["(1, 0)"] - rows["tx_dis"] >= 30}
+              "ook_null_15db": rows["(1, 0)"] - rows["(0, 0)"] >= 15, "tx_dis_mutes_30db": rows["(1, 0)"] - rows["tx_dis"] >= 30,
+              "v5_rf_4v75": load["detectors"]["v5_rf"] >= 4.75}
     return b.record("verdict", test="tx_levels", ok=all(checks.values()), checks=checks, hz=f0, dbm=rows,
+                    amps_tx_on=load["psu"]["amps"], volts_supply=load["psu"]["volts"], v5_rf_tx_on=load["detectors"]["v5_rf"],
                     at_tx_ant_dbm=rows["(1, 0)"] + 20, text="TX ANT = TX MON + 20 dB (the coupler's nominal: calibrate it once)")
 
 
@@ -496,6 +515,8 @@ def stage2_null(b, step_v=0.008, min_step_v=0.0008, max_iter=40):
         b.board_call("hold_point", 0, 0)
 
         def level(vi, vq):
+            # never above 0.6 V on either (the ADL5375's 0-2 V baseband: BRINGUP_LOG "Before power")
+            vi, vq = min(max(vi, 0.0), VR_MAX_V), min(max(vq, 0.0), VR_MAX_V)
             b.cl.dac(DAC1, VR_I=vi, VR_Q=vq)
             time.sleep(0.03)
             b.sa.single()

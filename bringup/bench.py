@@ -23,6 +23,7 @@ changes an instrument except the command that says so; `check` sends *IDN? and n
 """
 import argparse
 import datetime as dt
+import fcntl
 import json
 import os
 import sys
@@ -132,6 +133,44 @@ def verdict(value, lo, hi):
     return value is not None and lo <= value <= hi
 
 
+class Locked:
+    """An instrument on a serial line that several bench.py processes share (the watchdog and a stage): every call
+    holds an exclusive lock on the port, and so does opening it, so two processes' messages never interleave.  On
+    2026-10-29 they did: a stage's psu_read and the watchdog's, both on the E3646A, and the watchdog died on a reply
+    that was the other's *IDN?.  The lock is bringup/.locks/<port>.lock (git-ignored)."""
+
+    def __init__(self, port, factory):
+        d = os.path.join(HERE, ".locks")
+        os.makedirs(d, exist_ok=True)
+        self._lockf = open(os.path.join(d, os.path.basename(port) + ".lock"), "a")
+        with self:
+            self._inst = factory()
+
+    def __enter__(self):
+        fcntl.flock(self._lockf, fcntl.LOCK_EX)
+        return self
+
+    def __exit__(self, *exc):
+        fcntl.flock(self._lockf, fcntl.LOCK_UN)
+
+    def __getattr__(self, name):
+        a = getattr(self._inst, name)
+        if not callable(a):
+            return a
+
+        def locked(*args, **kwargs):
+            with self:
+                return a(*args, **kwargs)
+        return locked
+
+    def close(self):
+        try:
+            with self:
+                self._inst.close()
+        finally:
+            self._lockf.close()
+
+
 class Bench:
     """the instruments, opened when first used; the board through netbus; the log"""
 
@@ -155,7 +194,7 @@ class Bench:
             from agilent_E36xxA import AgilentE36xxA
             c = self.cfg["psu"]
             if c.get("serial"):
-                return AgilentE36xxA(serial=c["serial"])
+                return Locked(c["serial"], lambda: AgilentE36xxA(serial=c["serial"]))
             if c.get("gpib") is not None:
                 return AgilentE36xxA(int(c["gpib"]))
             raise IOError("bench_config.json: psu has no serial port or GPIB address (python3 %s/scpi_link.py identify)" % LIC)
@@ -168,7 +207,7 @@ class Bench:
             c = self.cfg["dmm"]
             if not c.get("serial"):
                 raise IOError("bench_config.json: dmm has no serial port (python3 %s/scpi_link.py identify)" % LIC)
-            m = Fluke45(serial=c["serial"])
+            m = Locked(c["serial"], lambda: Fluke45(serial=c["serial"]))
             m.function("VDC")
             return m
         return self._get("dmm", make)
