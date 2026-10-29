@@ -33,6 +33,9 @@ module tb_costaslink;
     always #10 sysclk = ~sysclk;
 
     tri1 i2c_sda, i2c_scl;                              // the pull-ups
+    reg  scl_hold = 1'b0;                               // 1: something on the board holds SCL low
+    assign i2c_scl = scl_hold ? 1'b0 : 1'bz;
+    real t0;
     wire tx_i1, tx_i0, tx_q1, tx_q0;
     reg  cmp_qn = 1'b0, cmp_qp = 1'b0, cmp_i = 1'b0, cmp_i_s = 1'b0, cmp_qn_s = 1'b0, cmp_qp_s = 1'b0;
     reg  cmp_ip = 1'b0, cmp_in = 1'b0;
@@ -276,7 +279,27 @@ module tb_costaslink;
         // 6. an address probe of nobody
         cmd("W 10 00000055\n", "OK");
         #1_000_000;
-        rd(8'h10, v); if (v !== 32'h00060055) begin fail("probe of 0x55 should report NACK"); $display("      got %08X", v); end
+        rd(8'h10, v); if (v !== 32'h00360055) begin fail("probe of 0x55 should report NACK, both lines high"); $display("      got %08X", v); end
+
+        // 6b. a stuck bus: SCL held low (rev A board A, 2026-10-29) must not hang the master for good: it gives up
+        //     after 10 ms with timeout and NACK, and the next transaction works once the line is free
+        scl_hold = 1'b1;
+        t0 = $realtime;
+        cmd("W 10 00000060\n", "OK");                   // a probe of DAC 0x60
+        v = 32'h10000; t = 0;
+        while (v[16] && t < 40) begin #500_000; rd(8'h10, v); t = t + 1; end
+        if (v[16] !== 1'b0 || v[17] !== 1'b1 || v[18] !== 1'b1 || v[19] !== 1'b1) begin
+            fail("stuck SCL: expected not busy, NACK, done, timeout"); $display("      got %08X", v); end
+        if (v[20] !== 1'b0 || v[21] !== 1'b1) begin fail("stuck SCL: [20] SCL low, [21] SDA high"); $display("      got %08X", v); end
+        if ($realtime - t0 < 10.0e6 || $realtime - t0 > 16.0e6) begin fail("stuck SCL: abandoned after 10 ms?"); $display("      %0.1f ms", ($realtime - t0) / 1.0e6); end
+        $display("stuck SCL: abandoned (I2C_CTRL %08X) within %0.1f ms", v, ($realtime - t0) / 1.0e6);
+        scl_hold = 1'b0;
+        #2000;
+        slave.reset_log;
+        cmd("W 10 00000060\n", "OK");
+        #1_000_000;
+        rd(8'h10, v); if (v[21:16] !== 6'b110100) begin fail("after the stuck bus: the next probe of 0x60 should ACK"); $display("      got %08X", v); end
+        if (slave.nstop != 1) fail("after the stuck bus: one STOP expected");
 
         // 7. the TX symbol and TRIG_A
         n_trig_a = 0;

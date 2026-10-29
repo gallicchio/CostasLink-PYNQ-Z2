@@ -72,7 +72,7 @@ sim-axil: | $(SCRATCH)
 	$(VVP) -N $(SCRATCH)/tb_axil.vvp
 
 sim-driver: | $(SCRATCH)
-	cd driver && $(PYTHON) -m unittest test_sim -v
+	cd driver && $(PYTHON) -m unittest test_sim test_netbus -v
 
 # the Icepi Zero's own top: PLL to 100 MHz, IDDRX1F (2 samples a clock), UART at 1 Mbaud
 ICEPI_SEEDS ?= 1 2 3 4 5 6 7 8

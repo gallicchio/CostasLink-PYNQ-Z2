@@ -38,7 +38,7 @@ sys.path.insert(0, os.path.dirname(HERE))           # gateware/: regmap.py, max2
 import regmap                                      # noqa: E402
 from board_constants import (RX_GAIN_DB, DEM_REG_DBM, A_REG_V, DSA_POWER_UP_DB, V_MID, G_SLOW, NF_CHAIN_DB,   # noqa: E402
                              ENBW_SLOW_HZ, ENBW_FAST_HZ, AD8310_SLOPE_V_DB, AD8310_INTERCEPT_DBV, LOG_TAP_DB, V5_DIV,
-                             NTC_B, NTC_R25, NTC_RTOP, NTC_VDD)
+                             NTC_B, NTC_R25, NTC_RTOP, NTC_VDD, VR_I_V, VR_Q_V)
 
 R = regmap.BY_NAME
 ID_EXPECTED = 0x434C0002
@@ -62,6 +62,16 @@ DAC1, DAC2 = 0x60, 0x61     # MCP4728: 12 bits, 0-VDD (3.3 V; the fast write kee
 DAC1_CH = {"VR_I": 0, "VR_Q": 1, "Q_OFF_F": 2, "VC_OFF": 3}
 DAC2_CH = {"V_T2": 0, "I_OFF": 1, "Q_OFF": 2, "I_OFF_F": 3}
 MCP4728_VDD = 3.3
+# Each MCP4728's power-up values (its EEPROM; the factory's is 0 V on every channel), and the shadows' start: the
+# ladders' references at their own values, everything else mid-scale.  Not VR_I / VR_Q at mid-scale: 1.65 V there
+# puts the I ladder's 11 point (the gateware's idle) at 2.0 V on IBBP and the Q ladder with TRIG IN high at 2.2 V,
+# against the ADL5375's 0-2 V absolute maximum (its Table 2; found at bring-up, 2026-10-28)
+DAC_DEFAULT_V = {DAC1: (VR_I_V, VR_Q_V, V_MID, V_MID), DAC2: (V_MID, V_MID, V_MID, V_MID)}
+VR_MAX_V = 0.6              # the most dac() lets VR_I / VR_Q have: IBBP 1.18 V, QBBP 1.47 V at worst (every leg high)
+
+
+def dac_code(volts):
+    return max(0, min(4095, int(round(volts / MCP4728_VDD * 4096))))
 ADS1115 = 0x48              # AIN0 I_P, AIN1 Q_P, AIN2 VC, AIN3 ERR: single-ended, +-4.096 V, 860 SPS
 ADC_CH = {"I": 0, "Q": 1, "VC": 2, "ERR": 3}
 ADC_LSB_V = 4.096 / 32768
@@ -315,7 +325,9 @@ class CostasLink:
 
     def __init__(self, bus, check=True):
         self.bus = bus
-        self._dac = {DAC1: [2048] * 4, DAC2: [2048] * 4}
+        self._dac = {d: [dac_code(v) for v in DAC_DEFAULT_V[d]] for d in (DAC1, DAC2)}
+        self._pll = {0: (5800.0, 25.0, None), 1: (5800.0, 25.0, None)}   # the words PLL_INIT sends (max2871_words.vh)
+        self._lo_mon = {0: False, 1: False}                                # RFOUTB, the LO MON jacks: off in PLL_INIT
         if check:
             ident = self.rd("ID")
             if ident != ID_EXPECTED:
@@ -406,14 +418,30 @@ class CostasLink:
         self._wait("PLL_INIT", 0x1, timeout)
         return bool(self.rd("PLL_INIT") & 2)
 
-    def pll_tune(self, which, f_mhz, f_pfd=25.0, cp=None):
+    def pll_tune(self, which, f_mhz, f_pfd=25.0, cp=None, lo_mon=None):
         """retune one synthesizer (0 TX, 1 RX) to f_mhz: the six words, register 5 first.  Integer-N from
         the 25 MHz reference: f_pfd 25 MHz (R = 1, the link's 25 MHz channels), or 5 MHz (R = 5, every WiFi
-        centre, for the survey; cp 15 holds the loop's gain)"""
+        centre, for the survey; cp 15 holds the loop's gain).  lo_mon: RFOUTB on (the LO MON jack), or None
+        to keep what lo_mon() last set"""
         import max2871_regs
+        if lo_mon is not None:
+            self._lo_mon[which] = bool(lo_mon)
         kw = {} if cp is None else {"cp": cp}
-        for w in max2871_regs.regs(f_mhz, f_pfd=f_pfd, **kw):
+        for w in max2871_regs.regs(f_mhz, f_pfd=f_pfd, rfb_en=self._lo_mon[which], **kw):
             self.spi(which, w)
+        self._pll[which] = (f_mhz, f_pfd, cp)
+
+    def lo_mon(self, which, on=True):
+        """the LO MON jack of one synthesizer (0 TX: LO TX MON, 1 RX: LO RX MON) on or off: RFOUTB, which the
+        power-up words (PLL_INIT) leave off, so the jacks are dark until this is called (BRINGUP stage 2.2).
+        Resends the six words at the synthesizer's present frequency: a relock of a few ms."""
+        f, f_pfd, cp = self._pll[which]
+        self.pll_tune(which, f, f_pfd=f_pfd, cp=cp, lo_mon=on)
+
+    def pll_locked(self):
+        """both synthesizers' lock detect (their MUX pins), {'tx': 0/1, 'rx': 0/1}"""
+        s = self.status()
+        return {"tx": s["mux_tx"], "rx": s["mux_rx"]}
 
     def dsa(self, db):
         """the PE43711: 0-31.75 dB in 0.25 dB steps"""
@@ -432,7 +460,7 @@ class CostasLink:
     def received_dBm(self, n=8, ext_db=0.0):
         """The carrier's level (dBm), from the locked I arm (the ADC's I_P, n readings) and the DSA's
         setting: at RX ANT, or at the antenna when `ext_db` names the gain of what is between them (an
-        LNA module +15, a pad -30).  Valid only with the loop locked (I is then the amplitude, at 0 or
+        LNA module +29, measured on the VNA; a pad -30).  Valid only with the loop locked (I is then the amplitude, at 0 or
         180 degrees); None when the arm reads less than two ADC steps.  Unlocked, read RX MON instead."""
         v = sum(self.adc("I") for _ in range(n)) / n
         a = 2.0 * abs(v - self._i_zero)                       # I_P is V_MID + I / 2
@@ -477,10 +505,19 @@ class CostasLink:
         self.wr("I2C_WDATA2", buf[8] << 24)
         self.wr("I2C_CTRL", (addr & 0x7F) | (len(wbytes) << 8) | (nread << 12))
         v = self._wait("I2C_CTRL", 1 << 16, timeout)
+        if v >> 19 & 1:
+            raise IOError("I2C 0x%02X: SCL held low for 10 ms, the transaction abandoned (a stuck bus: SCL %d, SDA %d now)"
+                          % (addr, v >> 20 & 1, v >> 21 & 1))
         if v >> 17 & 1:
             raise IOError("I2C 0x%02X: no acknowledge" % addr)
         r = self.rd("I2C_RDATA") & 0xFFFF
         return bytes([r >> 8, r & 0xFF]) if nread == 2 else bytes([r & 0xFF]) if nread == 1 else b""
+
+    def i2c_lines(self):
+        """the I2C lines as they are now (1 = high), and whether the last transaction was abandoned on a stuck SCL:
+        both high when idle; SCL low with nothing driving it is a bridge or a dead part on the bus"""
+        v = self.rd("I2C_CTRL")
+        return {"scl": v >> 20 & 1, "sda": v >> 21 & 1, "busy": v >> 16 & 1, "timeout": v >> 19 & 1}
 
     def i2c_probe(self, addr):
         try:
@@ -514,12 +551,18 @@ class CostasLink:
         """dac(DAC1, VR_I=0.21, VC_OFF=1.65) in volts, or codes with code_ prefix (code_VR_I=260).  The ladders'
         references are board_constants.VR_I_V and VR_Q_V (they differ since Prompt 35: the Q ladder's third leg is TRIG IN)."""
         names = DAC1_CH if which == DAC1 else DAC2_CH
-        sh = self._dac[which]
+        sh = list(self._dac[which])
         for k, v in channels.items():
             if k.startswith("code_"):
                 sh[names[k[5:]]] = max(0, min(4095, int(v)))
             else:
-                sh[names[k]] = max(0, min(4095, int(round(v / MCP4728_VDD * 4096))))
+                sh[names[k]] = dac_code(v)
+        if which == DAC1:                    # the ladders' references: DAC_DEFAULT_V's note
+            for k in ("VR_I", "VR_Q"):
+                if sh[names[k]] > dac_code(VR_MAX_V):
+                    raise ValueError("%s %.3f V is over VR_MAX_V %.2f V (the ADL5375's baseband pins)"
+                                     % (k, sh[names[k]] * MCP4728_VDD / 4096, VR_MAX_V))
+        self._dac[which] = sh
         self._wait("DAC_GO", 1)
         self.wr("DAC_AB", sh[0] << 16 | sh[1])
         self.wr("DAC_CD", sh[2] << 16 | sh[3])
@@ -527,10 +570,14 @@ class CostasLink:
         self._wait("DAC_GO", 1)
         return list(sh)
 
-    def dac_eeprom(self, which=DAC1, codes=(2048, 2048, 2048, 2048)):
+    def dac_eeprom(self, which=DAC1, codes=None):
         """BRINGUP stage 0.4 / 1.5: the power-up defaults (EEPROM) of all four channels: the sequential
         write from channel A (0b01010 00 0), VREF = VDD, gain 1, normal power, 9 bytes; the EEPROM takes
-        up to 50 ms"""
+        up to 50 ms.  codes: DAC_DEFAULT_V's by default (the ladders' references at VR_I_V / VR_Q_V)"""
+        if codes is None:
+            codes = [dac_code(v) for v in DAC_DEFAULT_V[which]]
+        if which == DAC1 and max(codes[0], codes[1]) > dac_code(VR_MAX_V):
+            raise ValueError("VR_I / VR_Q over VR_MAX_V in an EEPROM default (the ADL5375's baseband pins)")
         b = [0x50]
         for c in codes:
             c = max(0, min(4095, int(c)))
@@ -824,17 +871,54 @@ class CostasLink:
         self.tx_mode("txsym")
         self.ctrl(tx_dis=1, loop_hold=1, tr_a=1, txq1_hiz=0)
 
-    def bringup_stage1(self, eeprom=False):
-        """stage 1.5: the I2C scan, the DAC defaults at mid-scale (EEPROM if asked), the ADC's four channels"""
+    def bringup_stage1(self, eeprom=False, window_v=V_MID + 0.1):
+        """stage 1.5: the I2C scan, the DACs at DAC_DEFAULT_V (also their EEPROM if asked: the ladders' references
+        at VR_I_V / VR_Q_V, everything else mid-scale), the four window thresholds above the idle (the AD5696R
+        starts at 1.25 V, under the arms' 1.65 V, which holds its comparators high: BRINGUP stage 1.5), the ADC's
+        four channels and the detectors' (V5_MON, TEMP)"""
         found = self.i2c_scan()
         want = [AD5696R, ADS1115, ADS1115_DET, DAC1, DAC2]
-        if eeprom:
-            for d in (DAC1, DAC2):
-                self.dac_eeprom(d)
+        out = {"found": ["0x%02X" % a for a in found], "missing": ["0x%02X" % a for a in want if a not in found]}
         for d in (DAC1, DAC2):
-            self.dac(d, **{k: V_MID for k in (DAC1_CH if d == DAC1 else DAC2_CH)})
-        return {"found": ["0x%02X" % a for a in found], "missing": ["0x%02X" % a for a in want if a not in found],
-                "adc": self.adc_all()}
+            if d not in found:
+                continue
+            if eeprom:
+                self.dac_eeprom(d)
+            names = DAC1_CH if d == DAC1 else DAC2_CH
+            self.dac(d, **dict(zip(names, DAC_DEFAULT_V[d])))
+        out["dac_v"] = self.dac_volts()
+        if AD5696R in found:
+            for w in AD5696R_CH:
+                self.threshold(w, window_v)
+            out["window_v"] = window_v
+        if ADS1115 in found:
+            out["adc"] = self.adc_all()
+        if ADS1115_DET in found:
+            out["detectors"] = self.detectors()
+        return out
+
+    def dac_volts(self):
+        """the eight MCP4728 channels as this driver last wrote them (the shadows), in volts"""
+        out = {}
+        for d, names in ((DAC1, DAC1_CH), (DAC2, DAC2_CH)):
+            for k, ch in names.items():
+                out[k] = round(self._dac[d][ch] * MCP4728_VDD / 4096, 4)
+        return out
+
+    def snapshot(self):
+        """everything the board can say about itself at once, for the bring-up log: the control and status
+        registers, the comparators, the counters, the synthesizers as last tuned, the DSA, the DACs' shadows,
+        the ADC's four channels and the detectors (each part that does not answer reads as its error)"""
+        out = {"time": time.time(), "info": self.info(), "ctrl": self.rd("CTRL"), "status": self.status(),
+               "cmp_state": self.cmp_state(), "counters": self.counters(), "free_cnt": self.rd("FREE_CNT"),
+               "pll_mhz": {("tx", "rx")[k]: v[0] for k, v in self._pll.items()}, "lo_mon": dict(self._lo_mon),
+               "dsa_db": self._dsa_db, "dac_v": self.dac_volts(), "i2c_lines": self.i2c_lines()}
+        for name, fn in (("adc", self.adc_all), ("detectors", self.detectors)):
+            try:
+                out[name] = fn()
+            except (IOError, TimeoutError) as e:
+                out[name] = "error: %s" % e
+        return out
 
     def threshold_scan(self, which, volts, seconds=0.1, mask_input=None):
         """stage 3.7: step one window threshold across the idle and count its comparator's edges (the gate):

@@ -142,6 +142,12 @@ source $script_dir/bd_diagram.tcl
 bd_diagram $build_dir/${tag}${bd_name}.dot $build_dir/${tag}${bd_name}_block_diagram.pdf "CostasLink overlay - $bd_name"
 
 # ---- 4. wrapper, synthesis, implementation --------------------------------------------
+# Synthesize the block design with the top (global), not each cell out of context: out of context, the module
+# reference's tristate pins (I2C SCL and SDA, TX_Q1's input mode) lost their 1'bz ("[Synth 8-5799] Converted
+# tricell instance to logic", a critical warning nobody read): every PYNQ build to 2026-10-29 drove them, so I2C
+# never worked on the board (rev A bring-up, board A).  Globally they reach the pins and infer IOBUFs; step 5
+# refuses a bitstream in which they did not.
+set_property synth_checkpoint_mode None [get_files $bd_name.bd]
 make_wrapper -files [get_files $bd_name.bd] -top
 set wrapper ""
 foreach cand [list $build_dir/$proj_name/${proj_name}.gen/sources_1/bd/$bd_name/hdl/${bd_name}_wrapper.v \
@@ -172,6 +178,14 @@ report_utilization -file $build_dir/${tag}utilization.rpt
 report_timing_summary -file $build_dir/${tag}timing_summary.rpt
 if {$wns < 0 || $whs < 0} {
     error "timing not met (WNS $wns ns, WHS $whs ns): refusing to publish the overlay; $build_dir/${tag}timing_summary.rpt"
+}
+# the tristate pins must end in a tristate buffer (IOBUF, or the OBUFT it becomes), not a plain OBUF or IBUF
+foreach p {i2c_scl i2c_sda tx_q1} {
+    set refs [get_property REF_NAME [get_cells -of_objects [get_pins -leaf -of_objects [get_nets -of_objects [get_ports $p]]]]]
+    if {[lsearch -regexp $refs {^(IOBUF|OBUFT)}] < 0} {
+        error "port $p is driven by '$refs', not a tristate buffer: its 1'bz was lost in synthesis; refusing to publish"
+    }
+    puts "--- $p: $refs"
 }
 set bit [glob -nocomplain $build_dir/$proj_name/${proj_name}.runs/impl_1/*.bit]
 set hwh [glob -nocomplain $build_dir/$proj_name/${proj_name}.gen/sources_1/bd/$bd_name/hw_handoff/$bd_name.hwh]

@@ -111,8 +111,10 @@ module costaslink_regs #(
     reg  [1:0]  i2c_nread;
     reg  [71:0] i2c_wbuf;
     reg         i2c_go;
-    wire        i2c_busy, i2c_done, i2c_nack;
+    wire        i2c_busy, i2c_done, i2c_nack, i2c_timeout;
     wire [15:0] i2c_rbuf;
+    reg  [1:0]  scl_sync, sda_sync;     // the lines as they are, for I2C_CTRL [21:20] (a stuck bus, seen from here)
+    always @(posedge clk) begin scl_sync <= {scl_sync[0], i2c_scl_i}; sda_sync <= {sda_sync[0], i2c_sda_i}; end
     reg         i2c_done_flag;
     reg         adc_pending;
     reg  [15:0] adc_result;
@@ -122,7 +124,7 @@ module costaslink_regs #(
 
     i2c_master #(.CLK_HZ(CLK_HZ)) u_i2c (
         .clk(clk), .rst(rst), .start(i2c_go), .addr(i2c_addr), .nwrite(i2c_nwrite), .nread(i2c_nread),
-        .wbuf(i2c_wbuf), .busy(i2c_busy), .done(i2c_done), .nack(i2c_nack), .rbuf(i2c_rbuf),
+        .wbuf(i2c_wbuf), .busy(i2c_busy), .done(i2c_done), .nack(i2c_nack), .timeout(i2c_timeout), .rbuf(i2c_rbuf),
         .scl_i(i2c_scl_i), .sda_i(i2c_sda_i), .scl_o(i2c_scl_o), .sda_o(i2c_sda_o));
 
     // ADS1115 config: OS = 1 (start), MUX = 1cc (AINc vs GND), PGA = 001 (+-4.096 V: the 3.3 V nodes),
@@ -261,7 +263,8 @@ module costaslink_regs #(
         A_PLL_INIT:   bus_rdata = {30'd0, init_done_flag, init_busy};
         A_STATUS:     bus_rdata = {26'd0, id_key, id_active, i2c_busy, spi_busy | init_busy, cmp_state[8], cmp_state[7]};
         A_BUS_COUNT:  bus_rdata = {n_writes, n_reads};
-        A_I2C_CTRL:   bus_rdata = {13'd0, i2c_done_flag, i2c_nack, i2c_busy, 2'd0, i2c_nread, i2c_nwrite, 1'b0, i2c_addr};
+        A_I2C_CTRL:   bus_rdata = {10'd0, sda_sync[1], scl_sync[1], i2c_timeout, i2c_done_flag, i2c_nack, i2c_busy, 2'd0,
+                                   i2c_nread, i2c_nwrite, 1'b0, i2c_addr};
         A_I2C_WDATA0: bus_rdata = i2c_wbuf[71:40];
         A_I2C_WDATA1: bus_rdata = i2c_wbuf[39:8];
         A_I2C_WDATA2: bus_rdata = {i2c_wbuf[7:0], 24'd0};

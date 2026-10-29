@@ -6,7 +6,10 @@
 // Board signals: I2C_SDA (header 3) and I2C_SCL (5), open drain: scl_o / sda_o = 1 release the line
 // (the 2k2 pull-ups on the PYNQ-Z2, the DNP 4.7 k on this board for the Icepi), 0 drives it low.  The
 // slaves are the two MCP4728 DACs (0x60 and 0x61) and the ADS1115 ADC (0x48); the wire never carries
-// anything faster than 100 kHz.  Clock stretching is honoured (the bit's high phase waits for SCL).
+// anything faster than 100 kHz.  Clock stretching is honoured (the bit's high phase waits for SCL), for
+// at most STRETCH_US: none of these slaves stretches at all, so SCL still low after that is a fault (a
+// bridge, a dead part: rev A board A, 2026-10-29, hung here for good).  The transaction is then
+// abandoned: both lines released, `timeout` and `nack` set, `done` pulsed.
 //
 // Byte 0 of wbuf is its top byte [71:64] and goes first; rbuf is {first byte read, second byte read}
 // (a single read lands in [7:0]).  `nack` is set when any byte written is not acknowledged (the
@@ -14,7 +17,8 @@
 
 module i2c_master #(
     parameter integer CLK_HZ = 50_000_000,
-    parameter integer SCL_HZ = 100_000
+    parameter integer SCL_HZ = 100_000,
+    parameter integer STRETCH_US = 10_000
 ) (
     input  wire        clk,
     input  wire        rst,
@@ -26,6 +30,7 @@ module i2c_master #(
     output reg         busy,
     output reg         done,           // one-cycle pulse at the STOP
     output reg         nack,
+    output reg         timeout,        // the last transaction was abandoned: SCL held low STRETCH_US
     output reg  [15:0] rbuf,
     input  wire        scl_i,
     input  wire        sda_i,
@@ -59,20 +64,29 @@ module i2c_master #(
     wire hold_for_scl = (ph == 2'd1) && scl_o && !scl_i;
     wire tick = (cnt == {CW{1'b0}}) && !hold_for_scl;
 
+    // how long SCL has been held low against us
+    localparam integer STRETCH_CYC = CLK_HZ / 1_000_000 * STRETCH_US;
+    localparam integer SW = $clog2(STRETCH_CYC + 1);
+    localparam [SW-1:0] STRETCH_M1 = STRETCH_CYC[SW-1:0] - 1'b1;
+    reg [SW-1:0] scnt;
+    always @(posedge clk) scnt <= (rst || !hold_for_scl) ? {SW{1'b0}} : scnt + 1'b1;
+
     always @(posedge clk) begin
         done <= 1'b0;
         if (rst) begin
-            st <= S_IDLE; ph <= 2'd0; cnt <= {CW{1'b0}}; busy <= 1'b0; nack <= 1'b0;
+            st <= S_IDLE; ph <= 2'd0; cnt <= {CW{1'b0}}; busy <= 1'b0; nack <= 1'b0; timeout <= 1'b0;
             scl_o <= 1'b1; sda_o <= 1'b1; bitn <= 3'd0; sh <= 8'd0; wleft <= 4'd0; widx <= 4'd0;
             rleft <= 2'd0; rd <= 1'b0; ack_bit <= 1'b1; rbuf <= 16'd0; addr_r <= 7'd0; nread_r <= 2'd0;
         end else if (st == S_IDLE) begin
             scl_o <= 1'b1; sda_o <= 1'b1; ph <= 2'd0; cnt <= QT_M1;
             if (start) begin
-                busy <= 1'b1; nack <= 1'b0; rd <= 1'b0;
+                busy <= 1'b1; nack <= 1'b0; timeout <= 1'b0; rd <= 1'b0;
                 addr_r <= addr; nread_r <= nread;
                 wleft <= nwrite; widx <= 4'd0; rleft <= nread;
                 st <= S_START;
             end
+        end else if (hold_for_scl && scnt == STRETCH_M1) begin   // SCL stuck low: give the bus up
+            st <= S_IDLE; busy <= 1'b0; done <= 1'b1; nack <= 1'b1; timeout <= 1'b1;
         end else if (!tick) begin
             if (cnt != {CW{1'b0}}) cnt <= cnt - 1'b1;
         end else begin

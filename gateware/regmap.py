@@ -29,7 +29,8 @@ REGS = [
     (0x0A, "PLL_INIT", "RW", "regs", "W: both synthesizers' power-up sequence; R [0] busy, [1] done"),
     (0x0B, "STATUS", "R", "regs", "[0] MUX_TX, [1] MUX_RX, [2] SPI busy, [3] I2C busy, [4] ID active, [5] key down"),
     (0x0C, "BUS_COUNT", "R", "regs", "[15:0] reads, [31:16] writes"),
-    (0x10, "I2C_CTRL", "RW", "regs", "W [6:0] address, [11:8] bytes to write, [13:12] to read, go; R + [16] busy, [17] NACK, [18] done"),
+    (0x10, "I2C_CTRL", "RW", "regs", "W [6:0] address, [11:8] bytes to write, [13:12] to read, go; R + [16] busy, [17] NACK, [18] done, "
+     "[19] timeout (SCL held low 10 ms: abandoned, NACK too), [20] SCL and [21] SDA as they are now"),
     (0x11, "I2C_WDATA0", "RW", "regs", "bytes 0-3, byte 0 in [31:24]"),
     (0x12, "I2C_WDATA1", "RW", "regs", "bytes 4-7"),
     (0x13, "I2C_WDATA2", "RW", "regs", "byte 8 in [31:24]"),
