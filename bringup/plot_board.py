@@ -199,7 +199,7 @@ def night_map_heat(L):
     Z = np.full((len(dsas), len(f)), np.nan)
     for j, r in enumerate(rows):
         for p in r["points"]:
-            Z[dsas.index(p["dsa"]), j] = p["iq"][2]["PKPK"] or np.nan
+            Z[dsas.index(p["dsa"]), j] = p["iq"]["2"]["PKPK"] or np.nan
     from matplotlib.colors import LinearSegmentedColormap
     cmap = LinearSegmentedColormap.from_list("seq", P.SEQ)
     fig, ax = plt.subplots(figsize=(11.5, 4.6))
@@ -229,12 +229,12 @@ def night_iq(L):
     axs[0].set_xlabel("frequency, GHz"); axs[0].set_ylabel("Q / I amplitude, dB")
     axs[0].set_title("I/Q amplitude balance")
     P.subtitle(axs[0], "Sine fits to the beat on I MON and Q MON, the DSA set for about 0.4 V p-p.")
-    axs[1].axhline(90, color=P.MUTED, lw=1, ls=(0, (4, 3)))
-    axs[1].axhline(-90, color=P.MUTED, lw=1, ls=(0, (4, 3)))
-    axs[1].plot(f, ph, color=P.SERIES[1], marker="o", markersize=5)
-    axs[1].set_xlabel("frequency, GHz"); axs[1].set_ylabel("phase of Q against I, degrees")
+    axs[1].axhline(0, color=P.MUTED, lw=1, ls=(0, (4, 3)))
+    axs[1].plot(f, [abs(x) - 90 for x in ph], color=P.SERIES[1], marker="o", markersize=5)
+    axs[1].set_ylim(-4, 4)
+    axs[1].set_xlabel("frequency, GHz"); axs[1].set_ylabel("quadrature error, degrees (|phase| - 90)")
     axs[1].set_title("I/Q quadrature")
-    P.subtitle(axs[1], "+-90 degrees is perfect quadrature; the sign is the beat's direction.")
+    P.subtitle(axs[1], "The phase of Q against I from the same fits, less the ideal 90 degrees.")
     P.source(fig, "overnight %s." % os.path.basename(path))
     fig.tight_layout()
     return P.save(fig, os.path.join(OUT, "night_iq_balance.png"))
