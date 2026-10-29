@@ -1,0 +1,28 @@
+# What rev B should change
+
+Kept during the rev A bring-up (from 2026-10-28).  Each row says what showed it: a measurement in
+[`BRINGUP_LOG.md`](BRINGUP_LOG.md) (with its log entry), a reading of the board or a datasheet, or a design review whose
+item the bench is still to confirm.  The architecture rev B was already given in the plan (a SYZYGY or on-board-FPGA
+host with LVDS comparators: [`../docs/HOSTS.md`](../docs/HOSTS.md), [`../docs/SYSTEM.md`](../docs/SYSTEM.md), REVA_CHANGES
+24) is not repeated here: this list is what rev A itself teaches.
+
+Status: **seen** (measured or read on the built board), **to confirm** (a review's item the bench has not shown yet),
+**dropped** (the bench showed it does not matter).
+
+## Found on the bench
+
+| # | what | evidence | change | status |
+|---|---|---|---|---|
+| 1 | The TX ladders' references VR_I / VR_Q come from 0-3.3 V DAC channels through 300 / 348 ohm straight to the ADL5375's baseband pins: a reference above about 1.6 V takes IBBP / QBBP past their 2 V absolute maximum (1.65 V gives 2.0 V on IBBP at the idle, 2.2 V on QBBP with TRIG IN high), and the working range is 0.21-0.25 V, 6 % of the DAC's | the ladder's arithmetic with the ADL5375's Table 2, before power (BRINGUP_LOG "Before power" 1); guarded in the driver for now (`VR_MAX_V`) | divide each reference down at the DAC (e.g. 3.0 k from the DAC over 330 ohm to ground: 0.099 x the DAC through 297 ohm, in place of R203's 300): no code can then exceed 0.33 V (IBBP 0.96 V at worst), and the carrier null's step is 10x finer (0.08 mV instead of 0.8 mV) | seen |
+| 2 | The 5 V input path drops more than budgeted: F301 PTC 56 mohm, Q301 and the +5V_IN copper 91 mohm, FB301 44 mohm, 192 mohm from VBUS to +5V_RF (0.26 V at 1.37 A against the 0.21 V budget).  With any real USB lead (181 mohm on the bench) +5V_RF falls under the ADL5380's 4.75 V minimum at full load unless the source sits above USB's 5.25 V.  And the only 5 V test pads (TP301, TP302) are 40 mm from Q301, with no pad on VBUS | board A, stage 1.2 (BRINGUP_LOG 'The 5 V path', 2026-10-29): node voltages at 0.871 A | a P-FET of 10-20 mohm (or an ideal-diode controller), a lower-resistance fuse (or an eFuse), two beads in parallel or a lower-DCR one, wider +5V_IN copper; a VBUS test pad at J301 and TP301 beside Q301.  Or power the RF rail from a 6-12 V input through a low-noise 5.0 V LDO, which makes it independent of the lead | seen |
+| 3 | A hot spot around U104 reached 75-79 C (IR camera) after 30 min at only 0.885 A, before the synthesizers and the transmitter add 0.5 A.  If it is the ADL5380 (ENBL grounded, ADJ open: R104 DNP, so under the datasheet's 245 mA), about 55 C over room on under 1.2 W is worse than its JEDEC 53 C/W, and the exposed pad is not reaching the planes well | board A, stage 1.4 (2026-10-29); the camera could not resolve the part | first find the part: the board's TEMP sensor, a thermocouple on U104's top, a better camera; then more or larger thermal vias under the paddle, copper on the back under it, or a heatsink | to confirm |
+
+## Carried from the design reviews, for the bench to confirm
+
+| # | what | from | change | what would confirm it |
+|---|---|---|---|---|
+| R1 | The whole 5 V current crosses one 0.25 mm via and a 0.25-0.30 mm neck three times in series (Q301 to the +5V_IN pour, the pour to FB301, FB301 to +5V_RF) | REVA_CHANGES 35 (Prompt 31's review B) | two vias per 5 V pad, 0.8 mm stubs | +5V_IN to +5V_RF drop at 1.37 A (stage 1.2 at full load), the neck's temperature on the camera (1.4) |
+| R2 | No decoupling within 2.5 mm of any RF chip's, synthesizer's or FDA's supply pin (3-8 mm away: the placer's fan band) | REVA_CHANGES 35; docs/PATHS.md section 10 | the 68 pF / 1 nF inside the fan band, on the back under the pins | LO and RF spurs and leakage: stage 2.2's spurs, 2.3's carrier null depth, the TX and LO lines seen at RX MON with the receiver idle |
+| R3 | With this board powered and the PYNQ off, each high output drives about 12 mA into a Zynq clamp diode (10 mA absolute maximum), up to a dozen pins | REVA_CHANGES 39 | an output enable, or a buffer with Ioff, on the header's outputs | (a procedure rule on rev A: the PYNQ first, this board last) |
+| R4 | The RF lines' L corners (0.29 mm line, about 0.05 pF each); no anti-pads under the ADL5611's 1.3 x 0.9 mm pads (0.17 pF, 16 dB return loss each) | docs/PATHS.md section 10 (review B, M5) | mitred corners; anti-pads under wide RF pads | the chain's gain and flatness across 4.9-6 GHz on the VNA against the budget |
+| R5 | No RC on the DAC thresholds at the window comparators' pins | docs/PATHS.md section 10 | an RC at each comparator's threshold pin | the windows chattering in stage 3.7's threshold scans |

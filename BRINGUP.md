@@ -101,7 +101,11 @@ the "H" feed of the dual-feed grid across the room (is the pair V/H or a slant p
    rings dropped from through-hole pins with no inner connection, plated drills 0.13-0.15 mm over finished size,
    their rails with V-cuts, since removed) and were confirmed; the via covering came back plugged.
 4. The DAC EEPROMs: nothing to do before the board exists, but the first gateware writes all eight DAC
-   channels' EEPROM defaults to mid-scale (1.65 V) once, so a power-up injects no offset into the arms.
+   channels' EEPROM defaults once: the trims, VC_OFF and V_T2 at mid-scale (1.65 V), so a power-up injects no offset
+   into the arms, and the ladders' references VR_I / VR_Q at their own 0.2125 / 0.2456 V.  **Not** those two at
+   mid-scale: 1.65 V there puts IBBP at 2.0 V at the gateware's idle and QBBP at 2.2 V with TRIG IN high, against the
+   ADL5375's 0-2 V absolute maximum (found reading the driver before first power, 2026-10-28; `bringup/BRINGUP_LOG.md`).
+   The factory EEPROM holds 0 V on every channel, which is safe.
 5. The Icepi's sampler, with the Icepi alone: the ECP5's IDDRX1F hands over two samples a clock, and
    which is the earlier is from Lattice's TN1265, not simulated (the ISERDESE2's order is: Vivado's
    model).  A jumper on the Icepi's own header from TRIG A (pin 37) to TRIG IN (pin 26), then
@@ -167,7 +171,7 @@ Nothing plugged into the header yet; the board alone on the bench supply through
    that write: write all four (`CostasLink.threshold`) before `rx_config` enables the receiver (the
    design review).  From a Jupyter cell: I2C scan finds 0x0C (the windows' AD5696R), 0x48 (ADC), 0x49 (the detectors' ADC),
    0x60 (DAC 1), 0x61 (DAC 2); write the
-   DAC EEPROM defaults to 1.65 V; read the ADC's four channels (I, Q, VC, ERR) with nothing on the air:
+   DAC EEPROM defaults (`bringup_stage1(eeprom=True)`: 1.65 V but for VR_I / VR_Q, step 0.4); read the ADC's four channels (I, Q, VC, ERR) with nothing on the air:
    I and Q near the demodulator's common mode as the arms shift it, VC at 1.65 V (V_MID with the loop
    open: LOOP_HOLD high).
    *Pass:* five I2C acknowledges, sensible ADC readings (`detectors()`: V5_MON = +5V_RF / 2, TEMP near 1.65 V at 25 C).

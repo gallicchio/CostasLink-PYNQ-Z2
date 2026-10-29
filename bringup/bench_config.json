@@ -1,0 +1,23 @@
+{
+ "board": "A",
+ "pynq_host": "192.168.8.142",
+ "pynq_port": 5800,
+ "psu": {
+  "serial": "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9PUYBUD-if00-port0",
+  "gpib": null,
+  "out": 1
+ },
+ "dmm": {
+  "serial": "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A95AME9U-if00-port0"
+ },
+ "sa": {
+  "host": "192.168.8.114",
+  "usb": false
+ },
+ "scope": {
+  "host": "192.168.8.203"
+ },
+ "gen": {
+  "host": "192.168.8.246"
+ }
+}
