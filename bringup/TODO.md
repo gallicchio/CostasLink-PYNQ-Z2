@@ -21,5 +21,7 @@ ch2 I MON, ch3 Q MON, ch4 VC MON. 50 ohm on TX MON's pigtail. JP201 on TCXO.
 | 8 | Monday, in the same lab | 30 min to set up, 30 min to move a grid | 1-2 h | **Over the air with the VV 24 dBi grids at 5.15-5.2 GHz:** TX ANT to one grid's 10 m cable, the other grid's cable to RX ANT, no pads. The VNA's link is -48.2 dB, so RX ANT sees about -39 dBm. Measure the lock, the schemes and the turnaround (subtract 135.6 ns of flight). Then the latency line: move one grid to two more distances; the slope is c, the intercept the electronics | 1, 0, 5 | |
 | 9 | Monday, last | **15 min** (the only rework) | 1 h | **Lift C102**, the 0.5 pF shunt from the LNA's input to ground; leave its pads empty, or lift only its ground end. Then repeat A, F and the night's map. The prediction is +25 dB at 5.8 GHz, and RX ANT's S11 from about -0.8 to -7 dB. If it misbehaves, a 0.5 pF goes back on the same pads | 6 (A first) | everything at 5.8 GHz |
 
+Latency checks that fit around these (`bringup/LATENCY.md` section 5): a and b are remote; c is a 2 min recabling after step 1 (TRIG OUT A to ch1, CMP I MON to ch4, both at 50 ohm); d is a rebuild; e (the PYNQ's 200 ohm on the 4 ladder outputs) is your call.
+
 Optional, ten seconds each: JP103 to FPGA with LOOP_SEL held, for a plain PLL on Q. It is a cross-check of the loop's
 sign, and not needed once step 1 is done.

@@ -509,25 +509,33 @@ class Night:
         return out
 
     # ---- the rest of the night ----
-    def rest(self, until_hour=7, every_s=600, map_every_h=3.0):
-        """the spectrum, a fine map of 5.3-6.0 GHz, then drift readings every every_s until until_hour (local), with a
-        coarse map and a 5.0 GHz lock check every map_every_h"""
+    def rest(self, until="07:00", every_s=600, map_every_h=3.0, map_step=100, first=True):
+        """the spectrum, a fine map of 5.3-6.0 GHz (first only), then drift readings every every_s until `until` (local
+        HH:MM), with a coarse map (map_step MHz) and a 5.0 GHz lock check every map_every_h; the analyser left live"""
         import datetime as dt
         now = dt.datetime.now()
-        end = now.replace(hour=until_hour, minute=0, second=0, microsecond=0)
+        hh, mm = (int(x) for x in str(until).split(":")) if ":" in str(until) else (int(until), 0)
+        end = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
         if end <= now:
             end += dt.timedelta(days=1)
-        self.spectrum()
-        self.map_fine()
-        last_map = time.time()
+        if first:
+            self.spectrum()
+            self.map_fine()
         hours = (end - dt.datetime.now()).total_seconds() / 3600
-        while dt.datetime.now() < end and self.alive():
-            chunk = min(map_every_h, (end - dt.datetime.now()).total_seconds() / 3600)
-            self.drift(hours=chunk, every_s=every_s)
-            if dt.datetime.now() < end and self.alive():
-                self.map(step=100)
-                self.acquire(mhzs=(5000,), grid=(1.0, 2.31, 0.1))
-        self.quiet()
+        try:
+            while dt.datetime.now() < end and self.alive():
+                chunk = min(map_every_h, (end - dt.datetime.now()).total_seconds() / 3600)
+                self.drift(hours=chunk, every_s=every_s)
+                # a map and a lock check only when they end before `until` (about 25 min together at 150 MHz steps)
+                if dt.datetime.now() + dt.timedelta(minutes=30) < end and self.alive():
+                    self.map(step=map_step)
+                    self.acquire(mhzs=(5000,), grid=(1.0, 2.31, 0.1))
+        finally:
+            self.quiet()
+            try:
+                self.b.sa_live()
+            except Exception as e:                                   # noqa: BLE001
+                print("sa_live failed:", e, flush=True)
         return hours
 
     def map_fine(self, lo=5300, hi=6000, step=10, dsas=(31.75, 24, 16, 8, 4, 2, 0)):
@@ -605,6 +613,9 @@ def main():
     ap.add_argument("--step", type=int, default=None)
     ap.add_argument("--mhz", type=int, nargs="*")
     ap.add_argument("--hours", type=float, default=8.0)
+    ap.add_argument("--until", default="07:00", help="rest: the local time to stop, HH:MM")
+    ap.add_argument("--every-h", type=float, default=3.0, help="rest: hours between the coarse maps")
+    ap.add_argument("--resume", action="store_true", help="rest: skip the spectrum and the fine map (already taken)")
     a = ap.parse_args()
     n = Night(a.section)
     if a.section == "map":
@@ -620,7 +631,7 @@ def main():
     elif a.section == "mapfine":
         n.map_fine()
     elif a.section == "rest":
-        n.rest()
+        n.rest(until=a.until, map_step=a.step or 100, map_every_h=a.every_h, first=not a.resume)
     else:
         n.drift(hours=a.hours)
 

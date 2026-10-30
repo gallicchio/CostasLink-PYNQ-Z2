@@ -968,6 +968,79 @@ class Turn(Schemes):
                       text="the turnaround on the reply overlay (sync reply, fast path, ring), A3r / A2r / A1q2 at the inverted lock")
         return out
 
+    def turn_sweep(self, mhz=5000, dsas_rel=(-6, -3, 0, 3, 6, 9), fracs=(0.2, 0.3, 0.4, 0.55, 0.7), names=("A3r", "A1q2"),
+                   reps=3, clocks=2000, mask=0x1E):
+        """the fast path's ring hop against the received level (the DSA about the regulated setting: the comparators'
+        overdrive) and the windows' place on the edge (frac of the leg): a hop that moves with frac is the edges' rise
+        (the arm, the header's RCs, the ladder), one that moves with the level at a fixed frac is the comparators'
+        dispersion; what moves with neither is fixed delay (Jason, 2026-10-29: which latency knobs pay)"""
+        lc = self.lc()
+        out = {"mhz": mhz, "fracs": list(fracs), "mask": mask, "clocks": clocks, "runs": []}
+        self.scope_iq(vdiv=0.1)
+        try:
+            self.tx(False)
+            self.center(mhz)
+            v, tr = self.null_fast_i()
+            out["i_off_f"] = v
+            cen = self.centres()
+            out["centres"] = {w: cen[w]["v0"] for w in ("QP", "QN", "IP", "IN")}
+            reg = self.regulated_dsa(mhz)
+            out["regulated_dsa"] = reg
+            ioff = v if v is not None else S.V_MID
+            for dd in dsas_rel:
+                if not self.alive():
+                    break
+                dsa = min(31.75, max(self.dsa_min(mhz), reg + dd))
+                if self.acquire_lock(mhz, dsa, ioff=ioff) is None:
+                    out["runs"].append({"dsa": dsa, "error": "no lock"})
+                    print("DSA", dsa, "no lock", flush=True)
+                    continue
+                for name in names:
+                    rot, ok, fi = self.frame(cen)
+                    if not ok:
+                        if self.acquire_lock(mhz, dsa, ioff=ioff) is None:
+                            out["runs"].append({"dsa": dsa, "scheme": name, "error": "no lock"})
+                            continue
+                        rot, ok, fi = self.frame(cen)
+                    a_leg = abs(fi["dq"])
+                    pair = turn_pairs(rot)[name]
+                    sch = Mirrored(pair[0], rot)
+                    order = [0, 1, 3, 2] if sch.n == 4 else None
+                    for t in fracs:
+                        th = self.thresholds(cen, a_leg, t=t)
+                        hops = []
+                        for _ in range(reps):
+                            rg = lc.ring_run(sch, order=order, clocks=clocks, mask=mask)
+                            hops.append({k: rg.get(k) for k in ("hops", "span", "turnaround_ns", "n", "miss")})
+                            self.cl.hold_point(1, 0)
+                        good = [h["turnaround_ns"] for h in hops if h["turnaround_ns"] and (h["hops"] or 0) > 20]
+                        r = {"dsa": dsa, "dsa_rel": dd, "scheme": name, "rot_deg": rot, "a_leg": a_leg, "frac": t,
+                             "thresholds": th, "rings": hops,
+                             "hop_ns": (sum(good) / len(good)) if good else None,
+                             "hop_ns_spread": (max(good) - min(good)) if len(good) > 1 else None}
+                        out["runs"].append(r)
+                        print("%s DSA %.2f (%+d) leg %.3f V frac %.2f: hop %s ns over %s" % (
+                            name, dsa, dd, a_leg, t, ("%.2f" % r["hop_ns"]) if r["hop_ns"] else "-",
+                            [h["hops"] for h in hops]), flush=True)
+                    rot2, ok2, _ = self.frame(cen, a_leg)
+                    if not ok2:
+                        print("  the frame moved after", name, rot2, flush=True)
+        finally:
+            try:
+                lc.reply_off()
+                lc.fast_off()
+                lc.wr("RT_CFG", 0)
+            except Exception as e:                                       # noqa: BLE001
+                out.setdefault("errors", []).append("cleanup: %s" % e)
+            self.cl.ctrl(loop_hold=1)
+            self.ioff(S.V_MID)
+            self.cl.dac(S.DAC1, VC_OFF=S.V_MID)
+            self.quiet()
+        path = save("turnsweep_%d" % mhz, out)
+        self.b.record("verdict", test="link_turn_sweep", ok=None, file=path,
+                      text="the fast path's ring hop against the received level and the windows' place on the edge")
+        return out
+
     def scope_turn(self, mhz=5200, dsa=10, frac=0.4, name="A2r", path="sync", first_edge=True, delay=4,
                    tdiv=200e-9, vdiv=0.05):
         """I MON and Q MON on the scope while the board answers each of its own stimuli (single-board loopback),
@@ -1059,13 +1132,17 @@ def fsk_order(c):
 
 def main(argv):
     ap = argparse.ArgumentParser()
-    ap.add_argument("section", choices=["force", "lockcmp", "schemes", "tune_a3", "pilot", "lodrive", "apwr_check", "turn", "scope_turn"])
+    ap.add_argument("section", choices=["force", "lockcmp", "schemes", "tune_a3", "pilot", "lodrive", "apwr_check", "turn", "scope_turn", "turnsweep"])
     ap.add_argument("--dsa", type=float)
     ap.add_argument("--mhz", type=int, nargs="*")
     a = ap.parse_args(argv)
-    L = LoDrive() if a.section in ("lodrive", "apwr_check") else (Turn() if a.section in ("turn", "scope_turn") else Schemes())
+    L = LoDrive() if a.section in ("lodrive", "apwr_check") else (Turn() if a.section in ("turn", "scope_turn", "turnsweep") else Schemes())
     if a.section == "scope_turn":
         L.scope_turn(*(a.mhz or [5200]), dsa=a.dsa if a.dsa is not None else 10)
+        return
+    if a.section == "turnsweep":
+        for m in (a.mhz or [5000]):
+            L.turn_sweep(m)
         return
     if a.section == "turn":
         for m in (a.mhz or [5000]):

@@ -236,10 +236,57 @@ def turnaround(paths):
     return P.save(fig, os.path.join(OUTP, "link_turnaround.png"))
 
 
+def turn_sweep(path):
+    """the fast path's ring hop against the windows' place on the edge (fraction of the leg) at each received level
+    (linktests.py turnsweep).  A ring whose hops times its hop is not the ring's 20 us missed arrivals, and is left out;
+    the line is the median of the rings kept, each ring a dot"""
+    d = json.load(open(path))
+    lv = sorted({r["dsa"] for r in d["runs"] if "a_leg" in r})
+    fig, axs = plt.subplots(1, 2, figsize=(11.5, 5.2), sharey=True)
+    for ax, sch, what in ((axs[0], "A3r", "A3r: a ring of the four corners\n(each hop enters a window)"),
+                          (axs[1], "A1q2", "A1q2: flip, null, flip\n(half the hops leave a window)")):
+        for k, dsa in enumerate(lv):
+            runs = [r for r in d["runs"] if r.get("scheme") == sch and r["dsa"] == dsa and "a_leg" in r]
+            if not runs:
+                continue
+            col = P.SEQ[min(len(P.SEQ) - 1, 2 + len(lv) - 1 - k)]          # darker = stronger
+            xs, ys, weak = [], [], []
+            for r in sorted(runs, key=lambda r: r["frac"]):
+                ok = [h["turnaround_ns"] for h in r["rings"]
+                      if h["turnaround_ns"] and h["hops"] and 0.97 < h["hops"] * h["turnaround_ns"] / (d["clocks"] * 10.0) < 1.03]
+                ax.plot([r["frac"]] * len(ok), ok, "o", ms=3.5, color=col, alpha=0.45, mew=0)
+                if ok:
+                    xs.append(r["frac"])
+                    ys.append(float(np.median(ok)))
+                    weak.append(len(ok) < 2 or (max(ok) - min(ok)) > 3.0)
+            ax.plot(xs, ys, "-", color=col, lw=2, label="DSA %.0f dB, leg %.0f mV" % (dsa, 1000 * runs[0]["a_leg"]))
+            for x, y, w in zip(xs, ys, weak):
+                ax.plot([x], [y], "o", ms=7, mfc=P.SURFACE if w else col, mec=col if w else P.SURFACE, mew=1.5)
+        ax.set_title(what, fontsize=11, pad=8)
+        ax.set_xlim(0.15, 0.75)
+    axs[0].set_ylim(15, 36)
+    fig.supxlabel("window threshold, as a fraction of the idle's leg from the no-carrier level", fontsize=10.5, color=P.INK2, y=0.03)
+    axs[0].text(0.74, 15.4, "open: one clean ring, or rings 3 ns apart (the A3r ring\nstalls with high windows; its weakest level is off scale)",
+                fontsize=8, color=P.INK2, ha="right", va="bottom")
+    axs[0].set_ylabel("ns a hop, RX ANT to TX ANT plus ~0.7 ns of lead and pads")
+    axs[1].legend(loc="upper right", title="received level", title_fontsize=9)
+    fig.suptitle("Low windows save 3 ns: the fast path's hop is 20.4-20.8 ns at 0.2 of the leg, 23.3-25.3 at 0.4",
+                 x=0.01, ha="left", fontsize=12.5, fontweight="bold", color=P.INK)
+    fig.text(0.01, 0.915, "Board A, single-board loopback at %.1f GHz, 40 dB of pads; rings of 20 us on the fast path (CMP_I excluded). "
+             "Regulated DSA %.0f dB; above %.0f dB the inverted lock did not hold." % (d["mhz"] / 1000.0, d["regulated_dsa"], lv[-1]),
+             fontsize=9, color=P.INK2, ha="left")
+    fig.subplots_adjust(top=0.80, bottom=0.14, wspace=0.12)
+    P.source(fig, "bringup/linktests.py turnsweep; " + os.path.relpath(path, HERE))
+    return P.save(fig, os.path.join(OUTP, "link_turn_sweep.png"))
+
+
 def main(argv):
     P.setup()
     if len(argv) > 1 and argv[1] == "lodrive":
         print(lodrive(argv[2] if len(argv) > 2 else newest("lodrive_*.json")))
+        return
+    if len(argv) > 1 and argv[1] == "turnsweep":
+        print(turn_sweep(argv[2] if len(argv) > 2 else newest("turnsweep_*.json")))
         return
     if len(argv) > 1 and argv[1] == "turn":
         print(turnaround(argv[2:]))
