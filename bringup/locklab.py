@@ -685,13 +685,17 @@ class Lab(C.Camp):
 
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--mhz", type=int, default=None)
     ap.add_argument("sections", nargs="+", choices=["detect", "drop", "fade", "cw", "slips", "recover", "falselock", "holdwalk", "drop2", "search", "search2"])
     a = ap.parse_args(argv)
     L = Lab()
     for s in a.sections:
         print("==== %s %s" % (s, time.strftime("%H:%M:%S")), flush=True)
         try:
-            getattr(L, s)()
+            if a.mhz and s in ("search", "search2"):
+                getattr(L, s)(mhz=a.mhz)
+            else:
+                getattr(L, s)()
         except Exception as e:                                   # noqa: BLE001
             import traceback
             traceback.print_exc()
