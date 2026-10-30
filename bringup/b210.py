@@ -54,6 +54,52 @@ class B210:
         x = self.u.recv_num_samps(int(n), float(mhz) * 1e6, self.rate, [0], float(gain))
         return np.asarray(x[0])
 
+    def rx(self, mhz, n, rate, gain, chan=0, antenna="RX2", bw=None, mcr=None, settle=0.05):
+        """n samples through our own RX streamer, every packet's metadata checked: returns (x, overflows, other
+        errors).  mcr: the master clock set first (an even decimation keeps the halfband filters: 32 MHz for 4 Ms/s,
+        40 MHz for 10 / 20 Ms/s); bw: the analog filter (default: the rate)"""
+        uhd, u = self.uhd, self.u
+        if mcr:
+            u.set_master_clock_rate(float(mcr))
+        u.set_rx_antenna(antenna, chan)
+        u.set_rx_rate(float(rate), chan)
+        u.set_rx_freq(uhd.types.TuneRequest(float(mhz) * 1e6), chan)
+        u.set_rx_gain(float(gain), chan)
+        u.set_rx_bandwidth(float(bw or rate), chan)
+        time.sleep(settle)
+        st = uhd.usrp.StreamArgs("fc32", "sc16")
+        st.channels = [chan]
+        rs = u.get_rx_stream(st)
+        md = uhd.types.RXMetadata()
+        spp = rs.get_max_num_samps()
+        buf = np.zeros((1, spp), dtype=np.complex64)
+        out = np.zeros(int(n), dtype=np.complex64)
+        cmd = uhd.types.StreamCMD(uhd.types.StreamMode.num_done)
+        cmd.num_samps = int(n)
+        cmd.stream_now = True
+        rs.issue_stream_cmd(cmd)
+        got, ovf, errs = 0, 0, []
+        t_end = time.time() + n / rate + 3.0
+        while got < n and time.time() < t_end:
+            k = rs.recv(buf, md, 1.0)
+            if md.error_code == uhd.types.RXMetadataErrorCode.overflow:
+                ovf += 1
+            elif md.error_code not in (uhd.types.RXMetadataErrorCode.none,):
+                errs.append(str(md.error_code))
+                if md.error_code == uhd.types.RXMetadataErrorCode.timeout:
+                    break
+            k = min(k, n - got)
+            out[got:got + k] = buf[0, :k]
+            got += k
+        rs = None
+        return out[:got], ovf, errs
+
+    def info(self):
+        u = self.u
+        return {"mboard": u.get_mboard_name(), "rx_subdev": str(u.get_rx_subdev_spec()),
+                "rx0": u.get_rx_subdev_name(0), "rx_antennas0": list(u.get_rx_antennas(0)),
+                "n_rx": u.get_rx_num_channels(), "mcr": u.get_master_clock_rate(), "pp": u.get_pp_string()}
+
     def power(self, mhz, seconds=0.05, gain=40, blocks=10):
         """mean and peak power (dBFS) over `blocks` captures, and the fraction of 1 us windows over the median + 10 dB"""
         n = int(self.rate * seconds / blocks)

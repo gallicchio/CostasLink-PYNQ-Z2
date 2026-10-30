@@ -57,13 +57,14 @@ class Link(W.Weekend):
         super().tx(on)
 
     # ---- the board's carrier in the B210's frame ----
-    def offset(self, mhz, lo_off=0.25e6, rate=1e6, n=1000000, gain=30):
+    def offset(self, mhz, lo_off=0.25e6, rate=1e6, n=1000000, gain=45):
         self.ext = False
+        self.tune(mhz)                                   # both synthesizers there (the rounds may have left them anywhere)
         self.set_null(mhz)
         self.tx(True)
         time.sleep(0.3)
         try:
-            x = np.asarray(self.bb.u.recv_num_samps(int(n), float(mhz) * 1e6 + lo_off, rate, [0], float(gain))[0])
+            x, ovf, errs = self.bb.rx(mhz + lo_off / 1e6, int(n), rate, gain, bw=rate, mcr=32e6)
         finally:
             self.tx(False)
         x = x[1000:]
@@ -83,11 +84,15 @@ class Link(W.Weekend):
         return r
 
     # ---- board -> B210 ----
-    def from_board(self, mhz, runs=((100, 4e6), (40, 10e6), (20, 20e6), (10, 40e6)), caps=4, gain=30):
+    MCR = {4e6: 32e6, 10e6: 40e6, 20e6: 40e6, 40e6: 40e6}      # even decimations: the halfband filters kept
+
+    def from_board(self, mhz, runs=((1000, 1e6), (100, 4e6), (40, 10e6), (20, 20e6), (10, 40e6)), caps=4, gain=45):
         """the board's BPSK PRBS15 at 100 / p Mbaud (the carrier nulled, the windows irrelevant); the B210 at fs, its
-        LO a fifth of fs below the carrier (off its own DC), `caps` captures of 0.1 s or 2 M samples"""
+        LO a fifth of fs below the carrier (off its own DC), `caps` captures of 0.1 s or 2 M samples, every packet's
+        overflow counted (a capture with one is dropped)"""
         self.ext = False
         out = {"mhz": mhz, "runs": []}
+        self.tune(mhz)
         self.set_null(mhz)
         cl = self.cl
         try:
@@ -103,8 +108,12 @@ class Link(W.Weekend):
                 lo = float(mhz) * 1e6 - fs / 5
                 res = []
                 for _ in range(caps):
-                    n = int(min(2e6, 0.1 * fs))
-                    x = np.asarray(self.bb.u.recv_num_samps(n, lo, fs, [0], float(gain))[0])[2000:]
+                    n = int(min(2e6, max(0.1 * fs, 400000)))
+                    x, ovf, errs = self.bb.rx(lo / 1e6, n, fs, gain, bw=fs, mcr=self.MCR.get(fs, 32e6))
+                    x = x[2000:]
+                    if ovf:
+                        res.append({"error": "overflow", "ovf": ovf})
+                        continue
                     try:
                         r = sdr_rx.demod(x, fs, baud, block=512 if baud < 5e6 else 1024, f_exp=fs / 5)
                         r.pop("symbols")
