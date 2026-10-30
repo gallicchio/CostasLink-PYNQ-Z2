@@ -30,7 +30,7 @@ def last(rows, **kv):
 
 
 def night(name):
-    files = sorted(glob.glob(os.path.join(DATA, "overnight", name + "_*.json")))
+    files = sorted(glob.glob(os.path.join(DATA, "overnight", name if "*" in name else name + "_*.json")))
     return json.load(open(files[-1])) if files else None, (files[-1] if files else None)
 
 
@@ -260,7 +260,7 @@ def night_loop(L):
 
 
 def night_acquire(L):
-    rows, path = night("acquire_20")                  # the combined file, not one frequency's
+    rows, path = night("acquire_20*.json")            # the combined file, not one frequency's
     if not rows:
         return None
     rows = [r for r in rows if r.get("rows")]
@@ -268,7 +268,7 @@ def night_acquire(L):
               ("vc_clipped", P.MUTED, "+")]
     for r in rows:                                   # batch 2 ran before lock_state knew a clipped VC: reclassify
         for x in r["rows"]:
-            if x.get("state") == "locked" and not 0.1 < x.get("vc", 1.65) < 3.2:
+            if x.get("state") in ("locked", "false") and not 0.1 < x.get("vc", 1.65) < 3.2:
                 x["state"] = "vc_clipped"
     n = len(rows)
     cols = min(3, n)
@@ -296,10 +296,14 @@ def night_acquire(L):
         ax.set_xlim(0, 3.3); ax.set_ylim(0, 3.3)
     for ax in list(axs.flat)[n:]:
         ax.axis("off")
-    axs.flat[0].legend(loc="upper left")
+    from matplotlib.lines import Line2D
+    handles = [Line2D([], [], ls="none", marker=m, color=c, markersize=7, label={"locked": "locked (VC holds, no beat)",
+               "false": "false lock (VC holds, a beat)", "unlocked": "unlocked (VC follows the step)", "railed": "integrator railed",
+               "vc_clipped": "VC clipped at 0 V"}[st]) for st, c, m in states]
+    fig.legend(handles=handles, loc="upper left", ncol=5, bbox_to_anchor=(0.005, 0.955))
     fig.suptitle("Where the Costas loop ends up, released from each VC", x=0.01, ha="left", fontsize=13, fontweight="bold", color=P.INK)
     P.source(fig, "overnight %s: the integrator centred each time; locked = VC holds through a 0.02 V VC_OFF step and no beat on I MON." % os.path.basename(path))
-    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    fig.tight_layout(rect=(0, 0, 1, 0.91))
     return P.save(fig, os.path.join(OUT, "night_acquire.png"))
 
 
