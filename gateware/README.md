@@ -11,7 +11,7 @@ the clocks and a way in to its register bus:
 
 | | PYNQ-Z2 (Zynq-7020) | Icepi Zero (ECP5-25) | simulation |
 |---|---|---|---|
-| top | `costaslink_pynq.v`, a module reference in a Vivado 2024.1 block design (`pynq/build.tcl`) | `top_icepi.v` | `costaslink_top.v`, `tb_*.v` |
+| top | `costaslink_pynq.v`, a module reference in a Vivado block design (`pynq/build.tcl`; 2022.1 for PYNQ 3.0) | `top_icepi.v` | `costaslink_top.v`, `tb_*.v` |
 | fabric clock | 100 MHz from the PS's FCLK0 through a clock wizard | 100 MHz from the 50 MHz oscillator through an EHXPLLL | any |
 | fast sampler | `fast_sampler_7series.v`: ISERDESE2 8:1 DDR at 400 MHz, **800 Ms/s** (1.25 ns), SER = 8 | `fast_sampler_ecp5.v`: IDDRX1F, **200 Ms/s** (5 ns), SER = 2 | `fast_sampler_flop.v`, SER = 1 |
 | register bus from | the PS: AXI-Lite at 0x43C00000 (`axil_bridge.v`) | the FTDI's UART at 1 Mbaud (`uart_cmd.v`) | the testbench |
@@ -19,7 +19,7 @@ the clocks and a way in to its register bus:
 | builds (2026-10-29) | 6423 LUTs, 7164 flip-flops, 12.5 BRAM tiles, 10 ISERDES; WNS +0.20 ns (the fast path's; 100 MHz +0.68 ns), WHS +0.03 ns | 12040 LUT4s, 6196 flip-flops, 7 DP16KD; 100.3 MHz (seed 1) | |
 | reply paths (Prompt 36) | the synchronous reply 2 clocks after the ISERDESE2's word (1 after `fs`); the fast path pin to pin; the ladder pins read back | the synchronous reply 3 clocks after `fs` (RP_REG, no early word); no fast path | the PYNQ-Z2's |
 
-Vivado 2024.1 is the version PYNQ 3.1 (the latest image for the PYNQ-Z2) is built with.  Plain Verilog, not
+The bench's PYNQ-Z2 runs PYNQ 3.0.1, so its overlays are built with Vivado 2022.1, the release PYNQ 3.0 is built on (2024.1 is PYNQ 3.1's; `pynq/build.tcl` runs on either, and nothing here needs the newer one).  One version per image: 2022.1 for PYNQ 3.0.x, 2024.1 for PYNQ 3.1.  Plain Verilog, not
 SystemVerilog: a block design's module reference cannot have a SystemVerilog top, and Yosys reads the same
 files.  The register map is written once, in `regmap.py`: it generates `regmap.vh` for the RTL, the table
 below, and the Python driver imports it.
@@ -68,7 +68,7 @@ make pnr-icepi    # yosys + nextpnr-ecp5 + ecppack -> ../build/gateware_scratch/
 Tools: an OSS CAD Suite on `PATH` (or `make BIN=...`); Python 3 for the driver.  Everything is written
 under `../build/gateware_scratch/`.
 
-**PYNQ-Z2.**  `source <Vivado 2024.1>/settings64.sh; cd gateware; vivado -mode batch -nojournal -log
+**PYNQ-Z2.**  `source <Vivado 2022.1>/settings64.sh; cd gateware; vivado -mode batch -nojournal -log
 ../build/pynq_build.log -source pynq/build.tcl` builds the project in `../build/pynq/costaslink/` and, if
 timing is met (it refuses otherwise), writes `../build/pynq/overlay/costaslink_top.{bit,hwh,xsa}` and the
 block diagram's PDF, and `../build/pynq/fast_path.rpt`: the fast path's pin-to-pin delays, every comparator to

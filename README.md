@@ -98,7 +98,7 @@ that sets the receiver's level scale, the PA's pad 26-30 dB, the frequency plan 
   transmitter's modes, the receiver's event decoder for every scheme of PLAN.md §18 (confirm or veto,
   latencies to the sample, a confusion matrix, a latency histogram, a BER check), the T/R sequencer, a
   counting gate for the thresholds and offsets, and a block-RAM logic analyser; the PYNQ-Z2's overlay from
-  Vivado 2024.1 (`pynq/build.tcl`, timing met) and the Icepi Zero's bitstream (`make pnr-icepi`, 100 MHz);
+  Vivado 2022.1 for PYNQ 3.0 (`pynq/build.tcl`, timing met) and the Icepi Zero's bitstream (`make pnr-icepi`, 100 MHz);
   the Python driver `driver/costaslink.py`; `make lint sim sim-engines sim-axil sim-driver`.
 * `docs/images/`: the schematic as PDF and PNG; `block_system`, `block_rx`, `block_tx`,
   `block_loop`, `block_modulations` (.svg to zoom, .png to glance): the annotated block diagrams,

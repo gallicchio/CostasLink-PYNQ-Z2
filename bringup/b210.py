@@ -17,6 +17,7 @@ import argparse
 import json
 import os
 import sys
+import threading
 import time
 
 import numpy as np
@@ -119,6 +120,83 @@ class B210:
         wave = np.concatenate([x, np.zeros(n_off)]) if n_off else x
         reps = max(1, int(np.ceil(0.05 * self.rate / len(wave))))   # a buffer of 50 ms or more: fewer underflows
         self._send(np.tile(wave, reps), mhz, seconds, gain)
+
+
+class Stream:
+    """a continuous TX stream whose buffer can be swapped while it runs (a carrier, then events or data) with no retune
+    and no gap: the B210 as a transmitter of the link (2026-10-30, Jason: "start now going from the B210 to the Costas
+    board and also vice versa").  The baseband is shifted by park_hz in software and the LO tuned the other way, so
+    the B210's own LO leak sits park_hz from the signal; every buffer must hold a whole number of park cycles (the
+    phase then runs on across a swap)."""
+
+    def __init__(self, b, mhz, gain, rate=4e6, park_hz=-1e6, amp=0.5):
+        self.b, self.rate, self.park, self.amp = b, float(rate), float(park_hz), amp
+        self.mhz, self.gain = mhz, gain
+        self.cyc = int(round(abs(rate / park_hz))) if park_hz else 1
+        self._buf = None
+        self._stop = threading.Event()
+        self._th = None
+        self.sent = 0
+        self.error = None
+
+    def shape(self, base):
+        """complex baseband (unit scale) to the buffer streamed: amp times it, shifted by park_hz; the length is cut to a
+        whole number of park cycles"""
+        base = np.asarray(base, dtype=np.complex128)
+        n = len(base) // self.cyc * self.cyc
+        t = np.arange(n) / self.rate
+        return (self.amp * base[:n] * np.exp(2j * np.pi * self.park * t)).astype(np.complex64).reshape(1, -1)
+
+    def set(self, base):
+        self._buf = self.shape(base)
+
+    def start(self, base):
+        self.set(base)
+        uhd = self.b.uhd
+        u = self.b.u
+        u.set_tx_rate(self.rate, 0)
+        u.set_tx_freq(uhd.types.TuneRequest(float(self.mhz) * 1e6 - self.park), 0)
+        u.set_tx_gain(float(self.gain), 0)
+        st = uhd.usrp.StreamArgs("fc32", "sc16")
+        st.channels = [0]
+        self._tx = u.get_tx_stream(st)
+        self._stop.clear()
+        self._th = threading.Thread(target=self._run, daemon=True)
+        self._th.start()
+        time.sleep(0.2)
+        return self
+
+    def _run(self):
+        md = self.b.uhd.types.TXMetadata()
+        try:
+            while not self._stop.is_set():
+                self.sent += self._tx.send(self._buf, md)
+        except Exception as e:                               # noqa: BLE001
+            self.error = str(e)
+        finally:
+            md.end_of_burst = True
+            try:
+                self._tx.send(np.zeros((1, 1), dtype=np.complex64), md)
+            except Exception:                                # noqa: BLE001
+                pass
+
+    def stop(self):
+        self._stop.set()
+        if self._th:
+            self._th.join(timeout=3)
+        self._tx = None
+
+
+def prbs_bits(poly=15):
+    a, b = {7: (7, 6), 9: (9, 5), 15: (15, 14), 23: (23, 18), 31: (31, 28)}[poly]
+    n = (1 << a) - 1
+    s = [1] * a
+    out = np.empty(n, dtype=np.uint8)
+    for k in range(n):
+        bit = s[a - 1] ^ s[b - 1]
+        out[k] = bit
+        s = [bit] + s[:-1]
+    return out
 
 
 def main(argv):
