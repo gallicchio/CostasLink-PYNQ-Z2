@@ -33,3 +33,24 @@ Status: **seen** (measured or read on the built board), **to confirm** (a review
 | R3 | With this board powered and the PYNQ off, each high output drives about 12 mA into a Zynq clamp diode (10 mA absolute maximum), up to a dozen pins | REVA_CHANGES 39 | an output enable, or a buffer with Ioff, on the header's outputs | (a procedure rule on rev A: the PYNQ first, this board last) |
 | R4 | The RF lines' L corners (0.29 mm line, about 0.05 pF each); no anti-pads under the ADL5611's 1.3 x 0.9 mm pads (0.17 pF, 16 dB return loss each) | docs/PATHS.md section 10 (review B, M5) | mitred corners; anti-pads under wide RF pads | the chain's gain and flatness across 4.9-6 GHz on the VNA against the budget |
 | R5 | No RC on the DAC thresholds at the window comparators' pins | docs/PATHS.md section 10 | an RC at each comparator's threshold pin | the windows chattering in stage 3.7's threshold scans |
+
+## Quality of life: set from software what rev A sets by hand (Jason, 2026-10-29)
+
+Jason: "I spend more time away from the bench than at it, and having remote control of these things is generally better than
+requiring me to come in."  Rev A's loop-sign fault (row 9) needed two jumpers moved by hand, and so did each re-cabling of
+the night's tests.  Static settings need no header pins: an 8-bit I2C GPIO expander on the existing I2C bus (TCA9534 /
+PCA9534 class, 0x20-0x27; the gateware's generic I2C registers already reach it) gives eight outputs.  Its outputs come up
+as inputs, so pull resistors give today's jumper defaults at power-up and the board still works with no firmware.  The
+expander's input register reads the state back, for the log.
+
+| # | rev A | rev B | parts and cost | caveat |
+|---|---|---|---|---|
+| Q1 | JP101 / JP102 (loop sign), JP103 (Costas or plain PLL on Q) | S = (MODE ? LOOP_SEL : CMP_I) XOR INV ahead of U110's select: a 2:1 logic mux and an XOR, INV and MODE from the expander, the corrected sign as the default | 74LVC1G157 + 74LVC1G86, about $0.10 | a few ns in a 3 kHz loop's path: nothing |
+| Q2 | the LNA's V_ENABLE tied high through R101 | V_ENABLE from an expander output through R101: the LNA on and off from software (2.3 mA) | none | would have told rev A's bench, in one command, how much of the chain's gain the LNA gives (enabled: +13 dB; disabled: -15 to -25 dB) |
+| Q3 | JP201 (TX synthesizer's reference: TCXO or REF IN), R214 DNP (REF IN's 50 ohm) | an SPDT analog switch at the synthesizer's REF pin, and a switch in series with REF IN's 50 ohm | 2 x TS5A3159 (already on the board), about $0.30 | 25 MHz: 1 ohm and a few pF are nothing; keep the unused source's trace short and terminated (row 5's sidebands came along this path) |
+| Q4 | JP202 (TRIG IN's 50 ohm), JP203 (TRIG IN into the Q ladder) | the same two from switches | 2 x TS5A3159 | JP203 sits in a ns path: a switch's 1 ohm and 10 pF add well under 1 ns against the ladder's resistors |
+| Q5 | R104 DNP 1.5 k on the ADL5380's ADJ (common mode 3.2 or 2.5 V) | the 1.5 k through a switch to +5V_RF | TS5A3159 | DC only |
+| Q6 | the window comparators' LE/HYS: two DNP footprints each (0, 3 or 30 mV of hysteresis) | a resistor per comparator through a switch (or a spare DAC channel through a resistor) | a quad analog switch | the hysteresis pin's current sets the step: check it with the switch's leakage |
+| Q7 | loopback by cable and two 20 dB pads; "both ports terminated" needs hands | an RF SPDT at TX ANT and at RX ANT: the SMA, or an on-board 50-60 dB resistive path between them; a third position or a second switch for a 50 ohm load on each | 2-4 RF switches of the HMC536 / PE42422 class, $2-5 each, and a pi pad | 0.5-1 dB in front of RX ANT costs 0.5-1 dB of noise figure: put the receive switch after the LNA if the budget is tight, or accept it for a lab board; check the isolation (the loopback path off must sit far below the antenna path) |
+| Q8 | the analyzer and the scope moved by hand between U.FL taps | an SP4T RF switch routing RX MON, TX MON, LO RX MON and LO TX MON to one SMA; an analog mux taking I / Q / VC / ERR MON to two scope SMAs | an SP4T (PE42441 / HMC241 class), an 8:2 analog mux (TMUX / ADG class) | the monitors' levels move by the switch's 1-2 dB and their ports' isolation (30-40 dB) between taps: label it in the calibration |
+| Q9 | JP301 (5 V from the PYNQ header) | keep a jumper: a power path, a safety choice, and the PYNQ's 5 V is not the bench's | | |
