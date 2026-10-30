@@ -19,7 +19,7 @@ import tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 GW = os.path.dirname(HERE)
 CORE = ("costaslink_core.v bus_stage.v costaslink_regs.v spi_master.v max2871_init.v i2c_master.v tx_symbol.v "
-        "tx_engine.v rx_engine.v count_ram.v prbs.v capture.v seq_gate.v cmp_monitor.v morse_keyer.v").split()
+        "tx_engine.v rx_engine.v count_ram.v prbs.v capture.v seq_gate.v cmp_monitor.v morse_keyer.v turnaround.v fp_lut5.v").split()
 
 
 class PipeBus:

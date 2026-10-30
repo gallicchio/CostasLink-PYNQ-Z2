@@ -91,7 +91,8 @@ module top_icepi #(
     costaslink_core #(.CLK_HZ(CLK_HZ), .SER(2), .CAP_AW(11), .BOARD(2)) u_core (
         .clk(clk), .rst(rst),
         .bus_addr(bus_addr), .bus_wdata(bus_wdata), .bus_we(bus_we), .bus_re(bus_re), .bus_rdata(bus_rdata),
-        .fs(fs), .cmp_i_s(cmp_i_s), .cmp_qp_s(cmp_qp_s), .cmp_qn_s(cmp_qn_s), .mux_tx(mux_tx), .mux_rx(mux_rx),
+        .fs(fs), .fs_lane(fs), .cmp_async(5'd0), .fs_tx(8'd0),
+        .cmp_i_s(cmp_i_s), .cmp_qp_s(cmp_qp_s), .cmp_qn_s(cmp_qn_s), .mux_tx(mux_tx), .mux_rx(mux_rx),
         .i2c_scl_i(i2c_scl), .i2c_sda_i(i2c_sda), .i2c_scl_o(scl_o), .i2c_sda_o(sda_o),
         .tx_i1(tx_i1), .tx_i0(tx_i0), .tx_q1(q1), .tx_q1_hiz(q1_hiz), .tx_q0(tx_q0),
         .spi_sclk(spi_sclk), .spi_sdata(spi_sdata), .le_pll_tx(le_pll_tx), .le_pll_rx(le_pll_rx), .le_dsa(le_dsa),

@@ -200,7 +200,7 @@ module tb_costaslink;
         if ({tx_i1, tx_i0, tx_q1, tx_q0} !== 4'b1101) fail("ladders should idle at I +a (11), Q 0 (01)");
 
         // 1. the ID register and a bad line
-        cmd("R 00\n", "434C0002");
+        cmd("R 00\n", "434C0003");
         cmd("X 00\n", "?");
         cmd("W 01\n", "?");
 

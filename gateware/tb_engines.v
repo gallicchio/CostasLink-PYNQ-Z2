@@ -10,12 +10,17 @@
 // vector and the first-fired set), the latency to the sample (min = max = LAT + delay) and the histogram,
 // false and missed events, confirm and veto, the capture buffer, the sequencer, the gate's counts, TX
 // events on TRIG_IN with TRIG_IN as the reference, and a PRBS through the loop with errors injected.
+// The core as the PYNQ-Z2 has it otherwise (Prompt 36): the reply lane early, the fast path, the ladder
+// pins read back into the capture; then the synchronous reply (first-edge and settled decisions, once per
+// stimulus, the composed table's latency to the sample), the fast path one shot and as a ring, and the
+// turnaround counter on each.
 `timescale 1ns/1ps
 module tb_engines;
 `include "regmap.vh"
     localparam integer SER = 4;
     localparam integer LAT = 13;          // samples, pins -> fast comparators
     localparam integer LAT_SLOW = 40;     // samples, pins -> slow comparators
+    parameter  integer RP_REG = 0;        // the core's: 0 the PYNQ-Z2's reply lane, 1 the Icepi's (a clock later)
 
     reg clk = 1'b0;
     always #5 clk = ~clk;                  // 100 MHz
@@ -32,10 +37,11 @@ module tb_engines;
     integer lat = LAT, lat_slow = LAT_SLOW;
 `include "tb_loopback.vh"
 
-    costaslink_core #(.CLK_HZ(100_000_000), .SER(SER), .CAP_AW(10), .BOARD(0), .ID_INTERVAL_S(600)) dut (
+    costaslink_core #(.CLK_HZ(100_000_000), .SER(SER), .CAP_AW(10), .BOARD(0), .ID_INTERVAL_S(600),
+                      .EARLY(1), .FAST_PATH(1), .TXFB(1), .RP_REG(RP_REG)) dut (
         .clk(clk), .rst(rst),
         .bus_addr(bus_addr), .bus_wdata(bus_wdata), .bus_we(bus_we), .bus_re(bus_re), .bus_rdata(bus_rdata),
-        .fs(fs), .cmp_i_s(slow[0]), .cmp_qp_s(slow[1]), .cmp_qn_s(slow[2]), .mux_tx(1'b1), .mux_rx(1'b1),
+        .fs(fs), .fs_lane(fs_early), .cmp_async(cmp_async), .fs_tx(fs_tx), .cmp_i_s(slow[0]), .cmp_qp_s(slow[1]), .cmp_qn_s(slow[2]), .mux_tx(1'b1), .mux_rx(1'b1),
         .i2c_scl_i(scl_o), .i2c_sda_i(sda_o), .i2c_scl_o(scl_o), .i2c_sda_o(sda_o),
         .tx_i1(tx_i1), .tx_i0(tx_i0), .tx_q1(tx_q1), .tx_q1_hiz(tx_q1_hiz), .tx_q0(tx_q0),
         .spi_sclk(spi_sclk), .spi_sdata(spi_sdata), .le_pll_tx(le_pll_tx), .le_pll_rx(le_pll_rx), .le_dsa(le_dsa),
@@ -102,17 +108,56 @@ module tb_engines;
     reg [31:0] v, v2;
     integer    n, i, j, bin, sumcm;
 
+    // the pins' changes, sample by sample (the model's samples), for the reply tests
+    reg        log_on = 1'b0;
+    integer    n_log = 0;
+    integer    log_t [0:63];
+    reg  [3:0] log_p [0:63];
+    reg  [3:0] log_last = 4'b0111;
+    always @(sample_ev) begin
+        if (log_on && pins != log_last && n_log < 64) begin log_t[n_log] = samp; log_p[n_log] = pins; n_log = n_log + 1; end
+        log_last = pins;
+    end
+    // the reply's samples after the comparators' change: the lane takes the word the change is in (EARLY)
+    // and the point is on the pins at the next edge, so SER - (LAT mod SER) in this model; a settled
+    // decision whose sample is two words on waits a clock more
+    localparam integer RP_LAT = (LAT / SER + 1) * SER - LAT + ((RP_REG != 0) ? SER : 0);
+    reg [127:0] fpm;
+    reg [31:0]  fpu;
+    task check_pairs;               // each stimulus P[k] at 4c, its answer P[k+1] `d` samples later
+        input integer d;
+        input integer nstim;
+        integer a, b, found;
+        begin
+            found = 0;
+            for (a = 0; a + 1 < n_log; a = a + 1)
+                if (log_p[a] != P_IDLE) begin
+                    for (b = 0; b < 4; b = b + 1)
+                        if (log_p[a] == pt_of(b) && log_p[a + 1] == pt_of((b + 1) % 4) && log_t[a + 1] - log_t[a] == d)
+                            found = found + 1;
+                end
+            expect("stimulus -> reply pairs in the pins' log", found, nstim);
+        end
+    endtask
+    function [3:0] pt_of;
+        input integer k;
+        begin
+            pt_of = (k == 0) ? P0 : (k == 1) ? P1 : (k == 2) ? P2 : P3;
+        end
+    endfunction
+
     initial begin
         for (k = 0; k < 256; k = k + 1) hist_pt[k] = P_IDLE;
         for (k = 0; k < SER; k = k + 1) trig_samp[k] = 1'b0;
-        fs = {SER{6'b001001}}; slow = 3'b001;
+        fs = {SER{6'b001001}}; fs_early = {SER{6'b001001}}; fs_tx = {SER{4'b0111}}; cmp_async = 5'b01001;
+        slow = 3'b001;
         repeat (5) @(posedge clk);
         rst = 1'b0;
         repeat (5) @(posedge clk);
 
         // ---- identification ----
-        rd(R_ID, v); expect("ID", v, 32'h434C0002);
-        rd(R_BUILD, v); expect("BUILD", v, {16'd100, 4'd0, 4'd0, 8'd4});
+        rd(R_ID, v); expect("ID", v, 32'h434C0003);
+        rd(R_BUILD, v); expect("BUILD", v, {16'd100, RP_REG != 0, 3'b111, 4'd0, 8'd4});   // early lane, read-back, fast path
         rd(R_RX_INFO, v); expect("RX_INFO", v, {16'd100, 8'd6, 8'd4});
 
         // ---- events: the four corners, counted 0..3, 40 of them; the settled vector 2 samples in ----
@@ -202,7 +247,7 @@ module tb_engines;
         rd(R_CAP_CTRL, v); expect("capture done", v[3:0], 4'b1110);
         rd(R_CAP_TRIG, v); expect("capture trigger word", v[15:0], 1024 - 64 - 1);
         expect("capture: words since the arming", v[31:16], 1024);
-        rd(R_CAP_INFO, v); expect("capture info", v, {8'd0, 8'd10, 8'd40, 8'd4});
+        rd(R_CAP_INFO, v); expect("capture info", v, {7'd0, 1'b1, 8'd10, 8'd56, 8'd4});   // + the read-back
         // the trigger word has the TX event bit (24 + 12 = bit 36: chunk 1, bit 4); the first fast change of
         // CMP_QP comes LAT samples after the pins moved
         wr(R_CAP_ADDR, 1024 - 64 - 1); idle_clocks(3);
@@ -219,6 +264,17 @@ module tb_engines;
                 if (n < 0 && v[6*s + 1]) n = i * SER + s;           // CMP_QP of the first message (P0: Q +a)
         end
         expect("capture: CMP_QP rises LAT samples after the pins", n, LAT);
+        // the read-back (TXFB: bits 40 + 4s + p, chunk 1 from bit 8): the pins' register's point P0 in every
+        // sample of the word after the trigger's (the model reads the pins back a clock late)
+        wr(R_CAP_ADDR, 1024 - 64 - 1); idle_clocks(3);
+        rd(R_CAP_DATA, v); rd(R_CAP_DATA, v2);
+        expect("read-back in the trigger word: the idle", v2[23:8], {SER{P_IDLE}});
+        rd(R_CAP_DATA, v); rd(R_CAP_DATA, v2);
+        expect("read-back a word later: P0", v2[23:8], {SER{P0}});
+        expect("context: the pins' register", v2[3:0], P0);
+        wr(R_CAP_ADDR, {14'd0, 2'd1, 16'd960}); idle_clocks(3);       // start at chunk 1
+        rd(R_CAP_ADDR, v); expect("CAP_ADDR chunk", v[17:16], 1);
+        rd(R_CAP_DATA, v2); rd(R_CAP_ADDR, v); expect("chunk 1 is a word's last: the next word", v, 961);
 
         // ---- the sequencer: TR_A low for 50 clocks, then high, looping off ----
         wr(R_SEQ_SEL, 0); wr(R_SEQ_OUT, 4'b1110); wr(R_SEQ_DUR, 50);
@@ -278,8 +334,134 @@ module tb_engines;
         rd(R_TX_STAT, v); expect("one TRIG_IN event", v[31:8], 1);
         wr(R_TX_GO, 32'd2);
 
-        if (errors == 0) $display("PASS: tb_engines");
-        else $display("FAIL: tb_engines, %0d errors", errors);
+        // ---- the synchronous reply: on the decision of k the pins take TX_POINTS[RP_MAP[k]] ----------------
+        // first-edge decisions; k -> k+1 mod 4; each stimulus answered once (re-armed by each TX event)
+        set_lut(F0, F1, F2, F3);
+        wr(R_RX_IDLE, {19'd0, 5'b11111, 3'd0, V_IDLE});
+        wr(R_RX_TIMING, {8'd0, 8'd12, 8'd4, 8'd0});
+        wr(R_RX_WINDOW, 32'd30);
+        wr(R_RX_SLOW_EXP, 32'd0);
+        wr(R_TX_IDLE, {28'd0, P_IDLE});
+        wr(R_TX_POINTS, {16'd0, P3, P2, P1, P0});
+        wr(R_TX_MODE, {21'd0, 3'd3, 2'd0, 2'd1, 1'b0, 3'd1});       // N = 4, count, events
+        wr(R_TX_PERIOD, 32'd80); wr(R_TX_WIDTH, 32'd20); wr(R_TX_COUNT, 32'd8);
+        wr(R_RP_MAP, {16'd0, 4'd0, 4'd3, 4'd2, 4'd1});              // 0 -> 1, 1 -> 2, 2 -> 3, 3 -> 0
+        wr(R_RP_CTRL, {16'd30, 12'd0, 1'b0, 1'b1, 1'b1, 1'b1});      // 30 clocks; re-arm on TX; once; enable
+        rd(R_RP_CTRL, v); expect("RP_CTRL armed", v[8], 1); expect("RP_CTRL width", v[31:16], 30);
+        wr(R_RT_CFG, {8'd50, 8'd8, 3'd0, 5'h1F, 5'd0, 1'b0, 1'b1, 1'b1});   // window 50, guard 8, all five
+        wr(R_RX_CTRL, {12'd0, 1'b1, 3'd0, 11'd0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b1});   // first edge
+        idle_clocks(1100);
+        log_on = 1'b1; n_log = 0;
+        wr(R_TX_GO, 32'd1);
+        idle_clocks(8 * 80 + 200);
+        log_on = 1'b0;
+        rd(R_RP_STAT, v); expect("replies", v[31:8], 8);
+        expect("the last message answered", v[2:0], 3); expect("its reply", v[6:4], 0);
+        check_pairs(LAT + RP_LAT, 8);
+        rd(R_RX_EVENTS, v); expect("RX events with replies", v, 8);
+        rd(R_RX_DECIDED, v); expect("RX decisions with replies", v, 8);
+        rd(R_RX_MISSED, v); expect("RX missed with replies", v, 0);
+        rd(R_RX_FALSE, v); expect("RX false with replies", v, 0);
+        rd(R_RT_N, v); expect("turnarounds", v, 8);
+        rd(R_RT_MIN, v); expect("turnaround min: the loop + the lane", v, LAT + RP_LAT);
+        rd(R_RT_MAX, v); expect("turnaround max", v, LAT + RP_LAT);
+        rd(R_RT_SUM, v); expect("turnaround sum", v, 8 * (LAT + RP_LAT));
+        rd(R_RT_LAST, v); expect("reference -> first arrival", v[31:16], LAT);
+        rd(R_RT_MISS, v); expect("turnarounds missed", v, 0);
+
+        // settled decisions: 2 samples after the event (in its word: the same clock), then 2 SER (its sample
+        // two words on: a clock later each, SER x ((LAT mod SER + 2 SER) / SER) samples)
+        set_lut(V0, V1, V2, V3);
+        wr(R_RX_TIMING, {8'd0, 8'd12, 8'd4, 8'd2});
+        wr(R_RX_CTRL, {12'd0, 1'b1, 3'd0, 11'd0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1});
+        wr(R_RT_CFG, {8'd50, 8'd8, 3'd0, 5'h1F, 5'd0, 1'b0, 1'b1, 1'b1});
+        wr(R_RP_CTRL, {16'd30, 12'd0, 1'b0, 1'b1, 1'b1, 1'b1});
+        idle_clocks(100);
+        log_on = 1'b1; n_log = 0;
+        wr(R_TX_COUNT, 32'd4); wr(R_TX_GO, 32'd1);
+        idle_clocks(4 * 80 + 200);
+        log_on = 1'b0;
+        check_pairs(LAT + RP_LAT, 4);
+        rd(R_RT_MIN, v); expect("settled (2): turnaround", v, LAT + RP_LAT);
+        rd(R_RT_MAX, v); expect("settled (2): turnaround max", v, LAT + RP_LAT);
+        wr(R_RX_TIMING, {8'd0, 8'd12, 8'd4, 8'd2 * SER});
+        wr(R_RT_CFG, {8'd50, 8'd8, 3'd0, 5'h1F, 5'd0, 1'b0, 1'b1, 1'b1});
+        idle_clocks(100);
+        log_on = 1'b1; n_log = 0;
+        wr(R_TX_GO, 32'd1);
+        idle_clocks(4 * 80 + 200);
+        log_on = 1'b0;
+        check_pairs(LAT + RP_LAT + SER * ((LAT % SER + 2 * SER) / SER), 4);
+        rd(R_RT_MIN, v); expect("settled (2 SER): turnaround", v, LAT + RP_LAT + SER * ((LAT % SER + 2 * SER) / SER));
+        rd(R_RX_DECIDED, v); expect("settled: RX decisions", v, 8);
+        // once, not re-armed: the first stimulus only
+        wr(R_RP_CTRL, {16'd30, 12'd0, 1'b0, 1'b0, 1'b1, 1'b1});
+        wr(R_TX_COUNT, 32'd3); wr(R_TX_GO, 32'd1);
+        idle_clocks(3 * 80 + 200);
+        rd(R_RP_STAT, v); expect("once: one reply", v[31:8], 1);
+        rd(R_RP_CTRL, v); expect("once: disarmed", v[8], 0);
+        // once, re-armed when RX re-arms (the link quiet at its idle): every stimulus, whatever made it
+        wr(R_RP_CTRL, {16'd30, 10'd0, 1'b1, 2'b00, 1'b0, 1'b1, 1'b1});
+        rd(R_RP_CTRL, v); expect("RP_CTRL re-arm on RX", v[5], 1);
+        wr(R_TX_COUNT, 32'd4); wr(R_TX_GO, 32'd1);
+        idle_clocks(4 * 80 + 200);
+        rd(R_RP_STAT, v); expect("re-armed by RX: four replies", v[31:8], 4);
+        wr(R_RP_CTRL, 32'd0);
+
+        // ---- the fast path, one shot: the corners' vectors -> the next corner, the idle passes ---------------
+        fpm = 128'd0; fpu = 32'd0;
+        fpu[V0] = 1'b1; fpm[{V0, 2'b00} +: 4] = P1;
+        fpu[V1] = 1'b1; fpm[{V1, 2'b00} +: 4] = P2;
+        fpu[V2] = 1'b1; fpm[{V2, 2'b00} +: 4] = P3;
+        fpu[V3] = 1'b1; fpm[{V3, 2'b00} +: 4] = P0;
+        wr(R_FP_MAP0, fpm[31:0]); wr(R_FP_MAP1, fpm[63:32]); wr(R_FP_MAP2, fpm[95:64]); wr(R_FP_MAP3, fpm[127:96]);
+        wr(R_FP_USE, fpu);
+        wr(R_FP_TIME, 32'd2);
+        wr(R_FP_CTRL, {28'd0, 1'b1, 1'b0, 1'b0, 1'b0});               // arm on each TX event, one shot
+        rd(R_FP_CTRL, v); expect("FP built", v[8], 1); expect("FP not armed yet", v[0], 0);
+        wr(R_RT_CFG, {8'd50, 8'd8, 3'd0, 5'h1F, 5'd0, 1'b0, 1'b1, 1'b1});
+        idle_clocks(100);
+        log_on = 1'b1; n_log = 0;
+        wr(R_TX_COUNT, 32'd8); wr(R_TX_GO, 32'd1);
+        idle_clocks(8 * 80 + 200);
+        log_on = 1'b0;
+        check_pairs(LAT, 8);
+        n = 0;
+        for (i = 0; i + 1 < n_log; i = i + 1)
+            if (log_p[i] != P_IDLE && log_t[i + 1] - log_t[i] == LAT) n = n + 1;
+        expect("fast path: the answer LAT samples after the stimulus", n, 8);
+        rd(R_RT_N, v); expect("fast path: turnarounds", v, 8);
+        rd(R_RT_MIN, v); expect("fast path: turnaround (no delay of its own here)", v, LAT);
+        rd(R_RT_MAX, v); expect("fast path: turnaround max", v, LAT);
+        rd(R_FP_CTRL, v); expect("fast path: disarmed", v[0], 0); expect("fast path: it drove", v[1], 1);
+        // armed now and again whenever RX re-arms, instead of on the TX event
+        wr(R_FP_CTRL, {27'd0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1});
+        rd(R_FP_CTRL, v); expect("fast path: armed, arm on RX", v[4:0], 5'b10001);
+        wr(R_RT_CFG, {8'd50, 8'd8, 3'd0, 5'h1F, 5'd0, 1'b0, 1'b1, 1'b1});
+        wr(R_TX_COUNT, 32'd4); wr(R_TX_GO, 32'd1);
+        idle_clocks(4 * 80 + 200);
+        rd(R_RT_N, v); expect("fast path, armed by RX: turnarounds", v, 4);
+        rd(R_RT_MAX, v); expect("fast path, armed by RX: turnaround", v, LAT);
+        wr(R_FP_CTRL, 32'd2);
+
+        // ---- the ring: the idle starts it, each corner -> the next, armed 200 clocks --------------------------
+        fpu[V_IDLE] = 1'b1; fpm[{V_IDLE, 2'b00} +: 4] = P0;
+        wr(R_FP_MAP0, fpm[31:0]); wr(R_FP_MAP1, fpm[63:32]); wr(R_FP_MAP2, fpm[95:64]); wr(R_FP_MAP3, fpm[127:96]);
+        wr(R_FP_USE, fpu);
+        wr(R_FP_TIME, 32'd200);
+        wr(R_RT_CFG, {8'd0, 8'd8, 3'd0, 5'h1F, 5'd0, 1'b1, 1'b1, 1'b1});    // ring: arrivals while armed
+        idle_clocks(20);
+        wr(R_FP_CTRL, {28'd0, 1'b0, 1'b1, 1'b0, 1'b1});               // timed, arm now
+        idle_clocks(260);
+        rd(R_RT_MARKS, v); rd(R_RT_SPAN, v2);
+        if (v < 50) begin $display("FAIL ring: only %0d hops", v); errors = errors + 1; end
+        expect("ring: span = hops x LAT", v2, (v - 1) * LAT);
+        expect("ring: hops in 200 clocks", v, (200 * SER - 1) / LAT);
+        rd(R_FP_CTRL, v); expect("ring: disarmed", v[0], 0);
+        wr(R_FP_USE, 32'd0); wr(R_FP_CTRL, 32'd0); wr(R_RT_CFG, 32'd0);
+
+        if (errors == 0) $display("PASS: tb_engines (RP_REG %0d)", RP_REG);
+        else $display("FAIL: tb_engines (RP_REG %0d), %0d errors", RP_REG, errors);
         $finish;
     end
 endmodule
