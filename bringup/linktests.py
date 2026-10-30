@@ -311,11 +311,13 @@ class Schemes(Link):
         rotation's sense (the loop held through it)"""
         cl = self.cl
         pts = [(1, 0), (0, 1), (-1, 0), (0, -1)]
-        cl.tx_points(point_code(1, 0), [point_code(i, q) for i, q in pts])
         out = []
         for p in periods:
             for back in (False, True):
                 cl.ctrl(loop_hold=1)
+                # every run: the hold_point(1, 0) at the end of the last one rewrote TX_POINTS to that one point, so
+                # every run after the first rotated through a corrupted table (2026-10-29 and -30 until 09:40)
+                cl.tx_points(point_code(1, 0), [point_code(i, q) for i, q in pts])
                 cl.tx_timing(period=p, width=1, count=0)
                 cl.tx_mode("rotate", n=4, backwards=back)
                 cl.tx_go()

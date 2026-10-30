@@ -596,6 +596,224 @@ def _vt2_scan(self, mhz, vs=(1.65, 1.75, 1.85, 1.95, 2.1, 2.3, 2.6), confirm=10,
     return out
 
 
+def _drift_rates(self, mhz, cen, offsets_khz=(-60, -40, -30, -20, -15, -10, 10, 15, 20, 30, 40, 60), ioff=S.V_MID,
+                 release_s=0.003, reps=2):
+    """the unlocked loop's push: VC held at each offset from the lock (TX on, the integrator centred), released for
+    release_s by the sequencer; VC's rate (V/s) is (ERR - V_MID) / (R126 C130).  Pull-in from both sides needs the rate
+    toward the lock from both (VC falling for + offsets, rising for -)"""
+    rows = []
+    for off in offsets_khz:
+        rates = []
+        for _ in range(reps):
+            self.tx(False)
+            self.center(mhz)
+            self.cl.dsa(float(self.regulated_dsa(mhz)))
+            self.ioff(ioff)
+            self.set_vc(LT.VC_LOCK + off * 1e3 / self.kv(mhz))
+            self.tx(True)
+            time.sleep(0.1)
+            g = self.cl.gate(seconds=0.01, inputs=("CMP_I",))
+            v0 = self.cl.adc("VC")
+            self.cl.seq_program([(release_s / self.cl.t_clk, {"loop_hold": 0})])
+            self.cl.seq_run()
+            time.sleep(release_s + 0.03)
+            v1 = self.cl.adc("VC")
+            rates.append((v1 - v0) / release_s)
+        r = {"offset_khz": off, "rate_v_s": float(np.mean(rates)), "rates": rates, "cmp_i_duty": g["CMP_I"]["duty"],
+             "toward_lock": bool(np.mean(rates) * off < 0)}
+        rows.append(r)
+        print("  I_OFF_F %.2f, %+3d kHz: VC %+6.1f V/s (%s), CMP_I duty %.2f" % (ioff, off, r["rate_v_s"],
+              "toward the lock" if r["toward_lock"] else "AWAY", g["CMP_I"]["duty"]), flush=True)
+    self.ioff(S.V_MID)
+    self.tx(False)
+    return rows
+
+
+def _diag(self, mhz=5000):
+    """four quick checks (2026-10-30, Jason's questions): the pull-in's one-sidedness (the unlocked push, with I_OFF_F at
+    V_MID and at the fast I arm's null), the BER at 100 / 50 Mbaud against the sampling phase, whether TX_MODE 4's
+    direction bit reverses the ladder's own sequence (the capture reads the pads back), and the TX carrier nulled at
+    this frequency with VR_I / VR_Q (then A1's confirmation and flip again; the trims restored after)"""
+    from linktests import fsk_order
+    from costaslink import Scheme, CMP_IP
+    out = {"mhz": mhz}
+    cl = self.cl
+    vr0 = {k: cl.dac_volts()[k] for k in ("VR_I", "VR_Q")}
+    out["vr_before"] = vr0
+    self.scope_iq(vdiv=0.1)
+    try:
+        self.tx(False)
+        self.center(mhz)
+        cen = self.centres()
+        reg = self.regulated_dsa(mhz)
+        # A: the push
+        v_null, _ = self.null_fast_i()
+        out["i_off_f_null"] = v_null
+        print(" A. the unlocked loop's push (I_OFF_F null with no carrier: %s V)" % v_null, flush=True)
+        out["push_vmid"] = self.drift_rates(mhz, cen)
+        if v_null is not None:
+            out["push_null"] = self.drift_rates(mhz, cen, ioff=v_null)
+            print("  releases with I_OFF_F at its null:", flush=True)
+            rel = []
+            for k in (-60, -40, -30, -20, -15, 15, 30, 60):
+                info = self.trial(mhz, v_null, LT.VC_LOCK + k * 1e3 / self.kv(mhz), reg)
+                side, ok, fi = self.frame0(cen)
+                rel.append({"offset_khz": k, "state": info["state"], "ok": ok, "frame": fi})
+                print("   %+3d kHz -> %s" % (k, info["state"] if ok or info["state"] != "locked" else "locked, off axis"), flush=True)
+                cl.ctrl(loop_hold=1)
+            out["pull_in_null"] = rel
+            self.ioff(S.V_MID)
+        LT.save("diag_partial", out)
+        # B: the BER against the sampling phase
+        print(" B. the BER against the sampling phase:", flush=True)
+        lk = self.acquire0(mhz, reg, cen)
+        rows = []
+        if lk:
+            side = lk["side"]
+            cl.tx_points(point_code(1, 0), [point_code(1, 0), point_code(-1, 0)])
+            for p, nph in ((1, 8), (2, 16)):
+                for ph in range(nph):
+                    r = cl.ber_run(seconds=0.2, poly=15, period=p, phase=ph, n=2, invert=side > 0)
+                    cl.hold_point(1, 0)
+                    r.update(period_clocks=p, phase=ph)
+                    rows.append(r)
+                    print("   %3.0f Mbaud, phase %2d (%.2f ns into the symbol): BER %s" % (100.0 / p, ph, ph * 1.25, r["ber"]), flush=True)
+                    s2, ok, _ = self.frame0(cen)
+                    if not ok:
+                        self.acquire0(mhz, reg, cen)
+        out["ber_phase"] = rows
+        LT.save("diag_partial", out)
+        # C: does the rotation's direction bit reverse the ladder?
+        print(" C. FSK: the ladder's own sequence, read back:", flush=True)
+        fsk = []
+        pts = [(1, 0), (0, 1), (-1, 0), (0, -1)]
+        cl.tx_points(point_code(1, 0), [point_code(i, q) for i, q in pts])
+        for back in (False, True):
+            cl.ctrl(loop_hold=1)
+            cl.tx_timing(period=10, width=1, count=0)
+            cl.tx_mode("rotate", n=4, backwards=back)
+            cl.tx_go()
+            time.sleep(0.002)
+            cl.cap_arm("none", post=4000)
+            cl.cap_force()
+            c = cl.cap_read(timeout=1.0)
+            cl.tx_stop()
+            cl.hold_point(1, 0)
+            codes = c.get("TX_PINS") or []
+            seq = [codes[0]] if codes else []
+            for x in codes[1:]:
+                if x != seq[-1]:
+                    seq.append(x)
+            fsk.append({"backwards": back, "tx_codes": seq[:24], "rx": fsk_order(c),
+                        "codes_expected": [point_code(i, q) for i, q in pts]})
+            print("   %s: TX pins %s; RX windows %s" % ("backwards" if back else "forwards", seq[:12], fsk_order(c)["first"][:8]), flush=True)
+        out["fsk_pins"] = fsk
+        cl.ctrl(loop_hold=0)
+        LT.save("diag_partial", out)
+        # D: the carrier null at this frequency
+        print(" D. the TX carrier null with VR_I / VR_Q:", flush=True)
+        cl.ctrl(loop_hold=1)
+        self.tune(mhz)
+        cl.dsa(float(self.dsa_min(mhz)))
+        self.tx(True)
+        cl.hold_point(1, 0)
+        time.sleep(0.05)
+        f1, p1 = self.rx_mon(mhz, span=200e3)
+        def car():
+            b = self.b
+            b.sa_setup(f1, 20e3, rbw=300, ref=0.0, att=10)
+            b.sa.single()
+            return b.sa.peak()[1]
+        cl.hold_point(0, 0)
+        time.sleep(0.05)
+        p0 = car()
+        print("   (1, 0) %.1f dBm at %.0f Hz; (0, 0) with the trims as they were %.1f dBm: %.1f dBc" % (p1, f1, p0, p0 - p1), flush=True)
+        best = dict(vr0)
+        trace = []
+        for span, step in ((0.08, 0.01), (0.02, 0.0025)):
+            for k in ("VR_I", "VR_Q"):
+                vals = np.arange(best[k] - span, best[k] + span + 1e-9, step)
+                res = []
+                for v in vals:
+                    v = float(min(0.45, max(0.0, v)))
+                    cl.dac(S.DAC1, **{k: v})
+                    time.sleep(0.02)
+                    res.append((v, car()))
+                    trace.append({k: v, "dbm": res[-1][1]})
+                best[k] = min(res, key=lambda x: x[1])[0]
+                cl.dac(S.DAC1, **{k: best[k]})
+                time.sleep(0.02)
+        p0n = car()
+        cl.hold_point(1, 0)
+        time.sleep(0.05)
+        p1n = car()
+        out["null"] = {"before": {"carrier": p1, "null": p0, "dbc": p0 - p1}, "vr_null": best,
+                       "after": {"carrier": p1n, "null": p0n, "dbc": p0n - p1n}, "trace": trace}
+        print("   nulled at VR_I %.4f, VR_Q %.4f: (0, 0) %.1f dBm, (1, 0) %.1f dBm: %.1f dBc" % (
+            best["VR_I"], best["VR_Q"], p0n, p1n, p0n - p1n), flush=True)
+        # then A1 again: its confirmation and its flip
+        self.tx(False)
+        self.center(mhz)
+        cen = self.centres()
+        lk = self.acquire0(mhz, reg, cen)
+        if lk:
+            side, a_leg = lk["side"], abs(lk["frame"]["di"])
+            self.thresholds(cen, a_leg)
+            cl.dac(S.DAC2, V_T2=2.0)
+            tx, rx = rx_pair("A1", side, True)
+            cl.tx_points(tx.tx_idle(), [point_code(i, q) for i, q in tx.msgs])
+            cl.rx_config(rx.idle_vector(), rx.mask, rx.lut(False), rx.slow_exp(), delay=16, quiet=4, confirm=10, window=100)
+            cl.events(period=2000, width=20, count=4000, n=tx.n)
+            cl.rx_clear()
+            cl.tx_go()
+            time.sleep(2000 * 4000 * cl.t_clk + 0.2)
+            st = cl.rx_stats()
+            cl.hold_point(1, 0)
+            out["a1_after_null"] = st
+            print("   A1 with the carrier nulled (V_T2 2.0 V, confirm 100 ns): decided %d confirmed %d vetoed %d" % (
+                st["decided"], st["confirm"], st["veto"]), flush=True)
+            self.s.timebase(scale=20e-6)
+            cl.ctrl(tx_dis=1, loop_hold=1)
+            time.sleep(0.4)
+            nc = (self.s.pava("MEAN", 2), self.s.pava("MEAN", 3))
+            cl.ctrl(tx_dis=0, loop_hold=0)
+            time.sleep(0.5)
+            c = self.scope_constellation(T_SCH["A1"])
+            i, q = np.array(c["i"]) - nc[0], np.array(c["q"]) - nc[1]
+            x = side * i
+            m = 0.5 * (np.percentile(x, 3) + np.percentile(x, 97))
+            idle = (float(np.median(i[x > m])), float(np.median(q[x > m])))
+            fl = (float(np.median(i[x <= m])), float(np.median(q[x <= m])))
+            ang = math.degrees(math.atan2(fl[1], fl[0]) - math.atan2(idle[1], idle[0])) % 360
+            out["a1_flip_after_null"] = {"idle": idle, "flip": fl, "angle_deg": ang}
+            print("   the flip with the carrier nulled: %.0f degrees from the idle (its Q %.3f V, %.2f a)" % (
+                ang, fl[1], abs(fl[1]) / math.hypot(*idle)), flush=True)
+    finally:
+        cl.dac(S.DAC1, VR_I=float(vr0["VR_I"]), VR_Q=float(vr0["VR_Q"]))
+        cl.dac(S.DAC2, V_T2=S.V_MID)
+        cl.ctrl(loop_hold=1)
+        try:
+            cl.tx_stop()
+        except Exception:                                            # noqa: BLE001
+            pass
+        self.ioff(S.V_MID)
+        cl.dac(S.DAC1, VC_OFF=S.V_MID)
+        self.quiet()
+        try:
+            self.b.sa_live()
+        except Exception as e:                                       # noqa: BLE001
+            print("sa_live failed:", e, flush=True)
+        out["vr_restored"] = {k: cl.dac_volts()[k] for k in ("VR_I", "VR_Q")}
+        path = LT.save("diag_%d" % mhz, out)
+        self.b.record("verdict", test="diag0", ok=None, file=path, mhz=mhz,
+                      text="the unlocked push against I_OFF_F, the BER against the sampling phase, FSK's direction bit "
+                           "read back, the TX carrier nulled with VR_I / VR_Q and A1 again (the trims restored)")
+    return out
+
+
+T_SCH = SCHEMES
+Lock0.drift_rates = _drift_rates
+Lock0.diag = _diag
 Lock0.vt2_scan = _vt2_scan
 Lock0.dsa_only = _dsa_only
 Lock0.step_only = _step_only
@@ -651,7 +869,7 @@ def fit_step(t, y, a_mon):
 
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("section", choices=["lock", "schemes", "all", "step", "confirm", "dsa", "vt2"])
+    ap.add_argument("section", choices=["lock", "schemes", "all", "step", "confirm", "dsa", "vt2", "diag"])
     ap.add_argument("--mhz", type=int, nargs="+", default=[5000, 5200])
     a = ap.parse_args(argv)
     L = Lock0()
@@ -660,6 +878,8 @@ def main(argv):
             L.lock(mhz)
         if a.section in ("schemes", "all"):
             L.schemes0(mhz)
+        if a.section == "diag":
+            L.diag(mhz)
         if a.section == "vt2":
             L.vt2_scan(mhz)
         if a.section == "dsa":
