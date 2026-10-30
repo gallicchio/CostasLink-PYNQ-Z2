@@ -14,7 +14,7 @@ import os, sys
 # (address, name, access, block, description).  access: R, W, RW; "pulse" in the text = acts once.
 REGS = [
     # ---- the first firmware (Response 9 and 14): costaslink_regs.v, cmp_monitor.v ------------------------
-    (0x00, "ID", "R", "regs", "0x434C0003: 'CL', version 3 (Prompt 36: the reply paths and the turnaround counter; 2 was Response 15's engines)"),
+    (0x00, "ID", "R", "regs", "0x434C0004: 'CL', version 4 (2026-10-30: the BER check's timing recovery; 3 the reply paths and the turnaround counter, Prompt 36; 2 Response 15's engines)"),
     (0x01, "CTRL", "RW", "regs", "[0] TX_DIS (reset 1: muted; header pin 24 carries its inverse, TX_EN), [1] LOOP_HOLD (reset 1), [2] LOOP_SEL, [3] TR_A (reset 1: receive), "
                                  "[6] ID enable, [7] pulse: ID now, [8] TX_Q1 high-impedance (unused since Prompt 35: TRIG IN sums into the Q ladder on the board)"),
     (0x02, "TXSYM", "RW", "regs", "[3:0] {Q1 Q0 I1 I0} ladder point in TX_MODE 0; a write pulses TRIG_A; R [7:4] the pins now"),
@@ -110,10 +110,17 @@ REGS = [
     (0x5B, "RX_EVT_TS", "R", "rx", "FREE_CNT at the last event"),
     (0x5C, "RX_BER_CFG", "RW", "rx", "[0] check a PRBS on CMP_I (a write that sets it starts a new count; one that "
                                      "clears it keeps the count), [1] invert, [6:4] the polynomial as TX_PRBS, "
-                                     "[23:8] the sampling phase (samples into each symbol), symbol length = TX_PERIOD"),
+                                     "[23:8] the sampling phase (samples into each symbol), symbol length = TX_PERIOD; "
+                                     "[24] the timing recovered from CMP_I's edges (ber_cdr.v: a transmitter on another "
+                                     "clock), the phase then the sampling point's distance from the edge (period x SER / 2: "
+                                     "mid-symbol), [28:25] the recovery's gain (2^-gain, 4 by default)"),
     (0x5D, "RX_BER_BITS", "R", "rx", "bits checked"),
     (0x5E, "RX_BER_ERR", "R", "rx", "mismatches (a self-synchronising check counts each bit error three times)"),
     (0x5F, "RX_INFO", "R", "rx", "[7:0] samples a clock (SER), [15:8] fast inputs, [31:16] the clock in MHz"),
+    (0x70, "RX_CDR_ERR", "R", "cdr", "the timing recovery's last edge error, signed, in 1/16 sample"),
+    (0x71, "RX_CDR_SUM", "R", "cdr", "its corrections since RX_BER_CFG's write, signed, in 1/256 sample: the transmitter's "
+                                     "clock against this one is -SUM / 256 / (samples elapsed)"),
+    (0x72, "RX_CDR_EDGES", "R", "cdr", "CMP_I's transitions it has seen since that write"),
 
     # ---- the sequencer and the counting gate: seq_gate.v -----------------------------------------------------
     (0x60, "SEQ_CTRL", "RW", "seq", "W [0] pulse: run, [1] loop, [2] pulse: stop, [10:8] steps less one, [11] enable "
@@ -182,7 +189,8 @@ REGS = [
     (0xA8, "RT_SPAN", "R", "lat", "samples from the first of those arrivals to the last"),
 ]
 
-BLOCKS = {"regs": (0x00, 0x2F), "tx": (0x30, 0x3F), "rx": (0x40, 0x5F), "seq": (0x60, 0x6F), "cap": (0x78, 0x7F),
+BLOCKS = {"regs": (0x00, 0x2F), "tx": (0x30, 0x3F), "rx": (0x40, 0x5F), "seq": (0x60, 0x6F), "cdr": (0x70, 0x77),
+          "cap": (0x78, 0x7F),
           "core": (0x80, 0x80), "lat": (0x90, 0xAF)}
 
 BY_NAME = {name: addr for addr, name, *_ in REGS}

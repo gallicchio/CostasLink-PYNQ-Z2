@@ -184,6 +184,7 @@ class Stream:
         self._th = None
         self.sent = 0
         self.error = None
+        self.underflows = 0                              # UHD's async reports: gaps in what went out
 
     def shape(self, base):
         """complex baseband (unit scale) to the buffer streamed: amp times it, shifted by park_hz; the length is cut to a
@@ -209,8 +210,24 @@ class Stream:
         self._stop.clear()
         self._th = threading.Thread(target=self._run, daemon=True)
         self._th.start()
+        self._ta = threading.Thread(target=self._watch, daemon=True)
+        self._ta.start()
         time.sleep(0.2)
         return self
+
+    def _watch(self):
+        uhd = self.b.uhd
+        md = uhd.types.TXAsyncMetadata()
+        while not self._stop.is_set():
+            tx = self._tx
+            if tx is None:
+                break
+            try:
+                if tx.recv_async_msg(md, 0.1) and md.event_code in (uhd.types.TXMetadataEventCode.underflow,
+                                                                    uhd.types.TXMetadataEventCode.underflow_in_packet):
+                    self.underflows += 1
+            except Exception:                            # noqa: BLE001
+                break
 
     def _run(self):
         md = self.b.uhd.types.TXMetadata()
@@ -230,6 +247,8 @@ class Stream:
         self._stop.set()
         if self._th:
             self._th.join(timeout=3)
+        if getattr(self, "_ta", None):
+            self._ta.join(timeout=1)
         self._tx = None
 
 

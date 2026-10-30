@@ -61,7 +61,7 @@ set_property board_part tul.com.tw:pynq-z2:part0:1.0 [current_project]
 set_property target_language Verilog [current_project]
 
 set rtl {costaslink_pynq.v axil_bridge.v fast_sampler_7series.v costaslink_core.v bus_stage.v costaslink_regs.v spi_master.v
-         max2871_init.v i2c_master.v tx_symbol.v tx_engine.v rx_engine.v count_ram.v prbs.v capture.v seq_gate.v
+         max2871_init.v i2c_master.v tx_symbol.v tx_engine.v rx_engine.v ber_cdr.v count_ram.v prbs.v capture.v seq_gate.v
          cmp_monitor.v morse_keyer.v turnaround.v fp_lut5_7series.v}
 foreach f $rtl { add_files -norecurse $gw_dir/$f }
 add_files -norecurse $gw_dir/regmap.vh $gw_dir/max2871_words.vh

@@ -76,7 +76,8 @@ module costaslink_regs #(
                      A_DAC_AB = 8'h18, A_DAC_CD = 8'h19, A_DAC_GO = 8'h1A, A_ADC_CFG = 8'h1B, A_ADC_READ = 8'h1C,
                      A_CMP_STATE = 8'h20, A_FREE_CNT = 8'h21, A_EDGE0 = 8'h22, A_EDGE5 = 8'h27, A_CMP_I_TS = 8'h28,
                      A_LAT = 8'h29, A_CNT_CTRL = 8'h2A, A_MORSE = 8'h2B, A_EDGE6 = 8'h2C, A_EDGE7 = 8'h2D;
-    localparam [31:0] ID_WORD = 32'h434C_0003;          // "CL", version 3: the reply paths, the turnaround counter (Prompt 36)
+    localparam [31:0] ID_WORD = 32'h434C_0004;          // "CL", version 4: the BER check's timing recovery (ber_cdr.v);
+                                                        // 3 the reply paths, the turnaround counter (Prompt 36)
 
     // ---- SPI: the register path and the init sequencer share one master ------------------------
     reg  [31:0] spi_data;

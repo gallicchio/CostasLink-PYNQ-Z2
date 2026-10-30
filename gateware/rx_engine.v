@@ -18,7 +18,9 @@
 // with no event is MISSED.  Counters, the last event, min / max / sum of the latency, an 8 x 8
 // confusion matrix (row: the message sent, column: the message decoded) and a 1024-bin histogram are
 // kept until RX_CTRL[1].  RX_BER_CFG checks a PRBS on CMP_I sampled once a symbol at a set phase
-// (self-synchronising: needs no alignment with the transmitter; TX_PERIOD sets the symbol length).
+// (self-synchronising: needs no alignment with the transmitter; TX_PERIOD sets the symbol length), or with
+// RX_BER_CFG[24] at the phase ber_cdr.v recovers from CMP_I's own edges (a transmitter on another clock:
+// the B210, a second board), the phase then the sampling point's distance from the tracked edge.
 
 module rx_engine #(
     parameter integer SER    = 8,               // samples a clock: 1, 2, 4 or 8
@@ -78,6 +80,8 @@ module rx_engine #(
     reg        ber_en, ber_inv;
     reg [2:0]  ber_poly;
     reg [15:0] ber_phase;
+    reg        ber_cdr;                         // RX_BER_CFG[24]: the timing recovered (ber_cdr.v)
+    reg [3:0]  ber_gain;                        // [28:25]: its loop's gain, 2^-gain
     reg        clr;
 
     reg [31:0] n_events, n_decided, n_confirm, n_veto, n_false, n_missed, n_refs;
@@ -255,6 +259,24 @@ module rx_engine #(
     /* verilator lint_on UNUSEDSIGNAL */
     wire        ber_bit = v_ph[0] ^ ber_inv;
 
+    // the timing recovery: CMP_I's samples this clock; restarted by every write of RX_BER_CFG
+    wire [SER-1:0] cmp_i_s;
+    genvar g;
+    generate
+        for (g = 0; g < SER; g = g + 1) begin : g_cmpi
+            assign cmp_i_s[g] = fs[6*g];
+        end
+    endgenerate
+    wire               cdr_v, cdr_raw;
+    wire signed [15:0] cdr_err;
+    wire signed [31:0] cdr_sum;
+    wire [31:0]        cdr_edges;
+    ber_cdr #(.SER(SER)) u_cdr (
+        .clk(clk), .rst(rst), .restart(bus_we && bus_addr == R_RX_BER_CFG), .track(1'b1), .d(cmp_i_s),
+        .period(sym_period[15:0]), .offset(ber_phase), .gain(ber_gain),
+        .bit_v(cdr_v), .bit_o(cdr_raw), .err_o(cdr_err), .corr_sum(cdr_sum), .edges(cdr_edges));
+    wire        cdr_bit = cdr_raw ^ ber_inv;
+
     // ---- the state ------------------------------------------------------------------------------------------
     always @(posedge clk) begin
         if (rst) begin
@@ -262,6 +284,7 @@ module rx_engine #(
             idle <= 5'b00001; mask <= 5'b00001; dly <= 8'd4; quiet <= 8'd4; cdly <= 8'd6; window <= 32'd100;
             lut <= 128'd0; slow_exp <= 32'd0; hist_what <= 2'd1; hist_shift <= 4'd0; hist_addr <= 10'd0; cm_addr <= 6'd0;
             ber_en <= 1'b0; ber_inv <= 1'b0; ber_poly <= 3'd2; ber_phase <= 16'd0; clr <= 1'b0;
+            ber_cdr <= 1'b0; ber_gain <= 4'd4;
             n_events <= 32'd0; n_decided <= 32'd0; n_confirm <= 32'd0; n_veto <= 32'd0; n_false <= 32'd0;
             n_missed <= 32'd0; n_refs <= 32'd0; lat_sum <= 32'd0; lat_n <= 32'd0; ber_bits <= 32'd0; ber_err <= 32'd0;
             lat_min <= 16'hFFFF; lat_max <= 16'd0; last <= 15'd0; last_lat <= 32'd0; evt_ts <= 32'd0;
@@ -302,7 +325,8 @@ module rx_engine #(
                 R_RX_HIST_CFG: begin hist_what <= bus_wdata[1:0]; hist_shift <= bus_wdata[7:4]; end
                 R_RX_HIST_ADDR: hist_addr <= bus_wdata[9:0];
                 R_RX_BER_CFG:  begin ber_en <= bus_wdata[0]; ber_inv <= bus_wdata[1]; ber_poly <= bus_wdata[6:4];
-                                     ber_phase <= bus_wdata[23:8]; end
+                                     ber_phase <= bus_wdata[23:8]; ber_cdr <= bus_wdata[24];
+                                     ber_gain <= bus_wdata[28:25]; end
                 default: ;
                 endcase
             end
@@ -426,12 +450,12 @@ module rx_engine #(
             // ---- the BER check: one bit a symbol at the set phase ----
             if (ber_en) begin
                 scnt <= (scnt + 1'b1 >= sym_period) ? 32'd0 : scnt + 1'b1;
-                if (scnt == {16'd0, ph_clk}) begin
-                    rbits <= {rbits[29:0], ber_bit};
+                if (ber_cdr ? cdr_v : (scnt == {16'd0, ph_clk})) begin
+                    rbits <= {rbits[29:0], ber_cdr ? cdr_bit : ber_bit};
                     if (nfill != 5'd31) nfill <= nfill + 1'b1;
                     else begin
                         ber_bits <= ber_bits + 1'b1;
-                        if (ber_bit != ber_exp) ber_err <= ber_err + 1'b1;
+                        if ((ber_cdr ? cdr_bit : ber_bit) != ber_exp) ber_err <= ber_err + 1'b1;
                     end
                 end
             end
@@ -485,7 +509,10 @@ module rx_engine #(
         R_RX_HIST_ADDR: bus_rdata = {22'd0, hist_addr};
         R_RX_HIST_DATA: bus_rdata = h_rdata;
         R_RX_EVT_TS:   bus_rdata = evt_ts;
-        R_RX_BER_CFG:  bus_rdata = {8'd0, ber_phase, 1'b0, ber_poly, 2'd0, ber_inv, ber_en};
+        R_RX_BER_CFG:  bus_rdata = {3'd0, ber_gain, ber_cdr, ber_phase, 1'b0, ber_poly, 2'd0, ber_inv, ber_en};
+        R_RX_CDR_ERR:  bus_rdata = {{16{cdr_err[15]}}, cdr_err};
+        R_RX_CDR_SUM:  bus_rdata = cdr_sum;
+        R_RX_CDR_EDGES: bus_rdata = cdr_edges;
         R_RX_BER_BITS: bus_rdata = ber_bits;
         R_RX_BER_ERR:  bus_rdata = ber_err;
         R_RX_INFO:     bus_rdata = {CLK_HZ_MHZ[15:0], 8'd6, SER_W[7:0]};

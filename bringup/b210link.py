@@ -261,6 +261,7 @@ class Link(W.Weekend):
         cl.tx_timing(period=p)
 
         def run(inv, sec):
+            u0 = self.stream.underflows
             cl.ber_config(15, None, invert=inv, enable=True, cdr=True, gain=gain, period=p)
             time.sleep(sec)
             c = cl.cdr_state()
@@ -268,7 +269,8 @@ class Link(W.Weekend):
             cl.ber_config(15, None, invert=inv, enable=False, cdr=True, gain=gain, period=p)
             r = cl.ber()
             ppm = -c["sum_samples"] / (b_run * p * cl.ser) * 1e6 if b_run else None
-            return {"bits": r["bits"], "mismatches": r["mismatches"], "ber": r["ber"], "ppm": ppm, **c}
+            return {"bits": r["bits"], "mismatches": r["mismatches"], "ber": r["ber"], "ppm": ppm,
+                    "underflows": self.stream.underflows - u0, **c}
 
         trial = {inv: run(inv, 0.1) for inv in (False, True)}
         inv = min(trial, key=lambda v: trial[v]["ber"] if trial[v]["ber"] is not None else 1.0)
@@ -281,9 +283,10 @@ class Link(W.Weekend):
                "lock_after": {k: o[k] for k in ("state", "di", "vc")}}
         self.stream.set(np.ones(int(self.stream.rate * 1e-3)))
         print("%d B210 -> board BPSK %.2f Mbaud, timing recovered (gain %d): %d bits, %d mismatches (BER %s); clocks %s ppm; "
-              "runs clean %d of %d" % (mhz, baud / 1e6, gain, bits, mism, res["ber"] if not res["ber"] else "%.2e" % res["ber"],
-                                        " ".join("%+.2f" % r["ppm"] for r in runs if r["ppm"] is not None),
-                                        sum(1 for r in runs if r["mismatches"] == 0), nseg), flush=True)
+              "runs clean %d of %d; the B210's underflows per run %s" % (
+                  mhz, baud / 1e6, gain, bits, mism, res["ber"] if not res["ber"] else "%.2e" % res["ber"],
+                  " ".join("%+.2f" % r["ppm"] for r in runs if r["ppm"] is not None),
+                  sum(1 for r in runs if r["mismatches"] == 0), nseg, [r["underflows"] for r in runs]), flush=True)
         return res
 
     def to_board(self, mhz, delta_hz, ppm_clk=None, gain=80, fixed=True, events=True):

@@ -44,7 +44,8 @@ from board_constants import (RX_GAIN_DB, DEM_REG_DBM, A_REG_V, DSA_POWER_UP_DB, 
                              NTC_B, NTC_R25, NTC_RTOP, NTC_VDD, VR_I_V, VR_Q_V)
 
 R = regmap.BY_NAME
-ID_EXPECTED = 0x434C0003
+ID_EXPECTED = 0x434C0004
+ID_ACCEPTED = (0x434C0003, 0x434C0004)           # 3: no timing recovery for the BER check (the overlay of 2026-10-29)
 BOARDS = {0: "simulation", 1: "PYNQ-Z2", 2: "Icepi Zero"}
 
 # the fast comparators: their bit in the receiver's vectors (RX_IDLE, RX_LUT, RX_LAST), as rx_engine.v
@@ -335,8 +336,9 @@ class CostasLink:
         self._lo_mon = {0: False, 1: False}                                # RFOUTB, the LO MON jacks: off in PLL_INIT
         if check:
             ident = self.rd("ID")
-            if ident != ID_EXPECTED:
+            if ident not in ID_ACCEPTED:
                 raise IOError("ID reads 0x%08X, not 0x%08X: wrong overlay, or no board" % (ident, ID_EXPECTED))
+            self.cdr = ident >= 0x434C0004
         b = self.rd("BUILD")
         self.ser = bits(b, 7, 0) or 1
         self.board = bits(b, 11, 8)
@@ -738,12 +740,31 @@ class CostasLink:
         self.wr("RX_HIST_ADDR", 0)
         return [self.rd("RX_HIST_DATA") for _ in range(bins)]
 
-    def ber_config(self, poly=15, phase=None, invert=False, enable=True):
+    def ber_config(self, poly=15, phase=None, invert=False, enable=True, cdr=False, gain=4, period=None):
         """the PRBS check on CMP_I, sampled `phase` samples into each symbol (TX_PERIOD clocks long).
-        Enabling starts a new count; disabling keeps it, so stop the check before reading a snapshot."""
+        Enabling starts a new count; disabling keeps it, so stop the check before reading a snapshot.
+        cdr: the symbol timing recovered from CMP_I's own edges (ID version 4: a transmitter on another clock),
+        `phase` then the sampling point's distance from the edge, mid-symbol by default (period x SER / 2,
+        the period TX_PERIOD's, given here or read back); gain: the recovery's loop gain, 2^-gain."""
+        if cdr and not getattr(self, "cdr", False):
+            raise IOError("this overlay has no timing recovery (ID version 4 has)")
         if phase is None:
-            phase = self.ser // 2
-        self.wr("RX_BER_CFG", int(enable) | int(invert) << 1 | self.POLYS[poly] << 4 | (phase & 0xFFFF) << 8)
+            if cdr:
+                period = period or self.rd("TX_PERIOD")
+                phase = period * self.ser // 2
+            else:
+                phase = self.ser // 2
+        self.wr("RX_BER_CFG", int(enable) | int(invert) << 1 | self.POLYS[poly] << 4 | (phase & 0xFFFF) << 8
+                | int(bool(cdr)) << 24 | (gain & 0xF) << 25)
+
+    def cdr_state(self):
+        """the timing recovery since the last RX_BER_CFG write: its last edge error (samples), its corrections' sum
+        (samples) and the edges seen"""
+        e = self.rd("RX_CDR_ERR")
+        sm = self.rd("RX_CDR_SUM")
+        e = e - (1 << 32) if e & 0x80000000 else e
+        sm = sm - (1 << 32) if sm & 0x80000000 else sm
+        return {"err_samples": e / 16.0, "sum_samples": sm / 256.0, "edges": self.rd("RX_CDR_EDGES")}
 
     def ber(self):
         """the count so far (read BITS after ERR: while the check runs, ERR never exceeds BITS)"""

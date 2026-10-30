@@ -156,7 +156,7 @@ module tb_engines;
         repeat (5) @(posedge clk);
 
         // ---- identification ----
-        rd(R_ID, v); expect("ID", v, 32'h434C0003);
+        rd(R_ID, v); expect("ID", v, 32'h434C0004);
         rd(R_BUILD, v); expect("BUILD", v, {16'd100, RP_REG != 0, 3'b111, 4'd0, 8'd4});   // early lane, read-back, fast path
         rd(R_RX_INFO, v); expect("RX_INFO", v, {16'd100, 8'd6, 8'd4});
 
@@ -311,6 +311,20 @@ module tb_engines;
         @(negedge clk); flip_next = 1'b1; @(negedge clk); @(negedge clk); flip_next = 1'b0;
         idle_clocks(200);
         rd(R_RX_BER_ERR, v2); expect("BER: one flipped symbol", v2, 3);
+        // the same through the timing recovery (ber_cdr.v; one clock here, so it finds the phase and holds it):
+        // no errors, the edges seen, the corrections no more than the first acquisition's
+        wr(R_RX_BER_CFG, {3'd0, 4'd4, 1'b1, 16'd4, 1'b0, 3'd2, 2'd0, 1'b0, 1'b1});
+        idle_clocks(2000);
+        rd(R_RX_BER_BITS, v); rd(R_RX_BER_ERR, v2);
+        if (v < 900) begin $display("FAIL BER (timing recovered): only %0d bits checked", v); errors = errors + 1; end
+        expect("BER (timing recovered)", v2, 0);
+        rd(R_RX_CDR_EDGES, v);
+        if (v < 400) begin $display("FAIL CDR: only %0d edges", v); errors = errors + 1; end
+        rd(R_RX_CDR_SUM, v);
+        if ($signed(v) > 2048 || $signed(v) < -2048) begin
+            $display("FAIL CDR: corrections %0d / 256 samples with one clock", $signed(v)); errors = errors + 1;
+        end
+        rd(R_RX_BER_CFG, v); expect("RX_BER_CFG read back", v, {3'd0, 4'd4, 1'b1, 16'd4, 1'b0, 3'd2, 2'd0, 1'b0, 1'b1});
         wr(R_TX_GO, 32'd2); wr(R_RX_BER_CFG, 32'd0);
 
         // ---- events on TRIG_IN, TRIG_IN the reference: the latency from TRIG_IN's rising sample ----
