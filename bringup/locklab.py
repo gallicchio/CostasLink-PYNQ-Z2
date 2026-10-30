@@ -446,6 +446,104 @@ class Lab(C.Camp):
             self.done("falselock", out, "releases from -60 to +60 kHz: where the loop ends and what the detectors say")
         return out
 
+    # ---- the hold's phase walk, and dropouts with a guard after the gap ----
+    def holdwalk(self, reps=4, tdiv=10e-3):
+        """locked, then LOOP_HOLD from the PC; the scope's record (forced at once, 14 divisions) then holds the I/Q
+        phasor's walk: its rate is the frequency the hold leaves (the integrator's charge step, the lost
+        proportional term).  Against the drop test's slips at 10 ms and more"""
+        out = {"rows": []}
+        sc = self.s
+        self.scope_iq(vdiv=0.05)
+        try:
+            for mhz in (5000, 5200):
+                self.set_null(mhz)
+                reg = self.regulated_dsa(mhz)
+                lk = self.lock_at(mhz, reg, fresh=True)
+                if lk is None:
+                    continue
+                cen, side, a, _ = lk
+                self.cl.ctrl(tx_dis=1, loop_hold=1)
+                time.sleep(0.3)
+                sc.timebase(scale=tdiv, delay=5 * tdiv)
+                sc.trigger(source=2, level=1.65, slope="rising", mode="auto")
+                time.sleep(1.0)
+                i0, q0 = sc.pava("MEAN", 2), sc.pava("MEAN", 3)
+                self.cl.ctrl(tx_dis=0)
+                for k in range(reps):
+                    lk = self.acquire0(mhz, reg, cen)
+                    if lk is None:
+                        break
+                    time.sleep(0.3)
+                    self.cl.ctrl(loop_hold=1)
+                    t_hold = time.time()
+                    sc.acquire_now()
+                    t, iv, _ = sc.waveform(2)
+                    t2, qv, _ = sc.waveform(3)
+                    t, iv, qv = np.asarray(t), np.asarray(iv) - i0, np.asarray(qv) - q0
+                    n = min(len(iv), len(qv))
+                    ph = np.unwrap(np.arctan2(qv[:n], iv[:n]))
+                    m = t[:n] > 0
+                    if m.sum() > 50:
+                        slope = np.polyfit(t[:n][m], ph[m], 1)[0]
+                    else:
+                        slope = float("nan")
+                    kk = max(1, n // 2000)
+                    row = {"mhz": mhz, "dsa": reg, "a_leg": a, "rep": k, "f_hold_hz": slope / (2 * math.pi),
+                           "t": list(t[:n:kk]), "phase": list(ph[::kk]), "i0": i0, "q0": q0,
+                           "phase_span_rad": float(ph[m][-1] - ph[m][0]) if m.sum() > 1 else None}
+                    out["rows"].append(row)
+                    print("%d DSA %.2f hold %d: the phasor walks at %+.2f Hz (%+.2f rad over the record after the hold)" % (
+                        mhz, reg, k, row["f_hold_hz"], row["phase_span_rad"] or 0), flush=True)
+                    self.cl.ctrl(loop_hold=1)
+                sc.timebase(delay=0)
+                self.scope_iq(vdiv=0.1)
+                save("holdwalk_partial", out)
+        finally:
+            self.done("holdwalk", out, "the phasor's walk while LOOP_HOLD holds: the frequency the hold leaves")
+        return out
+
+    def drop2(self, durs=(1e-3, 1e-2, 0.03, 0.1, 0.3), guards=(0.0, 2e-5, 2e-4, 2e-3), reps=6):
+        """dropouts with the loop held through the gap and for `guard` after the TX returns (the modulator's enable
+        and the signal's return settle before the loop sees them)"""
+        out = {"rows": []}
+        self.scope_iq(vdiv=0.1)
+        try:
+            for mhz in (5000,):
+                self.set_null(mhz)
+                reg = self.regulated_dsa(mhz)
+                lk = self.lock_at(mhz, reg, fresh=True)
+                if lk is None:
+                    return out
+                cen, side, a, _ = lk
+                ck = lambda s_: max(1, int(s_ / self.cl.t_clk))          # noqa: E731
+                for g in guards:
+                    for T in durs:
+                        res = {"locked": 0, "slipped": 0, "lost": 0}
+                        for _ in range(reps):
+                            o0 = self.observe(cen, a)
+                            if o0["state"] != "locked":
+                                if self.acquire0(mhz, reg, cen) is None:
+                                    break
+                                o0 = self.observe(cen, a)
+                            steps = [(ck(1e-3), {"tx_dis": 0, "loop_hold": 0, "tr_a": 1}),
+                                     (ck(T), {"tx_dis": 1, "loop_hold": 1, "tr_a": 1})]
+                            if g > 0:
+                                steps.append((ck(g), {"tx_dis": 0, "loop_hold": 1, "tr_a": 1}))
+                            steps.append((ck(1e-3), {"tx_dis": 0, "loop_hold": 0, "tr_a": 1}))
+                            self.seq_once(steps)
+                            self.cl.ctrl(tx_dis=0, loop_hold=0)
+                            time.sleep(0.3)
+                            o = self.observe(cen, a, side0=o0["side"])
+                            res["locked" if o["state"] == "locked" else ("slipped" if o["state"] == "slipped" else "lost")] += 1
+                        row = {"mhz": mhz, "dsa": reg, "guard_s": g, "dur_s": T, **res}
+                        out["rows"].append(row)
+                        print("%d held dropout %6.3f s, guard %6.0f us: same %d slipped %d lost %d" % (
+                            mhz, T, g * 1e6, res["locked"], res["slipped"], res["lost"]), flush=True)
+                    save("drop2_partial", out)
+        finally:
+            self.done("drop2", out, "held dropouts with a guard after the TX returns")
+        return out
+
     def done(self, name, out, text):
         try:
             self.cl.seq_stop()
@@ -460,7 +558,7 @@ class Lab(C.Camp):
 
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("sections", nargs="+", choices=["detect", "drop", "fade", "cw", "slips", "recover", "falselock"])
+    ap.add_argument("sections", nargs="+", choices=["detect", "drop", "fade", "cw", "slips", "recover", "falselock", "holdwalk", "drop2"])
     a = ap.parse_args(argv)
     L = Lab()
     for s in a.sections:
