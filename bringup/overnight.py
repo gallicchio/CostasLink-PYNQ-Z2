@@ -18,6 +18,7 @@ TX ANT levels (stage2.tx_spurs) less the pads, and the chain's gain at DSA 0 mea
 3 dB.  VR_I / VR_Q are not written here (the carrier null stays as stage2.null left it).
 """
 import argparse
+import glob
 import json
 import math
 import os
@@ -62,7 +63,9 @@ class Night:
     def __init__(self, stage="night"):
         self.b = B.Bench("A", stage)
         self.cl, self.s = self.b.cl, self.b.scope
-        log = [json.loads(l) for l in open(self.b.log.path)]
+        log = []                                        # every day's log: the TX sweep and the chain were measured on 10-29
+        for path in sorted(glob.glob(os.path.join(os.path.dirname(self.b.log.path), "*.jsonl"))):
+            log += [json.loads(l) for l in open(path)]
         sw = [e for e in log if e.get("test") == "tx_spurs"][-1]
         self.tx_dbm = {r["mhz"]: r["carrier"] for r in sw["sweep"]}          # TX ANT, (1, 0), 250 MHz steps
         rm = [e for e in log if e.get("test") == "rx_mon_dsa"][-1]
