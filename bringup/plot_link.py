@@ -527,8 +527,90 @@ def pod(leak_path, lomon_path):
     return P.save(fig, os.path.join(OUTP, "pod_tests_bc.png"))
 
 
+
+# ---- the lock lab (locklab.py) ----
+def locklab():
+    """the lock and its loss, one figure: what the detector sees, dropouts free and held, where releases end, the
+    acquisition search from real offsets"""
+    L = os.path.join(DATA, "locklab")
+    last = lambda pat: sorted(glob.glob(os.path.join(L, pat)))                               # noqa: E731
+    fig, axs = plt.subplots(2, 2, figsize=(15.0, 10.5), gridspec_kw={"wspace": 0.28, "hspace": 0.5})
+    # (a) the detector
+    ax = axs[0, 0]
+    d = json.load(open(last("detect_2*.json")[-1]))
+    groups = (("locked", P.SERIES[0], "o"), ("beat", P.SERIES[1], "s"), ("no signal", P.MUTED, "x"), ("release", P.SERIES[3], "D"))
+    for name, col, m in groups:
+        rows = [r for r in d["rows"] if (r["kind"] == "locked" if name == "locked" else r["kind"].startswith(name))]
+        rows = [r for r in rows if not (name == "release" and r["state"] == "locked")]
+        if rows:
+            ax.plot([max(1, r["edges"]["CMP_I"]) for r in rows], [r["log_q"] for r in rows], ls="none", marker=m, color=col,
+                    markersize=7, label={"release": "false lock (far release)"}.get(name, name), alpha=0.85)
+    ax.set_xscale("log")
+    ax.set_xlabel("CMP_I edges in 10 ms (0 drawn at 1)")
+    ax.set_ylabel("LOG_Q, V")
+    ax.set_title("What tells the lock (3.9a)")
+    P.subtitle(ax, "5.0 GHz at DSA 20 / 26 / 29 and 5.2 GHz at DSA 10 / 16 / 19; locked: CMP_I silent, the I leg up")
+    ax.legend(loc="lower right")
+    # (b) dropouts
+    ax = axs[0, 1]
+    d = json.load(open(last("drop_2*.json")[-1]))
+    for hold, ls in ((0, "-"), (1, (0, (4, 2)))):
+        for k, (mhz, dsa) in enumerate(sorted(set((r["mhz"], r["dsa"]) for r in d["rows"]))):
+            rows = sorted([r for r in d["rows"] if r["hold"] == hold and (r["mhz"], r["dsa"]) == (mhz, dsa)], key=lambda r: r["dur_s"])
+            n = [r["locked"] + r["slipped"] + r["lost"] for r in rows]
+            ax.plot([r["dur_s"] for r in rows], [100.0 * r["lost"] / max(1, x) for r, x in zip(rows, n)], color=P.SERIES[k], ls=ls,
+                    marker="o" if hold == 0 else "s", markersize=5,
+                    label="%.1f GHz DSA %.0f, %s" % (mhz / 1e3, dsa, "free" if hold == 0 else "held: lost") if hold == 0 or k == 0 else None)
+            if hold:
+                ax.plot([r["dur_s"] for r in rows], [100.0 * r["slipped"] / max(1, x) for r, x in zip(rows, n)], color=P.SERIES[k],
+                        ls=":", marker="^", markersize=5, label="held: slipped 180 degrees" if k == 0 else None)
+    ax.set_xscale("log")
+    ax.set_ylim(-5, 105)
+    ax.set_xlabel("TX muted for, s (the sequencer)")
+    ax.set_ylabel("% of five gaps")
+    ax.set_title("Dropouts: free loop lost, held loop never lost (3.9b, 3.9e)")
+    P.subtitle(ax, "Held: no losses up to 1 s; 180-degree slips from 10 ms, our own TX_DIS pushing the TCXO (3.9i)")
+    ax.legend(loc="center left", fontsize=8)
+    # (c) where releases end
+    ax = axs[1, 0]
+    d = json.load(open(last("falselock_2*.json")[-1]))
+    conds = sorted(set((r["mhz"], r["dsa"]) for r in d["rows"]))
+    for k, c in enumerate(conds):
+        rows = [r for r in d["rows"] if (r["mhz"], r["dsa"]) == c]
+        for r in rows:
+            ok = r["state"] in ("locked", "slipped")
+            ax.plot(r["start_khz"], k, ls="none", marker="o" if ok else "D", markersize=7, color=P.SERIES[0] if ok else P.SERIES[1],
+                    markerfacecolor=P.SERIES[0] if ok else P.SURFACE, markeredgewidth=1.5)
+    ax.set_yticks(range(len(conds)))
+    ax.set_yticklabels(["%.1f GHz, DSA %.0f" % (m / 1e3, x) for m, x in conds])
+    ax.set_ylim(-0.7, len(conds) - 0.3)
+    ax.set_xlabel("released from, kHz off the lock")
+    ax.set_title("Where releases end (3.9h)")
+    P.subtitle(ax, "filled: locked; hollow diamond: false lock or runaway.  The window is about -10 to +20..+60 kHz")
+    # (d) the search
+    ax = axs[1, 1]
+    for k, f in enumerate(last("search2_2*.json")):
+        d = json.load(open(f))
+        for j, dsa in enumerate(sorted(set(r["dsa"] for r in d["rows"]))):
+            rows = sorted([r for r in d["rows"] if r["dsa"] == dsa], key=lambda r: r["offset_hz"])
+            ax.plot([r["offset_hz"] / 1e3 for r in rows], [r["n_tries"] for r in rows], marker="o", markersize=5,
+                    color=P.SERIES[2 * k + j], label="%.1f GHz DSA %.0f: %d of %d" % (d["mhz"] / 1e3, dsa, sum(r["locked"] for r in rows), len(rows)))
+    ax.set_xlabel("the TX synthesizer's offset (fractional-N), kHz")
+    ax.set_ylabel("releases until locked")
+    ax.set_title("Acquisition from a real offset (3.9j)")
+    P.subtitle(ax, "A downward stepped search from +120 kHz, 15 kHz a step, the detector stopping it")
+    ax.legend(loc="upper right")
+    fig.suptitle("Board A: the Costas loop's lock and its loss, in loopback (2026-10-30)", x=0.01, ha="left", fontsize=13,
+                 fontweight="bold", color=P.INK)
+    fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.07)
+    return P.save(fig, os.path.join(OUTP, "locklab.png"))
+
+
 def main(argv):
     P.setup()
+    if len(argv) > 1 and argv[1] == "locklab":
+        print(locklab())
+        return
     if len(argv) > 1 and argv[1] == "pod":
         pd = os.path.join(DATA, "pod")
         print(pod(sorted(glob.glob(os.path.join(pd, "leak_*.json")))[-1], sorted(glob.glob(os.path.join(pd, "lomon_*.json")))[-1]))
