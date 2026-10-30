@@ -95,8 +95,10 @@ class Night:
             self.b.record("note", text="quiet() failed: %s" % e)
 
     def tune(self, mhz):
-        self.cl.pll_tune(0, float(mhz))
-        self.cl.pll_tune(1, float(mhz))
+        # integer-N: a multiple of 25 MHz with R = 1, else the survey's 5 MHz PFD (R = 5, CP 15)
+        args = () if mhz % 25 == 0 else (5.0, 15)
+        self.cl.pll_tune(0, float(mhz), *args)
+        self.cl.pll_tune(1, float(mhz), *args)
         time.sleep(S.RELOCK_S)
         return self.cl.pll_locked()
 

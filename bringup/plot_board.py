@@ -260,11 +260,16 @@ def night_loop(L):
 
 
 def night_acquire(L):
-    rows, path = night("acquire")
+    rows, path = night("acquire_20")                  # the combined file, not one frequency's
     if not rows:
         return None
     rows = [r for r in rows if r.get("rows")]
-    states = [("locked", P.SERIES[0], "o"), ("false", P.SERIES[1], "D"), ("unlocked", P.SERIES[3], "s"), ("railed", P.MUTED, "x")]
+    states = [("locked", P.SERIES[0], "o"), ("false", P.SERIES[1], "D"), ("unlocked", P.SERIES[3], "s"), ("railed", P.MUTED, "x"),
+              ("vc_clipped", P.MUTED, "+")]
+    for r in rows:                                   # batch 2 ran before lock_state knew a clipped VC: reclassify
+        for x in r["rows"]:
+            if x.get("state") == "locked" and not 0.1 < x.get("vc", 1.65) < 3.2:
+                x["state"] = "vc_clipped"
     n = len(rows)
     cols = min(3, n)
     fig, axs = plt.subplots((n + cols - 1) // cols, cols, figsize=(4.4 * cols, 3.9 * ((n + cols - 1) // cols)), squeeze=False)
@@ -279,10 +284,10 @@ def night_acquire(L):
         if locked:
             v = [x["vc_start"] for x in locked]
             note += "; locks from VC %.2f-%.2f V" % (min(v), max(v))
-        walk = [w for w in r.get("dsa_walk", []) if w["state"] == "locked"]
+        walk = [w for w in r.get("dsa_walk", []) if w["state"] == "locked" and 0.1 < w.get("vc", 1.65) < 3.2]
         if walk:
             note += "\nheld over DSA %.0f-%.0f dB" % (min(w["dsa"] for w in walk), max(w["dsa"] for w in walk))
-        hold = [h for h in r.get("hold_in", []) if h["state"] == "locked"]
+        hold = [h for h in r.get("hold_in", []) if h["state"] == "locked" and 0.1 < h.get("vc", 1.65) < 3.2]
         if hold:
             note += "; VC_OFF %+.2f/%+.2f V" % (min(h["dvc_off"] for h in hold), max(h["dvc_off"] for h in hold))
         ax.set_title("%.1f GHz" % (r["mhz"] / 1e3))
