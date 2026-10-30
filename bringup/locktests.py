@@ -149,15 +149,18 @@ class Lock0(LT.Schemes):
         self.cl.ctrl(tx_dis=0, loop_hold=0)
         time.sleep(0.8)
         a_mon = abs(i_mean - i_off)
-        sc.channel(3, scale=0.02, offset=-q_mean)
+        vdiv = max(0.01, 1.2 * a_mon / 4)                   # +-1.2 a on the screen: the transient is never clipped
+        lev = max(0.012, 0.25 * a_mon)
+        sc.channel(3, scale=vdiv, offset=-q_mean)
         v0 = self.cl.dac_volts()["VC_OFF"]
-        out = {"delta": delta, "khz": delta * self.kv(mhz) / 1e3, "a_mon": a_mon, "q_mean": q_mean, "caps": []}
+        out = {"delta": delta, "khz": delta * self.kv(mhz) / 1e3, "a_mon": a_mon, "q_mean": q_mean, "vdiv": vdiv,
+               "trigger_offset": lev, "caps": []}
         for tdiv in tdivs:
             sc.timebase(scale=tdiv, delay=4 * tdiv)
             for sgn in (+1, -1):
                 got = None
-                for slope, lev in (("rising", q_mean + 0.012), ("falling", q_mean - 0.012)):
-                    sc.trigger(source=3, level=lev, slope=slope)
+                for slope, lv in (("rising", q_mean + lev), ("falling", q_mean - lev)):
+                    sc.trigger(source=3, level=lv, slope=slope)
                     sc.arm()
                     self.cl.dac(S.DAC1, VC_OFF=float(v0 + (delta if sgn > 0 else 0.0)))
                     try:
@@ -169,6 +172,8 @@ class Lock0(LT.Schemes):
                         break
                     self.cl.dac(S.DAC1, VC_OFF=float(v0 if sgn > 0 else v0 + delta))   # undo, settle, try the other slope
                     time.sleep(0.4)
+                if not got:                                  # neither slope fired: a forced record, kept as such
+                    sc.acquire_now()
                 t, q, _ = sc.waveform(3)
                 t, q = np.asarray(t), np.asarray(q)
                 k = max(1, len(q) // 4000)
@@ -409,6 +414,194 @@ class Lock0(LT.Schemes):
         return out
 
 
+def _step_only(self, mhz, deltas=(0.005, 0.01)):
+    """the step response alone, re-run (the first pass's Q MON at 20 mV/div clipped at 5.0 GHz and lost the trigger
+    at 5.2): from a lock at the regulated DSA, each delta"""
+    out = {"mhz": mhz, "runs": []}
+    self.scope_iq(vdiv=0.1)
+    try:
+        self.tx(False)
+        self.center(mhz)
+        cen = self.centres()
+        reg = self.regulated_dsa(mhz)
+        out["regulated_dsa"] = reg
+        for d in deltas:
+            if self.acquire0(mhz, reg, cen) is None:
+                out["runs"].append({"delta": d, "error": "no lock"})
+                continue
+            print(" %d MHz, step %.3f V:" % (mhz, d), flush=True)
+            out["runs"].append(self.step_response(mhz, cen, delta=d))
+            self.cl.ctrl(loop_hold=1)
+    finally:
+        self.cl.ctrl(loop_hold=1)
+        self.cl.dac(S.DAC1, VC_OFF=S.V_MID)
+        self.quiet()
+        path = LT.save("step0_%d" % mhz, out)
+        self.b.record("verdict", test="step0", ok=None, file=path, mhz=mhz,
+                      text="the loop's step response re-run, Q MON scaled to the idle (f_n and damping)")
+    return out
+
+
+def _confirm_scan(self, mhz, confirms=(6, 8, 10, 12, 16, 24, 32), count=4000):
+    """A1 vetoed every decision at confirm 6 (60 ns after the decision) while A2 and A3 were confirmed: the slow I
+    stage's gain of 20 idles it overdriven (PATHS.md section 7: start the confirm delay at 80 ns).  A1 and A2 at each
+    confirm delay, to find where the slow I agrees"""
+    out = {"mhz": mhz, "rows": []}
+    self.scope_iq(vdiv=0.1)
+    try:
+        self.tx(False)
+        self.center(mhz)
+        cen = self.centres()
+        reg = self.regulated_dsa(mhz)
+        lk = self.acquire0(mhz, reg, cen)
+        if lk is None:
+            out["error"] = "no lock"
+            return out
+        side, a_leg = lk["side"], abs(lk["frame"]["di"])
+        self.thresholds(cen, a_leg)
+        diag = {}
+        for mir in (False, True):
+            st = self.run_scheme(rx_pair("A3", side, mir), count=2000)
+            diag[mir] = sum(st["confusion"][k][k] for k in range(4))
+        mirror = diag[True] > diag[False]
+        for c in confirms:
+            for name in ("A1", "A2"):
+                side_now, ok, _ = self.frame0(cen, a_leg)
+                if not ok:
+                    if self.acquire0(mhz, reg, cen) is None:
+                        break
+                    side_now, ok, _ = self.frame0(cen, a_leg)
+                tx, rx = rx_pair(name, side_now, mirror)
+                cl = self.cl
+                cl.tx_points(tx.tx_idle(), [point_code(i, q) for i, q in tx.msgs])
+                cl.rx_config(rx.idle_vector(), rx.mask, rx.lut(False), rx.slow_exp(), delay=16, quiet=4, confirm=c,
+                             window=100)
+                cl.events(period=2000, width=20, count=count, n=tx.n)
+                cl.rx_clear()
+                cl.tx_go()
+                time.sleep(2000 * count * cl.t_clk + 0.2)
+                st = cl.rx_stats()
+                cl.hold_point(1, 0)
+                out["rows"].append({"confirm_clocks": c, "scheme": name, **st})
+                print("  confirm %d clocks (%d ns): %s decided %d confirmed %d vetoed %d" % (
+                    c, c * 10, name, st["decided"], st["confirm"], st["veto"]), flush=True)
+        # the slow comparators held at each point (the loop held), to see what CMP_I_S reads
+        statics = []
+        for pt in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            self.cl.ctrl(loop_hold=1)
+            self.cl.hold_point(*pt)
+            time.sleep(0.02)
+            g = self.cl.gate(seconds=0.002)
+            statics.append({"tx_point": pt, "duty": {k: g[k]["duty"] for k in ("CMP_I", "CMP_I_S", "CMP_QP_S", "CMP_QN_S",
+                                                                                  "CMP_QP", "CMP_QN")}})
+            print("  held at TX %s: %s" % (pt, {k: round(v, 2) for k, v in statics[-1]["duty"].items()}), flush=True)
+        self.cl.hold_point(1, 0)
+        out["statics"] = statics
+    finally:
+        self.cl.ctrl(loop_hold=1)
+        try:
+            self.cl.tx_stop()
+        except Exception:                                            # noqa: BLE001
+            pass
+        self.cl.dac(S.DAC1, VC_OFF=S.V_MID)
+        self.quiet()
+        path = LT.save("confirm0_%d" % mhz, out)
+        self.b.record("verdict", test="confirm0", ok=None, file=path, mhz=mhz,
+                      text="A1 / A2 against the confirm delay: where the slow I comparator agrees; the slow comparators at each held point")
+    return out
+
+
+def _dsa_only(self, mhz):
+    """the DSA range alone, re-run (the first pass at 5.2 GHz lost every release above DSA 2 to a centring that could
+    not bring a clipped VC back at a low DSA; overnight.Night.center now centres at DSA 31.75)"""
+    out = {"mhz": mhz}
+    self.scope_iq(vdiv=0.1)
+    try:
+        self.tx(False)
+        self.center(mhz)
+        cen = self.centres()
+        out["dsa_range"] = self.dsa_range(mhz, cen)
+    finally:
+        self.cl.ctrl(loop_hold=1)
+        self.cl.dac(S.DAC1, VC_OFF=S.V_MID)
+        self.quiet()
+        path = LT.save("dsa0_%d" % mhz, out)
+        self.b.record("verdict", test="dsa0", ok=None, file=path, mhz=mhz, text="the DSA range at the designed lock, re-run")
+    return out
+
+
+def _vt2_scan(self, mhz, vs=(1.65, 1.75, 1.85, 1.95, 2.1, 2.3, 2.6), confirm=10, count=4000):
+    """the slow Q window's threshold: V_T2 was left at V_MID (its default), so at a point with Q near zero (A1's flip)
+    CMP_QP_S or CMP_QN_S reads the leg's offset and the expected (0, 0) is vetoed.  V_T2 at the Q legs' no-carrier
+    level plus k a, A1 and A2 at each (the confirm 100 ns: PATHS.md section 7 says 80 ns or more).  The slow Q stage
+    (U502) is x20, so V_T2 sits above 20 times the arm's static error (BRINGUP.md section 5): absolute volts here"""
+    out = {"mhz": mhz, "rows": []}
+    self.scope_iq(vdiv=0.1)
+    try:
+        self.tx(False)
+        self.center(mhz)
+        cen = self.centres()
+        reg = self.regulated_dsa(mhz)
+        lk = self.acquire0(mhz, reg, cen)
+        if lk is None:
+            out["error"] = "no lock"
+            return out
+        side, a_leg = lk["side"], abs(lk["frame"]["di"])
+        self.thresholds(cen, a_leg)
+        q0 = 0.5 * ((cen["QP"]["v0"] or S.V_MID) + (cen["QN"]["v0"] or S.V_MID))
+        out.update(a_leg=a_leg, q0=q0)
+        diag = {}
+        for mir in (False, True):
+            st = self.run_scheme(rx_pair("A3", side, mir), count=2000)
+            diag[mir] = sum(st["confusion"][k][k] for k in range(4))
+        mirror = diag[True] > diag[False]
+        for v in vs:
+            k = (v - q0) / a_leg
+            self.cl.dac(S.DAC2, V_T2=float(v))
+            time.sleep(0.02)
+            g = self.cl.gate(seconds=0.01, inputs=("CMP_QP_S", "CMP_QN_S", "CMP_I_S"))
+            idle = {x: g[x]["duty"] for x in ("CMP_QP_S", "CMP_QN_S", "CMP_I_S")}
+            for name in ("A1", "A2", "A3"):
+                side_now, ok, _ = self.frame0(cen, a_leg)
+                if not ok:
+                    if self.acquire0(mhz, reg, cen) is None:
+                        break
+                    side_now, ok, _ = self.frame0(cen, a_leg)
+                tx, rx = rx_pair(name, side_now, mirror)
+                cl = self.cl
+                cl.tx_points(tx.tx_idle(), [point_code(i, q) for i, q in tx.msgs])
+                cl.rx_config(rx.idle_vector(), rx.mask, rx.lut(False), rx.slow_exp(), delay=16, quiet=4, confirm=confirm,
+                             window=100)
+                cl.events(period=2000, width=20, count=count, n=tx.n)
+                cl.rx_clear()
+                cl.tx_go()
+                time.sleep(2000 * count * cl.t_clk + 0.2)
+                st = cl.rx_stats()
+                cl.hold_point(1, 0)
+                out["rows"].append({"k": k, "v_t2": v, "idle_slow": idle, "scheme": name, **st})
+                print("  V_T2 %.3f V (q0 + %.2f a): idle QP_S %.2f QN_S %.2f; %s decided %d confirmed %d vetoed %d" % (
+                    v, k, idle["CMP_QP_S"], idle["CMP_QN_S"], name, st["decided"], st["confirm"], st["veto"]), flush=True)
+    finally:
+        self.cl.dac(S.DAC2, V_T2=S.V_MID)
+        self.cl.ctrl(loop_hold=1)
+        try:
+            self.cl.tx_stop()
+        except Exception:                                            # noqa: BLE001
+            pass
+        self.cl.dac(S.DAC1, VC_OFF=S.V_MID)
+        self.quiet()
+        path = LT.save("vt2_%d" % mhz, out)
+        self.b.record("verdict", test="vt2", ok=None, file=path, mhz=mhz,
+                      text="the slow Q window's threshold V_T2 against A1 / A2 / A3's confirmation (V_T2 had been left at V_MID)")
+    return out
+
+
+Lock0.vt2_scan = _vt2_scan
+Lock0.dsa_only = _dsa_only
+Lock0.step_only = _step_only
+Lock0.confirm_scan = _confirm_scan
+
+
 def fit_step(t, y, a_mon):
     """the phase error after a frequency step, phi = asin(y / a), against a second-order loop's
     A e^(-s t') sin(w t') (underdamped) and A (e^(-s1 t') - e^(-s2 t')) (overdamped), t' = t - t0; the better fit"""
@@ -458,7 +651,7 @@ def fit_step(t, y, a_mon):
 
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("section", choices=["lock", "schemes", "all"])
+    ap.add_argument("section", choices=["lock", "schemes", "all", "step", "confirm", "dsa", "vt2"])
     ap.add_argument("--mhz", type=int, nargs="+", default=[5000, 5200])
     a = ap.parse_args(argv)
     L = Lock0()
@@ -467,6 +660,14 @@ def main(argv):
             L.lock(mhz)
         if a.section in ("schemes", "all"):
             L.schemes0(mhz)
+        if a.section == "vt2":
+            L.vt2_scan(mhz)
+        if a.section == "dsa":
+            L.dsa_only(mhz)
+        if a.section == "step":
+            L.step_only(mhz)
+        if a.section == "confirm":
+            L.confirm_scan(mhz)
 
 
 if __name__ == "__main__":

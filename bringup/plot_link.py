@@ -23,7 +23,7 @@ def newest(pat):
     return fs[-1] if fs else None
 
 
-def constellations(d, path):
+def constellations(d, path, title=None, out_name=None):
     runs = [r for r in d["runs"] if r.get("constellations")]
     if not runs:
         return None
@@ -43,11 +43,11 @@ def constellations(d, path):
         ax.set_ylabel("Q MON (V)")
         ax.set_title(n, pad=6)
         ax.grid(True)
-    fig.suptitle("Board A's constellations in loopback, %d MHz, DSA %.2f dB (the inverted Costas lock, idle on %sQ)" % (
+    fig.suptitle(title or "Board A's constellations in loopback, %d MHz, DSA %.2f dB (the inverted Costas lock, idle on %sQ)" % (
         d["mhz"], r["dsa"], "+" if r["rot_deg"] > 0 else "-"), x=0.01, ha="left", fontsize=12, fontweight="bold")
     P.source(fig, "bringup/linktests.py schemes; %s; I MON / Q MON at 1 Mohm through the taps' 1 k: 5 us events, the messages in turn" % os.path.relpath(path, HERE))
     fig.tight_layout(rect=(0, 0, 1, 0.93))
-    return P.save(fig, os.path.join(OUTP, "link_constellations_%d.png" % d["mhz"]))
+    return P.save(fig, os.path.join(OUTP, out_name or "link_constellations_%d.png" % d["mhz"]))
 
 
 def latency(d, path):
@@ -280,8 +280,215 @@ def turn_sweep(path):
     return P.save(fig, os.path.join(OUTP, "link_turn_sweep.png"))
 
 
+
+# ---- after the sign jumpers moved (locktests.py) ----
+def lock0(paths):
+    """the designed lock at each frequency: pull-in, the step response, the DSA range, and the hold-in and hold tests"""
+    ds = [json.load(open(p)) for p in paths]
+    if not ds:
+        return None
+    extra = []
+    for d in ds:                                       # the re-runs (locktests.py dsa / step) replace the first pass's
+        f = newest("dsa0_%d_*.json" % d["mhz"])
+        if f:
+            d["dsa_range"] = json.load(open(f))["dsa_range"]
+            extra.append(f)
+        runs = [d["step_response"]] if d.get("step_response") else []
+        for f in sorted(glob.glob(os.path.join(DATA, "link", "step0_%d_*.json" % d["mhz"]))):
+            runs += [r for r in json.load(open(f))["runs"] if r.get("caps")]
+            extra.append(f)
+        fits = [(r, c) for r in runs for c in r.get("caps", []) if c.get("fit") and c["fit"].get("model") == "under"
+                and 0.2 < c["fit"]["zeta"] < 1.5 and 500 < c["fit"]["fn_hz"] < 2e4 and c["tdiv"] < 5e-4]
+        d["step_fits"] = [c["fit"] for _, c in fits]
+        if fits:
+            r, c = min(fits, key=lambda rc: rc[1]["fit"]["rms_rad"] / max(0.05, abs(rc[1]["fit"]["peak_rad"])))
+            d["step_response"] = dict(r, caps=[c])
+    paths = list(paths) + extra
+    fig, axs = plt.subplots(2, 2, figsize=(15.0, 10.5), gridspec_kw={"wspace": 0.32, "hspace": 0.45})
+    marks = {"locked": ("o", None), "railed": ("x", None), "false": ("D", None), "unlocked": ("s", None),
+             "vc_clipped": ("+", None), "locked_off_axis": ("o", "hollow")}
+    ax = axs[0, 0]
+    for k, d in enumerate(ds):
+        for r in d.get("pull_in", []):
+            st = r.get("state0", r["state"])
+            m, h = marks.get(st, ("s", None))
+            col = P.SERIES[k]
+            ax.plot(r["offset_khz"], k, ls="none", marker=m, markersize=9, color=col,
+                    markerfacecolor=P.SURFACE if (h or m in "x+") else col, markeredgecolor=col, markeredgewidth=1.6)
+    ax.set_yticks(range(len(ds)))
+    ax.set_yticklabels(["%.1f GHz, DSA %.0f" % (d["mhz"] / 1e3, d["regulated_dsa"]) for d in ds])
+    ax.set_ylim(-0.7, len(ds) - 0.3)
+    ax.set_xlabel("the held beat's offset at release, kHz")
+    ax.set_title("Pull-in: released from a held beat")
+    P.subtitle(ax, "o locked (the idle on +-I, CMP_I quiet); x the integrator railed; diamond a false lock")
+    ax = axs[0, 1]
+    for k, d in enumerate(ds):
+        sr = d.get("step_response") or {}
+        caps = [c for c in sr.get("caps", []) if c.get("fit") and c["fit"].get("model") and c["tdiv"] < 5e-4]
+        if not caps:
+            continue
+        c = min(caps, key=lambda c: c["fit"]["rms_rad"])
+        t = np.asarray(c["t"]); q = np.asarray(c["q"]) - sr["q_mean"]
+        phi = np.arcsin(np.clip(q / sr["a_mon"], -1, 1))
+        f = c["fit"]; A, a, b, t0 = f["params"]
+        x = np.clip(t - t0, 0, None)
+        fit = A * np.exp(-a * x) * np.sin(b * x) if f["model"] == "under" else A * (np.exp(-a * x) - np.exp(-b * x))
+        sg = np.sign(f["peak_rad"]) or 1
+        ax.plot((t - t0) * 1e6, sg * phi, color=P.SERIES[k], lw=1.2, alpha=0.55)
+        ax.plot((t - t0) * 1e6, sg * fit, color=P.SERIES[k], lw=2.2, ls=(0, (5, 2)),
+                label="%.1f GHz: f_n %.2f kHz, damping %.2f (%s, %.1f kHz step)" % (d["mhz"] / 1e3, f["fn_hz"] / 1e3, f["zeta"],
+                                                                                  "up" if c["up"] else "down", sr["khz"]))
+        fs = d.get("step_fits") or []
+        if len(fs) > 1:
+            ax.text(0.98, 0.70 - 0.08 * k, "%.1f GHz, %d clean fits: f_n %.2f-%.2f kHz, damping %.2f-%.2f" % (
+                d["mhz"] / 1e3, len(fs), min(x["fn_hz"] for x in fs) / 1e3, max(x["fn_hz"] for x in fs) / 1e3,
+                min(x["zeta"] for x in fs), max(x["zeta"] for x in fs)), transform=ax.transAxes, ha="right", fontsize=8.5,
+                color=P.INK2)
+    ax.axhline(0, color=P.MUTED, lw=1)
+    ax.set_xlim(-50, 600)
+    ax.set_xlabel("time from the VC_OFF step, us")
+    ax.set_ylabel("phase error, rad")
+    ax.set_title("The step response after a frequency step")
+    P.subtitle(ax, "asin(Q MON / the idle's I MON) on the scope at 1 Mohm; thin the capture, dashed the fit")
+    ax.legend(loc="upper right")
+    ax = axs[1, 0]
+    for k, d in enumerate(ds):
+        rows = d.get("dsa_range", [])
+        lk = [r for r in rows if r["locked"]]
+        if lk:
+            ax.plot([r["dsa"] for r in lk], [20 * np.log10(abs(r["di"])) for r in lk], color=P.SERIES[k], marker="o",
+                    markersize=5, label="%.1f GHz" % (d["mhz"] / 1e3))
+        nl = [r for r in rows if not r["locked"]]
+        if nl:
+            ax.plot([r["dsa"] for r in nl], [-32] * len(nl), ls="none", marker="x", color=P.SERIES[k], markersize=8)
+    if ds and ds[0].get("dsa_range"):
+        r0 = [r for r in ds[0]["dsa_range"] if r["locked"]]
+        if r0:
+            x0 = r0[-1]["dsa"]; y0 = 20 * np.log10(abs(r0[-1]["di"]))
+            xx = np.array([x0 - 20, x0])
+            ax.plot(xx, y0 + (x0 - xx), color=P.MUTED, lw=1, ls=(0, (4, 3)))
+            ax.text(x0 - 20, y0 + 20.5, "1 dB per dB", color=P.INK2, fontsize=8.5)
+    ax.set_xlabel("DSA, dB")
+    ax.set_ylabel("the I leg's DC at the lock, dB re 1 V")
+    ax.set_title("The attenuator range")
+    P.subtitle(ax, "A release from a few kHz at each DSA; x along the bottom: no lock")
+    ax.legend(loc="upper right")
+    ax = axs[1, 1]
+    ax.axis("off")
+    lines = []
+    for d in ds:
+        lines.append("%.1f GHz, DSA %.0f, the lock at VC %.3f V" % (d["mhz"] / 1e3, d["regulated_dsa"], d.get("vc_lock", float("nan"))))
+        hi = d.get("hold_in", {})
+        if hi:
+            lines.append("  static hold-in (a slow ramp): %+.0f / %+.0f kHz," % (
+                hi.get("+", {}).get("khz", float("nan")), hi.get("-", {}).get("khz", float("nan"))))
+            lines.append("    the integrator's and the DAC's range, not the loop's")
+        st = d.get("steps", [])
+        if st:
+            held = [abs(r["khz"]) for r in st if r["locked"]]
+            lost = [r["khz"] for r in st if not r["locked"]]
+            lines.append("  steps held to %.0f kHz%s" % (max(held) if held else 0,
+                         (", lost at %+.0f kHz" % lost[0]) if lost else ""))
+        for h in d.get("hold_test", []):
+            lines.append("  hold %g s: %s%s%s" % (h["hold_s"], "locked after" if h["locked_after"] else "LOST",
+                         ", to the other side" if h["slipped"] else "",
+                         "" if h.get("dq_end") is None else ", Q moved %+.3f V" % h["dq_end"]))
+        lines.append("")
+    ax.text(0, 1, "\n".join(lines), transform=ax.transAxes, va="top", ha="left", fontsize=9.5, color=P.INK2, family="monospace")
+    ax.set_title("Hold-in and the hold test")
+    fig.suptitle("Board A: the Costas loop at its designed point (sign jumpers moved, 2026-10-30)", x=0.01, ha="left",
+                 fontsize=13, fontweight="bold", color=P.INK)
+    P.source(fig, "bringup/locktests.py lock; %s" % ", ".join(os.path.relpath(p, HERE) for p in paths))
+    fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.08)
+    return P.save(fig, os.path.join(OUTP, "lock0.png"))
+
+
+def schemes0(paths):
+    """the plan's schemes at the designed lock: latency, the closed-loop BER, the idle's false events"""
+    ds = [json.load(open(p)) for p in paths]
+    if not ds:
+        return None
+    fig, axs = plt.subplots(1, 3, figsize=(15.5, 5.4))
+    ax = axs[0]
+    labels = []
+    for k, d in enumerate(ds):
+        for j, s in enumerate(d.get("runs", [])):
+            if not s.get("lat_n"):
+                continue
+            y = j + 0.18 * (k - (len(ds) - 1) / 2)
+            lo, mu, hi = (s[x] * 1.25 for x in ("lat_min", "lat_mean", "lat_max"))
+            ax.plot([lo, hi], [y, y], color=P.SERIES[k], lw=2.4, solid_capstyle="round")
+            ax.plot(mu, y, "o", color=P.SERIES[k], markersize=7, markeredgecolor=P.SURFACE,
+                    label="%.1f GHz, DSA %.0f" % (d["mhz"] / 1e3, d["regulated_dsa"]) if j == 0 else None)
+            ok = s["decided"] == s["events"] and not s["false"] and not s["missed"]
+            if k == 0:
+                labels.append("%s%s" % (s["scheme"], " (first edge)" if s["first_edge"] else ""))
+            ax.text(hi + 0.6, y, "%d/%d%s" % (s["decided"], s["events"], "" if ok else " !"), fontsize=7.5, color=P.INK2,
+                    va="center")
+    ax.set_yticks(range(len(labels)))
+    ax.set_yticklabels(labels)
+    ax.set_ylim(len(labels) + 0.4, -0.6)
+    ax.set_xlabel("TX event to RX decision, ns (min, mean, max)")
+    ax.set_title("The plan's schemes, 20 000 events each")
+    P.subtitle(ax, "Decided / sent beside each; none false or missed unless marked !")
+    ax.legend(loc="lower right")
+    ax = axs[1]
+    for k, d in enumerate(ds):
+        b = [r for r in d.get("ber", []) if r.get("bits")]
+        if not b:
+            continue
+        x = np.array([r["baud"] / 1e6 for r in b])
+        y = np.array([r["ber"] for r in b])
+        z = y == 0
+        ub = np.array([1.0 / r["bits"] for r in b])
+        ax.plot(x[~z], y[~z], "o", color=P.SERIES[k], markersize=8, label="%.1f GHz: errors" % (d["mhz"] / 1e3))
+        ax.plot(x[z], ub[z], "v", color=P.SERIES[k], markersize=8, markerfacecolor=P.SURFACE, markeredgewidth=1.6,
+                label="%.1f GHz: none (1 / bits shown)" % (d["mhz"] / 1e3))
+    ax.set_xscale("log"); ax.set_yscale("log")
+    ax.set_xlabel("symbol rate, Mbaud (BPSK, PRBS15)")
+    ax.set_ylabel("bit-error rate")
+    ax.set_title("The BER on CMP_I, the loop closed")
+    P.subtitle(ax, "1 s a rate; the Costas loop tracks through the data")
+    ax.legend(loc="upper left")
+    ax = axs[2]
+    wins = ("CMP_QP", "CMP_QN", "CMP_IP", "CMP_IN", "CMP_I")
+    for k, d in enumerate(ds):
+        fe = d.get("false_events", [])
+        if not fe:
+            continue
+        fr = [r["frac"] for r in fe]
+        tot = [sum(r["edges"][w] for w in wins) for r in fe]
+        y = [t if t else 0.5 for t in tot]
+        ax.plot(fr, y, color=P.SERIES[k], marker="o", markersize=6, label="%.1f GHz" % (d["mhz"] / 1e3))
+        for x_, t in zip(fr, tot):
+            if not t:
+                ax.plot(x_, 0.5, "v", color=P.SERIES[k], markersize=8, markerfacecolor=P.SURFACE, markeredgewidth=1.6)
+    ax.set_yscale("log")
+    ax.set_ylim(0.3, None)
+    ax.set_xlabel("the windows' place, a fraction of the idle's leg a")
+    ax.set_ylabel("comparator edges at the idle, per second (all five)")
+    ax.set_title("The idle's false events")
+    P.subtitle(ax, "Hollow at 0.5: none in 1 s")
+    ax.legend(loc="upper right")
+    fig.suptitle("Board A: the plan's schemes at the designed lock (sign jumpers moved, 2026-10-30)", x=0.01, ha="left",
+                 fontsize=13, fontweight="bold", color=P.INK)
+    P.source(fig, "bringup/locktests.py schemes; %s" % ", ".join(os.path.relpath(p, HERE) for p in paths))
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    out = [P.save(fig, os.path.join(OUTP, "schemes0.png"))]
+    for d, p in zip(ds, paths):
+        if d.get("constellations"):
+            d2 = {"mhz": d["mhz"], "runs": [{"constellations": d["constellations"], "dsa": d["regulated_dsa"]}]}
+            out.append(constellations(d2, p, title="Board A's constellations at the designed lock, %d MHz, DSA %.2f dB (the idle on %sI)" % (
+                d["mhz"], d["regulated_dsa"], "+" if d.get("side", 1) > 0 else "-"), out_name="schemes0_constellations_%d.png" % d["mhz"]))
+    return out
+
+
 def main(argv):
     P.setup()
+    if len(argv) > 1 and argv[1] in ("lock0", "schemes0"):
+        fs = argv[2:] or sorted(set(newest("%s_%d_*.json" % (argv[1], m)) for m in (5000, 5200)) - {None})
+        print((lock0 if argv[1] == "lock0" else schemes0)(fs))
+        return
     if len(argv) > 1 and argv[1] == "lodrive":
         print(lodrive(argv[2] if len(argv) > 2 else newest("lodrive_*.json")))
         return

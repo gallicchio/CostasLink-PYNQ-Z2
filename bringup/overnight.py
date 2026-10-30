@@ -259,7 +259,10 @@ class Night:
 
     def center(self, mhz):
         """the integrator re-centred where the trims reach (5.8 GHz, the TX muted), then both synthesizers back at mhz:
-        the hold keeps U112A across the retune (measured 16:55)"""
+        the hold keeps U112A across the retune (measured 16:55).  The DSA at its top first: at a low DSA the muted TX's
+        leak beats against the RX LO and the trims cannot hold sign(I), so a clipped VC never comes back (board A,
+        5.2 GHz, DSA 4, 2026-10-30 08:20); the caller sets its DSA after"""
+        self.cl.dsa(31.75)
         self.tune(5800)
         r = S.loop_center(self.b)
         self.tune(mhz)
