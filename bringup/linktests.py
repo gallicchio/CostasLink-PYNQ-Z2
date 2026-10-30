@@ -835,6 +835,206 @@ class LoDrive(Schemes):
         return out
 
 
+# ---- the turnaround (the reply overlay, gateware a173ec9: turnaround.v; BRINGUP stage 3.4g) ----
+class Mirrored(Scheme):
+    """one Scheme for the driver's turnaround calls (scheme(), loopback_turnaround(), ring_run(), the fast path's
+    tables): its TX points are the transmitter's, and its receiver frame is the inverted lock's, the TX point
+    mirrored (I -> -I, rev A's inverted I arm: REVB 9) and turned by -rot, as rx_schemes' rx half"""
+
+    def __init__(self, tx, rot):
+        super().__init__(tx.name, tx.text + " (I mirrored, frame %+d)" % rot, tx.idle, tx.msgs, [], rot_deg=-rot,
+                         pilot=tx.pilot, t=tx.t, t2=tx.t2)
+        self.mask, self.use = tx.mask, tx.use
+
+    def rx_point(self, iq):
+        i, q = iq
+        return Scheme.rx_point(self, (-i, q))
+
+
+def turn_pairs(rot):
+    """A3r and A2r from rx_schemes, and A1q2: the BPSK flip and the null as two messages on QP / QN (A1q has one
+    message, and an answer must differ from its stimulus to be seen), the 1-bit floor on the fast bank's windows"""
+    out = {s[0].name: s for s in rx_schemes(rot, True)}
+    tx = Scheme("A1q2", "1 bit: the flip or the null, QP / QN", (1, 0), [(-1, 0), (0, 0)], [CMP_QP, CMP_QN],
+                rot_deg=rot, use=WIN)
+    m = lambda p: (-p[0], p[1])                                          # noqa: E731
+    rx = Scheme("A1q2", tx.text + " (I mirrored)", m(tx.idle), [m(x) for x in tx.msgs], [CMP_QP, CMP_QN],
+                rot_deg=-rot, use=WIN)
+    out["A1q2"] = (tx, rx)
+    return out
+
+
+def trim_capture(cap, before=24, after=240):
+    """the capture's lists around its trigger (the stimulus's TX event)"""
+    t0 = cap["trigger_sample"]
+    lo, hi = max(0, t0 - before), t0 + after
+    out = {}
+    for k, v in cap.items():
+        if isinstance(v, list) and len(v) > hi:
+            out[k] = v[lo:hi]
+        elif not isinstance(v, list):
+            out[k] = v
+    out["trim_lo"] = lo
+    return out
+
+
+class Turn(Schemes):
+    def lc(self):
+        """a CostasLink on this side over the netbus's plain bus: the driver's turnaround calls take Scheme objects,
+        which the network's calls pass only by name"""
+        if not hasattr(self, "_lc"):
+            from netbus import NetBus
+            self._lc = CostasLink(NetBus(self.b.cfg["pynq_host"], self.b.cfg.get("pynq_port", 5800)))
+        return self._lc
+
+    def turn(self, mhz=5000, dsa=None, frac=0.4, count=5000, period=1000, delay=16, names=("A3r", "A2r", "A1q2"),
+             delays=(16, 8, 4), mask=0x1E):
+        lc = self.lc()
+        out = {"mhz": mhz, "frac": frac, "delay": delay, "delays": list(delays), "mask": mask, "count": count, "period": period,
+               "runs": []}
+        self.scope_iq(vdiv=0.1)
+        try:
+            self.tx(False)
+            self.center(mhz)
+            v, tr = self.null_fast_i()
+            out["i_off_f"] = v
+            cen = self.centres()
+            out["centres"] = {w: cen[w]["v0"] for w in ("QP", "QN", "IP", "IN")}
+            dsa = dsa if dsa is not None else self.regulated_dsa(mhz)
+            out["dsa"] = dsa
+            ioff = v if v is not None else S.V_MID
+            if self.acquire_lock(mhz, dsa, ioff=ioff) is None:
+                out["error"] = "no lock"
+                return out
+            for name in names:
+                rot, ok, fi = self.frame(cen)
+                if not ok:
+                    if self.acquire_lock(mhz, dsa, ioff=ioff) is None:
+                        out.setdefault("errors", []).append(name + ": no lock")
+                        continue
+                    rot, ok, fi = self.frame(cen)
+                a_leg = abs(fi["dq"])
+                th = self.thresholds(cen, a_leg, t=frac)
+                pair = turn_pairs(rot)[name]
+                s = Mirrored(pair[0], rot)
+                r = {"scheme": name, "rot_deg": rot, "a_leg": a_leg, "thresholds": th, "frame": fi}
+                base = self.run_scheme(pair, count=count, delay=delay)
+                r["base"] = {k: base[k] for k in ("events", "decided", "refs", "false", "missed", "lat_min", "lat_max", "lat_mean")}
+                r["base"]["cm_diag"] = [base["confusion"][k][k] for k in range(s.n)]
+                # the counter and the captures watch the four windows only: CMP_I sits on its threshold at the inverted
+                # lock and chatters (its edges were counted as arrivals in the first pass)
+                combos = [("sync", d, False) for d in delays] + [("fast", delay, False)]
+                if s.n <= 2:                                    # first-edge decisions work for the 1-bit schemes
+                    combos += [("sync", 4, True), ("fast", 4, True)]
+                for path, dl, fe in combos:
+                    key = (path if path == "fast" else "sync_d%d" % dl) + ("_fe" if fe else "")
+                    st = lc.loopback_turnaround(s, path=path, count=count, period=period, first_edge=fe, delay=dl,
+                                                mask=mask)
+                    r[key] = {k: st.get(k) for k in ("n", "miss", "min", "max", "mean", "min_ns", "mean_ns", "max_ns",
+                                                     "arrivals", "span")}
+                    r[key]["rx"] = {k: st["rx"][k] for k in ("events", "decided", "false", "missed", "refs")}
+                    r[key]["reply"] = st["reply"]
+                    cap = lc.turnaround_capture(s, path=path, first_edge=fe, delay=dl, mask=mask)
+                    r[key + "_cap"] = {k: x for k, x in cap.items() if k != "capture"}
+                    r[key + "_cap_raw"] = trim_capture(cap["capture"])
+                    self.cl.hold_point(1, 0)
+                    print("  %s %s: n %s miss %s, %.2f / %.2f / %.2f ns; capture %.2f ns (FPGA pad to pad %.2f, loop %.2f)" % (
+                        name, key, r[key]["n"], r[key]["miss"], r[key]["min_ns"] or 0, r[key]["mean_ns"] or 0,
+                        r[key]["max_ns"] or 0, r[key + "_cap"].get("turnaround_ns") or 0, r[key + "_cap"].get("fpga_ns") or 0,
+                        r[key + "_cap"].get("loop_ns") or 0), flush=True)
+                order = [0, 1, 3, 2] if s.n == 4 else None          # Gray order: each hop moves one arm
+                rg = lc.ring_run(s, order=order, clocks=2000, mask=mask)
+                r["ring"] = {k: rg.get(k) for k in ("hops", "span", "turnaround", "turnaround_ns", "arrivals", "n", "miss")}
+                self.cl.hold_point(1, 0)
+                rot2, ok2, _ = self.frame(cen, a_leg)
+                r["frame_after"] = {"rot": rot2, "ok": ok2}
+                out["runs"].append(r)
+                print("%s %d MHz: base %d/%d %.1f ns; ring %s hops, %.2f ns a hop; frame after %+d %s" % (
+                    name, mhz, base["decided"], base["refs"], to_ns(base["lat_mean"] or 0), r["ring"]["hops"],
+                    r["ring"]["turnaround_ns"] or 0, rot2, ok2), flush=True)
+        finally:
+            try:
+                lc.reply_off()
+                lc.fast_off()
+                lc.wr("RT_CFG", 0)
+            except Exception as e:                                       # noqa: BLE001
+                out.setdefault("errors", []).append("cleanup: %s" % e)
+            self.cl.ctrl(loop_hold=1)
+            self.ioff(S.V_MID)
+            self.cl.dac(S.DAC1, VC_OFF=S.V_MID)
+            self.quiet()
+        path = save("turn_%d" % mhz, out)
+        self.b.record("verdict", test="link_turnaround", ok=None, file=path,
+                      text="the turnaround on the reply overlay (sync reply, fast path, ring), A3r / A2r / A1q2 at the inverted lock")
+        return out
+
+    def scope_turn(self, mhz=5200, dsa=10, frac=0.4, name="A2r", path="sync", first_edge=True, delay=4,
+                   tdiv=200e-9, vdiv=0.05):
+        """I MON and Q MON on the scope while the board answers each of its own stimuli (single-board loopback),
+        and one FPGA capture of the same: the scope's screen saved beside the data"""
+        import numpy as np
+        lc = self.lc()
+        out = {"mhz": mhz, "dsa": dsa, "scheme": name, "path": path, "first_edge": first_edge, "delay": delay}
+        self.scope_iq(vdiv=0.1)
+        try:
+            self.tx(False)
+            self.center(mhz)
+            v, _ = self.null_fast_i()
+            cen = self.centres()
+            ioff = v if v is not None else S.V_MID
+            if self.acquire_lock(mhz, dsa, ioff=ioff) is None:
+                out["error"] = "no lock"
+                return out
+            rot, ok, fi = self.frame(cen)
+            a_leg = abs(fi["dq"])
+            self.thresholds(cen, a_leg, t=frac)
+            s = Mirrored(turn_pairs(rot)[name][0], rot)
+            out.update(rot_deg=rot, a_leg=a_leg)
+            cap = lc.turnaround_capture(s, path=path, first_edge=first_edge, delay=delay, mask=0x1E, reply_width=60, width=30)
+            out["cap"] = {k: x for k, x in cap.items() if k != "capture"}
+            out["cap_raw"] = trim_capture(cap["capture"], before=24, after=600)
+            lc._turnaround_setup(s, path, None, first_edge, delay, 30, 60, 1)
+            lc.events(period=2000, width=30, count=0)
+            lc.tx_go()
+            sc = self.s
+            for ch in (2, 3):
+                sc.channel(ch, on=True, scale=vdiv, offset=-1.63, coupling="DC", impedance="1M")
+            sc.timebase(scale=tdiv)
+            i0 = self.cl.adc("I")
+            sc.trigger(source=2, level=i0, slope="falling" if fi["dq"] > 0 else "rising", mode="normal")
+            time.sleep(0.5)
+            try:
+                sc.single(timeout=3.0)
+            except TimeoutError:
+                sc.trigger(source=2, level=i0, slope="rising" if fi["dq"] > 0 else "falling", mode="normal")
+                sc.single(timeout=3.0)
+            t2, v2, _ = sc.waveform(2)
+            t3, v3, _ = sc.waveform(3)
+            k = max(1, len(v2) // 4000)
+            out["scope"] = {"t": list(np.asarray(t2)[::k]), "i": list(np.asarray(v2)[::k]), "q": list(np.asarray(v3)[::k])}
+            os.makedirs(OUT, exist_ok=True)
+            shot = os.path.join(OUT, "scope_turn_%d_%s.png" % (mhz, O.stamp()))
+            sc.screenshot(shot)
+            out["screenshot"] = os.path.relpath(shot, HERE)
+            sc.run()
+        finally:
+            try:
+                lc.tx_stop()
+                lc.reply_off()
+                lc.fast_off()
+                lc.wr("RT_CFG", 0)
+            except Exception as e:                                       # noqa: BLE001
+                out["cleanup_error"] = str(e)
+            self.cl.ctrl(loop_hold=1)
+            self.ioff(S.V_MID)
+            self.cl.dac(S.DAC1, VC_OFF=S.V_MID)
+            self.quiet()
+        path_ = save("scope_turn_%d" % mhz, out)
+        self.b.record("verdict", test="link_scope_turn", ok=None, file=path_,
+                      text="I MON / Q MON on the scope: the stimulus and the board's answer (%s, %s path)" % (name, path))
+        return out
+
+
 def to_ns(samples):
     return samples * 1.25
 
@@ -859,10 +1059,18 @@ def fsk_order(c):
 
 def main(argv):
     ap = argparse.ArgumentParser()
-    ap.add_argument("section", choices=["force", "lockcmp", "schemes", "tune_a3", "pilot", "lodrive", "apwr_check"])
+    ap.add_argument("section", choices=["force", "lockcmp", "schemes", "tune_a3", "pilot", "lodrive", "apwr_check", "turn", "scope_turn"])
+    ap.add_argument("--dsa", type=float)
     ap.add_argument("--mhz", type=int, nargs="*")
     a = ap.parse_args(argv)
-    L = LoDrive() if a.section in ("lodrive", "apwr_check") else Schemes()
+    L = LoDrive() if a.section in ("lodrive", "apwr_check") else (Turn() if a.section in ("turn", "scope_turn") else Schemes())
+    if a.section == "scope_turn":
+        L.scope_turn(*(a.mhz or [5200]), dsa=a.dsa if a.dsa is not None else 10)
+        return
+    if a.section == "turn":
+        for m in (a.mhz or [5000]):
+            L.turn(m, dsa=a.dsa)
+        return
     if a.section == "apwr_check":
         rows = L.apwr_check(*(a.mhz or [5200]))
         path = save("apwr_check", rows)

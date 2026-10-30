@@ -189,10 +189,60 @@ def lodrive(path):
     return P.save(fig, os.path.join(OUTP, "link_lo_drive.png"))
 
 
+def turnaround(paths):
+    """the reply overlay's turnaround in single-board loopback (linktests.py turn): from the stimulus's echo on the
+    window comparators to the answer's, i.e. RX ANT to TX ANT plus ~1 ns of lead and pads, per path and frequency"""
+    rows = [("base", "A2r", "no reply: TX event to RX decision (the receive path)"),
+            ("sync_d16", "A2r", "synchronous reply, settled decision, 16 samples"),
+            ("sync_d8", "A2r", "synchronous reply, settled, 8 samples"),
+            ("sync_d4", "A2r", "synchronous reply, settled, 4 samples"),
+            ("sync_d4_fe", "A2r", "synchronous reply, first-edge decision"),
+            ("fast", "A2r", "fast path (pin to pin through LUTs), one shot"),
+            ("ring", "A3r", "fast path, ring of the four A3r states (per hop)"),
+            ("ring", "A1q2", "fast path, ring of the flip and the null (per hop)")]
+    fig, ax = plt.subplots(figsize=(10.5, 5.6))
+    for j, path in enumerate(paths):
+        d = json.load(open(path))
+        runs = {r["scheme"]: r for r in d["runs"]}
+        col = P.SERIES[j]
+        dy = 0.14 * (1 if j else -1)
+        for i, (key, sch, _) in enumerate(rows):
+            r = runs.get(sch, {})
+            y = len(rows) - 1 - i + dy
+            if key == "base" and "base" in r:
+                b = r["base"]
+                lo, mid, hi = b["lat_min"] * 1.25, (b["lat_mean"] or 0) * 1.25, b["lat_max"] * 1.25
+            elif key == "ring" and r.get("ring", {}).get("turnaround_ns"):
+                lo = mid = hi = r["ring"]["turnaround_ns"]
+            elif key in r and r[key].get("mean_ns"):
+                lo, mid, hi = r[key]["min_ns"], r[key]["mean_ns"], r[key]["max_ns"]
+            else:
+                continue
+            ax.plot([lo, hi], [y, y], color=col, lw=2, solid_capstyle="round")
+            ax.plot([mid], [y], "o", color=col, ms=8, mec=P.SURFACE, mew=1.5,
+                    label=("%.1f GHz" % (d["mhz"] / 1000.0)) if i == 0 else None)
+            ax.text(hi + 1.5, y, "%.1f" % mid, va="center", fontsize=8.5, color=P.INK2)
+    ax.axvline(70, color=P.MUTED, lw=1, ls="--")
+    ax.text(70.8, len(rows) - 0.45, "70 ns: TX event to decision, no reply", fontsize=8.5, color=P.INK2, va="top")
+    ax.set_yticks(range(len(rows)))
+    ax.set_yticklabels([r[2] for r in rows][::-1])
+    ax.set_xlim(0, 100)
+    ax.set_xlabel("ns (the mean marked, the line from min to max)")
+    ax.grid(axis="y", visible=False)
+    ax.set_title("Board A answers one of its own states in 23-25 ns by the fast path, 52-60 ns by the clocked reply")
+    P.subtitle(ax, "Single-board loopback, 40 dB of pads; the window comparators' arrivals (CMP_I excluded: it chatters at the inverted lock), 1.25 ns samples")
+    ax.legend(loc="lower right")
+    P.source(fig, "bringup/linktests.py turn; " + ", ".join(os.path.relpath(p_, HERE) for p_ in paths))
+    return P.save(fig, os.path.join(OUTP, "link_turnaround.png"))
+
+
 def main(argv):
     P.setup()
     if len(argv) > 1 and argv[1] == "lodrive":
         print(lodrive(argv[2] if len(argv) > 2 else newest("lodrive_*.json")))
+        return
+    if len(argv) > 1 and argv[1] == "turn":
+        print(turnaround(argv[2:]))
         return
     if len(argv) > 1 and argv[1] == "tune_a3":
         print(tune_a3(argv[2:]))
