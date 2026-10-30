@@ -483,8 +483,56 @@ def schemes0(paths):
     return out
 
 
+
+# ---- the pop-in tests (podtests.py) ----
+def pod(leak_path, lomon_path):
+    """test B: the TX carrier at RX MON with both ports terminated, against the loopback's map; test C: LO RX MON"""
+    fig, axs = plt.subplots(1, 2, figsize=(13.5, 5.0))
+    ax = axs[0]
+    d = json.load(open(leak_path))
+    rows = d["rows"]
+    f = np.array([r["mhz"] for r in rows]) / 1e3
+    def col(on, dsa, key="tx_carrier"):
+        return np.array([[x[key] for x in r["pts"] if x["tx_on"] == on and x["dsa"] == dsa][0] for r in rows])
+    ax.plot(f, col(True, 31.75), color=P.SERIES[0], marker="o", markersize=4, label="terminated, TX on, DSA 31.75")
+    ax.plot(f, col(True, 0.0), color=P.SERIES[1], marker="o", markersize=4, label="terminated, TX on, DSA 0")
+    ax.plot(f, col(False, 31.75), color=P.MUTED, lw=1.4, label="terminated, TX muted, DSA 31.75")
+    maps = sorted(glob.glob(os.path.join(DATA, "overnight", "map_20261030_*.json")))
+    if maps:
+        m = json.load(open(maps[-1]))
+        mm = [(r["mhz"] / 1e3, [p["rx_mon"] for p in r["points"] if p["dsa"] == 31.75]) for r in m if r["mhz"] >= 4900]
+        mm = [(x, y[0]) for x, y in mm if y]
+        ax.plot([x for x, _ in mm], [y for _, y in mm], color=P.SERIES[2], marker="s", markersize=5, ls=(0, (4, 2)),
+                label="loopback (lead + 40 dB), DSA 31.75, %s" % os.path.basename(maps[-1])[13:17])
+    ax.set_xlabel("frequency, GHz")
+    ax.set_ylabel("TX carrier at RX MON, dBm")
+    ax.set_title("Test B: the leak with both ports terminated")
+    P.subtitle(ax, "It stays within -6.5 / +14 dB of the loopback's level: on the board, not the lead")
+    ax.legend(loc="lower left", fontsize=8.5)
+    ax = axs[1]
+    d = json.load(open(lomon_path))
+    ax.plot([r["mhz"] / 1e3 for r in d["rows"]], [r["dbm"] for r in d["rows"]], color=P.SERIES[0], marker="o", markersize=4)
+    for x, t in ((3.8, "model: a peak near 3.8"), (4.3, "model: a null near 4.3")):
+        ax.axvline(x, color=P.MUTED, lw=1, ls=(0, (4, 3)))
+        ax.text(x + 0.03, -22, t, color=P.INK2, fontsize=8.5, rotation=90, va="bottom")
+    ax.axhline(-1, color=P.MUTED, lw=1)
+    ax.text(5.2, -0.4, "RFOUTB programmed -1 dBm", color=P.INK2, fontsize=8.5)
+    ax.set_xlabel("RX synthesizer, GHz")
+    ax.set_ylabel("LO RX MON (J109), dBm")
+    ax.set_title("Test C: LO RX MON against frequency")
+    P.subtitle(ax, "RFOUTB on; the analyser on J109's U.FL pigtail (its loss not taken out)")
+    fig.suptitle("Board A: tests B and C (2026-10-30)", x=0.01, ha="left", fontsize=13, fontweight="bold", color=P.INK)
+    P.source(fig, "bringup/podtests.py; %s, %s" % (os.path.relpath(leak_path, HERE), os.path.relpath(lomon_path, HERE)))
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    return P.save(fig, os.path.join(OUTP, "pod_tests_bc.png"))
+
+
 def main(argv):
     P.setup()
+    if len(argv) > 1 and argv[1] == "pod":
+        pd = os.path.join(DATA, "pod")
+        print(pod(sorted(glob.glob(os.path.join(pd, "leak_*.json")))[-1], sorted(glob.glob(os.path.join(pd, "lomon_*.json")))[-1]))
+        return
     if len(argv) > 1 and argv[1] in ("lock0", "schemes0"):
         fs = argv[2:] or sorted(set(newest("%s_%d_*.json" % (argv[1], m)) for m in (5000, 5200)) - {None})
         print((lock0 if argv[1] == "lock0" else schemes0)(fs))
