@@ -109,6 +109,29 @@ def regs(f_mhz, rfb_en=False, f_pfd=F_PFD_MHZ, mute_until_lock=False, cp=CP_CODE
     return [r5, r4, r3, r2, r1, r0]
 
 
+def regs_frac(f_mhz, mod=4095, **kw):
+    """Fractional-N: f = f_pfd x (N + FRAC / MOD), for a carrier a few kHz off the 25 MHz grid (board A's
+    bring-up emulates a board-to-board offset with the TX synthesizer, 2026-10-30).  The integer words of the
+    channel below, then INT = 0 (register 0 bit 31), FRAC (14:3), CPL = 01 (the 10 % linearity of frac-N mode,
+    register 1 bits 30:29) and LDF = 0 (frac-N lock detect, register 2 bit 8), as the datasheet's Int-N/Frac-N
+    Modes section asks.  Returns (words, the frequency they make in MHz)."""
+    f_pfd = kw.get("f_pfd", F_PFD_MHZ)
+    n_exact = f_mhz / f_pfd
+    N = int(math.floor(n_exact + 1e-12))
+    frac = int(round((n_exact - N) * mod))
+    if frac >= mod:
+        N, frac = N + 1, 0
+    w = regs(N * f_pfd, **kw)
+    r5, r4, r3, r2, r1, r0 = w
+    if frac:
+        r0 = field(r0, 31, 31, 0)
+        r0 = field(r0, 14, 3, frac)
+        r1 = field(r1, 30, 29, 0b01)
+        r1 = field(r1, 14, 3, mod)
+        r2 = field(r2, 8, 8, 0)
+    return [r5, r4, r3, r2, r1, r0], f_pfd * (N + frac / float(mod))
+
+
 R4_OUTPUTS = (1 << 5) | (1 << 8)      # RFA_EN, RFB_EN
 SEQ_WAIT_MS = 20                      # after the first word of the sequence (datasheet: "Register 5 ... Wait 20ms")
 

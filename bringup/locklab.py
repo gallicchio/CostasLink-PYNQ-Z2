@@ -544,6 +544,133 @@ class Lab(C.Camp):
             self.done("drop2", out, "held dropouts with a guard after the TX returns")
         return out
 
+    # ---- acquisition from an unknown offset ----
+    def search(self, mhz=5000, offsets_khz=(0, 5, -5, 10, -10, 20, -20, 40), top_khz=120, step_khz=15):
+        """a board-to-board offset emulated by rotating the TX through its axis points (4 steps at f_rot moves the
+        carrier by +-f_rot); the search knows only the nominal lock VC: it releases from top_khz above and steps down
+        by step_khz until the lock detector (CMP_I quiet, the I leg up) says locked; where it locked against where
+        it should, how many tries"""
+        cl = self.cl
+        out = {"mhz": mhz, "rows": []}
+        self.scope_iq(vdiv=0.1)
+        try:
+            self.set_null(mhz)
+            reg = self.regulated_dsa(mhz)
+            lk = self.lock_at(mhz, reg, fresh=True)
+            if lk is None:
+                return out
+            cen, side, a, _ = lk
+            pts = [(1, 0), (0, 1), (-1, 0), (0, -1)]
+            tx0 = self.tx
+            for off in offsets_khz:
+                if off:
+                    p = int(round(100e3 / (4 * abs(off))))       # clocks a step: f_rot = 100 MHz / (4 p)
+                    f_act = 100e6 / (4 * p) * (1 if off > 0 else -1)
+                    seq = pts if off > 0 else pts[::-1]
+
+                    def rot_tx(on, seq=seq, p=p):
+                        tx0(on)                                  # Night.tx() puts the idle back (hold_point(1, 0))
+                        if on:
+                            cl.tx_points(point_code(1, 0), [point_code(i, q) for i, q in seq])
+                            cl.tx_timing(period=p, width=1, count=0)
+                            cl.tx_mode("rotate", n=4)
+                            cl.tx_go()
+                    self.tx = rot_tx
+                else:
+                    f_act = 0.0
+                    self.tx = tx0
+                tries, t0, got = [], time.time(), None
+                k = top_khz
+                while k >= -top_khz:
+                    info = self.trial(mhz, S.V_MID, LT.VC_LOCK + k * 1e3 / self.kv(mhz), reg)
+                    time.sleep(0.2)
+                    o = self.observe(cen, a)
+                    tries.append({"start_khz": k, "trial": info["state"], "obs": o["state"], "vc": o["vc"]})
+                    if o["state"] == "locked" or (o["state"] == "slipped"):
+                        got = o
+                        break
+                    cl.ctrl(loop_hold=1)
+                    k -= step_khz
+                f_lock = (got["vc"] - LT.VC_LOCK) * self.kv(mhz) if got else None
+                row = {"offset_khz": off, "f_rot_hz": f_act, "tries": tries, "n_tries": len(tries), "t_s": time.time() - t0,
+                       "locked": got is not None, "f_lock_hz": f_lock}
+                out["rows"].append(row)
+                print("offset %+6.2f kHz: %s after %d tries (%.0f s) from %+d kHz; the lock's VC says %s kHz; false locks passed %d" % (
+                    f_act / 1e3, "LOCKED" if got else "not found", len(tries), row["t_s"], tries[-1]["start_khz"],
+                    "%+.1f" % (f_lock / 1e3) if f_lock is not None else "-",
+                    sum(1 for t in tries if t["obs"] == "beating")), flush=True)
+                self.tx = tx0
+                cl.tx_stop()
+                cl.hold_point(1, 0)
+                cl.ctrl(loop_hold=1)
+                save("search_partial", out)
+        finally:
+            self.done("search", out, "acquisition from an emulated board-to-board offset (the TX rotated at f_rot): a downward stepped search with the lock detector")
+        return out
+
+    def search2(self, mhz=5000, ks=(0, 1, -1, 2, -2, 3, -3, 5, -5, 8, -8, 12, -12), top_khz=120, step_khz=15, dsas_rel=(0, 6)):
+        """a real board-to-board offset: the TX synthesizer fractional-N, k x 6.105 kHz off the 25 MHz grid
+        (max2871_regs.regs_frac); the RX on the grid; the search as `search` (from top_khz above, down by step_khz,
+        3.9a's detector), which knows only the nominal lock VC.  Night.tune() puts the TX back on the grid, so it
+        is wrapped to resend the frac words"""
+        sys.path.insert(0, os.path.join(HERE, "..", "gateware"))
+        import max2871_regs as MR
+        cl = self.cl
+        out = {"mhz": mhz, "rows": []}
+        tune0 = self.tune
+        self.scope_iq(vdiv=0.1)
+        try:
+            self.set_null(mhz)
+            reg = self.regulated_dsa(mhz)
+            lk = self.lock_at(mhz, reg, fresh=True)
+            if lk is None:
+                return out
+            cen, side, a, _ = lk
+            for dd in dsas_rel:
+                dsa = min(31.75, reg + dd)
+                for k in ks:
+                    words, f_tx = MR.regs_frac(mhz + k * 25.0 / 4095)
+
+                    def tune_f(m, words=words):
+                        r = tune0(m)
+                        if abs(m - mhz) < 1e-6:
+                            for w in words:
+                                cl.spi(0, w)
+                            time.sleep(S.RELOCK_S)
+                        return r
+                    self.tune = tune_f
+                    self.tune(mhz)
+                    tries, t0, got = [], time.time(), None
+                    kk = top_khz
+                    while kk >= -top_khz:
+                        info = self.trial(mhz, S.V_MID, LT.VC_LOCK + kk * 1e3 / self.kv(mhz), dsa)
+                        time.sleep(0.2)
+                        o = self.observe(cen, a * 10 ** (-dd / 20.0))
+                        tries.append({"start_khz": kk, "trial": info["state"], "obs": o["state"], "vc": o["vc"]})
+                        if o["state"] in ("locked", "slipped"):
+                            got = o
+                            break
+                        cl.ctrl(loop_hold=1)
+                        kk -= step_khz
+                    off = (f_tx - mhz) * 1e6
+                    f_lock = (got["vc"] - LT.VC_LOCK) * self.kv(mhz) if got else None
+                    row = {"dsa": dsa, "k": k, "offset_hz": off, "tries": tries, "n_tries": len(tries), "t_s": time.time() - t0,
+                           "locked": got is not None, "f_lock_hz": f_lock}
+                    out["rows"].append(row)
+                    print("DSA %5.2f TX %+7.3f kHz off: %s after %d tries (%.0f s), released at %+d kHz; the lock's VC says %s kHz" % (
+                        dsa, off / 1e3, "LOCKED" if got else "not found", len(tries), row["t_s"], tries[-1]["start_khz"],
+                        "%+.1f" % (f_lock / 1e3) if f_lock is not None else "-"), flush=True)
+                    cl.ctrl(loop_hold=1)
+                    save("search2_partial", out)
+        finally:
+            self.tune = tune0
+            try:
+                tune0(5800)
+            except Exception:                                    # noqa: BLE001
+                pass
+            self.done("search2", out, "acquisition from a real offset (the TX synthesizer fractional-N, k x 6.1 kHz): the downward stepped search")
+        return out
+
     def done(self, name, out, text):
         try:
             self.cl.seq_stop()
@@ -558,7 +685,7 @@ class Lab(C.Camp):
 
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("sections", nargs="+", choices=["detect", "drop", "fade", "cw", "slips", "recover", "falselock", "holdwalk", "drop2"])
+    ap.add_argument("sections", nargs="+", choices=["detect", "drop", "fade", "cw", "slips", "recover", "falselock", "holdwalk", "drop2", "search", "search2"])
     a = ap.parse_args(argv)
     L = Lab()
     for s in a.sections:
