@@ -84,6 +84,23 @@ nodes of a link.
 - **On a re-spin:** row 9 (LVDS comparators, with a host that has pairs), then row 13 (CML out of the FPGA), the only
   step change.
 
+**What this means for the prover (Jason, 2026-10-30).** Row 13 takes the FPGA out of the signal path: comparators with
+CML outputs drive a few CML gates, which drive the modulator's baseband. The FPGA only configures the mapping, arms the
+windows and time-stamps alongside. But the QPV prover has no receive-to-transmit path, so a board's loopback turnaround
+stands in for two legs (`docs/SYSTEM.md` section 1):
+- **The challenge leg:** one of 4 basis settings decoded (an XOR of 2-3 verifiers) to the Pockels driver's trigger.
+- **The answer leg:** which of 2 or 4 detectors clicked, to the TX symbol. It is released at a fixed time after the
+  detection window ("no click" cannot be known earlier).
+
+The Pockels cell (25-55 ns) and the detectors (10-60 ns) dominate both. **20-50 ns of RF and logic is fine for the
+demonstrations, and rev A is there now.** Only the cheap rows matter: 1 (settings) and 6's four ladder outputs (an hour on
+the PYNQ). The natural split is to keep the two latency-critical edges asynchronous, in LUTs like the fast path:
+- the decoded basis to the Pockels trigger;
+- the click to the ladder at the release.
+
+Everything around them stays synchronous: arming the windows on the schedule, the slow path's veto to "invalid", the
+time-stamps and the release time.
+
 ## 4. The Icepi Zero: faster or slower?
 
 **On the fast path, faster by about 2-3 ns,** provided its table is built as one level of logic. The two FPGAs cost about
