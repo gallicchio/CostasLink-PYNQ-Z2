@@ -308,28 +308,121 @@ def night_acquire(L):
 
 
 def night_drift(L):
+    """every night_drift reading: the two references, VC, the temperature, the supply and the carrier, with the pauses
+    shaded and the coarse maps marked; a hollow marker is the first reading after a map or a test (the board warmer)"""
     rows = [r for r in L if r.get("kind") == "night_drift" and "tcxo_hz" in r]
     if len(rows) < 3:
         return None
     import datetime as dt
-    t = [dt.datetime.fromisoformat(r["t"]) if isinstance(r["t"], str) else dt.datetime.fromtimestamp(r["t"]) for r in rows]
-    tc = np.array([r["tcxo_hz"] for r in rows]); vx = np.array([r["vcxo_hz"] for r in rows])
-    fig, axs = plt.subplots(3, 1, figsize=(10.5, 8.2), sharex=True)
-    axs[0].plot(t, (tc - tc[0]) / 25e6 * 1e6, color=P.SERIES[0])
-    axs[0].set_ylabel("TCXO, ppm from the first")
-    axs[0].set_title("Overnight: the two references and the board's temperature")
-    P.subtitle(axs[0], "TCXO from the carrier / 232 on the analyser; VCXO from REF OUT on the scope (VC re-centred each time).")
-    axs[1].plot(t, (vx - vx[0]) / 25e6 * 1e6, color=P.SERIES[1])
-    axs[1].set_ylabel("VCXO, ppm from the first")
-    axs[2].plot(t, [r["temp_c"] for r in rows], color=P.SERIES[2])
-    axs[2].set_ylabel("NTC near U104, C")
-    fig.autofmt_xdate()
-    fig.tight_layout()
+    ts = np.array([r["t"] for r in rows])
+    t = [dt.datetime.fromtimestamp(x) for x in ts]
+    gap = np.r_[np.inf, np.diff(ts)] > 12 * 60            # the first reading after something else ran
+    panels = [
+        ("TCXO, ppm", (np.array([r["tcxo_hz"] for r in rows]) / 25e6 - 1) * 1e6, "%.3f", "ppm",
+         "TCXO: the carrier / 232 on the analyser (its own timebase error included)"),
+        ("VCXO, ppm", (np.array([r["vcxo_hz"] for r in rows]) / 25e6 - 1) * 1e6, "%.2f", "ppm",
+         "VCXO: REF OUT counted on the scope, VC re-centred"),
+        ("VC, V", np.array([r["vc"] for r in rows]), "%.4f", "V", "VC after re-centring (the centring's own scatter)"),
+        ("NTC, C", np.array([r["temp_c"] for r in rows]), "%.2f", "C", "the NTC near U104"),
+        ("supply, mA", np.array([r["amps"] for r in rows]) * 1e3, "%.1f", "mA", "the board's 5.3 V supply current"),
+        ("+5V_RF, V", np.array([r["v5_rf"] for r in rows]), "%.4f", "V", "+5V_RF on the board's ADC"),
+        ("carrier, dBm", np.array([r["carrier_dbm"] for r in rows]), "%.2f", "dB",
+         "the 5.8 GHz carrier at RX MON, DSA 0, through the 40 dB loopback"),
+    ]
+    fig, axs = plt.subplots(len(panels), 1, figsize=(11.5, 2.05 * len(panels) + 1.2), sharex=True)
+    for k, (ax, (lab, y, fmt, unit, what)) in enumerate(zip(axs, panels)):
+        yb = y.astype(float).copy()
+        yb[gap] = np.nan                                   # break the line at a pause; the point itself still drawn below
+        seg = np.split(np.arange(len(y)), np.where(gap)[0][1:])
+        for idx in seg:
+            ax.plot([t[i] for i in idx], y[idx], color=P.SERIES[0], lw=1.6, marker="o", markersize=3.5)
+        ax.plot([t[i] for i in np.where(gap)[0]], y[gap], ls="none", marker="o", markersize=6, markerfacecolor=P.SURFACE,
+                markeredgecolor=P.SERIES[0], markeredgewidth=1.4)
+        q = y[~gap]
+        ax.set_ylabel(lab)
+        sd = np.std(np.diff(q)) / np.sqrt(2) if len(q) > 3 else np.nan
+        ax.text(0, 1.02, "%s.  Settled: median %s %s, %s %s rms reading to reading, %s to %s"
+                % (what, fmt % np.median(q), unit, fmt % sd, unit, fmt % q.min(), fmt % q.max()),
+                transform=ax.transAxes, fontsize=8.5, color=P.INK2, va="bottom", ha="left")
+        for i in np.where(gap)[0][1:]:
+            ax.axvspan(t[i - 1], t[i], color=P.GRID, alpha=0.55, lw=0, zorder=0)
+        ax.title.set_visible(False)
+    big = [i for i in np.where(gap)[0][1:] if ts[i] - ts[i - 1] > 3600]
+    for i in big:
+        axs[0].text(t[i - 1] + (t[i] - t[i - 1]) / 2, 0.5, "paused: the reply overlay\nand the turnaround tests",
+                    transform=axs[0].get_xaxis_transform(), ha="center", va="center", fontsize=8.5, color=P.INK2)
+    for i in np.where(gap)[0][1:]:
+        if ts[i] - ts[i - 1] <= 3600:
+            axs[0].text(t[i - 1] + (t[i] - t[i - 1]) / 2, 0.97, "map", transform=axs[0].get_xaxis_transform(), ha="center",
+                        va="top", fontsize=7.5, color=P.INK2)
+    import matplotlib.dates as mdates
+    axs[-1].xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+    axs[-1].set_xlabel("local time, %s to %s" % (t[0].strftime("%m-%d %H:%M"), t[-1].strftime("%m-%d %H:%M")))
+    fig.suptitle("Board A overnight: every 10 minutes, %d readings" % len(rows), x=0.01, ha="left", fontsize=13.5,
+                 fontweight="bold", color=P.INK)
+    fig.text(0.01, 0.962, "Grey: the drift paused; the narrow ones are a coarse map and a 5.0 GHz lock check (TX on).  Hollow: the "
+             "first reading after a pause, the board warmer;\nleft out of the settled figures.  ppm are from 25 MHz.",
+             fontsize=9, color=P.INK2, ha="left", va="top")
+    fig.text(0.01, 0.004, "bringup/data/board_A/*.jsonl, kind night_drift (overnight.py drift / rest).", fontsize=7.5,
+             color=P.MUTED, ha="left", va="bottom")
+    fig.tight_layout(rect=(0, 0.015, 1, 0.925), h_pad=1.9)
     return P.save(fig, os.path.join(OUT, "night_drift.png"))
 
 
+def night_maps(L):
+    """the night's coarse maps against the afternoon's: RX MON and the I MON beat, the change at each DSA setting"""
+    files = sorted(glob.glob(os.path.join(DATA, "overnight", "map_20*.json")))
+    if len(files) < 2:
+        return None
+    ref_path = [f for f in files if len(json.load(open(f))) > 30][-1]      # the last 50 MHz map
+    ref = {r["mhz"]: r for r in json.load(open(ref_path))}
+    later = [f for f in files if f > ref_path]
+    if not later:
+        return None
+    fig, axs = plt.subplots(1, 2, figsize=(12.6, 5.0), sharex=True)
+    cols = P.SEQ[-len(later):] if len(later) <= 4 else P.SEQ
+    def ipp(p):
+        return (p.get("iq") or {}).get("2", {}).get("PKPK")
+    for f, c in zip(later, cols):
+        lab = "%s:%s" % (os.path.basename(f)[13:15], os.path.basename(f)[15:17])
+        rows = json.load(open(f))
+        fr, med, lo, hi, imed = [], [], [], [], []
+        for r in rows:
+            b = {p["dsa"]: p for p in ref[r["mhz"]]["points"]}
+            d = [p["rx_mon"] - b[p["dsa"]]["rx_mon"] for p in r["points"] if p["dsa"] in b]
+            di = [20 * np.log10(ipp(p) / ipp(b[p["dsa"]])) for p in r["points"]
+                  if p["dsa"] in b and ipp(p) and ipp(b[p["dsa"]]) and ipp(b[p["dsa"]]) > 0.1]
+            fr.append(r["mhz"] / 1e3); med.append(np.median(d)); lo.append(min(d)); hi.append(max(d))
+            imed.append(np.median(di) if di else np.nan)
+        axs[0].fill_between(fr, lo, hi, color=c, alpha=0.16, lw=0)
+        axs[0].plot(fr, med, color=c, marker="o", markersize=4, label=lab)
+        axs[1].plot(fr, imed, color=c, marker="o", markersize=4, label=lab)
+    for ax in axs:
+        ax.axhline(0, color=P.MUTED, lw=1)
+        ax.set_ylim(-1.5, 1.5)
+        ax.set_xlabel("frequency, GHz")
+        ax.legend(loc="lower left", title="map at", title_fontsize=9, ncol=len(later))
+    axs[0].set_ylabel("RX MON, dB from the %s map" % ("%s:%s" % (os.path.basename(ref_path)[13:15], os.path.basename(ref_path)[15:17])))
+    axs[0].set_title("RX MON against the afternoon's map")
+    P.subtitle(axs[0], "Line: the median over the DSA settings; band: the lowest to the highest.")
+    axs[1].set_ylabel("I MON beat, dB from the same map")
+    axs[1].set_title("The I/Q beat against the afternoon's map")
+    P.subtitle(axs[1], "I MON's peak-to-peak on the scope, the median over the DSA settings (beats over 0.1 V p-p only).")
+    lk = []
+    for f in sorted(glob.glob(os.path.join(DATA, "overnight", "acquire_5000_20*.json"))):
+        r = json.load(open(f))
+        x = [y for y in r["rows"] if y["state"] == "locked" and 0.1 < y.get("vc", 1.65) < 3.2]
+        if x:
+            lk.append("%s:%s %.2f-%.2f V" % (os.path.basename(f)[22:24], os.path.basename(f)[24:26],
+                                            min(y["vc_start"] for y in x), max(y["vc_start"] for y in x)))
+    P.source(fig, "the afternoon's map %s (the old overlay) against the night's (the reply overlay), every 150 MHz, 3-6 GHz.  "
+             "The lock check at 5.0 GHz, DSA 20, locks from VC %s." % (os.path.basename(ref_path), "; ".join(lk)))
+    fig.tight_layout()
+    return P.save(fig, os.path.join(OUT, "night_maps.png"))
+
+
 ALL = [rf_levels, vcxo_pull, sideband_drive, sideband_points, rx_dsa_5800, night_map, night_map_heat, night_iq, night_acquire,
-       night_drift]
+       night_drift, night_maps]
 
 
 def main(names):
