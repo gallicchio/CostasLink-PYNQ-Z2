@@ -6,7 +6,8 @@ face a concrete wall).  The bench as ota.py's: four antennas within 30-40 cm, th
 the B210 reaching -23 to +11 dB of the carrier there (BRINGUP_LOG 4.0).
 
     python3 bringup/weekend.py baseline           once: the schemes, the BER against the rate, the ring, over the air
-    python3 bringup/weekend.py rounds --hours H   repeated: per carrier (5200, 5000, 5500)
+    python3 bringup/weekend.py rounds --hours H [--pieces ...] [--first ...]
+                                                  repeated: per carrier (5200, 5000, 5500)
         decide    the decisions under interference: CW 0.1 / 1 / 5 / 20 MHz off and 8 MHz noise at 20 / 100 % duty, the
                   B210's gain in steps around the thresholds; at each A3 (20 000 PRBS events: right, wrong, false,
                   missed, confirmed / vetoed with V_T2 2.9 V and the carrier nulled), the BPSK BER at 25 Mbaud in
@@ -14,6 +15,10 @@ the B210 reaching -23 to +11 dB of the carrier there (BRINGUP_LOG 4.0).
         capture   a CW near the carrier (-50..+50 kHz, the B210's own LO leak parked 2 MHz away): the lock during (VC:
                   does the loop go to the interferer?) and after
         pulses    10 us every 1 ms and 100 us every 10 ms at full power: the lock, A3's errors
+        pull      a CW 0.1-40 MHz above and below the carrier, gain 74-89.75: is the loop dragged off (VC, the I leg),
+                  and does it come back by itself when the CW stops, how fast (added after round 1: BRINGUP_LOG 4.3)
+        pullhold  pull's worst cases with the loop held (LOOP_HOLD) through the CW: what an interference hold saves
+        segcheck  the BPSK BER's 50 ms segments with nothing sent, each with the lock read before and after
         quiet     an hour of the lock watched with nothing sent (drift, the board's own stability)
 
 Each piece writes bringup/data/board_A/weekend/<piece>_<mhz>_<time>.json; a verdict per round.  The board is left
@@ -180,6 +185,100 @@ class Weekend(O.OTA):
             save("pulses_partial", out)
         return out
 
+    # ---- the pull: a strong CW above and below the carrier ----
+    def pull(self, mhz, offs_mhz=(0.1, 0.3, 1.0, 2.0, 5.0, 10.0, 20.0, 40.0), gains=(74, 77, 80, 83, 86, 89.75), seconds=3.0,
+             hold=False):
+        """the lock during a CW at +-offs_mhz and how it comes back (round 1's decide: a CW 5-20 MHz above at +1..+3 dB
+        dragged VC to its rail, and the loop came back by itself, drifting down through the carrier; one dragged below
+        would not): VC and the I leg's DC three times during (dragged off: I ~ 0 and VC away from the lock), then after
+        the CW the lock polled for 3 s; t_back is the time to locked or slipped, None if it did not come back.  hold: the
+        loop held (LOOP_HOLD) from 0.2 s before the CW to 0.2 s after it, a detector that knew (pullhold)"""
+        out = {"mhz": mhz, "runs": []}
+        st = self.ready(mhz)
+        if st is None:
+            out["error"] = "no lock"
+            return out
+        out.update(dsa=st["dsa"], a_leg=st["a"])
+        for off in offs_mhz:
+            for sgn in (1, -1):
+                for g in gains:
+                    if not self.relock(mhz, st):
+                        out["runs"].append({"off_mhz": sgn * off, "gain": g, "error": "no lock"})
+                        break
+                    vc0 = self.cl.adc("VC")
+                    if hold:
+                        self.cl.ctrl(loop_hold=1)
+                        time.sleep(0.2)
+                    th = self.bg(self.bb.tone, mhz + sgn * off, gain=g, seconds=seconds)
+                    during = []
+                    for _ in range(3):
+                        time.sleep(0.6)
+                        during.append(self.observe(st["cen"], st["a"], side0=st["side"]))
+                    th.join(timeout=seconds + 4)
+                    if hold:
+                        time.sleep(0.2)
+                        self.cl.ctrl(loop_hold=0)
+                    t0, polls, t_back = time.time(), [], None
+                    while time.time() - t0 < 3.0:
+                        o = self.observe(st["cen"], st["a"], side0=st["side"])
+                        polls.append((round(time.time() - t0, 3), o["state"], round(o["vc"], 3), round(o["di"], 4)))
+                        if o["state"] in ("locked", "slipped"):
+                            t_back = time.time() - t0
+                            break
+                    lost = [abs(d["di"]) < 0.5 * st["a"] for d in during]
+                    row = {"off_mhz": sgn * off, "gain": g, "hold": hold, "vc0": vc0, "during": during, "lost_during": lost,
+                           "dvc_khz": [(d["vc"] - vc0) * self.kv(mhz) / 1e3 for d in during], "polls": polls, "t_back": t_back,
+                           "after": polls[-1][1] if polls else None}
+                    out["runs"].append(row)
+                    print("%d pull%s CW %+5.2f MHz gain %5.2f: during %s, VC %s kHz | back %s after %s s" % (
+                        mhz, hold and " (held)" or "", sgn * off, g, "/".join("lost" if x else d["state"] for x, d in zip(lost, during)),
+                        "/".join("%+.0f" % x for x in row["dvc_khz"]), row["after"], t_back and "%.2f" % t_back), flush=True)
+                    if row["after"] == "slipped":
+                        st["side"] = -st["side"]
+                    elif row["after"] == "locked":
+                        st["side"] = polls[-1][3] > 0 and 1 or -1
+                save("pull_partial", out)
+        return out
+
+    def pullhold(self, mhz):
+        """pull's worst cases with the loop held through the CW: what an interference hold would save"""
+        return self.pull(mhz, offs_mhz=(0.05, 1.0, 5.0, 20.0), gains=(80, 86, 89.75), hold=True)
+
+    # ---- the BPSK segments: why some come back random with nothing sent ----
+    def segcheck(self, mhz, n=40, periods=(4, 2, 10)):
+        """round 1's decide: at 25 Mbaud a third of the 50 ms segments read r ~ 1/6 (random, or half inverted) with the
+        B210 silent and the loop locked; here each segment's rate with the lock (I, Q, VC, CMP_I) read before and after,
+        and the phase scan repeated every 10 segments (has the eye moved?)"""
+        out = {"mhz": mhz, "runs": []}
+        st = self.ready(mhz)
+        if st is None:
+            out["error"] = "no lock"
+            return out
+        out.update(dsa=st["dsa"], a_leg=st["a"])
+        for p in periods:
+            ph, scan, width = self.best_phase(st["side"], p, seconds=0.02)
+            row = {"period": p, "scans": [{"k": 0, "phase": ph, "scan": scan, "open": width}], "segs": []}
+            for k in range(n if p == 4 else n // 4):
+                if k and k % 10 == 0:
+                    ph2, scan2, w2 = self.best_phase(st["side"], p, seconds=0.02)
+                    row["scans"].append({"k": k, "phase": ph2, "scan": scan2, "open": w2})
+                o0 = self.observe(st["cen"], st["a"], side0=st["side"])
+                r = self.ber_once(st["side"], p, ph, 0.05)
+                o1 = self.observe(st["cen"], st["a"], side0=st["side"])
+                b, e = r["bits"] or 0, r["mismatches"] or 0
+                row["segs"].append({"rate": e / 3.0 / b if b else None, "bits": b, "mism": e,
+                                    "before": {x: o0[x] for x in ("state", "side", "di", "dq", "vc")} | {"cmp_i": o0["edges"]["CMP_I"]},
+                                    "after": {x: o1[x] for x in ("state", "side", "di", "dq", "vc")} | {"cmp_i": o1["edges"]["CMP_I"]}})
+                if o1["state"] == "slipped":
+                    st["side"] = o1["side"]
+            rates = [s["rate"] for s in row["segs"]]
+            out["runs"].append(row)
+            print("%d segcheck %.0f Mbaud at phase %d (open %d of %d; later phases %s): rates %s" % (
+                mhz, 100.0 / p, ph, width, 8 * p, [s["phase"] for s in row["scans"][1:]],
+                " ".join("0" if x == 0 else "%.3f" % x for x in rates)), flush=True)
+            save("segcheck_partial", out)
+        return out
+
     # ---- once: the link over the air without interference ----
     def baseline(self):
         out = {"rows": []}
@@ -235,6 +334,8 @@ def main(argv):
     ap.add_argument("what", choices=["baseline", "rounds"])
     ap.add_argument("--hours", type=float, default=60.0)
     ap.add_argument("--quiet-min", type=float, default=60.0)
+    ap.add_argument("--pieces", nargs="*", default=["decide", "capture", "pulses", "pull", "pullhold", "segcheck"])
+    ap.add_argument("--first", nargs="*", default=None, help="pieces run first in round 1 (at each carrier)")
     a = ap.parse_args(argv)
     W = Weekend()
     if a.what == "baseline":
@@ -248,9 +349,12 @@ def main(argv):
         for mhz in CARRIERS:
             if time.time() > t_end:
                 break
-            W.piece("decide", W.decide, mhz)
-            W.piece("capture", W.capture, mhz)
-            W.piece("pulses", W.pulses, mhz)
+            if a.first and n == 1:
+                for name in a.first:
+                    W.piece(name, getattr(W, name), mhz)
+            for name in a.pieces:
+                if not (a.first and n == 1 and name in a.first):
+                    W.piece(name, getattr(W, name), mhz)
         if time.time() < t_end:
             W.piece("quiet", W.soak, hours=min(a.quiet_min / 60.0, max(0.0, (t_end - time.time()) / 3600)), mhzs=list(CARRIERS),
                     rotate_s=a.quiet_min * 60 / len(CARRIERS))
