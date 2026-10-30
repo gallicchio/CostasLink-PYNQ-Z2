@@ -379,6 +379,8 @@ class Night:
         vc0, u0 = self.u112a()
         if not 0.25 < u0 < 3.05:
             return "railed", {"vc": vc0, "u112a": u0}
+        if not 0.1 < vc0 < 3.2:                         # VC itself clipped at the summer's rail: it cannot follow a step
+            return "vc_clipped", {"vc": vc0, "u112a": u0}
         cl.dac(S.DAC1, VC_OFF=v + 0.02)
         time.sleep(0.35)
         vc1, u1 = self.u112a()
@@ -482,6 +484,79 @@ class Night:
                       "unlocked / railed after 2 s; then, locked, the DSA and VC_OFF stepped to the edges of the lock")
         return out
 
+    # ---- F: RX MON's own spectrum, the transmitter muted ----
+    def spectrum(self):
+        """the receive chain with no carrier: both synthesizers parked at 3 GHz (their LOs out of 5-6 GHz), TX_DIS,
+        the DSA at 0.  An amplifier oscillating in the chain shows as a line; the floor is the chain's own noise.
+        9 kHz-7.5 GHz at 1 MHz RBW, then 4-7 GHz at 100 kHz.  Then the same with the synthesizers at 5.8 GHz."""
+        b = self.b
+        out = {}
+        try:
+            for park in (3000, 5800):
+                self.tune(park)
+                self.tx(False)
+                self.cl.dsa(0.0)
+                for name, (c, sp, rbw) in (("full", (3.75e9, 7.5e9, 1e6)), ("4-7GHz", (5.5e9, 3e9, 100e3))):
+                    t = b.sa_trace(c, sp, rbw=rbw, ref=-30.0, att=0, label="RX MON TX muted, LOs at %d MHz, %s" % (park, name))
+                    out["%d_%s" % (park, name)] = t["file"]
+                    print(park, name, t["file"], "peak %.1f dBm at %.4f GHz" % (t["peak_dbm"], t["peak_hz"] / 1e9), flush=True)
+        finally:
+            self.quiet()
+        self.b.record("verdict", test="night_spectrum", ok=None, traces=out,
+                      text="RX MON with the TX muted and the DSA at 0: looking for an oscillation in the chain")
+        return out
+
+    # ---- the rest of the night ----
+    def rest(self, until_hour=7, every_s=600, map_every_h=3.0):
+        """the spectrum, a fine map of 5.3-6.0 GHz, then drift readings every every_s until until_hour (local), with a
+        coarse map and a 5.0 GHz lock check every map_every_h"""
+        import datetime as dt
+        now = dt.datetime.now()
+        end = now.replace(hour=until_hour, minute=0, second=0, microsecond=0)
+        if end <= now:
+            end += dt.timedelta(days=1)
+        self.spectrum()
+        self.map_fine()
+        last_map = time.time()
+        hours = (end - dt.datetime.now()).total_seconds() / 3600
+        while dt.datetime.now() < end and self.alive():
+            chunk = min(map_every_h, (end - dt.datetime.now()).total_seconds() / 3600)
+            self.drift(hours=chunk, every_s=every_s)
+            if dt.datetime.now() < end and self.alive():
+                self.map(step=100)
+                self.acquire(mhzs=(5000,), grid=(1.0, 2.31, 0.1))
+        self.quiet()
+        return hours
+
+    def map_fine(self, lo=5300, hi=6000, step=10, dsas=(31.75, 24, 16, 8, 4, 2, 0)):
+        rows = []
+        self.scope_iq()
+        try:
+            for mhz in range(lo, hi + 1, step):
+                if not self.alive():
+                    break
+                lock = self.tune(mhz)
+                floor = self.dsa_min(mhz)
+                self.tx(True)
+                pts = []
+                for d in [x for x in dsas if x >= floor] or [floor]:
+                    self.cl.dsa(d)
+                    time.sleep(0.02)
+                    f, p = self.rx_mon(mhz)
+                    pts.append({"dsa": d, "rx_mon": p, "iq": self.iq_meas()})
+                self.tx(False)
+                self.cl.dsa(31.75)
+                f, p_dis = self.rx_mon(mhz)
+                rows.append({"mhz": mhz, "lock": lock, "dsa_min": floor, "tx_ant_dbm": interp(self.tx_dbm, mhz),
+                             "tx_dis_rx_mon": p_dis, "points": pts})
+                print(mhz, "RX MON", ["%.1f" % q["rx_mon"] for q in pts], flush=True)
+        finally:
+            self.quiet()
+        path = save("mapfine", rows)
+        self.b.record("verdict", test="night_map_fine", ok=None, file=path, n=len(rows),
+                      text="the receive chain every 10 MHz over 5.3-6.0 GHz (RX MON and the I/Q beat per DSA)")
+        return rows
+
     # ---- E: drift ----
     def drift(self, hours=8.0, every_s=600):
         t_end = time.time() + hours * 3600
@@ -524,7 +599,7 @@ class Night:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("section", choices=["map", "iq", "loop", "acquire", "drift"])
+    ap.add_argument("section", choices=["map", "iq", "loop", "acquire", "drift", "spectrum", "mapfine", "rest"])
     ap.add_argument("--step", type=int, default=None)
     ap.add_argument("--mhz", type=int, nargs="*")
     ap.add_argument("--hours", type=float, default=8.0)
@@ -538,6 +613,12 @@ def main():
         n.loop(mhzs=tuple(a.mhz) if a.mhz else (3500, 4000, 5000, 5800))
     elif a.section == "acquire":
         n.acquire(mhzs=tuple(a.mhz) if a.mhz else (5000, 4500, 5500, 4000, 5800, 3500))
+    elif a.section == "spectrum":
+        n.spectrum()
+    elif a.section == "mapfine":
+        n.map_fine()
+    elif a.section == "rest":
+        n.rest()
     else:
         n.drift(hours=a.hours)
 

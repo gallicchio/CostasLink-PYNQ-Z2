@@ -259,6 +259,45 @@ def night_loop(L):
     return P.save(fig, os.path.join(OUT, "night_loop_beat.png"))
 
 
+def night_acquire(L):
+    rows, path = night("acquire")
+    if not rows:
+        return None
+    rows = [r for r in rows if r.get("rows")]
+    states = [("locked", P.SERIES[0], "o"), ("false", P.SERIES[1], "D"), ("unlocked", P.SERIES[3], "s"), ("railed", P.MUTED, "x")]
+    n = len(rows)
+    cols = min(3, n)
+    fig, axs = plt.subplots((n + cols - 1) // cols, cols, figsize=(4.4 * cols, 3.9 * ((n + cols - 1) // cols)), squeeze=False)
+    for ax, r in zip(axs.flat, rows):
+        for st, c, m in states:
+            pts = [x for x in r["rows"] if x.get("state") == st]
+            if pts:
+                ax.plot([x["vc_start"] for x in pts], [x["vc"] for x in pts], ls="none", marker=m, color=c,
+                        markersize=7 if m != "x" else 6, label=st, markeredgecolor=P.SURFACE if m != "x" else c)
+        locked = [x for x in r["rows"] if x.get("state") == "locked"]
+        note = "DSA %.2f dB" % r["dsa"]
+        if locked:
+            v = [x["vc_start"] for x in locked]
+            note += "; locks from VC %.2f-%.2f V" % (min(v), max(v))
+        walk = [w for w in r.get("dsa_walk", []) if w["state"] == "locked"]
+        if walk:
+            note += "\nheld over DSA %.0f-%.0f dB" % (min(w["dsa"] for w in walk), max(w["dsa"] for w in walk))
+        hold = [h for h in r.get("hold_in", []) if h["state"] == "locked"]
+        if hold:
+            note += "; VC_OFF %+.2f/%+.2f V" % (min(h["dvc_off"] for h in hold), max(h["dvc_off"] for h in hold))
+        ax.set_title("%.1f GHz" % (r["mhz"] / 1e3))
+        P.subtitle(ax, note)
+        ax.set_xlabel("VC when released, V"); ax.set_ylabel("VC 2 s later, V")
+        ax.set_xlim(0, 3.3); ax.set_ylim(0, 3.3)
+    for ax in list(axs.flat)[n:]:
+        ax.axis("off")
+    axs.flat[0].legend(loc="upper left")
+    fig.suptitle("Where the Costas loop ends up, released from each VC", x=0.01, ha="left", fontsize=13, fontweight="bold", color=P.INK)
+    P.source(fig, "overnight %s: the integrator centred each time; locked = VC holds through a 0.02 V VC_OFF step and no beat on I MON." % os.path.basename(path))
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    return P.save(fig, os.path.join(OUT, "night_acquire.png"))
+
+
 def night_drift(L):
     rows = [r for r in L if r.get("kind") == "night_drift" and "tcxo_hz" in r]
     if len(rows) < 3:
@@ -280,7 +319,7 @@ def night_drift(L):
     return P.save(fig, os.path.join(OUT, "night_drift.png"))
 
 
-ALL = [rf_levels, vcxo_pull, sideband_drive, sideband_points, rx_dsa_5800, night_map, night_map_heat, night_iq, night_loop,
+ALL = [rf_levels, vcxo_pull, sideband_drive, sideband_points, rx_dsa_5800, night_map, night_map_heat, night_iq, night_acquire,
        night_drift]
 
 
