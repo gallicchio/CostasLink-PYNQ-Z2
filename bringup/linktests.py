@@ -13,6 +13,8 @@ locks at a normal, steady point.
     python3 bringup/linktests.py force   [--mhz 5000]        does an extreme I_OFF_F hold CMP_I still against the carrier
     python3 bringup/linktests.py lockcmp [--mhz 5000 5100 5200]   the plain PLL against the inverted Costas lock
     python3 bringup/linktests.py schemes [--mhz 5100]       every scheme through the loop: latency, confusion, false events
+    python3 bringup/linktests.py lodrive [--mhz 5000 5200 5800]   tests D and E: each synthesizer's RFOUTA power against the
+                                                            TX level (RX MON) and the I/Q beat (sim/aslaid/REPORT.md)
 
 Each writes bringup/data/board_A/link/<section>_<time>.json and one verdict line to the board's log, and leaves the
 transmitter muted, the DSA at 31.75 dB, the loop held, I_OFF_F at V_MID.
@@ -668,6 +670,171 @@ class Schemes(Link):
         return out
 
 
+# ---- the LO drive: the as-laid simulation's tests D and E (sim/aslaid/REPORT.md finding 6) ----
+APWR_DBM = {0: -4.0, 1: -1.0, 2: 2.0, 3: 5.0}       # the MAX2871's RFOUTA power per side; PLL_INIT's default is 1
+
+
+class LoDrive(Schemes):
+    def pll_apwr(self, which, mhz, apwr):
+        """one synthesizer at mhz with RFOUTA at APWR code apwr: the six words built here (max2871_regs with its
+        APWR changed) and sent through the driver's SPI, RFOUTB off as PLL_INIT leaves it"""
+        import max2871_regs as MR
+        keep = MR.APWR
+        try:
+            MR.APWR = apwr
+            for w in MR.regs(float(mhz), f_pfd=25.0, rfb_en=False):
+                self.cl.spi(which, w)
+        finally:
+            MR.APWR = keep
+        time.sleep(S.RELOCK_S)
+
+    def sa_peak(self, mhz, span=200e3):
+        f, p = self.rx_mon(mhz, span=span)
+        return p
+
+    def tx_drive(self, mhzs=(5000, 5200, 5800), dsa_over=6.0):
+        """test D: the TX synthesizer's APWR stepped, the carrier (point (1, 0)), its +-25 MHz sidebands and the nulled
+        carrier (0, 0) read at RX MON through the loopback, the DSA fixed; the RX synthesizer parked 200 MHz below so its
+        own leak is out of the analyser's span"""
+        out = []
+        try:
+            for mhz in mhzs:
+                if not self.alive():
+                    break
+                self.cl.ctrl(tx_dis=1, loop_hold=1)
+                self.cl.pll_tune(1, float(mhz - 200))
+                dsa = min(31.75, self.dsa_min(mhz) + dsa_over)
+                self.cl.dsa(dsa)
+                rows = []
+                for code in (1, 0, 2, 3, 1):
+                    self.pll_apwr(0, mhz, code)
+                    lock = self.cl.pll_locked()
+                    self.cl.hold_point(1, 0)
+                    self.cl.ctrl(tx_dis=0)
+                    time.sleep(0.05)
+                    car = self.sa_peak(mhz)
+                    sb = {d: self.sa_peak(mhz + d) for d in (-25, 25)}
+                    self.cl.hold_point(0, 0)
+                    time.sleep(0.05)
+                    null = self.sa_peak(mhz)
+                    self.cl.ctrl(tx_dis=1)
+                    off = self.sa_peak(mhz)
+                    rows.append({"apwr": code, "apwr_dbm": APWR_DBM[code], "lock": lock, "carrier": car,
+                                 "sb_m25": sb[-25], "sb_p25": sb[25], "null": null, "tx_dis": off})
+                    print(mhz, "APWR %+.0f" % APWR_DBM[code], lock, "carrier %.1f  sidebands %.1f / %.1f  null %.1f  muted %.1f"
+                          % (car, sb[-25], sb[25], null, off), flush=True)
+                out.append({"mhz": mhz, "dsa": dsa, "rows": rows})
+        finally:
+            self.cl.ctrl(tx_dis=1)
+            self.cl.pll_tune(0, 5800.0)
+            self.quiet()
+        return out
+
+    def rx_drive(self, mhzs=(5000, 5200, 5800), dvc=-0.08):
+        """test E: the RX synthesizer's APWR stepped, the loop held with VC set dvc off the lock for a beat of a few
+        tens of kHz, the TX at (1, 0); the I and Q arms' beat amplitude by the scope's sine fits, the DSA set once for
+        about 0.3 V p-p at the default drive"""
+        import numpy as np
+        out = []
+        self.scope_iq(vdiv=0.1)
+        try:
+            for mhz in mhzs:
+                if not self.alive():
+                    break
+                self.cl.ctrl(tx_dis=1, loop_hold=1)
+                self.tune(mhz)
+                self.set_vc(VC_LOCK + dvc)
+                self.tx(True)
+                floor = self.dsa_min(mhz)
+                d = 31.75
+                while d > floor:
+                    self.cl.dsa(d)
+                    pp = self.iq_meas()[2]["PKPK"] or 0
+                    if pp >= 0.3:
+                        break
+                    d = max(floor, d - 2.0)
+                self.cl.dsa(d)
+                rows = []
+                for code in (1, 0, 2, 3, 1):
+                    self.pll_apwr(1, mhz, code)
+                    lock = self.cl.pll_locked()
+                    self.set_vc(VC_LOCK + dvc)
+                    fit = self.beat_fit()
+                    rows.append({"apwr": code, "apwr_dbm": APWR_DBM[code], "lock": lock, "vc": self.cl.adc("VC"), **fit})
+                    print(mhz, "RX APWR %+.0f" % APWR_DBM[code], lock, "beat %.0f Hz  I %.4f  Q %.4f V"
+                          % (fit.get("beat_hz") or 0, fit.get("amp_i") or 0, fit.get("amp_q") or 0), flush=True)
+                out.append({"mhz": mhz, "dsa": d, "rows": rows})
+                self.tx(False)
+        finally:
+            self.cl.ctrl(tx_dis=1)
+            self.cl.pll_tune(1, 5800.0)
+            self.quiet()
+        return out
+
+    def beat_fit(self, n_periods=8):
+        """one record of I MON and Q MON, each fitted with a sine at the beat (overnight.py iq's method)"""
+        import numpy as np
+        m = self.iq_meas()
+        fb = m[2]["FREQ"] or m[3]["FREQ"]
+        if not fb or fb < 200:
+            return {"beat_hz": fb, "amp_i": None, "amp_q": None}
+        tdiv = min(1e-3, max(1e-6, n_periods / fb / 10))
+        self.s.timebase(scale=tdiv)
+        self.s.single()
+        time.sleep(max(0.3, 12 * tdiv))
+        t, vi, _ = self.s.waveform(2)
+        _, vq, _ = self.s.waveform(3, preamble=False)
+        self.s.run()
+        self.scope_iq(vdiv=0.1)
+        t, vi, vq = np.asarray(t), np.asarray(vi), np.asarray(vq)
+        res = {"beat_hz": fb}
+        for name, v in (("i", vi), ("q", vq)):
+            best = None
+            for f in np.linspace(0.97 * fb, 1.03 * fb, 61):
+                A = np.c_[np.sin(2 * np.pi * f * t), np.cos(2 * np.pi * f * t), np.ones_like(t)]
+                c, r, *_ = np.linalg.lstsq(A, v, rcond=None)
+                e = float(np.sum((A @ c - v) ** 2))
+                if best is None or e < best[0]:
+                    best = (e, f, c)
+            res["amp_" + name] = float(np.hypot(best[2][0], best[2][1]))
+            res["beat_hz"] = float(best[1])
+        return res
+
+    def apwr_check(self, mhz=5200, n=4):
+        """do the APWR writes reach the parts?  TX muted, the loop held: per synthesizer and APWR code, the board's
+        supply current (the E3646A) and the level at RX MON at the carrier (both LOs' own leak)"""
+        out = []
+        try:
+            self.cl.ctrl(tx_dis=1, loop_hold=1)
+            self.cl.dsa(0.0)
+            self.tune(mhz)
+            for which in (0, 1):
+                for code in (1, 0, 1, 2, 3, 1):
+                    self.pll_apwr(which, mhz, code)
+                    time.sleep(0.3)
+                    amps = [self.b.psu_read("apwr check")["amps"] for _ in range(n)]
+                    leak = self.sa_peak(mhz)
+                    row = {"which": "tx" if which == 0 else "rx", "apwr": code, "apwr_dbm": APWR_DBM[code],
+                           "amps": sum(amps) / len(amps), "rx_mon_leak": leak, "lock": self.cl.pll_locked()}
+                    out.append(row)
+                    print("APWR check", row["which"], "%+.0f dBm" % APWR_DBM[code], "%.4f A" % row["amps"],
+                          "leak %.1f dBm" % leak, flush=True)
+                self.pll_apwr(which, mhz, 1)
+        finally:
+            self.cl.ctrl(tx_dis=1)
+            self.quiet()
+        return out
+
+    def lodrive(self, mhzs=(5000, 5200, 5800)):
+        d = self.tx_drive(mhzs)
+        e = self.rx_drive(mhzs)
+        out = {"tx_drive": d, "rx_drive": e}
+        path = save("lodrive", out)
+        self.b.record("verdict", test="link_lo_drive", ok=None, file=path,
+                      text="tests D and E: the TX level and the I/Q beat against each synthesizer's RFOUTA power (APWR)")
+        return out
+
+
 def to_ns(samples):
     return samples * 1.25
 
@@ -692,11 +859,17 @@ def fsk_order(c):
 
 def main(argv):
     ap = argparse.ArgumentParser()
-    ap.add_argument("section", choices=["force", "lockcmp", "schemes", "tune_a3", "pilot"])
+    ap.add_argument("section", choices=["force", "lockcmp", "schemes", "tune_a3", "pilot", "lodrive", "apwr_check"])
     ap.add_argument("--mhz", type=int, nargs="*")
     a = ap.parse_args(argv)
-    L = Schemes()
-    if a.section == "pilot":
+    L = LoDrive() if a.section in ("lodrive", "apwr_check") else Schemes()
+    if a.section == "apwr_check":
+        rows = L.apwr_check(*(a.mhz or [5200]))
+        path = save("apwr_check", rows)
+        L.b.record("verdict", test="link_apwr_check", ok=None, file=path, text="the APWR writes against the supply current and the LOs' leak")
+    elif a.section == "lodrive":
+        L.lodrive(tuple(a.mhz) if a.mhz else (5000, 5200, 5800))
+    elif a.section == "pilot":
         for m in (a.mhz or [5000]):
             L.pilot_schemes(m, rho=0.3, frac=0.35, lock_db=2.0, vdiv=0.1)
     elif a.section == "tune_a3":

@@ -156,8 +156,44 @@ def tune_a3(paths):
     return P.save(fig, os.path.join(OUTP, "link_a3r_tuning.png"))
 
 
+def lodrive(path):
+    """tests D and E: the change in the TX carrier at RX MON and in the I/Q beat against each synthesizer's APWR,
+    in dB from the default (APWR 1, -1 dBm a side)"""
+    d = json.load(open(path))
+    fig, ax = plt.subplots(figsize=(9.0, 5.2))
+    k = 0
+    for what, key, label in (("tx_drive", "carrier", "TX level (RX MON), TX APWR"), ("rx_drive", "amp_i", "I beat, RX APWR")):
+        for run in d[what]:
+            rows = [r for r in run["rows"] if r.get(key)]
+            ref = [r[key] for r in rows if r["apwr"] == 1]
+            if not ref:
+                continue
+            ref = float(np.mean(ref))
+            pts = {}
+            for r in rows:
+                v = r[key] - ref if what == "tx_drive" else 20 * np.log10(r[key] / ref)
+                pts.setdefault(r["apwr_dbm"], []).append(v)
+            xs = sorted(pts)
+            ys = [float(np.mean(pts[x])) for x in xs]
+            ax.plot(xs, ys, marker="o", ms=7, color=P.SERIES[k], ls="-" if what == "tx_drive" else "--",
+                    label="%s, %.1f GHz" % (label, run["mhz"] / 1000))
+            k += 1
+    ax.axhline(0, color=P.AXIS, lw=0.8)
+    ax.set_xticks([-4, -1, 2, 5])
+    ax.set_xlabel("RFOUTA power per side, as programmed (dBm)")
+    ax.set_ylabel("change from the default APWR (dB)")
+    ax.set_title("Board A's LO drive changes nothing: both mixers' LO ports are saturated from -4 dBm", pad=30)
+    P.subtitle(ax, "Loopback, 40 dB of pads, DSA fixed.  TX: the (1, 0) carrier at RX MON, the RX synthesizer parked 200 MHz off.  RX: the I arm's beat by sine fit, the loop held.")
+    ax.legend(loc="best", ncol=2)
+    P.source(fig, "bringup/linktests.py lodrive; %s" % os.path.relpath(path, HERE))
+    return P.save(fig, os.path.join(OUTP, "link_lo_drive.png"))
+
+
 def main(argv):
     P.setup()
+    if len(argv) > 1 and argv[1] == "lodrive":
+        print(lodrive(argv[2] if len(argv) > 2 else newest("lodrive_*.json")))
+        return
     if len(argv) > 1 and argv[1] == "tune_a3":
         print(tune_a3(argv[2:]))
         return
