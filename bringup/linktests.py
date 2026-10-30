@@ -214,6 +214,14 @@ class Schemes(Link):
                 v0, sig, nu0 = CostasLink.rice_fit([p for p in pts if p[1] > 0])
             except ValueError:
                 v0, sig, nu0 = None, None, None
+            # the 50 % duty crossing, which needs no fit (a narrow parabola gives Rice too few points at 2 mV steps)
+            v50 = None
+            for (va, ra, da), (vb, rb, db) in zip(pts, pts[1:]):
+                if (da - 0.5) * (db - 0.5) <= 0 and da != db:
+                    v50 = va + (0.5 - da) * (vb - va) / (db - da)
+                    break
+            if v0 is None or (v50 is not None and abs(v0 - v50) > 0.01):
+                v0 = v50
             out[w] = {"v0": v0, "sigma": sig, "nu0": nu0, "scan": pts}
             print("centre", w, v0, "sigma", sig, flush=True)
         out["adc_i0"], out["adc_q0"] = self.cl.adc("I"), self.cl.adc("Q")
@@ -271,7 +279,7 @@ class Schemes(Link):
         cl.hold_point(1, 0)                                   # back to the idle, the loop's carrier
         return st
 
-    def scope_constellation(self, s, period=2500, width=500, tdiv=20e-6):
+    def scope_constellation(self, s, period=2500, width=500, tdiv=20e-6, vdiv=0.05):
         """long events (5 us: the MON taps' 1 k into the cable is ~0.1 us) cycling through the messages, both MONs"""
         import numpy as np
         cl, sc = self.cl, self.s
@@ -280,7 +288,7 @@ class Schemes(Link):
         cl.events(period=period, width=width, count=0, n=s.n)
         cl.tx_go()
         for ch in (2, 3):
-            sc.channel(ch, on=True, scale=0.05, offset=-1.63, coupling="DC", impedance="1M")
+            sc.channel(ch, on=True, scale=vdiv, offset=-1.63, coupling="DC", impedance="1M")
         sc.timebase(scale=tdiv)
         sc.trigger(source=3, level=1.63, slope="rising", mode="auto")
         time.sleep(0.3)
@@ -439,6 +447,226 @@ class Schemes(Link):
                       text="every scheme the inverted Costas lock can decide, through the loop at %d MHz: latency, confusion, false events, the constellations, FSK's sense, the BER" % mhz)
         return out
 
+    # ---- the fast I arm's offset, nulled (stage 3.2), and A3r tuned ----
+    def null_fast_i(self, lo=0.0, hi=3.3, steps=14, seconds=0.01):
+        """with no carrier (TX muted, the loop held) move I_OFF_F until CMP_I's duty is 50 %: the inverted lock then
+        sits on +-Q exactly, not 10 degrees round (the arm's -26 mV put the idle at the comparator's threshold)"""
+        self.cl.ctrl(loop_hold=1, tx_dis=1)
+        time.sleep(0.05)
+        trace = []
+
+        def duty(v):
+            self.ioff(v)
+            g = self.cl.gate(seconds=seconds, inputs=("CMP_I",))
+            trace.append((v, g["CMP_I"]["duty"], g["CMP_I"]["edges"]))
+            return g["CMP_I"]["duty"]
+        dlo, dhi = duty(lo), duty(hi)
+        if (dlo - 0.5) * (dhi - 0.5) > 0:
+            self.ioff(S.V_MID)
+            return None, trace
+        for _ in range(steps):
+            mid = (lo + hi) / 2
+            dm = duty(mid)
+            if (dm - 0.5) * (dlo - 0.5) > 0:
+                lo, dlo = mid, dm
+            else:
+                hi, dhi = mid, dm
+        v = (lo + hi) / 2
+        self.ioff(v)
+        return v, trace
+
+    def tune_a3(self, mhz, dsa=None, fracs=(0.35, 0.45, 0.55), delays=(16, 24, 32), count=20000):
+        out = {"mhz": mhz}
+        self.scope_iq(vdiv=0.1)
+        try:
+            self.tx(False)
+            self.center(mhz)
+            v, tr = self.null_fast_i()
+            out["i_off_f"], out["null_trace"] = v, tr
+            print("I_OFF_F null:", v, tr[-3:], flush=True)
+            cen = self.centres()
+            out["centres"] = cen
+            dsa = dsa if dsa is not None else self.regulated_dsa(mhz)
+            out["dsa"] = dsa
+            lk = self.acquire_lock(mhz, dsa, ioff=v if v is not None else S.V_MID)
+            if lk is None:
+                out["error"] = "no lock"
+                return out
+            rot, ok, fi = self.frame(cen)
+            a_leg = abs(fi["dq"])
+            out.update(rot_deg=rot, a_leg=a_leg, di_idle=self.cl.adc("I") - cen["adc_i0"])
+            print("locked: rot %+d a_leg %.3f dI %.3f" % (rot, a_leg, out["di_idle"]), flush=True)
+            out["runs"] = []
+            for fr in fracs:
+                self.thresholds(cen, a_leg, t=fr)
+                for dl in delays:
+                    rot, ok, fi = self.frame(cen, a_leg)
+                    if not ok:
+                        if self.acquire_lock(mhz, dsa, ioff=v if v is not None else S.V_MID) is None:
+                            break
+                        rot, ok, fi = self.frame(cen, a_leg)
+                        a_leg2 = abs(fi["dq"])
+                        self.thresholds(cen, a_leg2, t=fr)
+                    s = [p for p in rx_schemes(rot, True) if p[0].name == "A3r"][0]
+                    st = self.run_scheme(s, count=count, delay=dl)
+                    n = 4
+                    st.update(frac=fr, delay=dl, rot_deg=rot, cm=[row[:n] for row in st["confusion"][:n]])
+                    out["runs"].append(st)
+                    print("t %.2f delay %d samples: decided %d/%d false %d missed %d, latency %.1f/%.1f/%.1f ns, diag %s" % (
+                        fr, dl, st["decided"], st["refs"], st["false"], st["missed"], to_ns(st["lat_min"]),
+                        to_ns(st["lat_mean"] or 0), to_ns(st["lat_max"]), [st["cm"][k][k] for k in range(4)]), flush=True)
+        finally:
+            self.cl.ctrl(loop_hold=1)
+            self.ioff(S.V_MID)
+            self.cl.dac(S.DAC1, VC_OFF=S.V_MID)
+            self.quiet()
+        path = save("tune_a3_%d" % mhz, out)
+        self.b.record("verdict", test="link_tune_a3", ok=None, file=path,
+                      text="A3r (two bits, four non-idle states) against the window fraction and the decision delay, the fast I arm nulled first")
+        return out
+
+    # ---- the pilot schemes (B1, B2, A4): a weak pilot made by the ladders' references (PLAN.md section 18) ----
+    def beat_pp(self, ch=3, n=3):
+        self.s.timebase(scale=100e-6)
+        time.sleep(0.25)
+        v = [self.s.pava("PKPK", ch) for _ in range(n)]
+        v = [x for x in v if x]
+        return sorted(v)[len(v) // 2] if v else None
+
+    def pilot_cal(self, mhz, dsa, rho=0.2, d0=0.02):
+        """the VR_I / VR_Q offsets from the null that make a pilot of rho x the idle's amplitude along TX I and TX Q:
+        the loop held 5 kHz off zero beat, the beat's p-p on both MONs (the larger of the two: the beat sweeps both)"""
+        cl = self.cl
+        null = cl.dac_volts()
+        vr_i0, vr_q0 = null["VR_I"], null["VR_Q"]
+        self.tx(False)
+        self.center(mhz)
+        cl.dsa(float(dsa))
+        self.set_vc(VC_LOCK + 5e3 / self.kv(mhz))
+        cl.hold_point(1, 0)
+        cl.ctrl(tx_dis=0)
+        a_pp = max(self.beat_pp(2) or 0, self.beat_pp(3) or 0)
+        out = {"a_pp": a_pp, "vr_i0": vr_i0, "vr_q0": vr_q0}
+        for axis in ("VR_I", "VR_Q"):
+            d = d0
+            for _ in range(4):
+                v = (vr_i0 if axis == "VR_I" else vr_q0) + d
+                assert v <= S.VR_MAX_V
+                cl.dac(S.DAC1, **{axis: float(v)})
+                cl.hold_point(0, 0)
+                p_pp = max(self.beat_pp(2) or 0, self.beat_pp(3) or 0)
+                cl.dac(S.DAC1, VR_I=vr_i0, VR_Q=vr_q0)
+                r = p_pp / a_pp if a_pp else 0
+                print("pilot %s +%.4f V: %.3f of the idle" % (axis, d, r), flush=True)
+                out.setdefault(axis + "_trace", []).append((d, r))
+                if r <= 0.02:
+                    d *= 3
+                    continue
+                if abs(r - rho) < 0.02:
+                    break
+                d = d * rho / r
+            out[axis + "_delta"] = d
+        cl.ctrl(tx_dis=1)
+        cl.hold_point(1, 0)
+        return out
+
+    def pilot_schemes(self, mhz=5000, rho=0.2, lock_dsa=None, count=20000, frac=0.4, lock_db=0.0, vdiv=0.05):
+        """lock on the pilot with the DSA lowered by its 14 dB, then B1, B2, A4 through the loop"""
+        import numpy as np
+        cl = self.cl
+        out = {"mhz": mhz, "rho": rho}
+        null = cl.dac_volts()
+        vr_i0, vr_q0 = null["VR_I"], null["VR_Q"]
+        self.scope_iq(vdiv=0.1)
+        try:
+            reg = self.regulated_dsa(mhz)
+            cal = self.pilot_cal(mhz, reg, rho)
+            out["cal"] = cal
+            di, dq = cal["VR_I_delta"], cal["VR_Q_delta"]
+            lock_dsa = lock_dsa if lock_dsa is not None else max(self.dsa_min(mhz), reg - 20 * math.log10(1 / rho) + lock_db)
+            out["lock_dsa"] = lock_dsa
+            defs = [("B1", "2 bits: a weak pilot on +I and the four axis points, one window each", (rho, 0.0),
+                     [(1, 0), (-1, 0), (0, 1), (0, -1)]),
+                    ("B2", "2 bits: the pilot at 45 degrees and the four corners onto the axes, one window each",
+                     (rho / math.sqrt(2), rho / math.sqrt(2)), [(1, 1), (-1, -1), (-1, 1), (1, -1)]),
+                    ("A4", "1 bit: the pilot at 45 degrees, TX (-1, 1) / (1, -1) onto the axis across it",
+                     (rho / math.sqrt(2), rho / math.sqrt(2)), [(-1, 1), (1, -1)])]
+            self.tx(False)
+            self.center(mhz)
+            v_null, _ = self.null_fast_i()
+            v_null = v_null if v_null is not None else S.V_MID
+            out["i_off_f"] = v_null
+            cen = self.centres()
+            out["centres"] = cen
+            out["runs"] = []
+            for name, text, pilot, msgs in defs:
+                vr_i = vr_i0 + di * pilot[0] / rho
+                vr_q = vr_q0 + dq * pilot[1] / rho
+                cl.dac(S.DAC1, VR_I=float(vr_i), VR_Q=float(vr_q))
+                # lock on the pilot: the idle is the (0, 0) point with the references offset
+                lk = None
+                for k in (5, -5, 2, -2, 10):
+                    self.tx(False)
+                    self.center(mhz)
+                    self.ioff(v_null)
+                    cl.dac(S.DAC1, VR_I=float(vr_i), VR_Q=float(vr_q))
+                    cl.dsa(float(lock_dsa))
+                    self.set_vc(VC_LOCK + k * 1e3 / self.kv(mhz))
+                    cl.hold_point(0, 0)
+                    cl.ctrl(tx_dis=0)
+                    time.sleep(0.1)
+                    cl.ctrl(loop_hold=0)
+                    time.sleep(2.0)
+                    rot0, ok, fi = self.frame(cen)
+                    vc = cl.adc("VC")
+                    if ok and abs(vc - VC_LOCK) < 0.012 and abs(fi["dq"]) > 0.01:
+                        lk = {"start_khz": k, "vc": vc, **fi}
+                        break
+                    cl.ctrl(loop_hold=1)
+                rec = {"scheme": name, "pilot": pilot, "vr_i": vr_i, "vr_q": vr_q, "lock": lk}
+                if lk is None:
+                    rec["error"] = "no lock on the pilot"
+                    out["runs"].append(rec)
+                    print(name, "no lock on the pilot", flush=True)
+                    continue
+                # the full points' amplitude: rho is the pilot's fraction of it
+                p_leg = abs(lk["dq"])
+                a_leg = p_leg / rho
+                self.thresholds(cen, a_leg, t=frac)
+                s_sign = 1 if lk["dq"] > 0 else -1
+                m = lambda p: (-p[0], p[1])                              # noqa: E731
+                mp = m(pilot)
+                rot_m = math.degrees(math.atan2(s_sign, 0) - math.atan2(mp[1], mp[0]))
+                tx = Scheme(name, text, (0, 0), msgs, [CMP_IP, CMP_IN, CMP_QP, CMP_QN], rot_deg=rot_m, pilot=pilot, use=WIN)
+                rx = Scheme(name, text, (0, 0), [m(x) for x in msgs], [CMP_IP, CMP_IN, CMP_QP, CMP_QN], rot_deg=rot_m,
+                            pilot=mp, use=WIN)
+                try:
+                    st = self.run_scheme((tx, rx), count=count)
+                except ValueError as e:
+                    rec["error"] = str(e)
+                    out["runs"].append(rec)
+                    continue
+                cl.hold_point(0, 0)
+                n = len(msgs)
+                st.update(rec, p_leg=p_leg, a_leg=a_leg, rot_m=rot_m, cm=[row[:n] for row in st["confusion"][:n]])
+                c = self.scope_constellation((tx, rx), vdiv=vdiv)
+                cl.hold_point(0, 0)
+                st["constellation"] = c
+                out["runs"].append(st)
+                print("%s: pilot leg %.3f V (a %.3f), decided %d/%d false %d missed %d, latency %.1f/%.1f/%.1f ns, cm %s" % (
+                    name, p_leg, a_leg, st["decided"], st["refs"], st["false"], st["missed"], to_ns(st["lat_min"]),
+                    to_ns(st["lat_mean"] or 0), to_ns(st["lat_max"]), st["cm"]), flush=True)
+                cl.ctrl(loop_hold=1)
+        finally:
+            self.cl.ctrl(loop_hold=1, tx_dis=1)
+            self.cl.dac(S.DAC1, VR_I=vr_i0, VR_Q=vr_q0, VC_OFF=S.V_MID)
+            self.ioff(S.V_MID)
+            self.quiet()
+        path = save("pilot_%d" % mhz, out)
+        self.b.record("verdict", test="link_pilot_schemes", ok=None, file=path,
+                      text="B1, B2, A4: the loop locked on a weak pilot from the ladders' references, through the loop")
+        return out
+
 
 def to_ns(samples):
     return samples * 1.25
@@ -464,11 +692,17 @@ def fsk_order(c):
 
 def main(argv):
     ap = argparse.ArgumentParser()
-    ap.add_argument("section", choices=["force", "lockcmp", "schemes"])
+    ap.add_argument("section", choices=["force", "lockcmp", "schemes", "tune_a3", "pilot"])
     ap.add_argument("--mhz", type=int, nargs="*")
     a = ap.parse_args(argv)
     L = Schemes()
-    if a.section == "schemes":
+    if a.section == "pilot":
+        for m in (a.mhz or [5000]):
+            L.pilot_schemes(m, rho=0.3, frac=0.35, lock_db=2.0, vdiv=0.1)
+    elif a.section == "tune_a3":
+        for m in (a.mhz or [5000, 5200]):
+            L.tune_a3(m)
+    elif a.section == "schemes":
         for m in (a.mhz or [5000]):
             L.schemes(m)
     elif a.section == "force":
