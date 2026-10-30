@@ -94,14 +94,15 @@ def at_clock(f_mhz, tag):
         lc = CostasLink(NetBus(c.b.cfg["pynq_host"], c.b.cfg.get("pynq_port", 5800)))
         lc.clk_mhz, lc.t_clk, lc.t_sample = f_mhz, 1e-6 / f_mhz, 1e-6 / f_mhz / lc.ser
         c.thresholds(cen, a_leg, 0.4)
-        hops = []
-        for _ in range(3):
-            side = c.ensure(5000, reg, cen, a_leg) or side
-            rg = lc.ring_run(C.Frame0(C.RINGS["A3"], side), order=C.RING_ORDER["A3"], clocks=2000, mask=0x1F)
-            hops.append({k: rg.get(k) for k in ("hops", "span", "turnaround_ns", "sample_ns")})
-            c.cl.hold_point(1, 0)
-        row["ring_A3"] = hops
-        print("  ring A3 at 0.4 a: %s" % ["%s hops, %.2f ns" % (h["hops"], h["turnaround_ns"] or 0) for h in hops], flush=True)
+        for rname in ("AX", "A1r"):                 # A3's corner ring does not start in this frame (BRINGUP_LOG 3.8d)
+            hops = []
+            for _ in range(3):
+                side = c.ensure(5000, reg, cen, a_leg) or side
+                rg = lc.ring_run(C.Frame0(C.RINGS[rname], side), order=C.RING_ORDER[rname], clocks=2000, mask=0x1F)
+                hops.append({k: rg.get(k) for k in ("hops", "span", "turnaround_ns", "sample_ns")})
+                c.cl.hold_point(1, 0)
+            row["ring_" + rname] = hops
+            print("  ring %s at 0.4 a: %s" % (rname, ["%s hops, %.2f ns" % (h["hops"], h["turnaround_ns"] or 0) for h in hops]), flush=True)
         lc.fast_off()
         lc.wr("RT_CFG", 0)
     except Exception as e:                                   # noqa: BLE001
