@@ -5,7 +5,10 @@
 TestSchemes needs nothing: the receiver's tables the driver computes for the plan's corners against the
 constants tb_engines.v proves on the RTL.  TestOnRtl runs costaslink.py's operations through sim_pipe.py's
 PipeBus against tb_pipe.v (the core, SER = 8 as on the PYNQ-Z2, and the loopback model: the pins come
-back on the fast comparators 13 samples later, on the slow ones 40), the way BRINGUP.md's stages use them.
+back on the fast comparators 13 samples later, on the slow ones 40), the way BRINGUP.md's stages use them;
+the core is the PYNQ-Z2's otherwise too (the early reply lane, the fast path, the ladder pins read back),
+so the turnaround measurements run here exactly, with the model's 13 samples of loop and no delay of the
+fast path's own (Prompt 36).
 """
 import math
 import os
@@ -17,6 +20,10 @@ from costaslink import (CostasLink, SCHEMES, point_code, CMP_I, CMP_QP, CMP_QN, 
 from sim_pipe import PipeBus                                                              # noqa: E402
 
 LAT, LAT_SLOW = 13, 40
+SER = 8
+# the synchronous reply's samples after the comparators' change in this model: the lane takes the word the
+# change is in a clock early, the point is on the pins at the next edge (tb_engines.v's RP_LAT)
+RP_LAT = (LAT // SER + 1) * SER - LAT
 
 
 class TestSchemes(unittest.TestCase):
@@ -219,7 +226,8 @@ class TestOnRtl(unittest.TestCase):
     def test_info(self):
         i = self.cl.info()
         self.assertEqual((i["board"], i["samples_per_clock"], i["clock_MHz"]), ("simulation", 8, 100))
-        self.assertEqual(i["capture"], {"ser": 8, "width": 64, "depth": 1024})
+        self.assertEqual(i["capture"], {"ser": 8, "width": 96, "depth": 1024, "tx_readback": 1})
+        self.assertEqual((i["fast_path"], i["tx_readback"], i["early_lane"], i["reply_reg"]), (1, 1, 1, 0))
 
     def test_i2c_nack(self):
         # the testbench loops the I2C pins back: nothing acknowledges, and the driver says so without hanging
@@ -336,6 +344,72 @@ class TestOnRtl(unittest.TestCase):
         self.assertTrue(400 < v < cap["trigger_word"], v)            # armed a few clocks before the force
         self.assertEqual(sum(1 for b in cap["TR_A"][v:] if b == 0), 50)
         cl.seq_stop()
+
+    # ---- the receive-to-transmit paths (Prompt 36) ----
+    def test_sync_reply_turnaround(self):
+        # B1, first edge: each stimulus answered once, the counter from its echo to the answer's
+        st = self.cl.loopback_turnaround("B1", path="sync", count=20, period=200)
+        self.assertEqual((st["n"], st["miss"]), (20, 0))
+        self.assertEqual((st["min"], st["max"]), (LAT + RP_LAT, LAT + RP_LAT))
+        self.assertAlmostEqual(st["mean_ns"], (LAT + RP_LAT) * 1.25)
+        self.assertEqual(st["last_ref_to_arrival"], LAT)
+        self.assertEqual(st["reply"]["replies"], 20)
+        self.assertEqual(st["reply"]["last_reply"], (st["reply"]["last_msg"] + 1) % 4)
+        rx = st["rx"]
+        self.assertEqual((rx["events"], rx["decided"], rx["false"], rx["missed"]), (20, 20, 0, 0))
+
+    def test_sync_reply_settled_a3(self):
+        # A3 needs the settled vector (its first edge cannot tell I): two samples after the event, the
+        # same clock (in the event's word); two clocks of samples after it, a clock later for each word on
+        st = self.cl.loopback_turnaround("A3", path="sync", count=8, period=200, first_edge=False, delay=2)
+        self.assertEqual((st["n"], st["min"], st["max"]), (8, LAT + RP_LAT, LAT + RP_LAT))
+        st = self.cl.loopback_turnaround("A3", path="sync", count=8, period=200, first_edge=False, delay=2 * SER)
+        late = SER * ((LAT % SER + 2 * SER) // SER)                     # a clock for each word the sample is on
+        self.assertEqual((st["n"], st["min"], st["max"]), (8, LAT + RP_LAT + late, LAT + RP_LAT + late))
+
+    def test_fast_turnaround(self):
+        # the fast path has no delay of its own in the model: the turnaround is the loop's
+        st = self.cl.loopback_turnaround("B1", path="fast", count=20, period=200)
+        self.assertEqual((st["n"], st["miss"], st["min"], st["max"]), (20, 0, LAT, LAT))
+        self.assertEqual((st["reply"]["drove"], st["reply"]["armed"]), (1, 0))
+        self.assertEqual(st["rx"]["decided"], 20)
+
+    def test_turnaround_capture(self):
+        cl = self.cl
+        r = cl.turnaround_capture("B1", path="sync")
+        self.assertEqual((r["t1"], r["turnaround"]), (LAT, LAT + RP_LAT))
+        self.assertEqual(r["t0p"], 0)                                   # the stimulus on the pads with its TX event
+        self.assertAlmostEqual(r["loop_ns"], LAT * 1.25)
+        self.assertAlmostEqual(r["fpga_ns"], RP_LAT * 1.25)            # comparator sample -> ladder sample
+        self.assertAlmostEqual(r["loop2_ns"], LAT * 1.25)
+        cap = r["capture"]
+        t = cap["trigger_word"]
+        self.assertEqual(cap["TX_EVENT"][t], 1)
+        self.assertEqual(sum(cap["REPLY"][t:t + 10]), 1)                # the reply's first clock
+        r = cl.turnaround_capture("B1", path="fast")
+        self.assertEqual((r["turnaround"], r["fpga_ns"]), (LAT, 0.0))
+        self.assertEqual(r["capture"]["REPLY"][r["capture"]["trigger_word"] + 1], 1)   # armed by the TX event
+
+    def test_ring(self):
+        # A3's corners in a ring started from the idle: one turnaround a hop
+        st = self.cl.ring_run("A3", clocks=300)
+        self.assertEqual(st["hops"], (300 * SER - 1) // LAT)
+        self.assertEqual(st["turnaround"], LAT)
+        self.assertEqual(st["fast"]["armed"], 0)
+        # B1 has no pilot in the model (the idle's CMP_I differs): a stimulus starts it instead
+        st = self.cl.ring_run("B1", clocks=300, start="stimulus")
+        self.assertGreater(st["hops"], 150)
+        self.assertEqual(st["turnaround"], LAT)
+
+    def test_ring_entries(self):
+        # no fixed point, and the idle starts it
+        s = SCHEMES["B2"]
+        ent = CostasLink.ring_entries(s)
+        own = CostasLink.vector_owners(s)
+        pts = [point_code(*m) for m in s.msgs]
+        for v, k in own.items():
+            self.assertNotEqual(ent[v], pts[k])
+        self.assertEqual(ent[s.idle_vector()], pts[0])
 
     def test_trig_in_reference(self):
         cl, bus = self.cl, self.bus

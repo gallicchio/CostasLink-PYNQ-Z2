@@ -415,6 +415,18 @@ samples a 3.3 V pin at up to 1.25 Gb/s; the ECP5 (grade -6) at 655.8 Mb/s with G
 of time resolution against 0.8 ns, both finer than the 3.5 ns arm-filter rise. The Icepi is not
 slower where it matters, and it is 8.8 ns faster for having no header resistors.
 
+**What exists since Prompt 36** (`gateware/turnaround.v`, `gateware/README.md`'s turnaround section): the
+prover's answer and its measurement.  A synchronous reply: on RX's valid decision of message k the
+ladders take a mapped point, two clocks after the ISERDESE2's word (the decision in a lane of its own that
+reads the word a clock early and looks it up in one composed table into the pins' register; rx_engine's own
+decision and a TX event would be seven), once per stimulus.  A combinational fast path on the PYNQ-Z2: the
+five comparators through the ISERDESE2s' combinational output and two reloadable LUTs a ladder bit to the
+pins, armed and disarmed synchronously, one shot or timed as a ring.  A turnaround counter: from the
+stimulus's echo at the comparators to the answer's, in samples.  And the ladder pads read back into the
+capture by ISERDESE2s of their own.  Vivado's numbers, pin to pin: the synchronous reply 28.7-44.7 ns; the
+fast path 2.7-9.3 ns between bank 13's pins, up to 13.1 ns when CMP_IP (bank 35) or TX_I1 (bank 34), on the
+die's other side, is in it.
+
 ## 9. Bring-up and the measurements it is for
 
 `BRINGUP.md` (Response 8): six stages with what to have on the bench, what plugs where, what to
@@ -1235,8 +1247,17 @@ model of docs/TRAJECTORIES.md and the host terms of docs/HOSTS.md.
 
 **What the time is spent on today:**
 - **Rev A's turnaround is dominated by its gateware, not its radio:** about 59 of its ~71 ns.  Rev A
-  has no receive-to-transmit path; the figure is what its registered decoder at 100 MHz would take: the
+  had no receive-to-transmit path; the figure is what its registered decoder at 100 MHz would take: the
   ISERDES word, the 4-sample decision delay, about five clocks of stages.
+  - Since Prompt 36 it has both (`gateware/turnaround.v`), and a counter that measures either in
+    single-board loopback.  Vivado's pin-to-pin numbers (slow corner max, fast corner min): the
+    synchronous reply 28.7-44.7 ns (34-40 on average over the phase: the ISERDES word's wait, two clocks,
+    the clock-to-pad), so ~52-68 ns from RX ANT to TX ANT with the halves of docs/TRAJECTORIES.md
+    (~15 ns in, ~8.5 ns out); the combinational fast path 2.7-9.3 ns between bank 13's pins and up to
+    13.1 ns across the die (CMP_IP on bank 35, TX_I1 on bank 34): ~26-37 ns antenna to antenna.
+  - Of the fast path's same-side ~9 ns at the slow corner, 4.9 are the LVCMOS33 buffers and ~4 the
+    fabric; the "~5 ns" below lies between the corners (2.7-3.0 ns fast, 8.5-9.3 ns slow).  The header
+    pins' banks, not the logic, set the rest.
 - **Next in line:**
   - the FPGA's own pin-to-pin path (~5 ns: input buffer, routing and a LUT, output buffer);
   - the PYNQ's header RCs (2.7 ns);
