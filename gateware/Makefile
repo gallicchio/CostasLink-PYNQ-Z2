@@ -1,6 +1,7 @@
 # gateware/Makefile: lint, synthesise, simulate and (for the Icepi Zero) place-and-route the first firmware.
 #
-#   make lint     Verilator --lint-only -Wall on the RTL (no warnings allowed)
+#   make lint     Verilator --lint-only -Wall on the RTL (no warnings allowed): the generic top, and the core
+#                 with the PYNQ-Z2's parameters (SER 8, the early reply lane, the fast path, the read-back)
 #   make synth    Yosys synth_ecp5 of costaslink_top: prints the cell counts; the netlist goes to the scratch dir
 #   make sim      Icarus Verilog: tb_costaslink.v against the words max2871_regs.py computes
 #   make sim-engines  Icarus Verilog: tb_engines.v, the experiment engines against a loopback model
@@ -28,7 +29,7 @@ PYTHON    ?= python3
 SCRATCH := ../build/gateware_scratch
 TOP     := costaslink_top
 CORE    := costaslink_core.v bus_stage.v costaslink_regs.v spi_master.v max2871_init.v i2c_master.v tx_symbol.v \
-           tx_engine.v rx_engine.v count_ram.v prbs.v capture.v seq_gate.v cmp_monitor.v morse_keyer.v
+           tx_engine.v rx_engine.v count_ram.v prbs.v capture.v seq_gate.v cmp_monitor.v morse_keyer.v turnaround.v fp_lut5.v
 RTL     := costaslink_top.v fast_sampler_flop.v uart_rx.v uart_tx.v uart_cmd.v $(CORE)
 TB      := tb_costaslink.v
 
@@ -44,6 +45,8 @@ $(SCRATCH):
 
 lint:
 	$(VERILATOR) --lint-only -Wall -I. --top-module $(TOP) $(RTL)
+	@# the core as the PYNQ-Z2 builds it: 8 samples a clock, the reply lane early, the fast path, the read-back
+	$(VERILATOR) --lint-only -Wall -I. --top-module costaslink_core -GSER=8 -GBOARD=1 -GEARLY=1 -GFAST_PATH=1 -GTXFB=1 -GRP_REG=0 $(CORE)
 	@echo "lint: clean"
 
 synth: | $(SCRATCH)
@@ -60,6 +63,9 @@ sim: | $(SCRATCH)
 sim-engines: | $(SCRATCH)
 	$(IVERILOG) -g2005 -Wall -Wno-timescale -I. -o $(SCRATCH)/tb_engines.vvp tb_engines.v $(CORE)
 	$(VVP) -N $(SCRATCH)/tb_engines.vvp
+	@# and with the Icepi Zero's reply lane (RP_REG = 1: the reply registered once more)
+	$(IVERILOG) -g2005 -Wall -Wno-timescale -I. -Ptb_engines.RP_REG=1 -o $(SCRATCH)/tb_engines_rp1.vvp tb_engines.v $(CORE)
+	$(VVP) -N $(SCRATCH)/tb_engines_rp1.vvp
 
 pnr: synth
 	$(NEXTPNR) --25k --package CABGA256 --speed 6 --freq 50 --json $(SCRATCH)/$(TOP).json \

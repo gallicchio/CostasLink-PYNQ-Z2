@@ -40,7 +40,17 @@ module rx_engine #(
     output reg               ev_pulse,          // one clock: an event
     output reg               dec_pulse,         // one clock: a decision
     output reg               valid_pulse,       // one clock: a decision with a valid table entry
-    output wire              trig_in_rise       // one clock: TRIG_IN rose (for tx_engine mode 2)
+    output wire              trig_in_rise,      // one clock: TRIG_IN rose (for tx_engine mode 2)
+    // the decoder as it is set, for turnaround.v's reply lane (the same decision, earlier)
+    output wire [4:0]        cfg_idle,
+    output wire [4:0]        cfg_mask,
+    output wire [127:0]      cfg_lut,
+    output wire              cfg_first,
+    output wire [7:0]        cfg_dly,
+    output wire              arm_now,           // armed, enabled, not stopped: takes an event in stage 1 now
+    output wire              arm_next,          // the same next clock, with no event in stage 1 now
+    output wire              ref_now_o,         // one clock: a reference (this board's TX event, or TRIG_IN's rise)
+    output wire [31:0]       t_ref_o            // its time in samples
 );
 `include "regmap.vh"
     localparam integer LS = (SER >= 8) ? 3 : (SER >= 4) ? 2 : (SER >= 2) ? 1 : 0;
@@ -433,6 +443,15 @@ module rx_engine #(
             end
         end
     end
+
+    // ---- the decoder's state for the reply lane (turnaround.v) -------------------------------------------------
+    assign cfg_idle = idle; assign cfg_mask = mask; assign cfg_lut = lut; assign cfg_first = first_mode;
+    assign cfg_dly  = dly;
+    assign ref_now_o = ref_now;
+    assign t_ref_o   = t_ref_now;
+    assign arm_now  = en && !stopped && (st == S_ARMED);
+    assign arm_next = en && !stopped && ((st == S_ARMED && !out_found1) ||
+                                         (st == S_QUIET && all_idle1 && qcnt >= quiet && !single));
 
     // ---- reads ------------------------------------------------------------------------------------------------
     always @* begin

@@ -62,13 +62,19 @@ set_property target_language Verilog [current_project]
 
 set rtl {costaslink_pynq.v axil_bridge.v fast_sampler_7series.v costaslink_core.v bus_stage.v costaslink_regs.v spi_master.v
          max2871_init.v i2c_master.v tx_symbol.v tx_engine.v rx_engine.v count_ram.v prbs.v capture.v seq_gate.v
-         cmp_monitor.v morse_keyer.v}
+         cmp_monitor.v morse_keyer.v turnaround.v fp_lut5_7series.v}
 foreach f $rtl { add_files -norecurse $gw_dir/$f }
 add_files -norecurse $gw_dir/regmap.vh $gw_dir/max2871_words.vh
 set_property file_type {Verilog Header} [get_files regmap.vh]
 set_property file_type {Verilog Header} [get_files max2871_words.vh]
 set_property include_dirs [list $gw_dir] [current_fileset]
 add_files -fileset constrs_1 -norecurse $xdc
+# the receive-to-transmit paths' timing (Prompt 36): written by hand, implementation only (it names cells
+# inside the module reference, which top-level synthesis sees as a black box), after the pins' XDC
+set fp_xdc $script_dir/costaslink_fast_path.xdc
+add_files -fileset constrs_1 -norecurse $fp_xdc
+set_property USED_IN_SYNTHESIS false [get_files $fp_xdc]
+set_property PROCESSING_ORDER LATE [get_files $fp_xdc]
 update_compile_order -fileset sources_1
 
 # ---- 3. the block design ------------------------------------------------------------
@@ -176,6 +182,10 @@ set whs [get_property SLACK [get_timing_paths -delay_type min]]
 puts "--- TIMING: WNS = $wns ns   WHS = $whs ns"
 report_utilization -file $build_dir/${tag}utilization.rpt
 report_timing_summary -file $build_dir/${tag}timing_summary.rpt
+# the fast path pin to pin, and the ladders' clock-to-pad (Prompt 36)
+source $script_dir/fast_path_report.tcl
+if {[catch {fast_path_report $build_dir/${tag}fast_path.rpt} fp_summary]} { set fp_summary "fast path report failed: $fp_summary" }
+puts "--- FAST PATH: $fp_summary"
 if {$wns < 0 || $whs < 0} {
     error "timing not met (WNS $wns ns, WHS $whs ns): refusing to publish the overlay; $build_dir/${tag}timing_summary.rpt"
 }
@@ -195,5 +205,5 @@ if {$bit ne ""} { file copy -force [lindex $bit 0] $out/$bd_name.bit }
 if {$hwh ne ""} { file copy -force [lindex $hwh 0] $out/$bd_name.hwh }
 if {!$bench} { write_hw_platform -fixed -include_bit -force $out/$bd_name.xsa }
 if {[file isdirectory [pwd]/NA]} { file delete -force [pwd]/NA }
-puts "\n=== DONE: $out/$bd_name.bit + .hwh   (WNS $wns ns, WHS $whs ns) ==="
+puts "\n=== DONE: $out/$bd_name.bit + .hwh   (WNS $wns ns, WHS $whs ns; $fp_summary) ==="
 exit 0

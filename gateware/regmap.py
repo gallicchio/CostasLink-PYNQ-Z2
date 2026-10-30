@@ -14,7 +14,7 @@ import os, sys
 # (address, name, access, block, description).  access: R, W, RW; "pulse" in the text = acts once.
 REGS = [
     # ---- the first firmware (Response 9 and 14): costaslink_regs.v, cmp_monitor.v ------------------------
-    (0x00, "ID", "R", "regs", "0x434C0002: 'CL', version 2 (Response 15: the experiment engines)"),
+    (0x00, "ID", "R", "regs", "0x434C0003: 'CL', version 3 (Prompt 36: the reply paths and the turnaround counter; 2 was Response 15's engines)"),
     (0x01, "CTRL", "RW", "regs", "[0] TX_DIS (reset 1: muted; header pin 24 carries its inverse, TX_EN), [1] LOOP_HOLD (reset 1), [2] LOOP_SEL, [3] TR_A (reset 1: receive), "
                                  "[6] ID enable, [7] pulse: ID now, [8] TX_Q1 high-impedance (unused since Prompt 35: TRIG IN sums into the Q ladder on the board)"),
     (0x02, "TXSYM", "RW", "regs", "[3:0] {Q1 Q0 I1 I0} ladder point in TX_MODE 0; a write pulses TRIG_A; R [7:4] the pins now"),
@@ -22,7 +22,7 @@ REGS = [
     (0x04, "PAT_WIDTH", "RW", "regs", "TX_MODE 0: clocks a flip lasts; 0 = toggle"),
     (0x05, "PAT_CTRL", "RW", "regs", "TX_MODE 0: W [0] start / stop, [31:16] flips (0 = forever); R [0] running"),
     (0x06, "TRIG_CFG", "RW", "regs", "[7:0] trigger pulse width (clocks), [8] TRIG_A on symbol change, [9] TRIG_B on CMP_I edge, "
-                                     "[10] TRIG_B rising only, [12:11] TRIG_A source (0 symbol change, 1 TX event start), "
+                                     "[10] TRIG_B rising only, [12:11] TRIG_A source (0 symbol change, 1 TX event start, 2 a reply: RP's first clock or FP's first change), "
                                      "[14:13] TRIG_B source (0 CMP_I edge, 1 RX event, 2 RX decision, 3 RX valid decision)"),
     (0x08, "SPI_DATA", "RW", "regs", "the word to send"),
     (0x09, "SPI_CTRL", "RW", "regs", "W [1:0] slave (0 TX PLL, 1 RX PLL, 2 DSA) and go; R [0] busy, [1] init busy"),
@@ -132,21 +132,58 @@ REGS = [
 
     # ---- the capture buffer: capture.v ----------------------------------------------------------------------
     (0x78, "CAP_CTRL", "RW", "cap", "W [0] pulse: arm, [1] pulse: trigger now, [6:4] trigger (0 none, 1 TX event, 2 RX event, "
-                                    "3 TRIG_IN rising, 4 any fast comparator change, 5 RX decision, 6 a sequencer step begins); "
+                                    "3 TRIG_IN rising, 4 any fast comparator change, 5 RX decision, 6 a sequencer step begins, 7 a reply); "
                                     "R [0] armed, [1] triggered, [2] done, [3] a whole buffer was written since the arming"),
     (0x79, "CAP_POST", "RW", "cap", "words written after the trigger (the rest of the buffer is before it)"),
-    (0x7A, "CAP_ADDR", "RW", "cap", "[15:0] the word, counted from the oldest, [16] its high 32 bits (words over 32 bits)"),
+    (0x7A, "CAP_ADDR", "RW", "cap", "[15:0] the word, counted from the oldest, [17:16] its 32-bit chunk (words over 32 bits: 0 the lowest)"),
     (0x7B, "CAP_DATA", "R", "cap", "the chunk; reading the last chunk of a word steps on to the next word"),
-    (0x7C, "CAP_INFO", "R", "cap", "[7:0] samples a clock, [15:8] the word's width in bits, [23:16] log2 of the depth"),
+    (0x7C, "CAP_INFO", "R", "cap", "[7:0] samples a clock, [15:8] the word's width in bits, [23:16] log2 of the depth, "
+                                    "[24] the ladder pins' read-back samples follow the context (4 x SER bits)"),
     (0x7D, "CAP_TRIG", "R", "cap", "[15:0] the trigger's word, counted from the oldest; [31:16] the words written since "
                                     "the arming (only the newest that many are this capture's)"),
 
     # ---- build information --------------------------------------------------------------------------------------
-    (0x80, "BUILD", "R", "core", "[7:0] SER, [11:8] board (0 simulation, 1 PYNQ-Z2, 2 Icepi Zero), [31:16] clock in MHz"),
+    (0x80, "BUILD", "R", "core", "[7:0] SER, [11:8] board (0 simulation, 1 PYNQ-Z2, 2 Icepi Zero), [12] the fast path is built, "
+                                 "[13] the ladder pins are read back into the capture, [14] the reply lane reads the sampler's "
+                                 "word a clock early, [15] the synchronous reply registered once more (a clock later), "
+                                 "[31:16] clock in MHz"),
+
+    # ---- the receive-to-transmit paths and the turnaround counter: turnaround.v (Prompt 36) ------------------
+    (0x90, "RP_CTRL", "RW", "lat", "the synchronous reply: [0] enable (a write that sets it arms), [1] once: disarm after a reply, "
+                                   "[2] re-arm on each of this board's TX events (the stimulus), [3] pulse: arm, [4] pulse: disarm, "
+                                   "[5] re-arm when RX re-arms (the link quiet at its idle: any stimulus), "
+                                   "[31:16] clocks the reply's point is held (0 = 1); R + [8] armed"),
+    (0x91, "RP_MAP", "RW", "lat", "the reply to message k in [4k+2:4k]: on RX's valid decision of k the pins take TX_POINTS[RP_MAP[k]] "
+                                  "(the composed table follows a write of RX_LUT, TX_POINTS or RP_MAP in 32 clocks)"),
+    (0x92, "RP_STAT", "R", "lat", "[2:0] the last message answered, [6:4] its reply, [31:8] replies since RP_CTRL was written"),
+    (0x94, "FP_CTRL", "RW", "lat", "the fast path: W [0] pulse: arm, [1] pulse: disarm, [2] timed (the ring: armed FP_TIME clocks) "
+                                   "instead of one shot (disarmed FP_TIME clocks after the first change it causes), [3] arm on each "
+                                   "of this board's TX events, [4] arm when RX re-arms; R [0] armed, [1] it drove the pins since "
+                                   "the arming, [2] timed, [3] arm on TX, [4] arm on RX, [5] the tables loading (32 clocks after a "
+                                   "write of FP_USE or FP_MAP: disarmed, an arming waits), [8] built"),
+    (0x95, "FP_TIME", "RW", "lat", "clocks: after the first change (one shot) or after the arming (timed) to the disarm (>= 1)"),
+    (0x96, "FP_USE", "RW", "lat", "bit v: comparator vector v drives the pins with FP_MAP[v] while armed (else the pins' register passes)"),
+    (0x98, "FP_MAP0", "RW", "lat", "the fast path's points, vectors 0-7: entry v in [4v+3:4v] = {Q1 Q0 I1 I0}"),
+    (0x99, "FP_MAP1", "RW", "lat", "vectors 8-15"),
+    (0x9A, "FP_MAP2", "RW", "lat", "vectors 16-23"),
+    (0x9B, "FP_MAP3", "RW", "lat", "vectors 24-31"),
+    (0xA0, "RT_CFG", "RW", "lat", "the turnaround counter: [0] enable, [1] pulse: clear, [2] count arrivals only while the fast path "
+                                  "is armed (the ring), [12:8] the comparators watched (reset 0x1F), [23:16] guard: samples of quiet "
+                                  "before a change is an arrival (reset 8), [31:24] clocks after the first arrival the second "
+                                  "may take (0 = no limit)"),
+    (0xA1, "RT_LAST", "R", "lat", "[15:0] the last turnaround: the reference's first arrival -> its second (samples), "
+                                  "[31:16] reference (RX's: this board's TX event, or TRIG_IN's rise with RX_CTRL[3]) -> first arrival"),
+    (0xA2, "RT_MIN", "R", "lat", "[15:0] the least turnaround since the clear"),
+    (0xA3, "RT_MAX", "R", "lat", "[15:0] the most"),
+    (0xA4, "RT_SUM", "R", "lat", "the turnarounds' sum (samples), for the mean (with RT_N)"),
+    (0xA5, "RT_N", "R", "lat", "turnarounds measured"),
+    (0xA6, "RT_MISS", "R", "lat", "references whose second arrival did not come (a new reference first, or the window ran out)"),
+    (0xA7, "RT_MARKS", "R", "lat", "arrivals since the clear (with RT_CFG[2] inside the fast path's armed window: the ring's hops)"),
+    (0xA8, "RT_SPAN", "R", "lat", "samples from the first of those arrivals to the last"),
 ]
 
 BLOCKS = {"regs": (0x00, 0x2F), "tx": (0x30, 0x3F), "rx": (0x40, 0x5F), "seq": (0x60, 0x6F), "cap": (0x78, 0x7F),
-          "core": (0x80, 0x80)}
+          "core": (0x80, 0x80), "lat": (0x90, 0xAF)}
 
 BY_NAME = {name: addr for addr, name, *_ in REGS}
 

@@ -34,10 +34,11 @@ module tb_pipe;
     integer lat = LAT, lat_slow = LAT_SLOW;
 `include "tb_loopback.vh"
 
-    costaslink_core #(.CLK_HZ(100_000_000), .SER(SER), .CAP_AW(10), .BOARD(0), .ID_INTERVAL_S(600)) dut (
+    costaslink_core #(.CLK_HZ(100_000_000), .SER(SER), .CAP_AW(10), .BOARD(0), .ID_INTERVAL_S(600),
+                      .EARLY(1), .FAST_PATH(1), .TXFB(1), .RP_REG(0)) dut (
         .clk(clk), .rst(rst),
         .bus_addr(bus_addr), .bus_wdata(bus_wdata), .bus_we(bus_we), .bus_re(bus_re), .bus_rdata(bus_rdata),
-        .fs(fs), .cmp_i_s(slow[0]), .cmp_qp_s(slow[1]), .cmp_qn_s(slow[2]), .mux_tx(1'b1), .mux_rx(1'b1),
+        .fs(fs), .fs_lane(fs_early), .cmp_async(cmp_async), .fs_tx(fs_tx), .cmp_i_s(slow[0]), .cmp_qp_s(slow[1]), .cmp_qn_s(slow[2]), .mux_tx(1'b1), .mux_rx(1'b1),
         .i2c_scl_i(scl_o), .i2c_sda_i(sda_o), .i2c_scl_o(scl_o), .i2c_sda_o(sda_o),
         .tx_i1(tx_i1), .tx_i0(tx_i0), .tx_q1(tx_q1), .tx_q1_hiz(tx_q1_hiz), .tx_q0(tx_q0),
         .spi_sclk(spi_sclk), .spi_sdata(spi_sdata), .le_pll_tx(le_pll_tx), .le_pll_rx(le_pll_rx), .le_dsa(le_dsa),
@@ -70,7 +71,8 @@ module tb_pipe;
     initial begin
         for (ii = 0; ii < 256; ii = ii + 1) hist_pt[ii] = 4'b0111;
         for (ii = 0; ii < SER; ii = ii + 1) trig_samp[ii] = 1'b0;
-        fs = {SER{6'b001001}}; slow = 3'b001;
+        fs = {SER{6'b001001}}; fs_early = {SER{6'b001001}}; fs_tx = {SER{4'b0111}}; cmp_async = 5'b01001;
+        slow = 3'b001;
         if (!$value$plusargs("cmd=%s", cmd_path) || !$value$plusargs("rsp=%s", rsp_path)) begin
             $display("tb_pipe: +cmd=<fifo> +rsp=<fifo>"); $finish;
         end

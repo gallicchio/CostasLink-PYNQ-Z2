@@ -15,6 +15,9 @@
     cl.scheme(s)                     # the transmitter's points and the receiver's table for it
     cl.events(period=1000, count=10000); cl.rx_clear(); cl.tx_go()
     cl.rx_stats()                    # events, decisions, confirmations, latencies ...
+    cl.loopback_turnaround("B1", path="sync")   # single-board loopback: RX ANT -> TX ANT through the board
+    cl.loopback_turnaround("B1", path="fast")   # the same through the combinational fast path (PYNQ-Z2)
+    cl.ring_run("B1")                # the fast path as a ring: one turnaround a hop
 
 Everything goes through one register bus: register numbers and fields come from regmap.py (one level
 up), the same file the Verilog's regmap.vh is generated from.  A bus is anything with read(reg) and
@@ -41,7 +44,7 @@ from board_constants import (RX_GAIN_DB, DEM_REG_DBM, A_REG_V, DSA_POWER_UP_DB, 
                              NTC_B, NTC_R25, NTC_RTOP, NTC_VDD, VR_I_V, VR_Q_V)
 
 R = regmap.BY_NAME
-ID_EXPECTED = 0x434C0002
+ID_EXPECTED = 0x434C0003
 BOARDS = {0: "simulation", 1: "PYNQ-Z2", 2: "Icepi Zero"}
 
 # the fast comparators: their bit in the receiver's vectors (RX_IDLE, RX_LUT, RX_LAST), as rx_engine.v
@@ -52,7 +55,9 @@ FAST_INPUTS = CMP_NAMES + ("TRIG_IN",)
 GATE_INPUTS = FAST_INPUTS + ("CMP_I_S", "CMP_QP_S", "CMP_QN_S")
 # the capture word's 16 context bits, after the 6 x SER fast samples (capture.v)
 CTX_BITS = ("MUX_RX", "MUX_TX", "CMP_I_S", "CMP_QP_S", "CMP_QN_S", "TR_A", "LOOP_HOLD", "TX_DIS",
-            "I0", "I1", "Q0", "Q1", "TX_EVENT", "RX_EVENT", "RX_DECISION", "ZERO")
+            "I0", "I1", "Q0", "Q1", "TX_EVENT", "RX_EVENT", "RX_DECISION", "REPLY")
+# with BUILD[13] / CAP_INFO[24] (the PYNQ-Z2) the ladder pads read back, 4 x SER bits after the context
+TX_PIN_NAMES = ("TX_I0", "TX_I1", "TX_Q0", "TX_Q1")
 
 # the I2C parts (the schematic generator's notes)
 AD5696R = 0x0C              # A = V_TQP, B = V_TQN, C = V_TIP, D = V_TIN: 16 bits, 0-2.5 V
@@ -335,6 +340,8 @@ class CostasLink:
         b = self.rd("BUILD")
         self.ser = bits(b, 7, 0) or 1
         self.board = bits(b, 11, 8)
+        self.fast_path, self.tx_readback, self.early_lane = bits(b, 12, 12), bits(b, 13, 13), bits(b, 14, 14)
+        self.reply_reg = bits(b, 15, 15)            # the synchronous reply a clock later (the Icepi Zero)
         self.clk_mhz = bits(b, 31, 16) or 100
         self.t_clk = 1e-6 / self.clk_mhz
         self.t_sample = self.t_clk / self.ser
@@ -357,7 +364,8 @@ class CostasLink:
 
     def info(self):
         return {"board": BOARDS.get(self.board, self.board), "clock_MHz": self.clk_mhz, "samples_per_clock": self.ser,
-                "sample_ns": self.t_sample * 1e9, "capture": self.cap_info()}
+                "sample_ns": self.t_sample * 1e9, "capture": self.cap_info(), "fast_path": self.fast_path,
+                "tx_readback": self.tx_readback, "early_lane": self.early_lane, "reply_reg": self.reply_reg}
 
     def _wait(self, name, mask, timeout=1.0, want=0):
         t0 = time.time()
@@ -397,9 +405,10 @@ class CostasLink:
 
     # ---- the triggers TRIG A / TRIG B (TRIG_CFG) ----
     def triggers(self, width=10, a="tx_event", b="rx_decision", b_rising_only=False):
-        """TRIG A: 'symbol' (TX_MODE 0's changes) or 'tx_event'; TRIG B: 'cmp_i' (its edges), 'rx_event',
-        'rx_decision' or 'rx_valid'.  The marks of BRINGUP stage 3.4 and 4.2."""
-        asrc = {"symbol": 0, "tx_event": 1}[a]
+        """TRIG A: 'symbol' (TX_MODE 0's changes), 'tx_event' or 'reply' (a synchronous reply's first clock,
+        the fast path's first change); TRIG B: 'cmp_i' (its edges), 'rx_event', 'rx_decision' or 'rx_valid'.
+        The marks of BRINGUP stage 3.4 and 4.2."""
+        asrc = {"symbol": 0, "tx_event": 1, "reply": 2}[a]
         bsrc = {"cmp_i": 0, "rx_event": 1, "rx_decision": 2, "rx_valid": 3}[b]
         v = (width & 0xFF) | (1 << 8) | (1 << 9) | (int(b_rising_only) << 10) | (asrc << 11) | (bsrc << 13)
         self.wr("TRIG_CFG", v)
@@ -809,11 +818,11 @@ class CostasLink:
 
     # ---- the capture buffer (capture.v) ----
     TRIGGERS = {"none": 0, "tx_event": 1, "rx_event": 2, "trig_in": 3, "any_change": 4, "rx_decision": 5,
-                "seq_step": 6}
+                "seq_step": 6, "reply": 7}
 
     def cap_info(self):
         v = self.rd("CAP_INFO")
-        return {"ser": v & 0xFF, "width": v >> 8 & 0xFF, "depth": 1 << (v >> 16 & 0xFF)}
+        return {"ser": v & 0xFF, "width": v >> 8 & 0xFF, "depth": 1 << (v >> 16 & 0xFF), "tx_readback": v >> 24 & 1}
 
     def cap_arm(self, trigger="tx_event", post=None):
         info = self.cap_info()
@@ -832,17 +841,19 @@ class CostasLink:
     def cap_read(self, timeout=1.0):
         """the buffer, oldest word first, once the capture is done: per fast input a list of samples (one
         per sample, SER per word), per context bit a list (one per word), where the trigger fell, and the
-        first word this capture wrote (`valid_from`: the ones before it are older, stale)"""
+        first word this capture wrote (`valid_from`: the ones before it are older, stale).  With the ladder
+        pads read back (the PYNQ-Z2): per pin a list of samples and TX_PINS, the code {Q1 Q0 I1 I0} per
+        sample (`tx_pins_lag`: samples they lag the comparators' samples, SER in the simulator's model)."""
         self._wait("CAP_CTRL", 0x4, timeout, want=0x4)
         info = self.cap_info()
         ser, width, depth = info["ser"], info["width"], info["depth"]
-        chunks = 2 if width > 32 else 1
+        chunks = (width + 31) // 32
         self.wr("CAP_ADDR", 0)
         words = []
         for _ in range(depth):
-            w = self.rd("CAP_DATA")
-            if chunks == 2:
-                w |= self.rd("CAP_DATA") << 32
+            w = 0
+            for c in range(chunks):
+                w |= self.rd("CAP_DATA") << (32 * c)
             words.append(w)
         t = self.rd("CAP_TRIG")
         trig, nvalid = t & 0xFFFF, t >> 16
@@ -852,6 +863,12 @@ class CostasLink:
             out[name] = [w >> (6 * s + k) & 1 for w in words for s in range(ser)]
         for k, name in enumerate(CTX_BITS):
             out[name] = [w >> (6 * ser + k) & 1 for w in words]
+        if info["tx_readback"]:
+            base = 6 * ser + 16
+            for p, name in enumerate(TX_PIN_NAMES):
+                out[name] = [w >> (base + 4 * s + p) & 1 for w in words for s in range(ser)]
+            out["TX_PINS"] = [w >> (base + 4 * s) & 0xF for w in words for s in range(ser)]
+            out["tx_pins_lag"] = ser if self.board == 0 else 0
         return out
 
     def capture(self, trigger="tx_event", post=None, start=None, timeout=1.0):
@@ -861,6 +878,298 @@ class CostasLink:
             start()
         return self.cap_read(timeout)
 
+
+    # ---- the receive-to-transmit paths and the turnaround counter (turnaround.v, Prompt 36) ----
+    # Three ways to answer a received state, all measured the same way: in single-board loopback (TX ANT
+    # cabled to RX ANT through an attenuator) this board's TX event is the stimulus, its echo is the
+    # comparators' first ARRIVAL (a change after `guard` samples of quiet), the answer's echo the second,
+    # and the difference is the turnaround from RX ANT to TX ANT plus the cable.
+    #   * the synchronous reply (RP_*): rx_engine's decision, two clocks from the sampler's word to the pins;
+    #   * the fast path (FP_*, the PYNQ-Z2): the comparators' pins through LUTs to the ladder pins, no clock;
+    #   * the ring: the fast path with a permutation of the states, so the loop cycles one turnaround a hop.
+
+    REARM = {None: 0, "tx": 1 << 2, "rx": 1 << 5}
+
+    def reply_config(self, reply_map, width=40, once=True, rearm="tx", enable=True):
+        """the synchronous reply: on RX's valid decision of message k the ladders take TX_POINTS[reply_map[k]]
+        for `width` clocks, over whatever tx_engine sends.  reply_map: a list (k -> its reply) or a dict.
+        once: disarm after a reply; rearm 'tx' on each of this board's TX events (the stimulus), 'rx' when
+        RX re-arms (the link quiet at its idle: any stimulus, TRIG IN's or another board's), None by
+        reply_arm() only.  So each stimulus is answered once and the answer's own echo is not (single-board
+        loopback); once=False answers every decision (a prover facing another board)."""
+        m = reply_map if isinstance(reply_map, dict) else dict(enumerate(reply_map))
+        w = 0
+        for k, r in m.items():
+            w |= (int(r) & 7) << (4 * int(k))
+        self.wr("RP_MAP", w)
+        self.wr("RP_CTRL", int(enable) | int(once) << 1 | self.REARM[rearm] | (max(1, int(width)) & 0xFFFF) << 16)
+        self.wait_s(40 * self.t_clk)                  # the composed table: one entry a clock
+
+    def reply_off(self):
+        self.wr("RP_CTRL", 0)
+
+    def reply_arm(self, on=True):
+        v = self.rd("RP_CTRL") & 0xFFFF0027
+        self.wr("RP_CTRL", v | (0x8 if on else 0x10))
+
+    def reply_stat(self):
+        c, v = self.rd("RP_CTRL"), self.rd("RP_STAT")
+        return {"enabled": c & 1, "once": c >> 1 & 1, "rearm_on_tx": c >> 2 & 1, "rearm_on_rx": c >> 5 & 1,
+                "armed": c >> 8 & 1, "width": c >> 16, "last_msg": v & 7, "last_reply": v >> 4 & 7, "replies": v >> 8}
+
+    def fast_config(self, entries, mode="oneshot", clocks=1, arm_on="tx"):
+        """the fast path's table: entries {comparator vector: ladder point code} (every other vector lets
+        the pins' register through); mode 'oneshot' (disarmed `clocks` after the first change it causes)
+        or 'ring' (armed `clocks`); arm_on 'tx' arms it on each of this board's TX events, 'rx' when RX
+        re-arms (the link quiet at its idle), None by fast_arm() only."""
+        if not self.fast_path:
+            raise RuntimeError("this build has no fast path (BUILD[12])")
+        use, words = 0, [0, 0, 0, 0]
+        for v, pt in entries.items():
+            if pt is None:
+                continue
+            use |= 1 << v
+            words[v >> 3] |= (pt & 0xF) << (4 * (v & 7))
+        self.wr("FP_CTRL", 2)                          # disarmed while the table changes
+        for k in range(4):
+            self.wr("FP_MAP%d" % k, words[k])
+        self.wr("FP_USE", use)
+        self.wr("FP_TIME", max(1, int(clocks)))
+        self._fp_mode = {"oneshot": 0, "ring": 1}[mode] << 2 | {None: 0, "tx": 1 << 3, "rx": 1 << 4}[arm_on]
+        self.wr("FP_CTRL", self._fp_mode)
+        # the tables shift into their LUTs for 32 clocks after the last write (an arming meanwhile waits)
+        self.wait_s(40 * self.t_clk)
+        self._wait("FP_CTRL", 1 << 5)
+
+    def fast_arm(self):
+        self.wr("FP_CTRL", getattr(self, "_fp_mode", 0) | 1)
+
+    def fast_off(self):
+        if self.fast_path:
+            self.wr("FP_CTRL", 2)
+            self.wr("FP_USE", 0)
+            self._fp_mode = 0
+
+    def fast_state(self):
+        v = self.rd("FP_CTRL")
+        return {"armed": v & 1, "drove": v >> 1 & 1, "ring": v >> 2 & 1, "arm_on_tx": v >> 3 & 1, "arm_on_rx": v >> 4 & 1,
+                "loading": v >> 5 & 1, "built": v >> 8 & 1, "clocks": self.rd("FP_TIME")}
+
+    @staticmethod
+    def vector_owners(s, first_edge=True):
+        """comparator vector -> the message it shows: the settled table's, else (first_edge) the message
+        its masked changes from the idle belong to alone (Scheme.lut's two rules on the raw vector)"""
+        s = SCHEMES[s] if isinstance(s, str) else s
+        settled, fe = s.lut(False), s.lut(True)
+        iv = s.idle_vector()
+        own = {}
+        for v in range(32):
+            if settled[v] & 8:
+                own[v] = settled[v] & 7
+            elif first_edge:
+                f = (v ^ iv) & s.mask
+                if f and fe[f] & 8:
+                    own[v] = fe[f] & 7
+        return own
+
+    @classmethod
+    def fast_reply_entries(cls, s, reply_map, first_edge=True):
+        """the fast path's table for a reply: every vector that shows message k drives reply_map[k]'s point"""
+        s = SCHEMES[s] if isinstance(s, str) else s
+        m = reply_map if isinstance(reply_map, dict) else dict(enumerate(reply_map))
+        return {v: point_code(*s.msgs[m[k]]) for v, k in cls.vector_owners(s, first_edge).items() if k in m}
+
+    @classmethod
+    def ring_entries(cls, s, order=None, start="idle"):
+        """the ring's table: a vector that shows message a drives the next one's point; a vector on the way
+        from a to the next (each comparator at a's value or the next's) that nothing else owns keeps
+        driving the next; the idle drives the first (start='idle') or lets the pins' register through
+        (start='stimulus': a TX event starts it).  order: the cycle (default 0, 2, 1, 3 for four messages:
+        B1's and B2's axis points in turn, so a hop moves both arms and their windows overlap)."""
+        s = SCHEMES[s] if isinstance(s, str) else s
+        if order is None:
+            order = [0, 2, 1, 3] if s.n == 4 else list(range(s.n))
+        nxt = {order[i]: order[(i + 1) % len(order)] for i in range(len(order))}
+        own = cls.vector_owners(s, first_edge=True)
+        iv = s.idle_vector()
+        ent = {v: point_code(*s.msgs[nxt[k]]) for v, k in own.items() if k in nxt}
+        sets = s.settled_sets()
+        cand = {}
+        for a in order:
+            b = nxt[a]
+            for va in sets[a]:
+                for vb in sets[b]:
+                    d = va ^ vb
+                    sub = d
+                    while True:                     # every subset of the comparators that differ
+                        v = va ^ sub
+                        if v not in own and v != iv:
+                            cand.setdefault(v, set()).add(b)
+                        if sub == 0:
+                            break
+                        sub = (sub - 1) & d
+        for v, bs in cand.items():
+            if len(bs) == 1:
+                ent[v] = point_code(*s.msgs[bs.pop()])
+        if start == "idle":
+            ent[iv] = point_code(*s.msgs[order[0]])
+        return ent
+
+    def turnaround_config(self, mask=0x1F, guard=8, window=50, ring=False, enable=True, clear=True):
+        """the counter: arrivals on the comparators in `mask` (a change after `guard` samples of quiet);
+        after each of this board's TX events the first arrival -> the second within `window` clocks
+        (0: no limit); ring: count arrivals only while the fast path is armed"""
+        self.wr("RT_CFG", int(enable) | int(clear) << 1 | int(ring) << 2 | (mask & 0x1F) << 8 | (guard & 0xFF) << 16
+                | (window & 0xFF) << 24)
+
+    def turnaround_stats(self):
+        """the counter's statistics: samples and ns"""
+        ts = self.t_sample * 1e9
+        n, last = self.rd("RT_N"), self.rd("RT_LAST")
+        st = {"n": n, "miss": self.rd("RT_MISS"), "min": self.rd("RT_MIN") & 0xFFFF, "max": self.rd("RT_MAX") & 0xFFFF,
+              "sum": self.rd("RT_SUM"), "last": last & 0xFFFF, "last_ref_to_arrival": last >> 16,
+              "arrivals": self.rd("RT_MARKS"), "span": self.rd("RT_SPAN"), "sample_ns": ts}
+        st["mean"] = st["sum"] / n if n else None
+        for k in ("min", "max", "mean", "last", "last_ref_to_arrival"):
+            st[k + "_ns"] = st[k] * ts if n else None
+        return st
+
+    def _turnaround_setup(self, scheme, path, reply_map, first_edge, delay, width, reply_width, fp_clocks,
+                          stimulus="tx"):
+        s = self.scheme(scheme, first_edge=first_edge, delay=delay)
+        if stimulus == "trig_in":                     # RX's reference, and so the counter's: TRIG_IN's rise
+            self._rx_ctrl |= 1 << 3
+            self.wr("RX_CTRL", self._rx_ctrl)
+        if reply_map is None:
+            reply_map = [(k + 1) % s.n for k in range(s.n)]   # every answer differs from its stimulus
+        self.tx_stop()
+        rearm = "tx" if stimulus == "tx" else "rx"
+        if path == "sync":
+            self.fast_off()
+            self.reply_config(reply_map, width=reply_width, once=True, rearm=rearm)
+        elif path == "fast":
+            self.reply_off()
+            self.fast_config(self.fast_reply_entries(s, reply_map, first_edge), mode="oneshot", clocks=fp_clocks,
+                             arm_on=rearm)
+            if stimulus != "tx":
+                self.fast_arm()
+        else:
+            raise ValueError("path: 'sync' or 'fast'")
+        return s, reply_map
+
+    def loopback_turnaround(self, scheme="B1", path="sync", reply_map=None, count=1000, period=1000, width=20,
+                            first_edge=True, delay=None, reply_width=40, fp_clocks=1, guard=8, window=50, mask=0x1F,
+                            stimulus="tx", seconds=1.0):
+        """single-board loopback (TX ANT to RX ANT through a cable and an attenuator): `count` stimuli,
+        each answered once by the synchronous reply (path='sync') or the fast path ('fast'), and the
+        turnaround counter's statistics, from the stimulus's echo to the answer's: the board's turnaround
+        from RX ANT to TX ANT, plus the cable.  The stimulus is held `width` clocks (the answer takes the
+        pins over before it ends), the answer `reply_width` (sync) or until `fp_clocks` after its first
+        change (fast).  stimulus 'tx': this board's TX events, on the clock's grid, so the synchronous
+        reply's wait for the ISERDESE2's word is one fixed phase (one value of its 10 ns spread);
+        'trig_in': a free-running generator on TRIG IN (it sums into the Q ladder on the board) makes the
+        stimuli at every phase for `seconds`, RX's reference TRIG_IN, the paths re-armed when RX re-arms.
+        Returns the counter's statistics in samples and ns, RX's and the reply's."""
+        self._turnaround_setup(scheme, path, reply_map, first_edge, delay, width, reply_width, fp_clocks, stimulus)
+        self.turnaround_config(mask=mask, guard=guard, window=window)
+        self.rx_clear()
+        if stimulus == "tx":
+            self.events(period=period, width=width, count=count)
+            self.tx_go()
+            self.wait_s((period * count + 200) * self.t_clk)
+        else:
+            self.wait_s(seconds)
+        st = self.turnaround_stats()
+        st["path"] = path
+        st["rx"] = self.rx_stats()
+        st["reply"] = self.reply_stat() if path == "sync" else self.fast_state()
+        if path == "sync":
+            self.reply_off()
+        else:
+            self.fast_off()
+        if stimulus != "tx":
+            self._rx_ctrl &= ~(1 << 3)
+            self.wr("RX_CTRL", self._rx_ctrl)
+        return st
+
+    def turnaround_from_capture(self, cap, guard=8, mask=0x1F):
+        """the same turnaround from a capture (software, sample by sample): after the trigger (the
+        stimulus's TX event) the comparators' first arrival t1 and second t3; with the ladder pins read
+        back (BUILD[13]), also when the pads changed: the stimulus t0p and the answer t2, so t2 - t1 is the
+        FPGA's pin to pin (both pads sampled by ISERDESE2s alike) and t3 - t2 the RF loop's."""
+        ts = cap["sample_ns"]
+        t0 = cap["trigger_sample"]
+        vec = [sum(cap[name][i] << b for b, name in enumerate(CMP_NAMES)) & mask for i in range(len(cap["CMP_I"]))]
+        arr, last = [], None
+        for i in range(t0 + 1, len(vec)):
+            if vec[i] != vec[i - 1]:
+                if last is None or i - last >= guard:
+                    arr.append(i)
+                last = i
+        out = {"arrivals": [a - t0 for a in arr], "sample_ns": ts}
+        if len(arr) >= 2:
+            out.update(t1=arr[0] - t0, t3=arr[1] - t0, turnaround=arr[1] - arr[0],
+                       turnaround_ns=(arr[1] - arr[0]) * ts, ref_to_arrival_ns=(arr[0] - t0) * ts)
+        if "TX_PINS" in cap and len(arr) >= 1:
+            pins = cap["TX_PINS"]
+            lag = cap.get("tx_pins_lag", 0)
+            ch = [i - lag for i in range(t0 + 1, len(pins)) if pins[i] != pins[i - 1]]
+            stim = [c for c in ch if c < arr[0]]
+            ans = [c for c in ch if c >= arr[0]]
+            if stim:
+                out["t0p"] = stim[-1] - t0
+                out["loop_ns"] = (arr[0] - stim[-1]) * ts
+            if ans:
+                out["t2"] = ans[0] - t0
+                out["fpga_ns"] = (ans[0] - arr[0]) * ts
+                if len(arr) >= 2:
+                    out["loop2_ns"] = (arr[1] - ans[0]) * ts
+        return out
+
+    def turnaround_capture(self, scheme="B1", path="sync", reply_map=None, first_edge=True, delay=None, width=20,
+                           reply_width=40, fp_clocks=1, post=256, guard=8, mask=0x1F):
+        """one stimulus, captured: the comparators and (PYNQ-Z2) the ladder pads, sample by sample, and
+        turnaround_from_capture's times; the capture itself under 'capture'"""
+        self._turnaround_setup(scheme, path, reply_map, first_edge, delay, width, reply_width, fp_clocks)
+        self.events(period=1000, width=width, count=1)
+        cap = self.capture("tx_event", post=post, start=self.tx_go)
+        out = self.turnaround_from_capture(cap, guard=guard, mask=mask)
+        out["capture"] = cap
+        if path == "sync":
+            self.reply_off()
+        else:
+            self.fast_off()
+        return out
+
+    def ring_run(self, scheme="B1", order=None, clocks=2000, start="idle", guard=8, mask=0x1F):
+        """the ring (PYNQ-Z2): the fast path armed `clocks` with a permutation of the scheme's states (no fixed
+        point), so in single-board loopback the state cycles through the loop; the counter's arrivals while
+        armed give the hops, and the span over hops - 1 is one turnaround, RX ANT to TX ANT plus the cable"""
+        s = SCHEMES[scheme] if isinstance(scheme, str) else scheme
+        self.tx_stop()
+        self.reply_off()
+        self.tx_points(s.tx_idle(), [point_code(i, q) for i, q in s.msgs])   # the idle the ring starts from
+        self.fast_config(self.ring_entries(s, order, start), mode="ring", clocks=clocks, arm_on=None)
+        self.turnaround_config(mask=mask, guard=guard, window=0, ring=True)
+        self.wait_s(20 * self.t_clk)
+        if start == "idle":
+            self.fast_arm()
+        else:
+            self.tx_msg((order or ([0, 2, 1, 3] if s.n == 4 else [0]))[0])
+            self.events(period=clocks + 100, width=clocks + 50, count=1, source="fixed")
+            self.fast_arm()
+            self.tx_go()
+        self.wait_s((clocks + 50) * self.t_clk)
+        st = self.turnaround_stats()
+        hops = st["arrivals"]
+        st["hops"] = hops
+        st["turnaround"] = st["span"] / (hops - 1) if hops > 1 else None
+        st["turnaround_ns"] = st["turnaround"] * st["sample_ns"] if hops > 1 else None
+        st["fast"] = self.fast_state()
+        self.fast_off()
+        self.wr("RT_CFG", 0)
+        return st
+
     # -----------------------------------------------------------------------------------------------------
     # experiments (BRINGUP.md)
     # -----------------------------------------------------------------------------------------------------
@@ -868,6 +1177,8 @@ class CostasLink:
         """the power-up state: TX muted, loop held, receive, the engines stopped"""
         self.tx_stop()
         self.seq_stop()
+        self.reply_off()
+        self.fast_off()
         self.tx_mode("txsym")
         self.ctrl(tx_dis=1, loop_hold=1, tr_a=1, txq1_hiz=0)
 

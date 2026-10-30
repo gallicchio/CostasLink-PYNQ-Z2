@@ -15,7 +15,8 @@
 //      quadrant points, FSK at +-1 / (4 TX_PERIOD) of the clock.
 //   5  one message point, TX_MSG's, held: a constellation point for the arms' offsets and the scope.
 // `tx_event` is high for the clock in which an event's point reaches the pins' registers: the time
-// reference of the receiver's latency (rx_engine.v, RX_CTRL[3] clear).
+// reference of the receiver's latency (rx_engine.v, RX_CTRL[3] clear).  A synchronous reply
+// (turnaround.v, `ovr_en`) takes the pins' register over for its clocks in any mode; it is not an event.
 
 module tx_engine (
     input  wire        clk,
@@ -38,10 +39,14 @@ module tx_engine (
     input  wire [31:0] free_cnt,
     input  wire        trig_in_rise,      // one clock, at TRIG_IN's rising edge (fast sampler)
     input  wire        seq_gate,          // the sequencer's TX gate (seq_gate.v)
+    // the synchronous reply (turnaround.v): its point into the pins' register instead, ahead of every mode
+    input  wire        ovr_en,
+    input  wire [3:0]  ovr_pt,
+    output wire [31:0] points_o,          // TX_POINTS, for the reply's table
     // the ladders and what happened
     output reg  [1:0]  tx_i,
     output reg  [1:0]  tx_q,
-    output reg         sym_change,        // the four pins changed this clock
+    output wire        sym_change,        // the four pins changed this clock
     output reg         tx_event,          // an event's point is on the pins from this clock
     output reg  [2:0]  tx_msg,            // the message of the last event (or PRBS / rotation symbol)
     output reg         tx_busy            // an event's point is out
@@ -225,15 +230,18 @@ module tx_engine (
     end
 
     // ---- the pins: registered, so the ladders and tx_event move together --------------------------------
-    wire [3:0] want = (mode == 3'd0) ? {l_q, l_i} : point;
+    wire [3:0] want = ovr_en ? ovr_pt : (mode == 3'd0) ? {l_q, l_i} : point;
+    assign points_o = points;
+    // the change from the pins' register and its copy a clock behind (compared after the register, not
+    // before it: the reply's decision came into the pins' D through it, and the Icepi closed at 87 MHz)
     reg  [3:0] last;
+    assign sym_change = ({tx_q, tx_i} != last);
     always @(posedge clk) begin
         if (rst) begin
-            tx_i <= 2'b11; tx_q <= 2'b01; last <= 4'b0111; sym_change <= 1'b0; tx_event <= 1'b0; evt_ts <= 32'd0;
+            tx_i <= 2'b11; tx_q <= 2'b01; last <= 4'b0111; tx_event <= 1'b0; evt_ts <= 32'd0;
         end else begin
             {tx_q, tx_i} <= want;
-            last         <= want;
-            sym_change   <= (want != last);
+            last         <= {tx_q, tx_i};
             tx_event     <= ev_int;                  // with the pins: the receiver's time reference
             if (ev_int) evt_ts <= free_cnt + 1'b1;   // FREE_CNT in the clock the pins change
         end
