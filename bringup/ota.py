@@ -263,56 +263,93 @@ class OTA(LL.Lab):
             self.done("ota_interfere", out, "over the air: the B210's CW and noise bursts stepped up against the locked loop")
         return out
 
-    def soak(self, hours=12.0, mhz=5200, scan_every_s=600):
-        out = {"mhz": mhz, "events": [], "samples": 0, "scans": []}
+    def soak(self, hours=12.0, mhz=5200, scan_every_s=600, mhzs=None, rotate_s=3600):
+        """the lock watched every second (3.9a's detector), recovered automatically when lost (locklab's recovery,
+        then a fresh lock_ota if that fails); the carrier rotated through `mhzs` every rotate_s; the band's power
+        at the carrier from the B210 every scan_every_s (RX gain 10: the board's carrier reads about -13 dBFS at 30).
+        Events: slips (back on the other Costas point), losses (with LOG_Q / PEAK_Q at the moment: interference or
+        signal gone), and whether and how fast recovery worked"""
+        mhzs = list(mhzs or [mhz])
+        out = {"mhzs": mhzs, "events": [], "samples": 0, "scans": [], "segments": [], "t0": time.time()}
         self.scope_iq(vdiv=0.1)
         t_end = time.time() + hours * 3600
+        k = 0
         try:
-            self.set_null(mhz)
-            cen, best = self.lock_ota(mhz)
-            if best is None:
-                out["error"] = "no lock"
-                return out
-            dsa, a, lk = best
-            out.update(dsa=dsa, a_leg=a, t0=time.time())
-            side = lk["side"]
-            t_scan = 0
             while time.time() < t_end and self.alive():
-                o = self.observe(cen, a, side0=side, gate_s=0.005)
-                out["samples"] += 1
-                if o["state"] == "slipped":
-                    out["events"].append({"t": time.time(), "kind": "slip", "log_q": o["log_q"], "peak_q": o["peak_q"]})
-                    side = o["side"]
-                elif o["state"] != "locked":
-                    t_l = time.time()
-                    r = self.recover_once(mhz, dsa, cen, a)
-                    out["events"].append({"t": t_l, "kind": "loss", "state": o["state"], "log_q": o["log_q"],
-                                          "peak_q": o["peak_q"], "recovered": r["ok"], "t_recover": r["t_s"]})
-                    print("%s loss (%s, LOG_Q %.3f PEAK_Q %.3f): %s in %.1f s" % (time.strftime("%H:%M:%S"), o["state"],
-                          o["log_q"], o["peak_q"], "recovered" if r["ok"] else "NOT recovered", r["t_s"]), flush=True)
-                    if r["ok"]:
-                        side = self.observe(cen, a)["side"]
-                    else:
-                        cen, best = self.lock_ota(mhz)
-                        if best is None:
-                            time.sleep(30)
+                f = mhzs[k % len(mhzs)]
+                k += 1
+                self.set_null(f)
+                cen, best = self.lock_ota(f)
+                seg = {"mhz": f, "t_start": time.time(), "looks": 0, "losses": 0, "slips": 0}
+                if best is None:
+                    seg["error"] = "no lock"
+                    out["segments"].append(seg)
+                    print("%s %d MHz: no lock; next carrier" % (time.strftime("%H:%M:%S"), f), flush=True)
+                    time.sleep(30)
+                    continue
+                dsa, a, lk = best
+                seg.update(dsa=dsa, a_leg=a)
+                side = lk["side"]
+                t_seg_end = min(t_end, time.time() + rotate_s)
+                t_scan = 0
+                print("%s %d MHz: locked at DSA %.2f, leg %.3f V" % (time.strftime("%H:%M:%S"), f, dsa, a), flush=True)
+                while time.time() < t_seg_end and self.alive():
+                    o = self.observe(cen, a, side0=side, gate_s=0.005)
+                    out["samples"] += 1
+                    seg["looks"] += 1
+                    if o["state"] == "slipped":
+                        out["events"].append({"t": time.time(), "mhz": f, "kind": "slip", "log_q": o["log_q"], "peak_q": o["peak_q"]})
+                        seg["slips"] += 1
+                        side = o["side"]
+                    elif o["state"] != "locked":
+                        t_l = time.time()
+                        o2 = o
+                        for _ in range(5):                       # look again over about a second: interference passing?
+                            time.sleep(0.15)
+                            o2 = self.observe(cen, a, side0=side, gate_s=0.005)
+                            if o2["state"] in ("locked", "slipped"):
+                                break
+                        if o2["state"] in ("locked", "slipped"):
+                            out["events"].append({"t": t_l, "mhz": f, "kind": "blip", "state": o["state"], "log_q": o["log_q"],
+                                                  "peak_q": o["peak_q"], "after": o2["state"]})
+                            side = o2["side"]
                             continue
-                        dsa, a, lk = best
-                        side = lk["side"]
-                if self.bb is not None and time.time() - t_scan > scan_every_s:
-                    t_scan = time.time()
-                    try:
-                        out["scans"].append({"t": t_scan, **self.bb.power(mhz, seconds=0.2)})
-                    except Exception as e:                       # noqa: BLE001
-                        out["scans"].append({"t": t_scan, "error": str(e)[:100]})
-                    n_loss = sum(1 for e in out["events"] if e["kind"] == "loss")
-                    n_slip = sum(1 for e in out["events"] if e["kind"] == "slip")
-                    print("%s soak: %d looks, %d losses, %d slips; the band at the carrier %s" % (
-                        time.strftime("%H:%M:%S"), out["samples"], n_loss, n_slip, out["scans"][-1]), flush=True)
-                    save("soak_partial", out)
-                time.sleep(max(0.0, 1.0 - 0.05))
+                        r = self.recover_once(f, dsa, cen, a)
+                        out["events"].append({"t": t_l, "mhz": f, "kind": "loss", "state": o["state"], "log_q": o["log_q"],
+                                              "peak_q": o["peak_q"], "recovered": r["ok"], "t_recover": r["t_s"]})
+                        seg["losses"] += 1
+                        print("%s %d MHz loss (%s, LOG_Q %.3f PEAK_Q %.3f): %s in %.1f s" % (time.strftime("%H:%M:%S"), f, o["state"],
+                              o["log_q"], o["peak_q"], "recovered" if r["ok"] else "NOT recovered", r["t_s"]), flush=True)
+                        if r["ok"]:
+                            side = self.observe(cen, a)["side"]
+                        else:
+                            cen, best = self.lock_ota(f)
+                            if best is None:
+                                break
+                            dsa, a, lk = best
+                            side = lk["side"]
+                    if self.bb is not None and time.time() - t_scan > scan_every_s:
+                        t_scan = time.time()
+                        try:
+                            out["scans"].append({"t": t_scan, **self.bb.power(f, seconds=0.2, gain=10)})
+                        except Exception as e:                   # noqa: BLE001
+                            out["scans"].append({"t": t_scan, "mhz": f, "error": str(e)[:100]})
+                        n_loss = sum(1 for e in out["events"] if e["kind"] == "loss")
+                        n_slip = sum(1 for e in out["events"] if e["kind"] == "slip")
+                        n_blip = sum(1 for e in out["events"] if e["kind"] == "blip")
+                        print("%s soak: %d looks, %d losses, %d slips, %d blips; the band at %d MHz %s" % (
+                            time.strftime("%H:%M:%S"), out["samples"], n_loss, n_slip, n_blip, f,
+                            {x: (round(y, 1) if isinstance(y, float) else y) for x, y in out["scans"][-1].items() if x in ("mean_dbfs", "peak_dbfs", "busy")}),
+                            flush=True)
+                        save("soak_partial", out)
+                    time.sleep(0.95)
+                seg["t_end"] = time.time()
+                out["segments"].append(seg)
+                self.cl.ctrl(loop_hold=1)
+                self.restore()
+                save("soak_partial", out)
         finally:
-            self.done("ota_soak", out, "over the air: the lock watched every second with automatic recovery")
+            self.done("ota_soak", out, "over the air: the lock watched every second with automatic recovery, the carrier rotated hourly")
         return out
 
 
@@ -321,6 +358,7 @@ def main(argv):
     ap.add_argument("sections", nargs="+", choices=["links", "find", "scan", "interfere", "soak"])
     ap.add_argument("--mhz", type=int, default=5200)
     ap.add_argument("--hours", type=float, default=12.0)
+    ap.add_argument("--rotate", default="", help="carriers to rotate through hourly, e.g. 5200,5000,5500")
     a = ap.parse_args(argv)
     X = OTA(b210=any(s in ("links", "scan", "interfere", "soak") for s in a.sections))
     for s in a.sections:
@@ -329,7 +367,7 @@ def main(argv):
             if s == "interfere":
                 X.interfere(mhz=a.mhz)
             elif s == "soak":
-                X.soak(hours=a.hours, mhz=a.mhz)
+                X.soak(hours=a.hours, mhzs=[int(x) for x in a.rotate.split(",")] if a.rotate else [a.mhz])
             else:
                 getattr(X, s)()
         except Exception as e:                                   # noqa: BLE001
