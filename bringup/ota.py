@@ -109,13 +109,114 @@ class OTA(LL.Lab):
             self.done("ota_scan", out, "the B210's view of the band, the board's TX off, then on at 5.2 GHz")
         return out
 
+    def links(self, mhzs=(5000, 5200, 5500), b210_gains=(0, 20, 40, 60, 75), target_rx_mon=-40.0, max_rx_mon=-25.0):
+        """every link once the antennas are up: the ambient band (both TXs off) at RX MON and on the B210; the board's
+        own link at DSA 31.75 first (the DSA it would need for RX MON near the loopback's regulated -40 dBm, then a
+        lock there); the board's TX at the B210; the B210's CW (1 MHz off) at RX MON and at its own RX, its gain
+        stepped, stopped before RX MON passes max_rx_mon"""
+        cl, bb = self.cl, self.bb
+        out = {"ambient": {}, "board": [], "b210_rx": [], "b210_tx": []}
+        self.scope_iq(vdiv=0.1)
+        try:
+            cl.ctrl(tx_dis=1, loop_hold=1)
+            cl.dsa(0.0)
+            amb = []
+            for f in range(4900, 5901, 100):
+                self.tune(f)
+                ff, p = self.peak_at(f * 1e6, 100e6, rbw=1e6, ref=-20.0) if hasattr(self, "peak_at") else self.rx_mon(f, span=100e6)
+                amb.append({"mhz": f, "rx_mon_peak_dbm": p, "at_hz": ff})
+            out["ambient"]["rx_mon_dsa0"] = amb
+            print("ambient at RX MON (DSA 0, TX off, 100 MHz spans): %s" % ["%d:%.0f" % (r["mhz"], r["rx_mon_peak_dbm"]) for r in amb], flush=True)
+            cl.dsa(31.75)
+            out["ambient"]["b210"] = [bb.power(f, seconds=0.1, gain=40) for f in (5000, 5200, 5500)]
+            print("ambient on the B210 (gain 40): %s" % ["%d: mean %.1f peak %.1f busy %.0f%%" % (r["mhz"], r["mean_dbfs"], r["peak_dbfs"],
+                  100 * r["busy"]) for r in out["ambient"]["b210"]], flush=True)
+            for mhz in mhzs:
+                self.set_null(mhz)
+                self.tune(mhz)
+                cl.dsa(31.75)
+                self.tx(True)
+                time.sleep(0.1)
+                f, p = self.rx_mon(mhz, span=200e3)
+                need = 31.75 - (target_rx_mon - p)
+                row = {"mhz": mhz, "rx_mon_at_31_75": p, "dsa_for_target": need}
+                verdict = "too loud: needs %.1f dB more than the DSA has (a pad on RX ANT)" % (-31.75 + need) if need > 31.75 else (
+                    "too quiet: %.1f dB short even at DSA 0" % (-need) if need < 0 else "fine: DSA %.1f for RX MON at %.0f dBm" % (need, target_rx_mon))
+                row["verdict"] = verdict
+                r2 = bb.power(mhz, seconds=0.05, gain=30)
+                row["b210_hears_board"] = r2
+                if 0 <= need <= 31.75:
+                    d = max(self.dsa_min(mhz), math.ceil(need * 4) / 4)
+                    cl.dsa(float(d))
+                    time.sleep(0.05)
+                    f2, p2 = self.rx_mon(mhz, span=200e3)
+                    row.update(dsa_used=d, rx_mon_at_dsa=p2)
+                    self.tx(False)
+                    self.center(mhz)
+                    self._cen[mhz] = self.centres()
+                    lk = self.acquire0(mhz, float(d), self._cen[mhz], starts_khz=(10, 5, 20))
+                    row["locked"] = lk is not None
+                    row["a_leg"] = abs(lk["frame"]["di"]) if lk else None
+                    self.cl.ctrl(loop_hold=1)
+                out["board"].append(row)
+                print("board %d MHz: RX MON %.1f dBm at DSA 31.75 -> %s; locked %s (leg %s); the B210 hears it at %.1f dBFS (gain 30)" % (
+                    mhz, p, verdict, row.get("locked"), row.get("a_leg") and "%.3f V" % row["a_leg"], r2["mean_dbfs"]), flush=True)
+                self.tx(False)
+                self.restore()
+            # the B210 as the interferer: its CW 1 MHz above 5200 MHz, the board muted, the DSA at 31.75 then at the link's
+            mhz = 5200
+            self.tune(mhz)
+            cl.ctrl(tx_dis=1, loop_hold=1)
+            link = [r for r in out["board"] if r["mhz"] == mhz]
+            d_link = link[0].get("dsa_used", 31.75) if link else 31.75
+            for g in b210_gains:
+                res = {"gain": g}
+                th = self._bg(bb.tone, mhz + 1.0, gain=g, seconds=2.5)
+                time.sleep(0.6)
+                for d in (31.75, d_link):
+                    cl.dsa(float(d))
+                    time.sleep(0.05)
+                    ff, pp = self.peak_at((mhz + 1.0) * 1e6, 200e3, rbw=1e3, ref=0.0)
+                    res["rx_mon_dsa_%.2f" % d] = pp
+                th.join(timeout=5)
+                cl.dsa(31.75)
+                out["b210_tx"].append(res)
+                print("B210 CW at %d+1 MHz, gain %2d: at RX MON %s dBm" % (mhz, g, {k: "%.1f" % v for k, v in res.items() if k != "gain"}), flush=True)
+                if max(v for k, v in res.items() if k != "gain") > max_rx_mon:
+                    print("  stopped: RX MON over %.0f dBm" % max_rx_mon, flush=True)
+                    break
+            # the B210 hearing itself (the tone sent from one thread, received in this one)
+            for g in (0, 30, 60):
+                th = self._bg(bb.tone, 5201.0, gain=g, seconds=1.5)
+                time.sleep(0.5)
+                try:
+                    r = bb.power(5200, seconds=0.05, gain=30)
+                except Exception as e:                           # noqa: BLE001
+                    r = {"error": str(e)[:100]}
+                th.join(timeout=5)
+                out["b210_rx"].append({"gain": g, **r})
+                print("B210 hears its own CW at gain %d: %s" % (g, r), flush=True)
+        finally:
+            try:
+                self.b.sa_live()
+            except Exception:                                    # noqa: BLE001
+                pass
+            self.done("ota_links", out, "over the air: every link (the ambient band, board to board, board to B210, B210 to board, B210 to itself)")
+        return out
+
+    def peak_at(self, hz, span=20e3, rbw=300, ref=0.0):
+        b = self.b
+        b.sa_setup(hz, span, rbw=rbw, ref=ref, att=10)
+        b.sa.single()
+        return b.sa.peak()
+
     def _bg(self, fn, *a, **k):
         t = threading.Thread(target=fn, args=a, kwargs=k, daemon=True)
         t.start()
         return t
 
     def interfere(self, mhz=5200, kinds=(("cw", 0.1), ("cw", 1.0), ("cw", 5.0), ("cw", 20.0), ("bursts", 0.2), ("bursts", 0.5),
-                                          ("bursts", 1.0)), gains=tuple(range(0, 90, 10)), on_s=2.0):
+                                          ("bursts", 1.0)), gains=(30, 40, 50, 55, 60, 65, 70, 75, 80, 89.75), on_s=2.0):
         out = {"mhz": mhz, "runs": []}
         self.scope_iq(vdiv=0.1)
         try:
@@ -141,7 +242,7 @@ class OTA(LL.Lab):
                     else:
                         on_ms = 1.0 if x < 1 else 5.0
                         off_ms = on_ms * (1 - x) / x if x < 1 else 0.0
-                        th = self._bg(self.bb.bursts, mhz, gain=g, bw_mhz=20.0, on_ms=on_ms, off_ms=off_ms, seconds=on_s)
+                        th = self._bg(self.bb.bursts, mhz, gain=g, bw_mhz=8.0, on_ms=on_ms, off_ms=off_ms, seconds=on_s)
                     time.sleep(0.4)
                     during = [self.observe(cen, a, side0=o0["side"]) for _ in range(3)]
                     th.join(timeout=on_s + 5)
@@ -217,11 +318,11 @@ class OTA(LL.Lab):
 
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("sections", nargs="+", choices=["find", "scan", "interfere", "soak"])
+    ap.add_argument("sections", nargs="+", choices=["links", "find", "scan", "interfere", "soak"])
     ap.add_argument("--mhz", type=int, default=5200)
     ap.add_argument("--hours", type=float, default=12.0)
     a = ap.parse_args(argv)
-    X = OTA(b210=any(s in ("scan", "interfere", "soak") for s in a.sections))
+    X = OTA(b210=any(s in ("links", "scan", "interfere", "soak") for s in a.sections))
     for s in a.sections:
         print("==== %s %s" % (s, time.strftime("%H:%M:%S")), flush=True)
         try:

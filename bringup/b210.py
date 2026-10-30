@@ -83,16 +83,31 @@ class B210:
         wave = np.asarray(wave, dtype=np.complex64)
         self.u.send_waveform(wave, float(seconds), float(mhz) * 1e6, self.rate, [0], float(gain))
 
-    def tone(self, mhz, gain=0.0, seconds=1.0, offset_hz=0.0):
-        """a CW at mhz (+ offset_hz), amplitude 0.7 of full scale"""
-        n = int(self.rate / 1000)                              # 1 ms of samples, repeated
-        t = np.arange(n) / self.rate
-        f = offset_hz if offset_hz else 1000.0                 # a 1 kHz offset keeps it off the DC spur
-        f = round(f * n / self.rate) * self.rate / n           # a whole number of cycles in the buffer
-        self._send(0.7 * np.exp(2j * np.pi * f * t), mhz, seconds, gain)
+    def tone(self, mhz, gain=0.0, seconds=1.0, offset_hz=0.0, rate=2e6):
+        """a CW at mhz (+ offset_hz), amplitude 0.7 of full scale: at 2 Ms/s with a 50 ms buffer, which Python keeps
+        fed (at 20 Ms/s and 1 ms the stream underflowed and the tone had gaps)"""
+        r0 = self.rate
+        self.rate = rate
+        try:
+            n = int(rate * 0.05)
+            t = np.arange(n) / rate
+            f = offset_hz if offset_hz else 1000.0             # a 1 kHz offset keeps it off the DC spur
+            f = round(f * n / rate) * rate / n                 # a whole number of cycles in the buffer
+            self._send(0.7 * np.exp(2j * np.pi * f * t), mhz, seconds, gain)
+        finally:
+            self.rate = r0
 
-    def bursts(self, mhz, gain=0.0, bw_mhz=20.0, on_ms=1.0, off_ms=4.0, seconds=1.0, seed=1):
-        """band-limited complex noise, on for on_ms and off for off_ms, repeated (a WiFi-like duty cycle)"""
+    def bursts(self, mhz, gain=0.0, bw_mhz=8.0, on_ms=1.0, off_ms=4.0, seconds=1.0, seed=1, rate=10e6):
+        """band-limited complex noise, on for on_ms and off for off_ms, repeated (a WiFi-like duty cycle); at 10 Ms/s,
+        8 MHz wide by default, which Python keeps fed"""
+        r0 = self.rate
+        self.rate = rate
+        try:
+            return self._bursts(mhz, gain, bw_mhz, on_ms, off_ms, seconds, seed)
+        finally:
+            self.rate = r0
+
+    def _bursts(self, mhz, gain, bw_mhz, on_ms, off_ms, seconds, seed):
         rng = np.random.default_rng(seed)
         n_on, n_off = int(self.rate * on_ms * 1e-3), int(self.rate * off_ms * 1e-3)
         x = rng.normal(size=n_on) + 1j * rng.normal(size=n_on)
@@ -102,7 +117,8 @@ class B210:
         x = np.fft.ifft(X)
         x = 0.5 * x / (np.sqrt(np.mean(np.abs(x) ** 2)) + 1e-12)
         wave = np.concatenate([x, np.zeros(n_off)]) if n_off else x
-        self._send(wave, mhz, seconds, gain)
+        reps = max(1, int(np.ceil(0.05 * self.rate / len(wave))))   # a buffer of 50 ms or more: fewer underflows
+        self._send(np.tile(wave, reps), mhz, seconds, gain)
 
 
 def main(argv):
