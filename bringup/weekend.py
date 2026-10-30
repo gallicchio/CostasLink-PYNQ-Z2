@@ -1,0 +1,265 @@
+#!/usr/bin/env python3
+"""weekend.py: board A over the air, the USRP B210 as interferer, rounds of sweeps repeated until --hours run out
+(Jason, 2026-10-30 15:00: "If you have ideas for real sweeps to run of every possible thing that might inform use of
+this revA board or modifications for a revB board, do those"; the office's WiFi will be all but absent: the antennas
+face a concrete wall).  The bench as ota.py's: four antennas within 30-40 cm, the board's link at 5.2 GHz at DSA ~14,
+the B210 reaching -23 to +11 dB of the carrier there (BRINGUP_LOG 4.0).
+
+    python3 bringup/weekend.py baseline           once: the schemes, the BER against the rate, the ring, over the air
+    python3 bringup/weekend.py rounds --hours H   repeated: per carrier (5200, 5000, 5500)
+        decide    the decisions under interference: CW 0.1 / 1 / 5 / 20 MHz off and 8 MHz noise at 20 / 100 % duty, the
+                  B210's gain in steps around the thresholds; at each A3 (20 000 PRBS events: right, wrong, false,
+                  missed, confirmed / vetoed with V_T2 2.9 V and the carrier nulled), the BPSK BER at 25 Mbaud in
+                  segments, LOG_Q / PEAK_Q, the lock after
+        capture   a CW near the carrier (-50..+50 kHz, the B210's own LO leak parked 2 MHz away): the lock during (VC:
+                  does the loop go to the interferer?) and after
+        pulses    10 us every 1 ms and 100 us every 10 ms at full power: the lock, A3's errors
+        quiet     an hour of the lock watched with nothing sent (drift, the board's own stability)
+
+Each piece writes bringup/data/board_A/weekend/<piece>_<mhz>_<time>.json; a verdict per round.  The board is left
+muted, held, DSA 31.75, the trims restored between pieces; the B210 silent.
+"""
+import argparse
+import json
+import math
+import os
+import sys
+import threading
+import time
+
+import numpy as np
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import ota as O                                      # noqa: E402
+import linktests as LT                               # noqa: E402
+import stages as S                                   # noqa: E402
+
+OUT = os.path.join(HERE, "data", "board_A", "weekend")
+CARRIERS = (5200, 5000, 5500)
+
+
+def save(name, obj):
+    os.makedirs(OUT, exist_ok=True)
+    path = os.path.join(OUT, "%s_%s.json" % (name, LT.O.stamp()))
+    with open(path, "w") as f:
+        json.dump(obj, f, indent=1, default=float)
+    return os.path.relpath(path, HERE)
+
+
+class Weekend(O.OTA):
+    def bg(self, fn, *a, **k):
+        t = threading.Thread(target=fn, args=a, kwargs=k, daemon=True)
+        t.start()
+        return t
+
+    def ready(self, mhz):
+        """null the carrier, lock with a regulated leg, the windows at 0.5 a, V_T2 2.9 V (3.8g); returns the state"""
+        self.set_null(mhz)
+        cen, best = self.lock_ota(mhz, target=0.15)
+        if best is None:
+            return None
+        dsa, a, lk = best
+        self.thresholds(cen, a, 0.5)
+        self.cl.dac(S.DAC2, V_T2=2.9)
+        return {"cen": cen, "dsa": dsa, "a": a, "side": lk["side"]}
+
+    def relock(self, mhz, st):
+        o = self.observe(st["cen"], st["a"])
+        if o["state"] in ("locked", "slipped"):
+            st["side"] = o["side"]
+            return True
+        r = self.recover_once(mhz, st["dsa"], st["cen"], st["a"])
+        if r["ok"]:
+            st["side"] = self.observe(st["cen"], st["a"])["side"]
+        return r["ok"]
+
+    def interferer(self, kind, mhz, x, gain, seconds):
+        if kind == "cw":
+            return self.bg(self.bb.tone, mhz + x, gain=gain, seconds=seconds)
+        on_ms = 1.0 if x < 1 else 5.0
+        off_ms = on_ms * (1 - x) / x if x < 1 else 0.0
+        return self.bg(self.bb.bursts, mhz, gain=gain, bw_mhz=8.0, on_ms=on_ms, off_ms=off_ms, seconds=seconds)
+
+    # ---- the decisions under interference ----
+    def decide(self, mhz, kinds=(("cw", 0.1), ("cw", 1.0), ("cw", 5.0), ("cw", 20.0), ("noise", 0.2), ("noise", 1.0)),
+               gains=(0, 60, 65, 70, 72, 74, 76, 78, 80, 83, 86, 89.75)):
+        out = {"mhz": mhz, "runs": []}
+        st = self.ready(mhz)
+        if st is None:
+            out["error"] = "no lock"
+            return out
+        out.update(dsa=st["dsa"], a_leg=st["a"])
+        ph, scan, width = self.best_phase(st["side"], 4, seconds=0.02)
+        out["ber_phase"] = ph
+        for kind, x in kinds:
+            for g in gains:
+                if not self.relock(mhz, st):
+                    out["runs"].append({"kind": kind, "x": x, "gain": g, "error": "no lock"})
+                    break
+                th = self.interferer(kind, mhz, x, g, 4.0) if g > 0 else None
+                time.sleep(0.5)
+                o = self.observe(st["cen"], st["a"], side0=st["side"])
+                a3 = self.scheme_run("A3", st["side"], count=20000)
+                ber = self.segs(st["side"], 4, ph, n=5, seconds=0.05)
+                if th:
+                    th.join(timeout=8)
+                time.sleep(0.3)
+                after = self.observe(st["cen"], st["a"], side0=st["side"])
+                row = {"kind": kind, "x": x, "gain": g, "during": o, "after": after,
+                       "a3": {k: a3[k] for k in ("events", "decided", "right", "symbol_errors", "false", "missed", "confirm", "veto")},
+                       "ber": {k: ber[k] for k in ("clean", "inverted", "beating", "partial", "bits", "err_bits_partial")}}
+                out["runs"].append(row)
+                print("%d %-5s %5.1f gain %5.2f: LOG_Q %.3f PEAK_Q %.3f | A3 %d sent, %d right, %d wrong, %d false, %d missed, %d confirmed, %d vetoed | BER segs %d clean %d bad | after %s" % (
+                    mhz, kind, x, g, o["log_q"], o["peak_q"], a3["events"], a3["right"], a3["symbol_errors"], a3["false"],
+                    a3["missed"], a3["confirm"], a3["veto"], ber["clean"], 5 - ber["clean"], after["state"]), flush=True)
+                if after["state"] == "slipped":
+                    st["side"] = after["side"]
+            save("decide_partial", out)
+        return out
+
+    # ---- a CW near the carrier ----
+    def capture(self, mhz, offs_khz=(-50, -30, -20, -10, -5, -2, 2, 5, 10, 20, 30, 50), gains=(70, 80, 89.75), park_mhz=2.0):
+        out = {"mhz": mhz, "runs": []}
+        st = self.ready(mhz)
+        if st is None:
+            out["error"] = "no lock"
+            return out
+        out.update(dsa=st["dsa"], a_leg=st["a"])
+        vc0 = self.cl.adc("VC")
+        for g in gains:
+            for k in offs_khz:
+                if not self.relock(mhz, st):
+                    break
+                vc_before = self.cl.adc("VC")
+                th = self.bg(self.bb.tone, mhz + park_mhz, gain=g, seconds=3.0, offset_hz=k * 1e3 - park_mhz * 1e6, rate=5e6)
+                time.sleep(1.0)
+                o = self.observe(st["cen"], st["a"], side0=st["side"])
+                vc_during = self.cl.adc("VC")
+                th.join(timeout=6)
+                time.sleep(0.4)
+                after = self.observe(st["cen"], st["a"], side0=st["side"])
+                row = {"gain": g, "off_khz": k, "during": o, "after": after, "vc_before": vc_before, "vc_during": vc_during,
+                       "dvc_khz": (vc_during - vc_before) * self.kv(mhz) / 1e3}
+                out["runs"].append(row)
+                print("%d capture CW %+3d kHz gain %5.2f: during %s (VC moved %+.1f kHz, LOG_Q %.3f); after %s" % (
+                    mhz, k, g, o["state"], row["dvc_khz"], o["log_q"], after["state"]), flush=True)
+                if after["state"] == "slipped":
+                    st["side"] = after["side"]
+            save("capture_partial", out)
+        out["vc0"] = vc0
+        return out
+
+    # ---- pulses ----
+    def pulses(self, mhz, shapes=((10e-6, 1e-3), (100e-6, 10e-3), (1e-3, 20e-3)), gains=(80, 89.75), reps=3):
+        out = {"mhz": mhz, "runs": []}
+        st = self.ready(mhz)
+        if st is None:
+            out["error"] = "no lock"
+            return out
+        for t_on, t_per in shapes:
+            for g in gains:
+                for r in range(reps):
+                    if not self.relock(mhz, st):
+                        break
+                    th = self.bg(self.bb.bursts, mhz, gain=g, bw_mhz=8.0, on_ms=t_on * 1e3, off_ms=(t_per - t_on) * 1e3, seconds=3.0)
+                    time.sleep(0.5)
+                    o = self.observe(st["cen"], st["a"], side0=st["side"])
+                    a3 = self.scheme_run("A3", st["side"], count=20000)
+                    th.join(timeout=6)
+                    time.sleep(0.3)
+                    after = self.observe(st["cen"], st["a"], side0=st["side"])
+                    row = {"t_on": t_on, "t_per": t_per, "gain": g, "rep": r, "during": o, "after": after,
+                           "a3": {k: a3[k] for k in ("events", "decided", "right", "symbol_errors", "false", "missed", "confirm", "veto")}}
+                    out["runs"].append(row)
+                    print("%d pulses %4.0f us every %4.1f ms gain %5.2f: PEAK_Q %.3f | A3 %d right, %d wrong, %d false, %d missed | after %s" % (
+                        mhz, t_on * 1e6, t_per * 1e3, g, o["peak_q"], a3["right"], a3["symbol_errors"], a3["false"], a3["missed"],
+                        after["state"]), flush=True)
+                    if after["state"] == "slipped":
+                        st["side"] = after["side"]
+            save("pulses_partial", out)
+        return out
+
+    # ---- once: the link over the air without interference ----
+    def baseline(self):
+        out = {"rows": []}
+        for mhz in CARRIERS:
+            st = self.ready(mhz)
+            if st is None:
+                out["rows"].append({"mhz": mhz, "error": "no lock"})
+                continue
+            row = {"mhz": mhz, "dsa": st["dsa"], "a_leg": st["a"], "schemes": {}, "ber": []}
+            for name in ("A1", "A1w", "A2", "A3"):
+                self.relock(mhz, st)
+                s_ = self.scheme_run(name, st["side"], count=20000)
+                row["schemes"][name] = {k: s_[k] for k in ("events", "decided", "right", "symbol_errors", "false", "missed",
+                                                          "lat_min", "lat_max", "lat_mean", "sample_ns", "confirm", "veto")}
+                lat = [s_[k] * s_["sample_ns"] for k in ("lat_min", "lat_mean", "lat_max")] if s_["lat_n"] else None
+                print("%d %-3s: %d of %d right, %d wrong, %d false, %d missed; %s ns; confirmed %d vetoed %d" % (
+                    mhz, name, s_["right"], s_["events"], s_["symbol_errors"], s_["false"], s_["missed"],
+                    lat and "%.1f/%.1f/%.1f" % tuple(lat), s_["confirm"], s_["veto"]), flush=True)
+            for p in (1, 2, 4, 10):
+                self.relock(mhz, st)
+                ph, scan, width = self.best_phase(st["side"], p, seconds=0.02)
+                b = self.segs(st["side"], p, ph, n=10, seconds=0.05)
+                row["ber"].append({"period": p, "phase": ph, "open": width, **{k: b[k] for k in ("clean", "inverted", "beating", "partial", "bits", "err_bits_partial")}})
+                print("%d %5.1f Mbaud: open %d of %d phases; at %d: %d clean of 10 (%.0f errors in %d bits)" % (
+                    mhz, 100.0 / p, width, 8 * p, ph, b["clean"], b["err_bits_partial"], b["bits"]), flush=True)
+            out["rows"].append(row)
+            self.restore()
+            save("baseline_partial", out)
+        return out
+
+    def piece(self, name, fn, *a, **k):
+        print("==== %s %s %s" % (name, a, time.strftime("%H:%M:%S")), flush=True)
+        try:
+            out = fn(*a, **k)
+        except Exception as e:                                   # noqa: BLE001
+            import traceback
+            traceback.print_exc()
+            out = {"error": str(e)[:300]}
+        finally:
+            try:
+                self.cl.dac(S.DAC2, V_T2=S.V_MID)
+                self.restore()
+                self.cleanup()
+            except Exception:                                    # noqa: BLE001
+                pass
+        path = save("%s%s" % (name, "_%d" % a[0] if a else ""), out)
+        self.b.record("verdict", test="weekend_%s" % name, ok=None, file=path, args=list(a))
+        return out
+
+
+def main(argv):
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("what", choices=["baseline", "rounds"])
+    ap.add_argument("--hours", type=float, default=60.0)
+    ap.add_argument("--quiet-min", type=float, default=60.0)
+    a = ap.parse_args(argv)
+    W = Weekend()
+    if a.what == "baseline":
+        W.piece("baseline", W.baseline)
+        return
+    t_end = time.time() + a.hours * 3600
+    n = 0
+    while time.time() < t_end:
+        n += 1
+        print("######## round %d %s" % (n, time.strftime("%a %H:%M")), flush=True)
+        for mhz in CARRIERS:
+            if time.time() > t_end:
+                break
+            W.piece("decide", W.decide, mhz)
+            W.piece("capture", W.capture, mhz)
+            W.piece("pulses", W.pulses, mhz)
+        if time.time() < t_end:
+            W.piece("quiet", W.soak, hours=min(a.quiet_min / 60.0, max(0.0, (t_end - time.time()) / 3600)), mhzs=list(CARRIERS),
+                    rotate_s=a.quiet_min * 60 / len(CARRIERS))
+        W.b.record("verdict", test="weekend_round", ok=None, round=n)
+    try:
+        W.b.sa_live()
+    except Exception:                                            # noqa: BLE001
+        pass
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
