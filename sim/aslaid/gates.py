@@ -39,32 +39,36 @@ def rf_nets():
 
 
 def split_t(segs):
-    """split every segment where another segment of the net ends on it (a T without a node)"""
-    changed = True
-    while changed:
-        changed = False
-        for i, s in enumerate(segs):
-            x0, y0, x1, y1 = s[:4]
-            L = math.dist((x0, y0), (x1, y1))
-            if L < 1e-6:
+    """split every segment at the ends of other segments of the net that land on it (a T without a node)"""
+    if not segs:
+        return segs
+    ends = np.array([(s[0], s[1]) for s in segs] + [(s[2], s[3]) for s in segs])
+    lay = [s[5] for s in segs] * 2
+    wid = np.array([s[4] for s in segs] * 2)
+    out = []
+    for s in segs:
+        x0, y0, x1, y1, w = s[:5]
+        L = math.dist((x0, y0), (x1, y1))
+        if L < 1e-6:
+            out.append(s)
+            continue
+        m = ((ends[:, 0] >= min(x0, x1) - w) & (ends[:, 0] <= max(x0, x1) + w) &
+             (ends[:, 1] >= min(y0, y1) - w) & (ends[:, 1] <= max(y0, y1) + w))
+        ts = []
+        for k in np.nonzero(m)[0]:
+            if lay[k] != s[5]:
                 continue
-            for o in segs:
-                if o is s or o[5] != s[5]:
-                    continue
-                for (px, py) in ((o[0], o[1]), (o[2], o[3])):
-                    tt = ((px - x0) * (x1 - x0) + (py - y0) * (y1 - y0)) / L ** 2
-                    if 0.02 < tt * L < L - 0.02:
-                        qx, qy = x0 + tt * (x1 - x0), y0 + tt * (y1 - y0)
-                        if math.dist((qx, qy), (px, py)) < min(o[4], s[4]) / 2:
-                            segs[i] = [x0, y0, px, py] + s[4:]
-                            segs.append([px, py, x1, y1] + s[4:])
-                            changed = True
-                            break
-                if changed:
-                    break
-            if changed:
-                break
-    return segs
+            px, py = ends[k]
+            tt = ((px - x0) * (x1 - x0) + (py - y0) * (y1 - y0)) / L ** 2
+            if 0.02 < tt * L < L - 0.02:
+                qx, qy = x0 + tt * (x1 - x0), y0 + tt * (y1 - y0)
+                if math.dist((qx, qy), (px, py)) < min(wid[k], w) / 2:
+                    ts.append((tt, px, py))
+        pts = [(x0, y0)] + [(px, py) for tt, px, py in sorted(ts)] + [(x1, y1)]
+        for a, b in zip(pts, pts[1:]):
+            if math.dist(a, b) > 1e-6:
+                out.append([a[0], a[1], b[0], b[1]] + list(s[4:]))
+    return out
 
 
 _GCACHE = {}
