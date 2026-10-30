@@ -1,0 +1,40 @@
+net             w mm     mm    gap gap min/max In1 GND fence/mm  In2 under
+J101-In         0.20    2.4   0.25  0.25/0.34     100%     0.83  +5V_RF 100%
+J101-In         0.29    6.3   0.25  0.25/0.78      76%     0.95  GND 14%, +5V_RF 58%
+U101-RF_IN      0.20    1.8   0.25  0.25/0.25     100%     0.57  +5V_RF 100%
+U101-RF_IN      0.25    0.6   0.25  0.25/0.26     100%     1.67  +5V_RF 100%
+U101-RF_IN      0.29    1.6   0.25  0.25/0.27     100%     1.83  +5V_RF 100%
+U101-RF_OUT     0.25    0.6   0.25  0.25/0.26     100%     0.00  +5V_RF 100%
+U101-RF_OUT     0.29    1.6   0.25  0.25/0.27     100%     3.13  +5V_RF 100%
+U102-RF1        0.25    0.6   0.26  0.25/0.26     100%     0.00  +5V_RF 100%
+U102-RF1        0.29    1.6   0.25  0.25/0.27     100%     1.88  +5V_RF 100%
+U102-RF2        0.25    0.6   0.26  0.25/0.26     100%     0.00  +5V_RF 100%
+U102-RF2        0.29    1.7   0.25  0.25/0.28     100%     1.76  +5V_RF 100%
+U103-RFIN       0.29    2.3   0.25  0.25/0.37      88%     0.87  +5V_RF 100%
+U103-RFOUT      0.15    1.3   0.25  0.25/0.26      80%     0.00  +5V_RF 100%
+U103-RFOUT      0.29    2.0   0.25  0.25/0.37      85%     0.99  +5V_RF 100%
+U117-RFIN       0.29    2.0   0.25  0.25/0.37      85%     0.99  +5V_RF 100%
+U117-RFOUT      0.15    1.3   0.25  0.25/0.26      80%     0.00  +5V_RF 100%
+U117-RFOUT      0.29    2.0   0.25  0.25/0.36      83%     1.00  +5V_RF 100%
+CP101-IN        0.25    0.6   0.25  0.25/0.27     100%     0.00  +5V_RF 100%
+CP101-IN        0.29    0.9   0.25  0.25/0.27     100%     0.00  +5V_RF 100%
+CP101-OUT       0.25    1.2   0.29  0.25/0.53     100%     0.00  +5V_RF 50%, +3V3_ANA 50%
+CP101-OUT       0.29    1.1   0.25  0.25/0.26     100%     0.92  +5V_RF 20%, +3V3_ANA 30%
+CP101-CPL       0.25    0.6   0.50  0.32/0.69     100%     0.00  +5V_RF 100%
+CP101-CPL       0.29    5.8   0.25  0.25/0.26      96%     0.00  +5V_RF 100%
+T101-BAL1       0.25    0.6   0.45  0.32/0.60     100%     0.00  +3V3_ANA 100%
+T101-BAL1       0.29    1.5   0.25  0.25/0.28     100%     0.00  +3V3_ANA 100%
+T101-BAL2       0.25    0.6   0.25  0.25/0.26     100%     0.00  +3V3_ANA 100%
+T101-BAL2       0.29    1.5   0.25  0.25/0.27     100%     0.00  +3V3_ANA 100%
+U104-RFIN       0.20    1.4   0.25  0.25/0.34     100%     0.00  +3V3_ANA 100%
+U104-RFIP       0.20    1.4   0.25  0.25/0.35     100%     0.00  +3V3_ANA 100%
+U104-RFIP       0.29    0.8   0.26  0.25/0.32     100%     0.00  +3V3_ANA 100%
+
+L103 (43nH): its +5V_RF via 0.8 mm from the cold pad; nearest capacitors C517 100nF 13.6 mm, C518 100nF 18.4 mm, C112 1nF 19.8 mm
+L104 (43nH): its +5V_RF via 0.8 mm from the cold pad; nearest capacitors C517 100nF 9.8 mm, C112 1nF 12.7 mm, C108 1nF 13.3 mm
+L201 (43nH): its +5V_RF via 0.8 mm from the cold pad; nearest capacitors C207 100nF 5.4 mm, C212 1uF 9.0 mm, C210 68pF 10.3 mm
+
+F.Cu pour in x 40-60, y 30-90 (859 mm2): nearest ground via median 2.2 mm, 95th percentile 6.1, max 8.6; 43% of it more than 2.5 mm (lambda/10 at 5.8 GHz in FR4) from one
+B.Cu pour in x 40-60, y 30-90 (869 mm2): nearest ground via median 2.1 mm, 95th percentile 6.1, max 8.6; 41% of it more than 2.5 mm (lambda/10 at 5.8 GHz in FR4) from one
+F.Cu pour in x 25-145, y 25-125 (8026 mm2): nearest ground via median 2.8 mm, 95th percentile 9.0, max 20.7; 57% of it more than 2.5 mm (lambda/10 at 5.8 GHz in FR4) from one
+B.Cu pour in x 25-145, y 25-125 (7710 mm2): nearest ground via median 2.7 mm, 95th percentile 8.8, max 20.7; 55% of it more than 2.5 mm (lambda/10 at 5.8 GHz in FR4) from one
