@@ -18,6 +18,8 @@ the B210 reaching -23 to +11 dB of the carrier there (BRINGUP_LOG 4.0).
         pull      a CW 0.1-40 MHz above and below the carrier, gain 74-89.75: is the loop dragged off (VC, the I leg),
                   and does it come back by itself when the CW stops, how fast (added after round 1: BRINGUP_LOG 4.3)
         pullhold  pull's worst cases with the loop held (LOOP_HOLD) through the CW: what an interference hold saves
+        pullauto  pull's dragging cases with the gateware's interference hold on (ID version 5)
+        iholdcheck the interference hold on through A3's events, BPSK data and quiet: it must not trigger
         segcheck  the BPSK BER's 50 ms segments with nothing sent, each with the lock read before and after
         b210cdr   the B210's BPSK at 1 and 2 Mbaud through the board's timing recovery (ID version 4): the BER, and
                   the two clocks' offset round by round (cdr_tests.py)
@@ -189,12 +191,13 @@ class Weekend(O.OTA):
 
     # ---- the pull: a strong CW above and below the carrier ----
     def pull(self, mhz, offs_mhz=(0.1, 0.3, 1.0, 2.0, 5.0, 10.0, 20.0, 40.0), gains=(74, 77, 80, 83, 86, 89.75), seconds=3.0,
-             hold=False):
+             hold=False, auto=False):
         """the lock during a CW at +-offs_mhz and how it comes back (round 1's decide: a CW 5-20 MHz above at +1..+3 dB
         dragged VC to its rail, and the loop came back by itself, drifting down through the carrier; one dragged below
         would not): VC and the I leg's DC three times during (dragged off: I ~ 0 and VC away from the lock), then after
         the CW the lock polled for 3 s; t_back is the time to locked or slipped, None if it did not come back.  hold: the
-        loop held (LOOP_HOLD) from 0.2 s before the CW to 0.2 s after it, a detector that knew (pullhold)"""
+        loop held (LOOP_HOLD) from 0.2 s before the CW to 0.2 s after it, a detector that knew (pullhold).  auto: the
+        gateware's interference hold on (ID version 5, ihold.v) through the step, its holds counted (pullauto)"""
         out = {"mhz": mhz, "runs": []}
         st = self.ready(mhz)
         if st is None:
@@ -208,6 +211,9 @@ class Weekend(O.OTA):
                         out["runs"].append({"off_mhz": sgn * off, "gain": g, "error": "no lock"})
                         break
                     vc0 = self.cl.adc("VC")
+                    if auto:
+                        self.cl.rx_clear()
+                        self.cl.ihold(True)
                     if hold:
                         self.cl.ctrl(loop_hold=1)
                         time.sleep(0.2)
@@ -228,13 +234,18 @@ class Weekend(O.OTA):
                             t_back = time.time() - t0
                             break
                     lost = [abs(d["di"]) < 0.5 * st["a"] for d in during]
-                    row = {"off_mhz": sgn * off, "gain": g, "hold": hold, "vc0": vc0, "during": during, "lost_during": lost,
+                    ih = None
+                    if auto:
+                        ih = self.cl.ihold_state()
+                        self.cl.ihold(False)
+                    row = {"off_mhz": sgn * off, "gain": g, "hold": hold, "auto": auto, "ihold": ih, "vc0": vc0, "during": during, "lost_during": lost,
                            "dvc_khz": [(d["vc"] - vc0) * self.kv(mhz) / 1e3 for d in during], "polls": polls, "t_back": t_back,
                            "after": polls[-1][1] if polls else None}
                     out["runs"].append(row)
-                    print("%d pull%s CW %+5.2f MHz gain %5.2f: during %s, VC %s kHz | back %s after %s s" % (
-                        mhz, hold and " (held)" or "", sgn * off, g, "/".join("lost" if x else d["state"] for x, d in zip(lost, during)),
-                        "/".join("%+.0f" % x for x in row["dvc_khz"]), row["after"], t_back and "%.2f" % t_back), flush=True)
+                    print("%d pull%s CW %+5.2f MHz gain %5.2f: during %s, VC %s kHz | back %s after %s s%s" % (
+                        mhz, hold and " (held)" or auto and " (ihold)" or "", sgn * off, g, "/".join("lost" if x else d["state"] for x, d in zip(lost, during)),
+                        "/".join("%+.0f" % x for x in row["dvc_khz"]), row["after"], t_back and "%.2f" % t_back,
+                        ih and " | ihold: %d holds, %.2f s held" % (ih["holds"], ih["seconds"]) or ""), flush=True)
                     if row["after"] == "slipped":
                         st["side"] = -st["side"]
                     elif row["after"] == "locked":
@@ -245,6 +256,42 @@ class Weekend(O.OTA):
     def pullhold(self, mhz):
         """pull's worst cases with the loop held through the CW: what an interference hold would save"""
         return self.pull(mhz, offs_mhz=(0.05, 1.0, 5.0, 20.0), gains=(80, 86, 89.75), hold=True)
+
+    def pullauto(self, mhz):
+        """pull's dragging cases with the gateware's interference hold on (ID version 5): does it catch them?"""
+        if not getattr(self.cl, "ihold_ok", False):
+            return {"mhz": mhz, "skipped": "this overlay has no interference hold"}
+        return self.pull(mhz, offs_mhz=(1.0, 5.0, 10.0, 20.0, 40.0), gains=(80, 83, 86, 89.75), auto=True)
+
+    def iholdcheck(self, mhz):
+        """the interference hold must leave the link alone: on through A3's 20 000 events, 25 Mbaud BPSK and 20 s of
+        quiet, its holds counted after each (none expected), A3's decisions compared with it off"""
+        if not getattr(self.cl, "ihold_ok", False):
+            return {"mhz": mhz, "skipped": "this overlay has no interference hold"}
+        out = {"mhz": mhz}
+        st = self.ready(mhz)
+        if st is None:
+            out["error"] = "no lock"
+            return out
+        cl = self.cl
+        keys = ("events", "decided", "right", "symbol_errors", "false", "missed")
+        for on in (False, True):
+            self.relock(mhz, st)
+            cl.ihold(on)
+            a3 = self.scheme_run("A3", st["side"], count=20000)
+            out["a3_ihold_%s" % on] = {k: a3[k] for k in keys} | {"ihold": cl.ihold_state() if on else None}
+        cl.rx_clear()
+        b = self.segs(st["side"], 4, None, n=10, seconds=0.05)
+        out["bpsk25"] = {k: b[k] for k in ("clean", "beating", "partial", "inverted", "bits")} | {"ihold": cl.ihold_state()}
+        cl.rx_clear()
+        time.sleep(20)
+        out["quiet20s"] = cl.ihold_state()
+        cl.ihold(False)
+        print("%d ihold check: A3 off %s | on %s, holds %d | BPSK 25 Mbaud %d of 10 clean, holds %d | 20 s quiet: holds %d" % (
+            mhz, {k: out["a3_ihold_False"][k] for k in ("right", "symbol_errors", "missed")},
+            {k: out["a3_ihold_True"][k] for k in ("right", "symbol_errors", "missed")}, out["a3_ihold_True"]["ihold"]["holds"],
+            out["bpsk25"]["clean"], out["bpsk25"]["ihold"]["holds"], out["quiet20s"]["holds"]), flush=True)
+        return out
 
     # ---- the BPSK segments: why some come back random with nothing sent ----
     def segcheck(self, mhz, n=40, periods=(4, 2, 10)):
@@ -336,7 +383,7 @@ def main(argv):
     ap.add_argument("what", choices=["baseline", "rounds"])
     ap.add_argument("--hours", type=float, default=60.0)
     ap.add_argument("--quiet-min", type=float, default=60.0)
-    ap.add_argument("--pieces", nargs="*", default=["decide", "capture", "pulses", "pull", "pullhold", "segcheck", "b210cdr"])
+    ap.add_argument("--pieces", nargs="*", default=["decide", "capture", "pulses", "pull", "pullhold", "pullauto", "iholdcheck", "segcheck", "b210cdr"])
     ap.add_argument("--first", nargs="*", default=None, help="pieces run first in round 1 (at each carrier)")
     a = ap.parse_args(argv)
     try:
