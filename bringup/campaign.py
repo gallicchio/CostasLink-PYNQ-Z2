@@ -93,11 +93,30 @@ class Camp(T.Lock0):
         return lk["side"] if lk else None
 
     # ---- the BER ----
-    def ber_once(self, side, p, phase, seconds):
+    def ber_once(self, side, p, phase, seconds, cdr=None):
+        """one PRBS15 BPSK run through the board's own link.  cdr (default: when the overlay has it, ID version 4, and
+        the symbol is 2 clocks or more): the check's timing recovered from CMP_I's edges, sampled mid-symbol, `phase`
+        unused; without it the check's frame is a random draw against the TX's (BRINGUP_LOG 4.6)"""
         cl = self.cl
+        if cdr is None:
+            cdr = bool(getattr(cl, "cdr", False)) and p >= 2
         cl.tx_points(point_code(1, 0), [point_code(1, 0), point_code(-1, 0)])
-        r = cl.ber_run(seconds=seconds, poly=15, period=p, phase=phase, n=2, invert=side > 0)
+        if not cdr:
+            r = cl.ber_run(seconds=seconds, poly=15, period=p, phase=phase, n=2, invert=side > 0)
+            cl.hold_point(1, 0)
+            return r
+        cl.tx_timing(period=p)
+        cl.tx_prbs(15)
+        cl.tx_mode("prbs", n=2)
+        cl.tx_go()
+        time.sleep(0.005)
+        cl.ber_config(15, None, invert=side > 0, enable=True, cdr=True, period=p)
+        time.sleep(seconds)
+        cl.ber_config(15, None, invert=side > 0, enable=False, cdr=True, period=p)
+        r = cl.ber()
+        cl.tx_stop()
         cl.hold_point(1, 0)
+        r["cdr"] = True
         return r
 
     def best_phase(self, side, p, seconds=0.05):
