@@ -75,6 +75,16 @@ module tb_ihold;
         end
         expect("clocks held under BPSK data on I", held, 0, 0);
         expect("holds so far", n_holds, 0, 0);
+        // noise on one Q window: QP chattering every 2 clocks for 10 000 clocks (the Q leg at its threshold), QN quiet:
+        // no hold (one comparator only)
+        held = 0;
+        for (k = 0; k < 10000; k = k + 1) begin
+            @(negedge clk);
+            lv = 5'd0; lv[1] = (k / 2) % 2;
+            if (active) held = held + 1;
+        end
+        expect("clocks held with one Q window chattering on noise", held, 0, 0);
+        for (k = 0; k < 2000; k = k + 1) @(negedge clk) lv = 5'd0;
         // a 5 MHz beat on the Q windows for 50 000 clocks (the longest hold well beyond it)
         max = 32'd1000000;
         t_first = -1; t_rel = -1;

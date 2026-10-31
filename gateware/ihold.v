@@ -4,8 +4,9 @@
 // loop is held, and it is released `hold` clocks after they were last busy.
 //
 // Each clock counts as active for a comparator of `mask` if it changed within the clock's SER samples (the previous
-// clock's last sample counts); the actives are summed over a window of 2^(3 + wlog) clocks, and a window with
-// `thresh` or more triggers.  With 256 clocks and 8 (the driver's defaults) a beat of 1 MHz and more on both Q windows
+// clock's last sample counts); over a window of 2^(3 + wlog) clocks, a window in which at least two of the chosen
+// comparators (one if only one is chosen) were each active in thresh / 2 clocks or more triggers (busy), and the sum
+// of the actives is the window's count (a quiet window: a quarter of `thresh` or less).  With 256 clocks and 8 (the driver's defaults) a beat of 1 MHz and more on both Q windows
 // triggers (a 5 MHz beat gives about 50), an event touches them twice, and the hold starts 3-5 us after the beat
 // does: the drag takes milliseconds.  The default mask is the Q windows (QP, QN): the link's own BPSK data and A1 events move
 // along I and leave them quiet, an A3 event touches each twice, and an interferer's beat crosses them once it reaches
@@ -72,6 +73,26 @@ module ihold #(
                        {2'd0, act[0]} + {2'd0, act[1]} + {2'd0, act[2]} + {2'd0, act[3]} + {2'd0, act[4]};
 
     reg  [2:0]  n_act_q;                        // registered: the window's adder starts from a register
+    reg  [4:0]  act_q;                          // LEVEL 0: which comparators changed, registered
+    reg  [7:0]  c0, c1, c2, c3, c4;             // LEVEL 0: each comparator's changes in the window (saturating)
+    // LEVEL 0's busy window: at least two of the chosen comparators (one, if only one is chosen) each changed at least
+    // thresh / 2 times.  An interferer's beat swings Q across both Q windows; noise on a Q leg that sits at one window's
+    // threshold (no hysteresis) chatters only that one: measured on the bench, 2026-10-30 20:30, where such chatter
+    // after a CW held the loop by itself until the maximum
+    wire [7:0]  half = {1'b0, thresh[7:1]};
+    function [7:0] sat8;
+        input [7:0] cnt;
+        input       inc;
+        begin
+            sat8 = (cnt == 8'd255) ? cnt : cnt + {7'd0, inc};
+        end
+    endfunction
+    wire [7:0]  e0 = sat8(c0, act_q[0]), e1 = sat8(c1, act_q[1]), e2 = sat8(c2, act_q[2]), e3 = sat8(c3, act_q[3]),
+                e4 = sat8(c4, act_q[4]);
+    wire [2:0]  n_hit = {2'd0, mask[0] && e0 >= half} + {2'd0, mask[1] && e1 >= half} + {2'd0, mask[2] && e2 >= half}
+                      + {2'd0, mask[3] && e3 >= half} + {2'd0, mask[4] && e4 >= half};
+    wire [2:0]  n_mask = {2'd0, mask[0]} + {2'd0, mask[1]} + {2'd0, mask[2]} + {2'd0, mask[3]} + {2'd0, mask[4]};
+    wire        busy0 = (n_hit >= ((n_mask >= 3'd2) ? 3'd2 : 3'd1)) && (n_mask != 3'd0);
     reg  [10:0] wcnt;                           // clocks into the window
     reg  [10:0] acc;                            // actives so far in it
     wire [10:0] wlen_m1 = (11'd8 << wlog) - 11'd1;
@@ -84,24 +105,27 @@ module ihold #(
     always @(posedge clk) begin
         if (rst) begin
             prev <= 5'd0; n_act_q <= 3'd0; wcnt <= 11'd0; acc <= 11'd0; trig <= 1'b0;
+            act_q <= 5'd0; c0 <= 8'd0; c1 <= 8'd0; c2 <= 8'd0; c3 <= 8'd0; c4 <= 8'd0;
             since <= 32'd0; run <= 32'd0; guard <= 32'd0; active <= 1'b0; armed <= 1'b0;
             n_holds <= 32'd0; n_clocks <= 32'd0; last_count <= 8'd0;
         end else begin
             prev <= {fs[6*(SER-1) + 4], fs[6*(SER-1) + 3], fs[6*(SER-1) + 2], fs[6*(SER-1) + 1], fs[6*(SER-1)]};
             n_act_q <= n_act;
+            act_q <= act;
             trig <= 1'b0;
             if (wcnt >= wlen_m1) begin
                 wcnt <= 11'd0;
                 acc <= 11'd0;
+                c0 <= 8'd0; c1 <= 8'd0; c2 <= 8'd0; c3 <= 8'd0; c4 <= 8'd0;
                 // LEVEL 0 arms on a quiet window (a quarter of the threshold or less) and disarms on a busy one that
                 // starts no hold: an interferer arriving at a locked loop finds it armed, a lost loop never is
                 if ((acc + {8'd0, n_act_q}) <= {5'd0, thresh[7:2]}) armed <= 1'b1;
-                trig <= (LEVEL != 0) ? ((acc + {8'd0, n_act_q}) <  {3'd0, thresh})
-                              : ((acc + {8'd0, n_act_q}) >= {3'd0, thresh});
+                trig <= (LEVEL != 0) ? ((acc + {8'd0, n_act_q}) < {3'd0, thresh}) : busy0;
                 last_count <= ((acc + {8'd0, n_act_q}) > 11'd255) ? 8'd255 : acc[7:0] + {5'd0, n_act_q};
             end else begin
                 wcnt <= wcnt + 1'b1;
                 acc <= acc + {8'd0, n_act_q};
+                c0 <= e0; c1 <= e1; c2 <= e2; c3 <= e3; c4 <= e4;
             end
             if (guard != 32'd0) guard <= guard - 1'b1;
 
