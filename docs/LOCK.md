@@ -310,7 +310,7 @@ LOOP_HOLD with the software's own CTRL bit. **Both are off at reset**: nothing c
 ### 7.4 Measured
 
 `bringup/holds_tests.py holds` (twice, 21:13 and 21:38) and `weekend.py iholdcheck`, `pullauto`, 5.2 GHz over the air,
-on the overlay of 2026-10-30 21:12 (`a1eb2e6`; BRINGUP_LOG 4.8b): the board's own link with a 1 s CW at +9 dB 10 MHz above or below
+on the overlay of 2026-10-30 21:12 (`eadd8ae`; BRINGUP_LOG 4.8b): the board's own link with a 1 s CW at +9 dB 10 MHz above or below
 the carrier, and the B210 as the carrier (the board's TX muted) switched off for 0.3 s and 2 s, as if someone stood in
 front of the antenna; each with the protection off and then on.
 

@@ -837,7 +837,7 @@ class LoDrive(Schemes):
         return out
 
 
-# ---- the turnaround (the reply overlay, gateware a173ec9: turnaround.v; BRINGUP stage 3.4g) ----
+# ---- the turnaround (the reply overlay, gateware 461fe02: turnaround.v; BRINGUP stage 3.4g) ----
 class Mirrored(Scheme):
     """one Scheme for the driver's turnaround calls (scheme(), loopback_turnaround(), ring_run(), the fast path's
     tables): its TX points are the transmitter's, and its receiver frame is the inverted lock's, the TX point

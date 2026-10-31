@@ -72,7 +72,7 @@ experiments; pictures, not one-word states, each with what led to it and how to 
   section 7): off at reset, `cl.protect(True)` once locked.  160 of 160 dragging CWs (three carriers) and 4 of 4 blocked
   carriers come back at the 20 ms release (154 of 160 at 1 ms); no hold on the link's own traffic.  RX_IHOLD_HOLD
   resets to 20 ms from ID version 6.
-- **The timing recovery's false lock: fixed** (ID 0x434C0006, `38f46f7`, BRINGUP_LOG 4.10, REVB 30): it tracks the
+- **The timing recovery's false lock: fixed** (ID 0x434C0006, `8521517`, BRINGUP_LOG 4.10, REVB 30): it tracks the
   rising edges and centres on the measured skew (RX_CDR_SKEW).  The trim tried (BRINGUP_LOG 4.12): I_OFF_F at 3.3 V
   opens the 50 Mbaud eye from 10-12 to 14-15 of 16, so a servo of I_OFF_F on RX_CDR_SKEW during BPSK data is worth
   building (A3's idle wants the no-carrier null instead: switch per mode; the defaults are Jason's call).  It does not
@@ -84,7 +84,7 @@ experiments; pictures, not one-word states, each with what led to it and how to 
   window (the loop locks onto it; `captureauto`, 4.12): only this recovers it.
 - Build with Vivado 2022.1 for PYNQ 3.0.1 (`build.tcl -strategy Performance_ExplorePostRoutePhysOpt`: the default
   misses the fast path's 6 ns by picoseconds).  The server runs from `~/costaslink_current/`, a symlink to `~/costaslink_lockmon/` (ID 0x434C0008,
-  `4ae6ab2`, with `link.json`: linkd sets the link up at 5.2 GHz itself), as the boot service `costaslink-netbus`
+  `97a9d8f`, with `link.json`: linkd sets the link up at 5.2 GHz itself), as the boot service `costaslink-netbus`
   since 2026-10-31 12:55 (installed by `install_service.sh`; it starts at power-up and restarts on failure; to deploy
   a new overlay: a new directory, repoint the symlink, `sudo systemctl restart costaslink-netbus`; to hand the PL back
   to notebooks: `sudo systemctl disable --now costaslink-netbus`); `~/costaslink_persist/` (ID 7), `~/costaslink_cdrpol/` (ID 6), `~/costaslink_holds3/` (ID 5) and the
