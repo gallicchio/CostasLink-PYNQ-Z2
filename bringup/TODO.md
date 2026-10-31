@@ -43,7 +43,22 @@ experiments; pictures, not one-word states, each with what led to it and how to 
    interference hold's activity, latency; each state with its cause and the remedy in words.  Every reader of the
    board goes through one owner (the netbus server), so the page never contends with a test (REVB U3); later, control
    from the page through the same owner, which shows who is driving.
-4. A one-page guide for the physicists: what the page and the LEDs show, what good and bad look like, what to do.
+4. No separate guide: a help button (?) on every plot opening a short pop-up: what it shows, what good and bad look
+   like, what pushes it bad, what to do about it (Jason, 2026-10-31).  Every live plot carries an arrow on its axis
+   pointing the good way and bands behind the trace: green good, yellow marginal, red bad, set from the bench's
+   measurements and said so in its help.  Two-sided where both ends are bad: the signal strength (more is better up
+   to overload), VC's distance from the lock, the latency.  For the physicists brought in at the last minute, the
+   colours carry the judgement; the help says why.  First set (from the bench; to be refined):
+   * received level (the I leg, and the dBm it means): red below 50 mV, yellow 50-100, green 100-250, yellow
+     250-350, red above (overload; the arms clip near 0.5 V); arrow up, capped
+   * the loop's offset from the lock (VC, kHz): green within 5 kHz, yellow inside the capture window, red beyond the
+     watershed (13-16 kHz below, BRINGUP_LOG 4.12) or past +60 kHz; arrow to the middle
+   * the eye (samples open of the symbol, CMP_I's skew from RX_CDR_SKEW): green 13 or more of 16 at 50 Mbaud,
+     yellow 10-12, red under 10; the skew green under 1.5 ns, yellow to 3.5, red beyond
+   * bit errors (log): green none seen, yellow up to 1e-5, red beyond; arrow down
+   * the interference hold's share of time held: green under 1 %, yellow to 10 %, red beyond; and losses and
+     recoveries an hour: green 0, yellow 1-3, red more
+   * the window comparators' occupancy as a coarse constellation, with the good points' places drawn in
 
 **Gateware next (no hands needed; from the weekend's findings, BRINGUP_LOG 4.3-4.9):**
 - **Interference hold and signal holdover: done** (`ihold.v`, ID version 5 on; BRINGUP_LOG 4.8-4.10; `docs/LOCK.md`
@@ -61,9 +76,9 @@ experiments; pictures, not one-word states, each with what led to it and how to 
   lock, while 16-129 kHz below ends in the false lock.  The interference hold cannot cover a CW inside the capture
   window (the loop locks onto it; `captureauto`, 4.12): only this recovers it.
 - Build with Vivado 2022.1 for PYNQ 3.0.1 (`build.tcl -strategy Performance_ExplorePostRoutePhysOpt`: the default
-  misses the fast path's 6 ns by picoseconds).  The server runs from `~/costaslink_cdrpol/` (ID 0x434C0006) since
-  2026-10-31 02:35, started by hand (sudo nohup `pynq_serve.sh`), not the boot service; `~/costaslink_holds3/` (ID 5)
-  and the older directories are kept.  Whenever `gateware/driver/` changes, copy it there and restart the server: the client now warns when
+  misses the fast path's 6 ns by picoseconds).  The server runs from `~/costaslink_persist/` (ID 0x434C0007, `808a4f8`) since
+  2026-10-31 10:05, started by hand (sudo nohup `pynq_serve.sh`), not the boot service; `~/costaslink_cdrpol/` (ID 6),
+  `~/costaslink_holds3/` (ID 5) and the older directories are kept.  Whenever `gateware/driver/` changes, copy it there and restart the server: the client now warns when
   the server's driver differs from its own (`netbus.driver_id`); `~/costaslink_cdr/`, `~/costaslink_holds*/`
   and `~/costaslink/` (the 2024.1 turnaround overlay) are kept.
 
