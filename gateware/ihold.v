@@ -122,19 +122,25 @@ module ihold #(
     reg  [31:0] run;                            // clocks held without a break
     reg  [31:0] guard;                          // clocks of the guard still to go
     reg         armed;                          // LEVEL 0: a quiet window came after the last busy one
-    // the release while held: the busy span so far (run - since) scaled, saturating at hold
-    wire [31:0] span = run - since;
-    wire [47:0] scaled = ({16'd0, span} << prop) + {37'd0, wlen_m1} + 48'd1;
-    wire [31:0] rel = (prop == 4'd0 || scaled >= {16'd0, hold}) ? hold : scaled[31:0];
+    // the release while held: the busy span so far (run - since) scaled, saturating at hold; registered in three
+    // steps (in one clock the subtract, the shift, the add and the compare missed 100 MHz by 3 ns: ID 8's first
+    // build).  Three clocks late is nothing against a window of 64 clocks or more, and the least release (a window
+    // and a clock) is longer than the pipeline, so a hold just started never meets a stale one
+    reg  [31:0] span_q, rel;
+    reg  [47:0] scaled_q;
 
     always @(posedge clk) begin
         if (rst) begin
             prev <= 5'd0; n_act_q <= 3'd0; wcnt <= 11'd0; acc <= 11'd0; trig <= 1'b0; wclose <= 1'b0; streak <= 16'd0;
             act_q <= 5'd0; c0 <= 8'd0; c1 <= 8'd0; c2 <= 8'd0; c3 <= 8'd0; c4 <= 8'd0;
             since <= 32'd0; run <= 32'd0; guard <= 32'd0; active <= 1'b0; armed <= 1'b0;
+            span_q <= 32'd0; scaled_q <= 48'd0; rel <= 32'd0;
             n_holds <= 32'd0; n_clocks <= 32'd0; last_count <= 8'd0;
         end else begin
             prev <= {fs[6*(SER-1) + 4], fs[6*(SER-1) + 3], fs[6*(SER-1) + 2], fs[6*(SER-1) + 1], fs[6*(SER-1)]};
+            span_q   <= run - since;
+            scaled_q <= ({16'd0, span_q} << prop) + {37'd0, wlen_m1} + 48'd1;
+            rel      <= (prop == 4'd0 || scaled_q >= {16'd0, hold}) ? hold : scaled_q[31:0];
             n_act_q <= n_act;
             act_q <= act;
             trig <= 1'b0;
