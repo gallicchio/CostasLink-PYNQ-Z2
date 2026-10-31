@@ -41,7 +41,7 @@ PORT = 5800
 # say 'being driven'): the bench's watchdog reads the detectors every half minute (BRINGUP_LOG 4.15)
 OBSERVE_OPS = {"ping", "names", "get", "rd"}
 OBSERVE_CALLS = {"detectors", "info", "status", "pll_locked", "ihold_state", "shold_state", "cdr_state", "cmp_state",
-                 "dac_volts", "ber", "i2c_lines", "temperature", "adc", "adc_all", "det_adc"}
+                 "dac_volts", "ber", "i2c_lines", "temperature", "adc", "adc_all", "det_adc", "lock_state"}
 
 
 def driver_id(path=None):

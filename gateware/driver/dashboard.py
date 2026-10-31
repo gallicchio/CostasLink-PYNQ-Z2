@@ -44,7 +44,7 @@ EDGE_REGS = ("EDGE_CNT0", "EDGE_CNT1", "EDGE_CNT2", "EDGE_CNT3", "EDGE_CNT4", "E
 
 
 class Dashboard:
-    def __init__(self, server, port=8080, period_s=1.0, slow_every=3, keep_s=7200, log_dir=None):
+    def __init__(self, server, port=8080, period_s=1.0, slow_every=1, keep_s=7200, log_dir=None):
         self.server = server
         self.port = port
         self.period_s = period_s
@@ -149,6 +149,7 @@ class Dashboard:
             for n in reversed(self.notes):
                 if n.get("id") == d["id"]:
                     n["t_end"] = float(d.get("t_end", t))
+                    self.write({"t": t, "note": n})
                     return n
         n = {"id": d.get("id") or uuid.uuid4().hex[:12], "text": str(d.get("text", ""))[:400],
              "kind": d.get("kind", "info") if d.get("kind") in ("intervention", "explained", "info") else "info",
@@ -160,25 +161,70 @@ class Dashboard:
         self.write({"t": t, "note": n})
         return n
 
+    def event(self, e):
+        """one line of 'What happened', kept in the day's log too (restore() reads it back after a restart)"""
+        self.events.append(e)
+        self.write({"t": e["t"], "event": e})
+
+    def restore(self, tail_bytes=16 << 20):
+        """the last keep_s of looks, the notes and the events from the day's log (and yesterday's), so that a restart of
+        the server (new firmware, a new driver) does not blank the page"""
+        t_min = time.time() - self.hist.maxlen * self.period_s
+        notes, n_looks = {}, 0
+        for day in sorted({time.strftime("%Y-%m-%d", time.localtime(t)) for t in (t_min, time.time())}):
+            path = os.path.join(self.log_dir, day + ".jsonl")
+            try:
+                with open(path, "rb") as f:
+                    f.seek(max(0, os.path.getsize(path) - tail_bytes))
+                    if f.tell():
+                        f.readline()                                     # the partial line the seek landed in
+                    for line in f:
+                        try:
+                            d = json.loads(line)
+                        except ValueError:
+                            continue
+                        if d.get("t", 0) < t_min:
+                            continue
+                        if "note" in d:
+                            notes[d["note"]["id"]] = d["note"]
+                        elif "event" in d:
+                            self.events.append(d["event"])
+                        else:
+                            self.hist.append(d)
+                            n_looks += 1
+            except OSError:
+                pass
+        for n in sorted(notes.values(), key=lambda n: n["t_start"]):
+            self.notes.append(n)
+            self.events.append({"t": n["t_start"], "kind": "note-" + n["kind"],
+                                "text": n["text"] + ((" (" + n["source"] + ")") if n["source"] else "")})
+        self.events = collections.deque(sorted(self.events, key=lambda e: e["t"]), maxlen=self.events.maxlen)
+        if self.hist and time.time() - self.hist[-1]["t"] < 600:
+            self.vc_lock = self.hist[-1].get("vc_lock")                  # the lock learned before (it adapts again)
+        return n_looks, len(notes)
+
     def note_events(self, r):
         """losses and recoveries as linkd counted them, and the state's changes, for 'What happened'"""
         L = r.get("linkd")
         if L:
             if self._lk is not None:
                 if L["losses"] > self._lk["losses"]:
-                    off = r.get("off_khz")
-                    where = (" (the oscillator %.0f kHz %s the carrier)" % (abs(off), "below" if off < 0 else "above")) if off is not None else ""
+                    # linkd counts a loss when it acts, often after VC has come back: the furthest the last 30 s went
+                    offs = [x["off_khz"] for x in list(self.hist)[-30:] + [r] if x.get("off_khz") is not None]
+                    off = max(offs, key=abs) if offs else None
+                    where = (" (the oscillator went %.0f kHz %s the carrier)" % (abs(off), "below" if off < 0 else "above")) \
+                        if off is not None and abs(off) >= 3 else ""
                     act = self.active_note(r["t"])
-                    self.events.append({"t": r["t"], "kind": "loss-expected" if act else "loss",
+                    self.event({"t": r["t"], "kind": "loss-expected" if act else "loss",
                                         "text": "The lock was lost" + where + "; the board started to recover it." +
                                                 (" Expected: during '%s'." % act["text"] if act else "")})
                 if L["recoveries"] > self._lk["recoveries"]:
                     d = L.get("last_recovery_s")
-                    self.events.append({"t": r["t"], "kind": "recovered",
+                    self.event({"t": r["t"], "kind": "recovered",
                                         "text": "Locked again by itself" + (" %.1f s after the loss" % d if d is not None else "") +
                                                 ((", %d start(s)" % L["last_starts"]) if L.get("last_starts") else "") + "."})
                 if L["failed"] > self._lk["failed"]:
-                    self.events.append({"t": r["t"], "kind": "failed",
+                    self.event({"t": r["t"], "kind": "failed",
                                         "text": "A recovery found no carrier; it will try again (is the other board on?)."})
             self._lk = {k: L.get(k, 0) for k in ("losses", "recoveries", "failed")}
 
@@ -208,6 +254,11 @@ class Dashboard:
         qp, qn = rate.get("CMP_QP", 0), rate.get("CMP_QN", 0)
         ip, inn = rate.get("CMP_IP", 0), rate.get("CMP_IN", 0)
         held_sw = r["ctrl"]["loop_hold"]
+        vc = adc.get("VC")
+        off = None
+        if vc is not None and self.vc_lock is not None and r.get("rx_mhz"):
+            off = (vc - self.vc_lock) * KV_HZ_PER_V_5800 * r["rx_mhz"] / 5800.0 / 1e3
+        gw = r.get("gw_lock")
         if not rate:
             st = "starting"
         elif held_sw:
@@ -216,22 +267,31 @@ class Dashboard:
             st = "interference"
         elif r["shold"].get("holding"):
             st = "holdover"
-        elif max(qp, qn, ip, inn) < 200 and abs(di) < 0.04 and abs(dq) < 0.04:
-            st = "nocarrier"
-        elif qp > 20000 and qn > 20000:
-            st = "lost"
-        elif qp < 5000 and qn < 5000:
-            st = "locked"
         else:
-            st = "unsettled"
+            if gw:                                    # the gateware's judgement (lockmon.v): bursts are not a beat
+                st = {"locked": "locked", "lost": "lost", "no carrier": "nocarrier", "unsure": "unsettled"}.get(gw["state"], "unsettled")
+            elif max(qp, qn, ip, inn) < 200 and abs(di) < 0.04 and abs(dq) < 0.04:
+                st = "nocarrier"
+            elif qp > 20000 and qn > 20000:
+                st = "lost"
+            elif qp < 5000 and qn < 5000:
+                st = "locked"
+            else:
+                st = "unsettled"
+            # busy windows with the oscillator still at the lock: interference, not a loss (a lost loop cannot stay
+            # within 8 kHz of the lock: BRINGUP_LOG 4.12, 4.15; the first live page called beacon bursts 'lost')
+            if st in ("lost", "unsettled") and off is not None and abs(off) < 8.0:
+                st = "interfered"
         r["state"] = st
-        vc = adc.get("VC")
+        if st != "locked":                            # the carrier's level comes from the locked idle I arm: a near
+            r.pop("dem_dbm", None)                    # interferer or a beat adds to it (a CW 20 kHz off read 8 dB high)
+            r.pop("rx_ant_dbm", None)
         if st == "locked" and vc is not None:
             self.vc_lock = vc if self.vc_lock is None else 0.95 * self.vc_lock + 0.05 * vc
             if abs(di) > 0.05 and r.get("ber") is None:
                 self.leg_ref = abs(di) if self.leg_ref is None else 0.9 * self.leg_ref + 0.1 * abs(di)
-        if vc is not None and self.vc_lock is not None and r.get("rx_mhz"):
-            r["off_khz"] = (vc - self.vc_lock) * KV_HZ_PER_V_5800 * r["rx_mhz"] / 5800.0 / 1e3
+        if off is not None:
+            r["off_khz"] = off
         r["vc_lock"] = self.vc_lock
         r["leg_ref_mv"] = self.leg_ref * 1e3 if self.leg_ref else None
         prev, since = self.t_state
@@ -326,6 +386,10 @@ class Dashboard:
         return ThreadingHTTPServer(("0.0.0.0", self.port), H)
 
     def start(self):
+        try:
+            print("dashboard: %d looks and %d notes restored from the log" % self.restore(), flush=True)
+        except Exception as e:                                           # noqa: BLE001 - never keep the page from starting
+            print("dashboard: nothing restored (%s)" % e, flush=True)
         threading.Thread(target=self.run, daemon=True, name="dashboard looks").start()
         srv = self.http()
         threading.Thread(target=srv.serve_forever, daemon=True, name="dashboard http").start()

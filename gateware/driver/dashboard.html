@@ -34,6 +34,8 @@ dialog { max-width:600px; border:none; border-radius:12px; padding:18px 20px; bo
 dialog h3 { margin:0 0 8px; }
 dialog p { margin:6px 0; }
 dialog .k { font-weight:700; }
+.hz { display:inline-block; width:14px; height:10px; vertical-align:-1px; border:1px solid var(--line);
+      background:repeating-linear-gradient(135deg, rgba(85,91,102,.55) 0 1.5px, transparent 1.5px 5px); }
 </style></head><body>
 <header><h1>CostasLink link status</h1><span class="meta" id="meta">connecting...</span></header>
 <div id="status"><div class="word" id="word">...</div><div id="why"></div><div class="todo" id="todo"></div>
@@ -58,6 +60,8 @@ const STATES = {
   nocarrier:   ["No carrier", "bad", "The receiver sees no carrier at all.", "Is the other board powered and transmitting? Are both antennas connected and pointed at each other, with nothing in between?"],
   interference:["Riding out interference", "warn", "A strong interferer is on the air; the loop is held still until it goes, so that it is not dragged off.",
                 "Nothing to do if it is brief. If it lasts, look for a nearby transmitter (a WiFi access point, a phone, a microwave oven) and move it or the antennas."],
+  interfered:  ["Interference", "warn", "Something else is transmitting strongly in the band. The receiver's oscillator is still on the carrier's frequency, so the link comes back as soon as it stops, but data may be disturbed meanwhile.",
+                "If it lasts, look for a nearby transmitter (a WiFi access point, a phone, a microwave oven) and move it or the antennas."],
   holdover:    ["Carrier interrupted: holding", "warn", "The carrier went away (someone or something in the path?); the loop is held at the carrier's frequency so it picks up again at once when the carrier returns.",
                 "Clear the path between the antennas."],
   held:        ["Held by a test", "warn", "A test program, or a person, has frozen the loop on purpose.", "Nothing to do: it is part of a test."],
@@ -72,22 +76,23 @@ const HELP_BANDS = "<p>The bands behind the plot say how good a value is: <span 
   "plot's range is drawn on its edge as &#9650; (above) or &#9660; (below); a gap in the trace means no reading was taken.</p>";
 const PANELS = [
  {id:"state", title:"Lock, over time", kind:"timeline",
-  help:"<p>Each moment coloured by the receiver's state: green locked, yellow holding or settling, red lost or no carrier; grey: no reading. Purple bars above the strip: interventions someone announced, so a red stretch under one was expected.</p><p class='k'>Good: solid green.</p><p>Red stretches are losses; the board's recovery should end each within seconds. Many unexplained red stretches mean strong interference or a weak signal: see the other plots for which.</p>"},
+  help:"<p>Each moment coloured by the receiver's state: green locked; yellow interference (the oscillator still on the carrier), holding or settling; red lost (the oscillator off the carrier) or no carrier; grey: no reading. Purple bars above the strip: interventions someone announced, so a red stretch under one was expected.</p><p class='k'>Good: solid green.</p><p>Red stretches are losses; the board's recovery should end each within seconds. Many unexplained red stretches mean strong interference or a weak signal: see the other plots for which.</p>"},
  {id:"offset", title:"Frequency offset from the carrier", unit:"kHz", get:r=>r.off_khz, lo:-150, hi:150, symlog:5,
   ticks:[-150,-13,0,5,60,150], bands:[[-150,-13,"bad"],[-13,-5,"warn"],[-5,5,"good"],[5,60,"warn"],[60,150,"bad"]],
   help:"<p>How far the receiver's oscillator is from the frequency where it sits when locked (from its control voltage VC). Locked, it stays near zero.</p><p class='k'>Good: within 5 kHz (green).</p><p><b>More than about 13 kHz below</b>, the loop cannot pull itself back: it drifts to a 'false lock' about 45 kHz below, or to the end of its range. <b>Above</b>, it drifts back down by itself. The pull-in map shows why. A red trace means a recovery is needed; the board does it within seconds.</p>"},
- {id:"pullin", title:"Where the loop would drift (pull-in map)", kind:"pullin",
-  help:"<p>The black curve: how fast the loop's control voltage moves when the loop is <b>not</b> locked, against how far its oscillator is from the carrier, measured on the bench (BRINGUP_LOG 4.12). Above the zero line the oscillator drifts up, below it down. Where the curve crosses zero going down, drifts meet and an unlocked loop comes to rest: the lock at 0, and a <b>false lock</b> about 45 kHz below, where the loop beats forever without locking. Where it crosses going up is a <b>watershed</b>: a loop let go just below one runs away from the lock.</p><p>The blue line and arrow: where the oscillator is now, and which way the map says it would drift if it were unlocked.</p><p class='k'>Good: the blue line at 0 (locked). Above the carrier everything drifts down into the lock; between the first watershed (about -15 kHz) and the second (about -100 kHz) the loop falls into the false lock; below that, to the end of its range. That is why the board's recovery always starts the loop just above the carrier.</p>"},
- {id:"scurve", title:"Where the loop sits on its S-curve", kind:"scurve",
-  help:"<p>The detector's characteristic: its error output against the phase error between the oscillator and the carrier (the grey curve, from the detector's design with the measured level, and the 4-10 mV offset of its mid-point found on the bench). The loop locks where the curve crosses its own reference going down: the green circle. The blue dots: where the loop is now, from the slow readings of I, Q and the error (newest darkest).</p><p class='k'>Good: the dots inside the green circle.</p><p><b>Dots spread along the whole curve:</b> not locked; the phase is turning (a beat). <b>Dots off the curve:</b> interference, or readings taken while things changed. This view shows the restoring force that a strong interferer collapses (docs/LOCK.md section 2).</p>"},
+ {id:"pullin", title:"Where the loop drifts when unlocked (pull-in map, measured)", kind:"pullin",
+  help:"<p>The black curve: how fast the loop's control voltage moves when the loop is <b>not</b> locked, against how far its oscillator is from the carrier, measured on the bench (BRINGUP_LOG 4.12). Above the zero line the oscillator drifts up, below it down. Where the curve crosses zero going down, drifts meet and an unlocked loop comes to rest: the lock at 0, and a <b>false lock</b> about 45 kHz below, where the loop beats forever without locking. Where it crosses going up is a <b>watershed</b>: a loop let go just below one runs away from the lock.</p><p>The blue dots: the live loop, one a second (newer darker): where its oscillator is, and how fast VC is actually moving there. Locked, they sit together at 0. A loop knocked off runs along the black curve to where it settles; a dot well off the curve means something else is pushing the loop (a strong interferer drags it with its own force). The thin blue line: where the oscillator is now, with the way the map says it would drift.</p><p>The difference from the S-curve below: this map is about <b>frequency</b>, the loop off the carrier's frequency by up to hundreds of kHz (not locked); the S-curve is about <b>phase</b>, the loop on the carrier's frequency and how hard it pulls back from a small phase error (locked). Both show the live loop as blue dots.</p><p class='k'>Good: the blue line at 0 (locked). Above the carrier everything drifts down into the lock; between the first watershed (about -15 kHz) and the second (about -100 kHz) the loop falls into the false lock; below that, to the end of its range. That is why the board's recovery always starts the loop just above the carrier.</p>"},
+ {id:"scurve", title:"Where the loop sits on its S-curve (curve: model)", kind:"scurve",
+  help:"<p>The detector's characteristic: its error output against the phase error between the oscillator and the carrier (the grey curve). <b>The curve is a model, not a measurement</b>: the detector's design (the sign of I times Q), scaled to the measured locked level, with the 4-10 mV offset of its mid-point found on the bench. The loop locks where the curve crosses its own reference going down: the green circle. The blue dots: where the loop is now, from the slow readings of I, Q and the error (newest darkest).</p><p class='k'>Good: the dots inside the green circle.</p><p><b>Dots spread along the whole curve:</b> not locked; the phase is turning (a beat). <b>Dots off the curve:</b> interference, or readings taken while things changed. This view shows the restoring force that a strong interferer collapses (docs/LOCK.md section 2).</p><p>The readings are slow: one a second, each averaging about a millisecond, so a beat faster than a few hundred Hz (an interferer MHz away, the carrier's own data) averages away to the middle, and a short burst is rarely caught. Those show in the comparator activity and the board's lock judgement; here you see the loop's phase itself, and a near interferer (a few kHz off) that turns it.</p>"},
  {id:"constellation", title:"Constellation (slow)", kind:"scatter",
-  help:"<p>The received signal's I and Q, one dot per slow reading (each averages about a millisecond), in blue: newer darker. The circles mark where a good, locked, idle carrier sits: on the horizontal axis, left or right.</p><p class='k'>Good: a tight cluster inside of a circle.</p><p><b>A smear around a ring</b>: not locked (the oscillator beats against the carrier). <b>A cluster near the middle</b>: no carrier, or data running (data averages out on this slow reading). The real constellation at the symbol rate needs the next board's fast I/Q converter (REVB U2).</p>"},
- {id:"rxant", title:"Signal at the antenna (RX ANT)", unit:"dBm", get:r=>r.rx_ant_dbm, lo:-80, hi:-10,
+  help:"<p>The received signal's I and Q, one dot per slow reading (one a second, each averaging about a millisecond), in blue: newer darker. The circles mark where a good, locked, idle carrier sits: on the horizontal axis, left or right.</p><p class='k'>Good: a tight cluster inside of a circle.</p><p><b>A smear around a ring</b>: not locked (the oscillator beats against the carrier). <b>A cluster near the middle</b>: no carrier, or data running (data averages out on this slow reading). The real constellation at the symbol rate needs the next board's fast I/Q converter (REVB U2).</p>"},
+ {id:"rxant", title:"Signal at the antenna (RX ANT)", unit:"dBm", get:r=>r.rx_ant_dbm, lo:-80, hi:-10, nm:true, absent:"read only while the link is idle and locked",
+  also:[r=>r.det&&r.det.peak_dbm, 1, "the strongest other power in the band"],
   bands:[[-80,-68,"bad"],[-68,-59,"warn"],[-59,-28,"good"],[-28,-20,"warn"],[-20,-10,"bad"]],
-  help:"<p>The carrier's power at the RX ANT connector, worked back from the level after the receive chain and the attenuator's setting. This is the one to watch while pointing the antennas.</p><p class='k'>Good: -59 to -28 dBm (green): the attenuator can bring this to the demodulator's working level.</p><p><b>Too low:</b> point the antennas at each other, shorten the path, check the cables and connectors, keep the line of sight clear; below about -68 dBm the loop will not hold. <b>Too high:</b> the boards are too close (above -28 dBm even the attenuator at its maximum leaves the chain hot).</p><p>Read only while the link is idle and locked (data averages it away on this slow reading); bands from the receiver's budget (RX gain 39.2 dB, the attenuator's 0-31.75 dB), not yet checked on the bench.</p>"},
- {id:"dem", title:"Signal at the demodulator", unit:"dBm", get:r=>r.dem_dbm, lo:-40, hi:0,
+  help:"<p>The carrier's power at the RX ANT connector, worked back from the level after the receive chain and the attenuator's setting. This is the one to watch while pointing the antennas.</p><p class='k'>Good: -59 to -28 dBm (green): the attenuator can bring this to the demodulator's working level.</p><p><b>Too low:</b> point the antennas at each other, shorten the path, check the cables and connectors, keep the line of sight clear; below about -68 dBm the loop will not hold. <b>Too high:</b> the boards are too close (above -28 dBm even the attenuator at its maximum leaves the chain hot).</p><p><b>The orange line</b>: the strongest other power in the link's band (the Q arm's peak detector, on the same scale at RX ANT): noise and interferers. The gap between blue and orange is the margin. The bands judge the carrier (blue) only.</p><p><b>Hatched grey</b>: the carrier's level cannot be measured just then (it is read from the locked, idle carrier, and the comparators were busy: interference, or the loop not locked); the orange line shows how strong the interference was. A blank gap is no reading at all (the board's server restarting, or the page not getting answers).</p><p>Read only while the link is idle and locked (data averages it away on this slow reading); bands from the receiver's budget (RX gain 39.2 dB, the attenuator's 0-31.75 dB), not yet checked on the bench.</p>"},
+ {id:"dem", title:"Signal at the demodulator", unit:"dBm", get:r=>r.dem_dbm, lo:-40, hi:0, nm:true, absent:"read only while the link is idle and locked",
   bands:[[-40,-30,"bad"],[-30,-23,"warn"],[-23,-15,"good"],[-15,-10,"warn"],[-10,0,"bad"]],
-  help:"<p>The carrier's power at the demodulator's input, after the LNA, the step attenuator (set by the FPGA) and the gain blocks: what the receiver itself works with. The attenuator's setting is in the line below the plot.</p><p class='k'>Good: near -20 dBm, the design's working level (green -23 to -15).</p><p><b>Low with the attenuator at 0 dB:</b> the signal at the antenna is too weak for the chain to bring up. <b>High with the attenuator at 31.75 dB:</b> too strong for the chain to bring down. Either way, look at the antenna plot. In between, the attenuator should be able to put it right.</p>"},
+  help:"<p>The carrier's power at the demodulator's input, after the LNA, the step attenuator (set by the FPGA) and the gain blocks: what the receiver itself works with. The attenuator's setting is in the line below the plot.</p><p class='k'>Good: near -20 dBm, the design's working level (green -23 to -15).</p><p><b>Low with the attenuator at 0 dB:</b> the signal at the antenna is too weak for the chain to bring up. <b>High with the attenuator at 31.75 dB:</b> too strong for the chain to bring down. Either way, look at the antenna plot. In between, the attenuator should be able to put it right.</p><p>Hatched grey: not measurable just then (interference, or not locked); a blank gap: no reading at all.</p>"},
  {id:"gwlock", title:"The board's own lock judgement", unit:"of 64", get:r=>r.gw_lock&&r.gw_lock.busy, lo:0, hi:64,
   ticks:[0,24,48,64], bands:[[0,24,"good"],[24,48,"warn"],[48,64,"bad"]],
   help:"<p>The FPGA's own lock monitor (lockmon.v), which drives the board's LEDs: every 10 ms it counts in how many of 64 slices both Q window comparators toggled. A beat (not locked) toggles them all the time; bursts of noise only now and then.</p><p class='k'>Good: under 24 (green; it calls that locked).</p><p><b>48 or more</b> (red): lost, a beat. In between: unsure, usually a dense train of interference bursts. The text below gives its state and its own count of losses since power-up.</p>"},
@@ -103,9 +108,9 @@ const PANELS = [
  {id:"hold", title:"Time spent riding out interference", unit:"%", get:r=>r.hold_pct, lo:0, hi:100, symlog:1, ticks:[0,1,10,100],
   bands:[[0,1,"good"],[1,10,"warn"],[10,100,"bad"]],
   help:"<p>The share of the last second the interference hold kept the loop frozen (when it is switched on).</p><p class='k'>Good: under 1 %.</p><p>The hold keeps a strong interferer from dragging the loop off, but while held the link's decisions slowly lose their phase, so long holds cost data. <b>Often high:</b> a persistent interferer nearby.</p>"},
- {id:"skew", title:"Timing: comparator skew", unit:"ns", get:r=>r.skew_ns, lo:0, hi:6,
+ {id:"skew", title:"Timing: comparator skew", unit:"ns", get:r=>r.skew_ns, lo:0, hi:6, absent:"measured only while a data check runs; the link now carries only its idle carrier",
   bands:[[0,1.5,"good"],[1.5,3.5,"warn"],[3.5,6,"bad"]],
-  help:"<p>When a timing-recovered data check runs: how much later the receiver's sign comparator switches one way than the other (its duty-cycle distortion). It eats into the eye.</p><p class='k'>Good: under 1.5 ns.</p><p>Shown only while data is being checked. Large values come from the comparator's threshold sitting off the signal's middle (REVB 30).</p>"},
+  help:"<p>When a timing-recovered data check runs: how much later the receiver's sign comparator switches one way than the other (its duty-cycle distortion). It eats into the eye.</p><p class='k'>Good: under 1.5 ns.</p><p>Shown only while data is being checked: the link left alone carries only its idle carrier, so this plot is empty then, and that is fine. Large values come from the comparator's threshold sitting off the signal's middle (REVB 30).</p>"},
  {id:"temp", title:"Board temperature", unit:"°C", get:r=>r.det&&r.det.temp_c, lo:0, hi:90,
   bands:[[0,5,"bad"],[5,15,"warn"],[15,60,"good"],[60,75,"warn"],[75,90,"bad"]],
   help:"<p>The board's thermistor, near the RF chain.</p><p class='k'>Good: 15-60 °C.</p><p><b>Hot:</b> shade the board, give it airflow. Its frequencies drift with temperature; the loop follows slow drift.</p>"},
@@ -134,6 +139,9 @@ function sizeCanvas(cv) { const r = window.devicePixelRatio || 1, w = cv.clientW
   const g = cv.getContext("2d"); g.setTransform(r, 0, 0, r, 0, 0); return [g, w, h]; }
 function fmt(v) { const a = Math.abs(v); return a >= 100 ? v.toFixed(0) : a >= 10 ? v.toFixed(1) : v.toFixed(2); }
 function spanLabel() { return "-" + (span >= 3600 ? (span / 3600) + " h" : (span / 60) + " min"); }
+let _hatch = null;
+function hatch(g) { if (_hatch) return _hatch; const c = document.createElement("canvas"); c.width = c.height = 8; const h = c.getContext("2d");
+  h.strokeStyle = "rgba(85,91,102,.5)"; h.lineWidth = 1.5; h.beginPath(); h.moveTo(-1, 9); h.lineTo(9, -1); h.stroke(); return (_hatch = g.createPattern(c, "repeat")); }
 function tri(g, x, y, up, col) { g.fillStyle = col; g.beginPath(); g.moveTo(x - 4, up ? y + 6 : y - 6); g.lineTo(x + 4, up ? y + 6 : y - 6); g.lineTo(x, y); g.fill(); }
 // the notes as purple spans on a time axis
 function drawNotes(g, x, top, height, t0) {
@@ -152,6 +160,9 @@ function drawSeries(p) {
   g.clearRect(0, 0, w, h);
   for (const [a, b, k] of (p.bands || [])) { g.fillStyle = B[k]; g.fillRect(L, y(b), pw, y(a) - y(b)); }
   drawNotes(g, x, T, ph, t0);
+  // a reading came but this value could not be measured (not the same as no reading: that stays blank)
+  if (p.nm) { g.fillStyle = hatch(g); let pt = null;
+    for (const r of hist) { if (r.t < t0) { pt = r.t; continue; } if (!r.busy && r.adc && p.get(r) == null) { const a = x(pt != null && r.t - pt < 5 ? pt : r.t - 1); g.fillRect(a, T, Math.max(2, x(r.t) - a), ph); } pt = r.t; } }
   g.strokeStyle = "#c9ccd2"; g.lineWidth = 1; g.strokeRect(L, T, pw, ph);
   g.fillStyle = C.ink2; g.font = "12px system-ui"; g.textAlign = "right";
   const ticks = p.ticks || (p.log ? [1, 1e2, 1e4, 1e6] : [p.lo, (p.lo + p.hi) / 2, p.hi]);
@@ -159,6 +170,7 @@ function drawSeries(p) {
   g.textAlign = "left"; g.fillText(spanLabel(), L + 2, h - 5); g.textAlign = "right"; g.fillText("now", w - R, h - 5);
   if (p.id == "vc") { const vl = lastValue(r => r.vc_lock); if (vl) { g.strokeStyle = C.ink2; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(L, y(vl)); g.lineTo(L + pw, y(vl)); g.stroke(); g.setLineDash([]); } }
   const series = p.kind == "multi" ? p.series.map(([k, lab], i) => [r => r.rate ? r.rate[k] : null, SERIES[i], lab]) : [[p.get, C.data, null]];
+  if (p.also) series.unshift([p.also[0], SERIES[p.also[1]], p.also[2]]);
   for (const [get, col] of series) {
     g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); let pen = false, prevT = null;
     for (const r of hist) { if (r.t < t0) continue; const v = r.busy ? null : get(r);
@@ -177,8 +189,10 @@ function drawSeries(p) {
   let extra = "";
   if (p.id == "dem" && last && last.dsa_db != null) extra = " (attenuator " + last.dsa_db + " dB of 0-31.75)";
   if (p.id == "gwlock" && last && last.gw_lock) extra = " (it says: " + last.gw_lock.state + "; " + last.gw_lock.losses + " losses since power-up)";
-  if ((p.id == "rxant" || p.id == "dem") && lv == null) extra = " (read only while the link is idle and locked)";
+  if (lv == null && p.absent) extra = " (" + p.absent + ")";
   xv.textContent = (lv == null ? "no reading yet" : ({good:"good", warn:"marginal", bad:"bad"}[k] || "")) + extra;
+  if (p.also || p.nm) xv.innerHTML = xv.innerHTML + "<br>" + (p.also ? "<span style='color:" + C.data + "'>&#9632;</span> the carrier &nbsp; <span style='color:" + SERIES[p.also[1]] + "'>&#9632;</span> " + p.also[2] + " &nbsp; " : "") +
+    "<span class='hz'></span> not measurable then";
 }
 function drawTimeline(p) {
   const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv);
@@ -237,13 +251,23 @@ function drawPullin(p) {
       g.fillStyle = C.ink2; g.font = "10px system-ui"; g.textAlign = "center"; g.fillText(rest ? "false lock" : "watershed", x(o), rest ? T + ph - 4 : T + 10);
       g.font = "11px system-ui"; } }
   g.fillStyle = C.good; g.beginPath(); g.arc(x(0), y(0), 5, 0, 7); g.fill();
+  g.save(); g.fillStyle = C.ink2; g.font = "11px system-ui"; g.translate(10, T + ph / 2); g.rotate(-Math.PI / 2); g.textAlign = "center"; g.fillText("VC, V/s", 0, 0); g.restore();
+  // the live loop: where it is, and how fast VC moves there (between consecutive readings), newer darker
+  const win = Math.min(span, 120), now = Date.now() / 1000; let pr = null;
+  for (const r of hist) { if (r.t < now - win - 5 || !r.slow_now || !r.adc || r.off_khz == null) continue;
+    if (pr && r.t - pr.t < 5 && r.t >= now - win) { const rate = (r.adc.VC - pr.adc.VC) / (r.t - pr.t), o = (r.off_khz + pr.off_khz) / 2;
+      const lum = Math.round(30 + 55 * Math.min(1, (now - r.t) / win)), col = "hsl(222, 75%, " + lum + "%)";
+      const xx = x(o), yy = y(rate); g.fillStyle = col; g.beginPath(); g.arc(xx, yy, 3.5, 0, 7); g.fill();
+      if (rate > 12 || rate < -15) tri(g, xx, rate > 12 ? T + 1 : T + ph - 1, rate > 12, col);
+      if (Math.abs(o) > 450) tri(g, o > 0 ? L + pw - 4 : L + 4, yy, true, col); }
+    pr = r; }
   // where the loop is now, and which way the map says it would go
   const off = lastValue(r => r.off_khz);
-  if (off != null) { const xo = x(off); g.strokeStyle = C.data; g.lineWidth = 2; g.beginPath(); g.moveTo(xo, T); g.lineTo(xo, T + ph); g.stroke();
+  if (off != null) { const xo = x(off); g.strokeStyle = C.data; g.lineWidth = 1; g.beginPath(); g.moveTo(xo, T); g.lineTo(xo, T + ph); g.stroke();
     let rate = null; for (let i = 0; i + 1 < m.length; i++) if (m[i][0] <= off && off <= m[i + 1][0]) rate = m[i][1] + (m[i + 1][1] - m[i][1]) * (off - m[i][0]) / (m[i + 1][0] - m[i][0]);
     if (rate != null && Math.abs(off) > 4) { const dir = rate > 0 ? 1 : -1; g.fillStyle = C.data; g.beginPath(); g.moveTo(xo + dir * 18, T + 14); g.lineTo(xo, T + 8); g.lineTo(xo, T + 20); g.fill(); }
     if (Math.abs(off) > 450) tri(g, off > 0 ? L + pw - 4 : L + 4, T + 1, true, C.data);
-    el.textContent = "map at " + k + " MHz; now " + fmt(off) + " kHz from the lock" + (Math.abs(off) <= 5 ? " (locked)" : rate == null ? "" : rate < 0 ? (off > 0 ? ": it would drift down into the lock" : ": it would drift further down") : ": it would drift up");
+    el.textContent = "black: measured at " + k + " MHz; blue: live; now " + fmt(off) + " kHz from the lock" + (Math.abs(off) <= 5 ? " (locked)" : rate == null ? "" : rate < 0 ? (off > 0 ? ": it would drift down into the lock" : ": it would drift further down") : ": it would drift up");
   } else el.textContent = "map at " + k + " MHz; no offset reading yet";
   document.getElementById("v_" + p.id).textContent = "";
 }
@@ -269,7 +293,7 @@ function drawSCurve(p) {
     const err = (r.adc.ERR - V_REF) * 1000, age = (Date.now() / 1000 - r.t) / win, lum = Math.round(30 + 55 * Math.min(1, age));
     g.fillStyle = "hsl(222, 75%, " + lum + "%)"; g.beginPath(); g.arc(x(th), y(err), 3.5, 0, 7); g.fill(); lastPt = [th, err]; }
   document.getElementById("v_" + p.id).textContent = "";
-  document.getElementById("x_" + p.id).textContent = lastPt ? "now: phase " + lastPt[0].toFixed(0) + "°, error " + lastPt[1].toFixed(0) + " mV from the loop's reference" : "no reading yet";
+  document.getElementById("x_" + p.id).textContent = lastPt ? "grey: model; blue: live; now: phase " + lastPt[0].toFixed(0) + "°, error " + lastPt[1].toFixed(0) + " mV from the loop's reference" : "no reading yet";
 }
 function drawAll() { for (const p of PANELS) { try { ({timeline: drawTimeline, scatter: drawScatter, pullin: drawPullin, scurve: drawSCurve}[p.kind] || drawSeries)(p); } catch (e) { console.log(p.id, e); } } }
 function status() {
