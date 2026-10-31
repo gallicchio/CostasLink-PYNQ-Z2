@@ -44,7 +44,17 @@ def xdc(pins_only=False):
         L.append("")
     if pins_only:
         # the block design's overlay (pynq/build.tcl): the fabric runs on the PS's FCLK0 through the clock wizard,
-        # and the register file is on AXI-Lite, so no sysclk and no UART
+        # and the register file is on AXI-Lite, so no sysclk and no UART.  The PYNQ-Z2's own LEDs (ID version 8,
+        # lockmon.v), from TUL's board file (gateware/pynq/board_files/pynq-z2/A.0/part0_pins.xml): LD0..LD3, and
+        # rgb_led_tri_o_0..5 = LD4 B, G, R and LD5 B, G, R
+        L += ["# the PYNQ-Z2's own LEDs (ID version 8, lockmon.v; the board file part0_pins.xml): LD0..LD3, and the two RGB",
+              "# LEDs, rgb_led[0..2] = LD4 B, G, R and rgb_led[3..5] = LD5 B, G, R"]
+        for port, loc in (("led[0]", "R14"), ("led[1]", "P14"), ("led[2]", "N16"), ("led[3]", "M14"),
+                          ("rgb_led[0]", "L15"), ("rgb_led[1]", "G17"), ("rgb_led[2]", "N15"),
+                          ("rgb_led[3]", "G14"), ("rgb_led[4]", "L14"), ("rgb_led[5]", "M15")):
+            L.append("set_property PACKAGE_PIN %s [get_ports {%s}]" % (loc, port))
+            L.append("set_property IOSTANDARD LVCMOS33 [get_ports {%s}]" % port)
+        L.append("")
         L += ["# the overlay's outputs need no timing to the board: the comparators are asynchronous to every clock here,",
               "# and the slow outputs (SPI, I2C, the control pins) change at kHz rates",
               "set_false_path -to [get_ports -filter {DIRECTION == OUT || DIRECTION == INOUT}]",
