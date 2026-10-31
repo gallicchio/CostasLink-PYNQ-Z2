@@ -67,6 +67,24 @@ class CDR(BL.Link):
                 W.save("cdr_self_partial", out)
         return out
 
+    def b210cdr(self, mhz, gain=80, nseg=3):
+        """a short check for the weekend's rounds: the B210's BPSK at 1 and 2 Mbaud through the board's timing
+        recovery, nseg runs of 1 s each; the clocks' offset tracked round by round"""
+        off = self.offset(mhz)
+        out = {"mhz": mhz, "offset": off}
+        st = self.lock_ext(mhz, off["delta_hz"], gain=gain)
+        try:
+            if st is None:
+                out["error"] = "no lock to the B210"
+                return out
+            out["lock"] = st
+            out["ber"] = [self.ber_cdr_ext(mhz, st, baud=b, nseg=nseg) for b in (1e6, 2e6)]
+        finally:
+            if getattr(self, "stream", None):
+                self.stream.stop()
+            self.ext = False
+        return out
+
     def b210(self, mhz=5200, gain=80):
         off = self.offset(mhz)
         out = {"mhz": mhz, "offset": off}

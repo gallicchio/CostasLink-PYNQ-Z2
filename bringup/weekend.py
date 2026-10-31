@@ -19,6 +19,8 @@ the B210 reaching -23 to +11 dB of the carrier there (BRINGUP_LOG 4.0).
                   and does it come back by itself when the CW stops, how fast (added after round 1: BRINGUP_LOG 4.3)
         pullhold  pull's worst cases with the loop held (LOOP_HOLD) through the CW: what an interference hold saves
         segcheck  the BPSK BER's 50 ms segments with nothing sent, each with the lock read before and after
+        b210cdr   the B210's BPSK at 1 and 2 Mbaud through the board's timing recovery (ID version 4): the BER, and
+                  the two clocks' offset round by round (cdr_tests.py)
         quiet     an hour of the lock watched with nothing sent (drift, the board's own stability)
 
 Each piece writes bringup/data/board_A/weekend/<piece>_<mhz>_<time>.json; a verdict per round.  The board is left
@@ -334,10 +336,15 @@ def main(argv):
     ap.add_argument("what", choices=["baseline", "rounds"])
     ap.add_argument("--hours", type=float, default=60.0)
     ap.add_argument("--quiet-min", type=float, default=60.0)
-    ap.add_argument("--pieces", nargs="*", default=["decide", "capture", "pulses", "pull", "pullhold", "segcheck"])
+    ap.add_argument("--pieces", nargs="*", default=["decide", "capture", "pulses", "pull", "pullhold", "segcheck", "b210cdr"])
     ap.add_argument("--first", nargs="*", default=None, help="pieces run first in round 1 (at each carrier)")
     a = ap.parse_args(argv)
-    W = Weekend()
+    try:
+        import cdr_tests                             # the B210 link's pieces too (b210cdr); its class is a Weekend
+        W = cdr_tests.CDR()
+    except Exception as e:                           # noqa: BLE001
+        print("cdr_tests not available (%s): the weekend's own pieces only" % e, flush=True)
+        W = Weekend()
     if a.what == "baseline":
         W.piece("baseline", W.baseline)
         return
