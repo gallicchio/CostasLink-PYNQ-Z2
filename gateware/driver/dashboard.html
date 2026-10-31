@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CostasLink link status</title>
+<!-- served by dashboard.py from the board server on the PYNQ; read again at every request, so editing this file needs
+     no restart.  Colours: green / yellow / red only for judgements (the bands, the verdicts); data in blue; notes from
+     experiments in purple. -->
+<style>
+:root { --ink:#16181d; --ink2:#555b66; --line:#d9dce1; --bg:#f5f6f8; --card:#fff; --good:#1f9d6a; --warn:#c79200;
+        --bad:#d64545; --data:#1e3a8a; --note:#7c3aed; }
+* { box-sizing:border-box; }
+body { margin:0; font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg); }
+header { padding:14px 16px 8px; display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+h1 { font-size:18px; margin:0 12px 0 0; }
+.meta { color:var(--ink2); font-size:13px; }
+#status { margin:0 16px 12px; padding:14px 16px; border-radius:10px; background:var(--card); border-left:10px solid var(--line);
+          display:grid; grid-template-columns:auto 1fr; gap:4px 16px; }
+#status .word { font-size:26px; font-weight:700; grid-row:span 3; align-self:center; }
+#status .todo { font-weight:600; }
+#status .small { font-size:13px; color:var(--ink2); }
+.ranges { margin:0 16px 8px; display:flex; gap:6px; flex-wrap:wrap; }
+.ranges button { border:1px solid var(--line); background:var(--card); border-radius:6px; padding:4px 10px; cursor:pointer; }
+.ranges button.on { background:var(--ink); color:#fff; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(420px,1fr)); gap:12px; padding:0 16px 16px; }
+@media (max-width:480px) { .grid { grid-template-columns:1fr; } }
+.panel { background:var(--card); border-radius:10px; padding:10px 12px 8px; border:1px solid var(--line); min-width:0; }
+.panel h2 { font-size:15px; margin:0; display:flex; align-items:center; gap:8px; }
+.panel h2 .val { margin-left:auto; font-size:19px; font-weight:700; white-space:nowrap; }
+.help { border:1px solid var(--ink2); color:var(--ink2); background:none; border-radius:50%; width:22px; height:22px;
+        font-weight:700; cursor:pointer; padding:0; flex:none; }
+canvas { width:100%; height:190px; display:block; margin-top:6px; }
+.verdict { font-size:13px; color:var(--ink2); margin-top:4px; min-height:1.4em; }
+#events div { padding:2px 0; }
+dialog { max-width:600px; border:none; border-radius:12px; padding:18px 20px; box-shadow:0 10px 40px rgba(0,0,0,.25); }
+dialog h3 { margin:0 0 8px; }
+dialog p { margin:6px 0; }
+dialog .k { font-weight:700; }
+</style></head><body>
+<header><h1>CostasLink link status</h1><span class="meta" id="meta">connecting...</span></header>
+<div id="status"><div class="word" id="word">...</div><div id="why"></div><div class="todo" id="todo"></div>
+<div class="small" id="small"></div></div>
+<div class="ranges"><span class="meta" style="align-self:center">show the last</span>
+<button data-s="600" class="on">10 min</button><button data-s="3600">1 hour</button><button data-s="7200">2 hours</button>
+<span class="meta" style="align-self:center;margin-left:12px"><span style="color:var(--note)">&#9632;</span> purple spans: an
+intervention someone announced (an interference test, the carrier switched off on purpose)</span></div>
+<div class="grid" id="grid"></div>
+<div class="panel" style="margin:0 16px 16px"><h2><button class='help' id='evhelp'>?</button>What happened</h2>
+<div id="events" class="verdict" style="font-size:14px;color:#16181d"></div></div>
+<dialog id="dlg"><h3 id="dlgt"></h3><div id="dlgb"></div><button onclick="dlg.close()">Close</button></dialog>
+<script>
+const C = {good:"#1f9d6a", warn:"#c79200", bad:"#d64545", data:"#1e3a8a", note:"#7c3aed", ink2:"#555b66"};
+const B = {good:"rgba(31,157,106,.15)", warn:"rgba(217,164,0,.18)", bad:"rgba(214,69,69,.14)"};
+const V_REF = 1.6339;          // the integrator's reference on the ADC's scale (BRINGUP_LOG 4.12)
+const SERIES = ["#1e3a8a", "#e07b00", "#7c3aed", "#8b5a2b", "#6b7280"];     // no judgement: not green, not red
+const STATES = {
+  locked:      ["Locked", "good", "The receiver is locked to the other board's carrier: the link is working.", "Nothing to do."],
+  lost:        ["Lost", "bad", "The receiver's oscillator is not on the carrier (see 'Frequency offset from the carrier' and the pull-in map). Usually a strong interferer dragged it off, or the carrier was blocked for a while.",
+                "Wait: the board brings it back by itself within seconds. If it stays lost for more than a minute, check that the other board is on and that the antennas face each other."],
+  nocarrier:   ["No carrier", "bad", "The receiver sees no carrier at all.", "Is the other board powered and transmitting? Are both antennas connected and pointed at each other, with nothing in between?"],
+  interference:["Riding out interference", "warn", "A strong interferer is on the air; the loop is held still until it goes, so that it is not dragged off.",
+                "Nothing to do if it is brief. If it lasts, look for a nearby transmitter (a WiFi access point, a phone, a microwave oven) and move it or the antennas."],
+  holdover:    ["Carrier interrupted: holding", "warn", "The carrier went away (someone or something in the path?); the loop is held at the carrier's frequency so it picks up again at once when the carrier returns.",
+                "Clear the path between the antennas."],
+  held:        ["Held by a test", "warn", "A test program, or a person, has frozen the loop on purpose.", "Nothing to do: it is part of a test."],
+  unsettled:   ["Settling", "warn", "The readings disagree for the moment: the receiver may be acquiring the carrier, or interference is passing.", "Wait a few seconds."],
+  starting:    ["Starting", "warn", "The status page has just started.", "Wait a moment."],
+  firmware:    ["Not the CostasLink firmware", "bad", "The firmware loaded on the board is not one this page knows, so it cannot read the link.", "Load a CostasLink overlay (or this is a new one the page does not know yet)."],
+  busy:        ["Busy (a test is running)", "warn", "The board is busy answering a test program, so this look was skipped.", "Nothing to do."],
+  error:       ["Cannot read the board", "bad", "Reading the board failed (see the detail below).", "If it persists, the board server may need a restart."]
+};
+const HELP_BANDS = "<p>The bands behind the plot say how good a value is: <span style='color:" + C.good + "'>green</span> good, " +
+  "<span style='color:" + C.warn + "'>yellow</span> marginal, <span style='color:" + C.bad + "'>red</span> bad. A value beyond the " +
+  "plot's range is drawn on its edge as &#9650; (above) or &#9660; (below); a gap in the trace means no reading was taken.</p>";
+const PANELS = [
+ {id:"state", title:"Lock, over time", kind:"timeline",
+  help:"<p>Each moment coloured by the receiver's state: green locked, yellow holding or settling, red lost or no carrier; grey: no reading. Purple bars above the strip: interventions someone announced, so a red stretch under one was expected.</p><p class='k'>Good: solid green.</p><p>Red stretches are losses; the board's recovery should end each within seconds. Many unexplained red stretches mean strong interference or a weak signal: see the other plots for which.</p>"},
+ {id:"offset", title:"Frequency offset from the carrier", unit:"kHz", get:r=>r.off_khz, lo:-150, hi:150, symlog:5,
+  ticks:[-150,-13,0,5,60,150], bands:[[-150,-13,"bad"],[-13,-5,"warn"],[-5,5,"good"],[5,60,"warn"],[60,150,"bad"]],
+  help:"<p>How far the receiver's oscillator is from the frequency where it sits when locked (from its control voltage VC). Locked, it stays near zero.</p><p class='k'>Good: within 5 kHz (green).</p><p><b>More than about 13 kHz below</b>, the loop cannot pull itself back: it drifts to a 'false lock' about 45 kHz below, or to the end of its range. <b>Above</b>, it drifts back down by itself. The pull-in map shows why. A red trace means a recovery is needed; the board does it within seconds.</p>"},
+ {id:"pullin", title:"Where the loop would drift (pull-in map)", kind:"pullin",
+  help:"<p>The black curve: how fast the loop's control voltage moves when the loop is <b>not</b> locked, against how far its oscillator is from the carrier, measured on the bench (BRINGUP_LOG 4.12). Above the zero line the oscillator drifts up, below it down. Where the curve crosses zero going down, drifts meet and an unlocked loop comes to rest: the lock at 0, and a <b>false lock</b> about 45 kHz below, where the loop beats forever without locking. Where it crosses going up is a <b>watershed</b>: a loop let go just below one runs away from the lock.</p><p>The blue line and arrow: where the oscillator is now, and which way the map says it would drift if it were unlocked.</p><p class='k'>Good: the blue line at 0 (locked). Above the carrier everything drifts down into the lock; between the first watershed (about -15 kHz) and the second (about -100 kHz) the loop falls into the false lock; below that, to the end of its range. That is why the board's recovery always starts the loop just above the carrier.</p>"},
+ {id:"scurve", title:"Where the loop sits on its S-curve", kind:"scurve",
+  help:"<p>The detector's characteristic: its error output against the phase error between the oscillator and the carrier (the grey curve, from the detector's design with the measured level, and the 4-10 mV offset of its mid-point found on the bench). The loop locks where the curve crosses its own reference going down: the green circle. The blue dots: where the loop is now, from the slow readings of I, Q and the error (newest darkest).</p><p class='k'>Good: the dots inside the green circle.</p><p><b>Dots spread along the whole curve:</b> not locked; the phase is turning (a beat). <b>Dots off the curve:</b> interference, or readings taken while things changed. This view shows the restoring force that a strong interferer collapses (docs/LOCK.md section 2).</p>"},
+ {id:"constellation", title:"Constellation (slow)", kind:"scatter",
+  help:"<p>The received signal's I and Q, one dot per slow reading (each averages about a millisecond), in blue: newer darker. The circles mark where a good, locked, idle carrier sits: on the horizontal axis, left or right.</p><p class='k'>Good: a tight cluster inside of a circle.</p><p><b>A smear around a ring</b>: not locked (the oscillator beats against the carrier). <b>A cluster near the middle</b>: no carrier, or data running (data averages out on this slow reading). The real constellation at the symbol rate needs the next board's fast I/Q converter (REVB U2).</p>"},
+ {id:"rxant", title:"Signal at the antenna (RX ANT)", unit:"dBm", get:r=>r.rx_ant_dbm, lo:-80, hi:-10,
+  bands:[[-80,-68,"bad"],[-68,-59,"warn"],[-59,-28,"good"],[-28,-20,"warn"],[-20,-10,"bad"]],
+  help:"<p>The carrier's power at the RX ANT connector, worked back from the level after the receive chain and the attenuator's setting. This is the one to watch while pointing the antennas.</p><p class='k'>Good: -59 to -28 dBm (green): the attenuator can bring this to the demodulator's working level.</p><p><b>Too low:</b> point the antennas at each other, shorten the path, check the cables and connectors, keep the line of sight clear; below about -68 dBm the loop will not hold. <b>Too high:</b> the boards are too close (above -28 dBm even the attenuator at its maximum leaves the chain hot).</p><p>Read only while the link is idle and locked (data averages it away on this slow reading); bands from the receiver's budget (RX gain 39.2 dB, the attenuator's 0-31.75 dB), not yet checked on the bench.</p>"},
+ {id:"dem", title:"Signal at the demodulator", unit:"dBm", get:r=>r.dem_dbm, lo:-40, hi:0,
+  bands:[[-40,-30,"bad"],[-30,-23,"warn"],[-23,-15,"good"],[-15,-10,"warn"],[-10,0,"bad"]],
+  help:"<p>The carrier's power at the demodulator's input, after the LNA, the step attenuator (set by the FPGA) and the gain blocks: what the receiver itself works with. The attenuator's setting is in the line below the plot.</p><p class='k'>Good: near -20 dBm, the design's working level (green -23 to -15).</p><p><b>Low with the attenuator at 0 dB:</b> the signal at the antenna is too weak for the chain to bring up. <b>High with the attenuator at 31.75 dB:</b> too strong for the chain to bring down. Either way, look at the antenna plot. In between, the attenuator should be able to put it right.</p>"},
+ {id:"gwlock", title:"The board's own lock judgement", unit:"of 64", get:r=>r.gw_lock&&r.gw_lock.busy, lo:0, hi:64,
+  ticks:[0,24,48,64], bands:[[0,24,"good"],[24,48,"warn"],[48,64,"bad"]],
+  help:"<p>The FPGA's own lock monitor (lockmon.v), which drives the board's LEDs: every 10 ms it counts in how many of 64 slices both Q window comparators toggled. A beat (not locked) toggles them all the time; bursts of noise only now and then.</p><p class='k'>Good: under 24 (green; it calls that locked).</p><p><b>48 or more</b> (red): lost, a beat. In between: unsure, usually a dense train of interference bursts. The text below gives its state and its own count of losses since power-up.</p>"},
+ {id:"vc", title:"Loop control voltage (VC)", unit:"V", get:r=>r.adc&&r.adc.VC, lo:0, hi:3.3,
+  ticks:[0,0.3,1.65,3.0,3.3], bands:[[0,0.3,"bad"],[0.3,1.0,"warn"],[1.0,2.7,"good"],[2.7,3.0,"warn"],[3.0,3.3,"bad"]],
+  help:"<p>The voltage that tunes the receiver's reference oscillator (the loop's output). Locked, it sits where the oscillator matches the carrier (about 1.86 V on board A, marked by the dashed line) and moves only slowly as the boards' clocks drift.</p><p class='k'>Good: steady, in the green.</p><p><b>At a rail</b> (red): the loop was dragged off and ran to the end of its range; the board's recovery re-centres it. <b>Drifting steadily while locked:</b> the two boards' clocks are drifting apart (temperature); the loop follows that up to its range.</p>"},
+ {id:"activity", title:"Comparator activity", kind:"multi", unit:"per s", lo:1, hi:1e7, log:true,
+  series:[["CMP_I","sign of I"],["CMP_QP","Q window +"],["CMP_QN","Q window -"],["CMP_IP","I window +"],["CMP_IN","I window -"]],
+  help:"<p>How often each fast comparator switches, per second (log scale; no judgement, so no colours of good or bad). The sign of I switches with the link's own data; the Q windows stay quiet when locked and switch at the beat when not; interference makes them all chatter.</p><p>Use it to see what kind of trouble is passing: a beat (both Q windows at a steady high rate), bursts (spikes), or the link's own data (the I comparators only).</p>"},
+ {id:"interference", title:"Unwanted power in Q", unit:"dB", get:r=>r.det&&r.det.log_inr_db, lo:0, hi:60,
+  bands:[[0,26,"good"],[26,35,"warn"],[35,60,"bad"]],
+  help:"<p>The average power on the receiver's Q arm, in dB over the receiver's own noise. Locked, the carrier sits on the I arm and Q holds only noise and whatever else is on the air: about 21 dB on the bench. Two things raise it: an interferer in the band, or the loop not being locked (then the carrier beats through Q: about 54 dB).</p><p class='k'>Good: low (green).</p><p><b>High while the status says Locked:</b> something else transmits nearby in the band (WiFi, phones, radars): move it, move the antennas, or choose another carrier frequency. <b>High while Lost:</b> that is the lost lock itself.</p><p>Bands provisional, from the bench's locked (20.8-23.9 dB) and lost (about 54 dB) readings.</p>"},
+ {id:"hold", title:"Time spent riding out interference", unit:"%", get:r=>r.hold_pct, lo:0, hi:100, symlog:1, ticks:[0,1,10,100],
+  bands:[[0,1,"good"],[1,10,"warn"],[10,100,"bad"]],
+  help:"<p>The share of the last second the interference hold kept the loop frozen (when it is switched on).</p><p class='k'>Good: under 1 %.</p><p>The hold keeps a strong interferer from dragging the loop off, but while held the link's decisions slowly lose their phase, so long holds cost data. <b>Often high:</b> a persistent interferer nearby.</p>"},
+ {id:"skew", title:"Timing: comparator skew", unit:"ns", get:r=>r.skew_ns, lo:0, hi:6,
+  bands:[[0,1.5,"good"],[1.5,3.5,"warn"],[3.5,6,"bad"]],
+  help:"<p>When a timing-recovered data check runs: how much later the receiver's sign comparator switches one way than the other (its duty-cycle distortion). It eats into the eye.</p><p class='k'>Good: under 1.5 ns.</p><p>Shown only while data is being checked. Large values come from the comparator's threshold sitting off the signal's middle (REVB 30).</p>"},
+ {id:"temp", title:"Board temperature", unit:"°C", get:r=>r.det&&r.det.temp_c, lo:0, hi:90,
+  bands:[[0,5,"bad"],[5,15,"warn"],[15,60,"good"],[60,75,"warn"],[75,90,"bad"]],
+  help:"<p>The board's thermistor, near the RF chain.</p><p class='k'>Good: 15-60 °C.</p><p><b>Hot:</b> shade the board, give it airflow. Its frequencies drift with temperature; the loop follows slow drift.</p>"},
+ {id:"supply", title:"RF supply", unit:"V", get:r=>r.det&&r.det.v5_rf, lo:4.5, hi:5.5,
+  bands:[[4.5,4.75,"bad"],[4.75,4.85,"warn"],[4.85,5.25,"good"],[5.25,5.35,"warn"],[5.35,5.5,"bad"]],
+  help:"<p>The +5 V rail of the RF chain (the demodulator and amplifiers want 4.75-5.25 V).</p><p class='k'>Good: 4.85-5.25 V.</p><p><b>Low:</b> a weak or long USB / power cable, or a supply set too low.</p>"}
+];
+let span = 600, hist = [], last = null, notes = [], pullin = null;
+const grid = document.getElementById("grid");
+for (const p of PANELS) {
+  const d = document.createElement("div"); d.className = "panel";
+  d.innerHTML = "<h2><button class='help' title='What is this?'>?</button><span>" + p.title + "</span><span class='val' id='v_" + p.id + "'></span></h2>" +
+                "<canvas id='c_" + p.id + "'></canvas><div class='verdict' id='x_" + p.id + "'></div>";
+  d.querySelector(".help").onclick = () => showHelp(p.title, p.help + (p.bands ? HELP_BANDS : ""));
+  grid.appendChild(d);
+}
+function showHelp(t, h) { document.getElementById("dlgt").textContent = t; document.getElementById("dlgb").innerHTML = h; dlg.showModal(); }
+document.querySelectorAll(".ranges button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".ranges button").forEach(x => x.classList.remove("on")); b.classList.add("on");
+  span = +b.dataset.s; load(); });
+function band(p, v) { if (v == null || !p.bands) return null; for (const [a, b, k] of p.bands) if (v >= a && v <= b) return k;
+  return v < p.bands[0][0] ? p.bands[0][2] : p.bands[p.bands.length - 1][2]; }
+function stateColour(s) { return (STATES[s] || STATES.unsettled)[1]; }
+function sizeCanvas(cv) { const r = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width != w * r || cv.height != h * r) { cv.width = w * r; cv.height = h * r; }
+  const g = cv.getContext("2d"); g.setTransform(r, 0, 0, r, 0, 0); return [g, w, h]; }
+function fmt(v) { const a = Math.abs(v); return a >= 100 ? v.toFixed(0) : a >= 10 ? v.toFixed(1) : v.toFixed(2); }
+function spanLabel() { return "-" + (span >= 3600 ? (span / 3600) + " h" : (span / 60) + " min"); }
+function tri(g, x, y, up, col) { g.fillStyle = col; g.beginPath(); g.moveTo(x - 4, up ? y + 6 : y - 6); g.lineTo(x + 4, up ? y + 6 : y - 6); g.lineTo(x, y); g.fill(); }
+// the notes as purple spans on a time axis
+function drawNotes(g, x, top, height, t0) {
+  for (const n of notes) { const a = n.t_start, b = n.t_end || Date.now() / 1000; if (b < t0) continue;
+    const xa = Math.max(x(Math.max(a, t0)), x(t0)), xb = x(b);
+    g.fillStyle = n.kind == "intervention" ? "rgba(124,58,237,.13)" : "rgba(124,58,237,.06)"; g.fillRect(xa, top, Math.max(2, xb - xa), height);
+    g.fillStyle = C.note; g.fillRect(xa, top, 1.5, height); }
+}
+function lastValue(get) { for (let i = hist.length - 1; i >= 0; i--) { const r = hist[i]; if (!r.busy) { const v = get(r); if (v != null) return v; } } return null; }
+function drawSeries(p) {
+  const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv);
+  const L = 46, R = 10, T = 8, Bt = 20, pw = w - L - R, ph = h - T - Bt, now = Date.now() / 1000, t0 = now - span;
+  const f = v => p.log ? Math.log10(Math.max(v, 1e-9)) : p.symlog ? Math.sign(v) * Math.log1p(Math.abs(v) / p.symlog) : v;
+  const y = v => T + ph * (1 - (f(Math.min(p.hi, Math.max(p.lo, v))) - f(p.lo)) / (f(p.hi) - f(p.lo)));
+  const x = t => L + pw * (t - t0) / span;
+  g.clearRect(0, 0, w, h);
+  for (const [a, b, k] of (p.bands || [])) { g.fillStyle = B[k]; g.fillRect(L, y(b), pw, y(a) - y(b)); }
+  drawNotes(g, x, T, ph, t0);
+  g.strokeStyle = "#c9ccd2"; g.lineWidth = 1; g.strokeRect(L, T, pw, ph);
+  g.fillStyle = C.ink2; g.font = "12px system-ui"; g.textAlign = "right";
+  const ticks = p.ticks || (p.log ? [1, 1e2, 1e4, 1e6] : [p.lo, (p.lo + p.hi) / 2, p.hi]);
+  for (const v of ticks) g.fillText(p.log ? "1e" + Math.round(Math.log10(v)) : (+v.toFixed(2)) + "", L - 5, y(v) + 4);
+  g.textAlign = "left"; g.fillText(spanLabel(), L + 2, h - 5); g.textAlign = "right"; g.fillText("now", w - R, h - 5);
+  if (p.id == "vc") { const vl = lastValue(r => r.vc_lock); if (vl) { g.strokeStyle = C.ink2; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(L, y(vl)); g.lineTo(L + pw, y(vl)); g.stroke(); g.setLineDash([]); } }
+  const series = p.kind == "multi" ? p.series.map(([k, lab], i) => [r => r.rate ? r.rate[k] : null, SERIES[i], lab]) : [[p.get, C.data, null]];
+  for (const [get, col] of series) {
+    g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); let pen = false, prevT = null;
+    for (const r of hist) { if (r.t < t0) continue; const v = r.busy ? null : get(r);
+      if (v == null || (prevT != null && r.t - prevT > Math.max(10, span / 150))) pen = false;
+      if (v != null) { const yy = y(v); if (!pen) { g.moveTo(x(r.t), yy); pen = true; } else g.lineTo(x(r.t), yy); prevT = r.t; } }
+    g.stroke();
+    // off scale: a marker on the edge
+    for (const r of hist) { if (r.t < t0 || r.busy) continue; const v = get(r); if (v == null) continue;
+      if (v > p.hi) tri(g, x(r.t), T + 1, true, col); else if (v < p.lo) tri(g, x(r.t), T + ph - 1, false, col); }
+  }
+  const el = document.getElementById("v_" + p.id), xv = document.getElementById("x_" + p.id);
+  if (p.kind == "multi") { el.textContent = ""; xv.innerHTML = p.series.map(([k, lab], i) => "<span style='color:" + SERIES[i] + "'>&#9632;</span> " + lab).join(" &nbsp; "); return; }
+  const lv = lastValue(p.get), k = band(p, lv);
+  el.textContent = lv == null ? "-" : fmt(lv) + " " + p.unit + (lv > p.hi ? " ▲" : lv < p.lo ? " ▼" : "");
+  el.style.color = k ? C[k] : C.ink2;
+  let extra = "";
+  if (p.id == "dem" && last && last.dsa_db != null) extra = " (attenuator " + last.dsa_db + " dB of 0-31.75)";
+  if (p.id == "gwlock" && last && last.gw_lock) extra = " (it says: " + last.gw_lock.state + "; " + last.gw_lock.losses + " losses since power-up)";
+  if ((p.id == "rxant" || p.id == "dem") && lv == null) extra = " (read only while the link is idle and locked)";
+  xv.textContent = (lv == null ? "no reading yet" : ({good:"good", warn:"marginal", bad:"bad"}[k] || "")) + extra;
+}
+function drawTimeline(p) {
+  const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv);
+  const L = 46, R = 10, now = Date.now() / 1000, t0 = now - span, pw = w - L - R, x = t => L + pw * (t - t0) / span;
+  g.clearRect(0, 0, w, h); g.fillStyle = "#e5e7eb"; g.fillRect(L, 40, pw, h - 80);
+  // announced interventions above the strip
+  for (const n of notes) { const a = n.t_start, b = n.t_end || now; if (b < t0) continue; const xa = x(Math.max(a, t0));
+    g.fillStyle = n.kind == "intervention" ? C.note : "rgba(124,58,237,.45)"; g.fillRect(xa, 22, Math.max(3, x(b) - xa), 12); }
+  g.fillStyle = C.ink2; g.font = "11px system-ui"; g.textAlign = "left"; g.fillText("announced", 2, 32); g.fillText("state", 2, 40 + (h - 80) / 2 + 4);
+  let prev = null;
+  for (const r of hist) { if (r.t < t0) { prev = r; continue; } const s = r.busy ? (prev && prev.state) : r.state;
+    const a = prev ? Math.max(x(prev.t), L) : x(r.t);
+    if (prev && r.t - prev.t > Math.max(10, span / 150)) { prev = r; continue; }      // no reading: leave the grey
+    g.fillStyle = C[stateColour(s || "unsettled")]; g.fillRect(a, 40, Math.max(1, x(r.t) - a + 0.5), h - 80);
+    prev = r.busy ? Object.assign({}, prev || r, {t: r.t}) : r; }
+  g.fillStyle = C.ink2; g.font = "12px system-ui"; g.textAlign = "left"; g.fillText(spanLabel(), L + 2, h - 22); g.textAlign = "right"; g.fillText("now", w - R, h - 22);
+  let lost = 0, run = null; for (const r of hist) { if (r.t < t0 || r.busy) continue; const bad = r.state == "lost" || r.state == "nocarrier"; if (bad && !run) lost++; run = bad; }
+  const s = last && !last.busy ? last.state : null, e = document.getElementById("v_" + p.id);
+  e.textContent = s ? (STATES[s] || STATES.unsettled)[0] : "-"; e.style.color = s ? C[stateColour(s)] : C.ink2;
+  document.getElementById("x_" + p.id).textContent = lost + " loss" + (lost == 1 ? "" : "es") + " shown in this window";
+}
+function drawScatter(p) {
+  const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv), cx = w / 2, cy = h / 2, sc = Math.min(w, h) / 2 / 0.32;
+  g.clearRect(0, 0, w, h); g.strokeStyle = "#c9ccd2"; g.beginPath(); g.moveTo(10, cy); g.lineTo(w - 10, cy); g.moveTo(cx, 5); g.lineTo(cx, h - 5); g.stroke();
+  g.fillStyle = C.ink2; g.font = "12px system-ui"; g.fillText("I", w - 18, cy - 6); g.fillText("Q", cx + 6, 14);
+  const ref = last && last.leg_ref_mv ? last.leg_ref_mv / 1000 : 0.16;
+  for (const sgn of [-1, 1]) { g.strokeStyle = C.good; g.lineWidth = 2; g.beginPath(); g.arc(cx + sgn * ref * sc, cy, 0.035 * sc, 0, 7); g.stroke(); }
+  const win = Math.min(span, 120), t0 = Date.now() / 1000 - win;
+  for (const r of hist) { if (r.t < t0 || !r.adc || !r.slow_now) continue; const i = r.adc.I - (r.i0 || 1.6535), q = r.adc.Q - (r.q0 || 1.628);
+    const age = (Date.now() / 1000 - r.t) / win, lum = Math.round(30 + 55 * Math.min(1, age));
+    g.fillStyle = "hsl(222, 75%, " + lum + "%)"; g.beginPath(); g.arc(cx + i * sc, cy - q * sc, 3.5, 0, 7); g.fill(); }
+  document.getElementById("v_" + p.id).textContent = "";
+  document.getElementById("x_" + p.id).textContent = "circles: where a good, locked, idle carrier sits";
+}
+function drawPullin(p) {
+  const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv);
+  const L = 46, R = 10, T = 8, Bt = 20, pw = w - L - R, ph = h - T - Bt;
+  g.clearRect(0, 0, w, h);
+  const mhz = last && last.rx_mhz ? last.rx_mhz : 5200;
+  const maps = pullin && pullin.maps ? pullin.maps : {}, keys = Object.keys(maps);
+  const el = document.getElementById("x_" + p.id);
+  if (!keys.length) { el.textContent = "no measured map on the board (pullin_map.json)"; return; }
+  const k = keys.reduce((a, b) => Math.abs(+b - mhz) < Math.abs(+a - mhz) ? b : a), m = maps[k];
+  const fx = v => Math.sign(v) * Math.log1p(Math.abs(v) / 20), X0 = fx(-450), X1 = fx(450);
+  const x = v => L + pw * (fx(Math.max(-450, Math.min(450, v))) - X0) / (X1 - X0), y = v => T + ph * (1 - (Math.max(-15, Math.min(12, v)) + 15) / 27);
+  g.strokeStyle = "#c9ccd2"; g.strokeRect(L, T, pw, ph); g.beginPath(); g.moveTo(L, y(0)); g.lineTo(L + pw, y(0)); g.stroke();
+  g.fillStyle = C.ink2; g.font = "11px system-ui"; g.textAlign = "center";
+  for (const v of [-300, -100, -40, -13, 0, 13, 40, 100, 300]) g.fillText(v, x(v), h - 6);
+  g.textAlign = "right"; g.fillText("up", L - 4, T + 10); g.fillText("down", L - 4, T + ph - 2); g.fillText("0", L - 4, y(0) + 4);
+  // the map and its crossings
+  g.strokeStyle = "#16181d"; g.lineWidth = 2; g.beginPath();
+  m.forEach(([o, r], i) => { if (o == 5) { g.stroke(); g.beginPath(); } i && o != 5 ? g.lineTo(x(o), y(r)) : g.moveTo(x(o), y(r)); }); g.stroke();
+  for (let i = 0; i + 1 < m.length; i++) { const [o1, r1] = m[i], [o2, r2] = m[i + 1]; if (o1 < 0 && o2 < 0 && r1 * r2 < 0) {
+      const o = o1 - r1 * (o2 - o1) / (r2 - r1); const rest = r1 > r2;
+      g.fillStyle = rest ? C.bad : C.warn; g.beginPath(); g.arc(x(o), y(0), 4, 0, 7); g.fill();
+      g.fillStyle = C.ink2; g.font = "10px system-ui"; g.textAlign = "center"; g.fillText(rest ? "false lock" : "watershed", x(o), rest ? T + ph - 4 : T + 10);
+      g.font = "11px system-ui"; } }
+  g.fillStyle = C.good; g.beginPath(); g.arc(x(0), y(0), 5, 0, 7); g.fill();
+  // where the loop is now, and which way the map says it would go
+  const off = lastValue(r => r.off_khz);
+  if (off != null) { const xo = x(off); g.strokeStyle = C.data; g.lineWidth = 2; g.beginPath(); g.moveTo(xo, T); g.lineTo(xo, T + ph); g.stroke();
+    let rate = null; for (let i = 0; i + 1 < m.length; i++) if (m[i][0] <= off && off <= m[i + 1][0]) rate = m[i][1] + (m[i + 1][1] - m[i][1]) * (off - m[i][0]) / (m[i + 1][0] - m[i][0]);
+    if (rate != null && Math.abs(off) > 4) { const dir = rate > 0 ? 1 : -1; g.fillStyle = C.data; g.beginPath(); g.moveTo(xo + dir * 18, T + 14); g.lineTo(xo, T + 8); g.lineTo(xo, T + 20); g.fill(); }
+    if (Math.abs(off) > 450) tri(g, off > 0 ? L + pw - 4 : L + 4, T + 1, true, C.data);
+    el.textContent = "map at " + k + " MHz; now " + fmt(off) + " kHz from the lock" + (Math.abs(off) <= 5 ? " (locked)" : rate == null ? "" : rate < 0 ? (off > 0 ? ": it would drift down into the lock" : ": it would drift further down") : ": it would drift up");
+  } else el.textContent = "map at " + k + " MHz; no offset reading yet";
+  document.getElementById("v_" + p.id).textContent = "";
+}
+function drawSCurve(p) {
+  const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv);
+  const L = 46, R = 10, T = 8, Bt = 20, pw = w - L - R, ph = h - T - Bt;
+  g.clearRect(0, 0, w, h);
+  const a = (last && last.leg_ref_mv ? 2 * last.leg_ref_mv : 312), A = a / 2, top = A * 1.25;
+  const x = th => L + pw * (th + 180) / 360, y = v => T + ph * (1 - (Math.max(-top, Math.min(top, v)) + top) / (2 * top));
+  g.strokeStyle = "#c9ccd2"; g.strokeRect(L, T, pw, ph); g.beginPath(); g.moveTo(L, y(0)); g.lineTo(L + pw, y(0)); g.moveTo(x(0), T); g.lineTo(x(0), T + ph); g.stroke();
+  g.fillStyle = C.ink2; g.font = "11px system-ui"; g.textAlign = "center";
+  for (const v of [-180, -90, 0, 90, 180]) g.fillText(v + "°", x(v), h - 6);
+  g.textAlign = "right"; g.fillText("+" + Math.round(A), L - 4, y(A) + 4); g.fillText("-" + Math.round(A), L - 4, y(-A) + 4); g.fillText("0", L - 4, y(0) + 4);
+  g.save(); g.translate(10, T + ph / 2); g.rotate(-Math.PI / 2); g.textAlign = "center"; g.fillText("error, mV", 0, 0); g.restore();
+  // the hard-limited detector: error = sign(I) x Q / 2, with the measured offset of its mid-point
+  g.strokeStyle = "#8a8f98"; g.lineWidth = 2; g.beginPath();
+  for (let th = -180; th <= 180; th += 1) { const r = th * Math.PI / 180, v = A * Math.sin(r) * Math.sign(Math.cos(r)) - 5; th == -180 ? g.moveTo(x(th), y(v)) : g.lineTo(x(th), y(v)); } g.stroke();
+  g.strokeStyle = C.good; g.lineWidth = 2; g.beginPath(); g.arc(x(0), y(0), 9, 0, 7); g.stroke();
+  const win = Math.min(span, 120), t0 = Date.now() / 1000 - win; let lastPt = null;
+  for (const r of hist) { if (r.t < t0 || !r.adc || !r.slow_now) continue;
+    const di = r.adc.I - (r.i0 || 1.6535), dq = r.adc.Q - (r.q0 || 1.628);
+    let th = Math.atan2(dq, di) * 180 / Math.PI; if (th > 90) th -= 180; else if (th < -90) th += 180;     // BPSK: two lock points
+    const err = (r.adc.ERR - V_REF) * 1000, age = (Date.now() / 1000 - r.t) / win, lum = Math.round(30 + 55 * Math.min(1, age));
+    g.fillStyle = "hsl(222, 75%, " + lum + "%)"; g.beginPath(); g.arc(x(th), y(err), 3.5, 0, 7); g.fill(); lastPt = [th, err]; }
+  document.getElementById("v_" + p.id).textContent = "";
+  document.getElementById("x_" + p.id).textContent = lastPt ? "now: phase " + lastPt[0].toFixed(0) + "°, error " + lastPt[1].toFixed(0) + " mV from the loop's reference" : "no reading yet";
+}
+function drawAll() { for (const p of PANELS) { try { ({timeline: drawTimeline, scatter: drawScatter, pullin: drawPullin, scurve: drawSCurve}[p.kind] || drawSeries)(p); } catch (e) { console.log(p.id, e); } } }
+function status() {
+  const st = document.getElementById("status"), r = last;
+  if (!r) return;
+  let key = r.error ? "error" : r.busy ? "busy" : (r.state || "unsettled");
+  if (r.busy) { for (let i = hist.length - 1; i >= 0; i--) if (!hist[i].busy && hist[i].state) { key = hist[i].state; break; } }
+  const s = STATES[key] || STATES.unsettled; st.style.borderLeftColor = C[s[1]];
+  const word = document.getElementById("word"), why = document.getElementById("why"), todo = document.getElementById("todo");
+  word.textContent = s[0]; word.style.color = C[s[1]]; why.textContent = s[2]; todo.textContent = s[3];
+  const now = Date.now() / 1000, act = notes.find(n => n.kind == "intervention" && n.t_start <= now && (!n.t_end || now <= n.t_end + 10));
+  if (act && key != "locked") { why.textContent = s[2] + " An intervention is under way: " + act.text + (act.source ? " (" + act.source + ")" : "") + ", so this is expected.";
+    todo.textContent = "Nothing to do: it is part of a planned test."; }
+  const since = r.state_since ? Math.round(now - r.state_since) : null, dr = r.driving || {}, ago = dr.t ? Math.round(now - dr.t) : null;
+  const Ld = r.linkd, rec = !Ld ? "Automatic recovery: not running on this board." :
+     "Automatic recovery: " + Ld.mode + ". " + Ld.losses + " loss" + (Ld.losses == 1 ? "" : "es") + ", " + Ld.recoveries + " recovered" +
+     (Ld.failed ? ", " + Ld.failed + " failed tries" : "") + (Ld.last_recovery_s != null ? " (the last in " + Ld.last_recovery_s.toFixed(1) + " s)" : "") +
+     (Ld.next_try_in_s != null ? "; trying again in " + Math.round(Ld.next_try_in_s) + " s" : "") + ".";
+  document.getElementById("small").textContent = (since != null ? "In this state for " + dur(since) + ". " : "") +
+     (ago != null && ago < 30 ? "Being driven now by " + dr.peer + " (" + (dr.name || dr.op) + "). " : "No program is driving the board. ") + rec +
+     (r.gw_lock ? " The board's own lock monitor: " + r.gw_lock.state + " (" + r.gw_lock.losses + " losses, " + dur(r.gw_lock.seconds_locked) + " locked since power-up)." : "") +
+     (r.error ? " Detail: " + r.error : "");
+  if (Ld && Ld.mode == "recovering") { word.textContent = "Recovering"; why.textContent = "The link was lost; the board is bringing it back by itself (it re-centres its loop and starts it just above the carrier)."; todo.textContent = "Wait a few seconds."; }
+  if (Ld && /setting up/.test(Ld.mode)) { word.textContent = "Setting up"; why.textContent = "The board has just started and is setting the link up by itself."; todo.textContent = "Wait about half a minute."; }
+  if (Ld && Ld.mode == "backing off") todo.textContent = "The automatic recovery could not find the carrier and will try again. Check that the other board is on and transmitting, and that the antennas face each other.";
+  document.getElementById("meta").textContent = "firmware " + (r.id || "?") + (r.rx_mhz ? ", carrier " + r.rx_mhz + " MHz" : "") +
+     (r.dsa_db != null ? ", attenuator " + r.dsa_db + " dB" : "") + ", updated " + new Date(r.t * 1000).toLocaleTimeString();
+}
+function dur(s) { return s < 90 ? Math.round(s) + " s" : s < 5400 ? Math.round(s / 60) + " min" : (s / 3600).toFixed(1) + " h"; }
+const EV = {"recovered": [C.good, "●"], "loss": [C.bad, "●"], "loss-expected": [C.note, "●"], "failed": [C.warn, "●"],
+            "note-intervention": [C.note, "■"], "note-explained": [C.note, "◆"], "note-info": [C.ink2, "◆"]};
+async function events() { try { const ev = await (await fetch("/api/events")).json(); const el = document.getElementById("events");
+  el.innerHTML = ev.length ? ev.slice().reverse().slice(0, 30).map(e => { const [c, m] = EV[e.kind] || [C.ink2, "●"];
+     return "<div><span style='color:" + c + "'>" + m + "</span> " + new Date(e.t * 1000).toLocaleString() + ": " + e.text.replace(/</g, "&lt;") + "</div>"; }).join("")
+     : "Nothing since the page's server started."; } catch (e) {} }
+document.getElementById("evhelp").onclick = () => showHelp("What happened",
+  "<p>The board's own record, newest first: <span style='color:" + C.bad + "'>&#9679;</span> a loss of lock, <span style='color:" + C.good + "'>&#9679;</span> the board locking again by itself (and how long it took), " +
+  "<span style='color:" + C.warn + "'>&#9679;</span> a recovery that found no carrier, and in purple the notes that experiments post: <span style='color:" + C.note + "'>&#9632;</span> an announced intervention (an interference test, the carrier switched off on purpose), " +
+  "<span style='color:" + C.note + "'>&#9670;</span> an explanation of something seen. A loss during an announced intervention is shown in purple and called expected.</p>" +
+  "<p class='k'>Good: few unexplained red entries, each followed by a green one within seconds.</p>" +
+  "<p><b>Many unexplained losses:</b> strong interference or a weak signal (see the plots). <b>A loss without a recovery, or repeated 'found no carrier':</b> check that the other board is on and that the antennas face each other.</p>" +
+  "<p>To post a note (any program on the lab network): <code>curl -X POST -d '{\"text\":\"B210 interference test\",\"kind\":\"intervention\",\"source\":\"me\",\"t_end\":" + Math.round(Date.now() / 1000 + 60) + "}' http://" + location.host + "/api/note</code>.</p>");
+async function loadNotes() { try { notes = await (await fetch("/api/notes?s=" + span)).json(); } catch (e) {} }
+async function load() { try { hist = await (await fetch("/api/history?s=" + span)).json(); last = hist[hist.length - 1]; await loadNotes(); status(); drawAll(); } catch (e) {} }
+async function tick() { try { const r = await (await fetch("/api/now")).json(); if (r && r.t && (!last || r.t > last.t)) { hist.push(r); last = r;
+    const t0 = Date.now() / 1000 - span; while (hist.length && hist[0].t < t0) hist.shift(); } status(); drawAll(); }
+  catch (e) { document.getElementById("meta").textContent = "cannot reach the board's server (restarting, or the network?)"; } }
+(async () => { try { pullin = await (await fetch("/api/pullin")).json(); } catch (e) {} })();
+window.onresize = drawAll; load(); events(); setInterval(tick, 1000); setInterval(events, 5000); setInterval(loadNotes, 5000);
+</script></body></html>

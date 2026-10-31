@@ -12,7 +12,12 @@ detectors as well, each one I2C transaction that the lock keeps whole.  The page
 server restarts or the overlay is reloaded, and says so when the loaded firmware is not CostasLink's.
 
 It keeps two hours in memory and appends every look to dashboard/YYYY-MM-DD.jsonl beside the server.  HTTP: / the
-page, /api/now the latest look, /api/history?s=600 the last s seconds.  The page needs nothing from the internet.
+page (dashboard.html beside this file, read again at every request, so a new page needs no restart), /api/now the
+latest look, /api/history?s=600 the last s seconds, /api/events, /api/notes?s=, /api/pullin (pullin_map.json: the
+measured map of the unlocked loop); POST /api/note {"text", "kind": "intervention" | "explained" | "info", "source",
+"id", "end": true, "t_start", "t_end"}: a note from whoever is running an experiment (unattended.py says when the B210
+interferes), shown in 'What happened' and as a band on the plots; a loss inside an intervention is called expected.
+The page needs nothing from the internet.
 
 The state is a judgement from those readings, provisional until the gateware's lock supervisor keeps its own (TODO,
 'Unattended operation'): locked when both Q window comparators are quiet and the carrier is there; lost when both
@@ -22,6 +27,7 @@ hold engine froze the loop.
 import collections
 import json
 import math
+import uuid
 import os
 import threading
 import time
@@ -53,6 +59,7 @@ class Dashboard:
         self.t_state = (None, time.time())
         self.i0, self.q0 = I0_V, Q0_V
         self.events = collections.deque(maxlen=200)    # what happened, in words, for the page's list
+        self.notes = collections.deque(maxlen=500)     # notes posted by experiments: interventions, explanations
         self._lk = None                                 # linkd's counts at the last look
 
     # ---- the looks ----
@@ -128,6 +135,31 @@ class Dashboard:
         self.note_events(r)
         return r
 
+    def active_note(self, t, grace_s=10.0):
+        """the intervention under way at t (or ended within grace_s), if any"""
+        for n in reversed(self.notes):
+            if n.get("kind") == "intervention" and n["t_start"] <= t <= (n.get("t_end") or 1e18) + grace_s:
+                return n
+        return None
+
+    def note(self, d):
+        """a note posted by an experiment (POST /api/note): begins one, ends one (id and end), or both at once"""
+        t = time.time()
+        if d.get("end") and d.get("id"):
+            for n in reversed(self.notes):
+                if n.get("id") == d["id"]:
+                    n["t_end"] = float(d.get("t_end", t))
+                    return n
+        n = {"id": d.get("id") or uuid.uuid4().hex[:12], "text": str(d.get("text", ""))[:400],
+             "kind": d.get("kind", "info") if d.get("kind") in ("intervention", "explained", "info") else "info",
+             "source": str(d.get("source", ""))[:80], "t_start": float(d.get("t_start", t)),
+             "t_end": float(d["t_end"]) if d.get("t_end") is not None else None}
+        self.notes.append(n)
+        self.events.append({"t": n["t_start"], "kind": "note-" + n["kind"],
+                            "text": n["text"] + ((" (" + n["source"] + ")") if n["source"] else "")})
+        self.write({"t": t, "note": n})
+        return n
+
     def note_events(self, r):
         """losses and recoveries as linkd counted them, and the state's changes, for 'What happened'"""
         L = r.get("linkd")
@@ -136,7 +168,10 @@ class Dashboard:
                 if L["losses"] > self._lk["losses"]:
                     off = r.get("off_khz")
                     where = (" (the oscillator %.0f kHz %s the carrier)" % (abs(off), "below" if off < 0 else "above")) if off is not None else ""
-                    self.events.append({"t": r["t"], "kind": "loss", "text": "The lock was lost" + where + "; the board started to recover it."})
+                    act = self.active_note(r["t"])
+                    self.events.append({"t": r["t"], "kind": "loss-expected" if act else "loss",
+                                        "text": "The lock was lost" + where + "; the board started to recover it." +
+                                                (" Expected: during '%s'." % act["text"] if act else "")})
                 if L["recoveries"] > self._lk["recoveries"]:
                     d = L.get("last_recovery_s")
                     self.events.append({"t": r["t"], "kind": "recovered",
@@ -158,6 +193,18 @@ class Dashboard:
         di = adc.get("I", self.i0) - self.i0
         dq = adc.get("Q", self.q0) - self.q0
         r["leg_mv"] = abs(di) * 1e3 if adc else None
+        # the carrier's level, from the locked idle I arm (I_P = V_MID + I / 2: a = 2 |di|, the differential peak at the
+        # comparators) and the attenuator: at the demodulator's input, and at RX ANT (costaslink.received_dBm's sums).
+        # Only while CMP_I is quiet (data averages I towards zero on this slow reading)
+        try:
+            from board_constants import RX_GAIN_DB, DEM_REG_DBM, A_REG_V
+            a_diff = 2.0 * abs(di)
+            if adc and (r.get("rate") or {}).get("CMP_I", 1e9) < 2000 and a_diff > 0.004:
+                r["dem_dbm"] = DEM_REG_DBM + 20.0 * math.log10(a_diff / A_REG_V)
+                if r.get("dsa_db") is not None:
+                    r["rx_ant_dbm"] = r["dem_dbm"] - RX_GAIN_DB + r["dsa_db"]
+        except ImportError:
+            pass
         qp, qn = rate.get("CMP_QP", 0), rate.get("CMP_QN", 0)
         ip, inn = rate.get("CMP_IP", 0), rate.get("CMP_IN", 0)
         held_sw = r["ctrl"]["loop_hold"]
@@ -238,7 +285,22 @@ class Dashboard:
             def do_GET(self):
                 u = urlparse(self.path)
                 if u.path == "/":
-                    self.send(200, PAGE, "text/html; charset=utf-8")
+                    try:
+                        with open(os.path.join(HERE, "dashboard.html"), "rb") as f:
+                            self.send(200, f.read(), "text/html; charset=utf-8")
+                    except OSError:
+                        self.send(200, PAGE, "text/html; charset=utf-8")
+                elif u.path == "/api/pullin":
+                    try:
+                        with open(os.path.join(HERE, "pullin_map.json"), "rb") as f:
+                            self.send(200, f.read(), "application/json")
+                    except OSError:
+                        self.send(200, "{}", "application/json")
+                elif u.path == "/api/notes":
+                    s = float(parse_qs(u.query).get("s", ["7200"])[0])
+                    t0 = time.time() - s
+                    self.send(200, json.dumps([n for n in dash.notes if (n.get("t_end") or 1e18) >= t0], default=str),
+                              "application/json")
                 elif u.path == "/api/now":
                     self.send(200, json.dumps(dash.hist[-1] if dash.hist else {}, default=str), "application/json")
                 elif u.path == "/api/events":
@@ -248,6 +310,18 @@ class Dashboard:
                     self.send(200, json.dumps(dash.history(s), default=str), "application/json")
                 else:
                     self.send(404, "not here", "text/plain")
+
+            def do_POST(self):
+                u = urlparse(self.path)
+                if u.path != "/api/note":
+                    self.send(404, "not here", "text/plain")
+                    return
+                try:
+                    n = int(self.headers.get("Content-Length", "0"))
+                    d = json.loads(self.rfile.read(min(n, 65536)) or b"{}")
+                    self.send(200, json.dumps(dash.note(d)), "application/json")
+                except (ValueError, TypeError) as e:
+                    self.send(400, "bad note: %s" % e, "text/plain")
 
         return ThreadingHTTPServer(("0.0.0.0", self.port), H)
 

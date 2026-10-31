@@ -36,6 +36,16 @@ def now():
     return json.loads(urllib.request.urlopen(DASH + "/api/now", timeout=5).read())
 
 
+def note(text, seconds, kind="intervention"):
+    """announce a disturbance on the status page (dashboard.py's POST /api/note), so a loss it causes reads as expected"""
+    t = time.time()
+    body = json.dumps({"text": text, "kind": kind, "source": "unattended.py", "t_start": t, "t_end": t + seconds}).encode()
+    try:
+        urllib.request.urlopen(urllib.request.Request(DASH + "/api/note", data=body, method="POST"), timeout=5).read()
+    except Exception:                                            # noqa: BLE001 - an older page, or the server restarting
+        pass
+
+
 def wait(cond, timeout, poll=0.5):
     t0 = time.time()
     while time.time() - t0 < timeout:
@@ -82,11 +92,13 @@ def main(argv):
             off = rng.choice([1.0, 5.0, 10.0, 20.0, 40.0]) * (-1 if kind == "drag_below" else 1)
             T = rng.uniform(1.0, 10.0)
             rec.update(off_mhz=off, seconds=T)
+            note("B210: CW %+.0f MHz from the carrier at gain %.2f for %.1f s" % (off, g, T), T)
             bb.tone(a.mhz + off, gain=g, seconds=T)
         elif kind == "near":
             k = rng.choice([-50, -30, -20, -10, -5, -2, 2, 5, 10, 20, 30, 50])
             T = rng.uniform(1.0, 5.0)
             rec.update(off_khz=k, seconds=T)
+            note("B210: CW %+d kHz from the carrier at gain %.2f for %.1f s" % (k, g, T), T)
             bb.tone(a.mhz + 2.0, gain=g, seconds=T, offset_hz=k * 1e3 - 2e6, rate=5e6)
         elif kind == "bursts":
             on_ms = rng.choice([0.01, 0.1, 1.0])
@@ -95,9 +107,11 @@ def main(argv):
                 per_ms = 10 * on_ms
             T = rng.uniform(5.0, 30.0)
             rec.update(on_ms=on_ms, per_ms=per_ms, seconds=T)
+            note("B210: 8 MHz noise bursts of %g ms every %g ms at gain %.2f for %.0f s" % (on_ms, per_ms, g, T), T)
             bb.bursts(a.mhz, gain=g, bw_mhz=8.0, on_ms=on_ms, off_ms=per_ms - on_ms, seconds=T)
         else:
             rec.update(on_ms=1.0, per_ms=102.4, seconds=30.0)
+            note("B210: noise bursts at a WiFi beacon's rhythm (1 ms every 102.4 ms) at gain %.2f for 30 s" % g, 30.0)
             bb.bursts(a.mhz, gain=g, bw_mhz=8.0, on_ms=1.0, off_ms=101.4, seconds=30.0)
         t_off = time.time()
         L0 = (before.get("linkd") or {})
