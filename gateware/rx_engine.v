@@ -55,7 +55,9 @@ module rx_engine #(
     output wire              arm_next,          // the same next clock, with no event in stage 1 now
     output wire              ref_now_o,         // one clock: a reference (this board's TX event, or TRIG_IN's rise)
     output wire [31:0]       t_ref_o,           // its time in samples
-    output wire              ihold_o            // the interference hold or the signal holdover (ihold.v), to LOOP_HOLD
+    output wire              ihold_o,           // the interference hold or the signal holdover (ihold.v), to LOOP_HOLD
+    output wire [3:0]        led_o,             // the PYNQ-Z2's LD0..LD3 (lockmon.v)
+    output wire [5:0]        rgb_o              // its LD4 and LD5, {LD5 R G B, LD4 R G B}
 );
 `include "regmap.vh"
     localparam integer LS = (SER >= 8) ? 3 : (SER >= 4) ? 2 : (SER >= 2) ? 1 : 0;
@@ -92,6 +94,11 @@ module rx_engine #(
     reg [4:0]  ih_mask;
     reg [31:0] ih_hold, ih_max;
     reg [15:0] ih_persist;
+    reg [3:0]  ih_prop;
+    reg [31:0] lk_win;
+    reg [7:0]  lk_below, lk_at;
+    reg        led_auto;
+    reg [9:0]  led_sw;
     reg        sh_en;                           // RX_SHOLD_CFG: the signal holdover (ihold.v, LEVEL 1)
     reg [2:0]  sh_wlog;
     reg [7:0]  sh_th;
@@ -300,15 +307,26 @@ module rx_engine #(
     wire        ih_act, sh_act;
     ihold #(.SER(SER)) u_ihold (
         .clk(clk), .rst(rst), .clr(clr), .en(ih_en), .fs(fs), .mask(ih_mask), .wlog(ih_wlog), .thresh(ih_th),
-        .hold(ih_hold), .max(ih_max), .persist(ih_persist), .active(ih_act), .n_holds(ih_n), .n_clocks(ih_clk),
+        .hold(ih_hold), .max(ih_max), .persist(ih_persist), .prop(ih_prop), .active(ih_act), .n_holds(ih_n), .n_clocks(ih_clk),
         .last_count(ih_last));
     // and the signal holdover: the loop held while the carrier is too weak for the windows (someone in front of the
     // antenna), so it is still on the carrier's frequency when the carrier is back
     ihold #(.SER(SER), .LEVEL(1)) u_shold (
         .clk(clk), .rst(rst), .clr(clr), .en(sh_en), .fs(fs), .mask(sh_mask), .wlog(sh_wlog), .thresh(sh_th),
-        .hold(sh_hold), .max(sh_max), .persist(16'd0), .active(sh_act), .n_holds(sh_n), .n_clocks(sh_clk),
+        .hold(sh_hold), .max(sh_max), .persist(16'd0), .prop(4'd0), .active(sh_act), .n_holds(sh_n), .n_clocks(sh_clk),
         .last_count(sh_last));
     assign ihold_o = ih_act | sh_act;
+
+    // the lock's state in gateware (lockmon.v): the status registers and the PYNQ-Z2's LEDs
+    wire [1:0]  lk_state;
+    wire [31:0] lk_losses, lk_secs, lk_ihigh;
+    wire [15:0] lk_qp, lk_qn, lk_i;
+    wire [6:0]  lk_busy;
+    lockmon #(.SER(SER), .CLK_HZ(CLK_HZ)) u_lock (
+        .clk(clk), .rst(rst), .fs(fs), .window(lk_win), .locked_below(lk_below), .lost_at(lk_at), .hold(ih_act | sh_act),
+        .auto(led_auto), .led_sw(led_sw), .state(lk_state), .n_losses(lk_losses), .n_locked_s(lk_secs),
+        .last_qp(lk_qp), .last_qn(lk_qn), .last_i(lk_i), .last_ihigh(lk_ihigh), .last_busy(lk_busy), .led(led_o),
+        .rgb(rgb_o));
 
     // ---- the state ------------------------------------------------------------------------------------------
     always @(posedge clk) begin
@@ -321,6 +339,9 @@ module rx_engine #(
             ih_en <= 1'b0; ih_wlog <= 3'd5; ih_th <= 8'd8; ih_mask <= 5'b00110;
             ih_hold <= CLK_HZ / 50; ih_max <= 5 * CLK_HZ;  // released 20 ms after the last busy window (BRINGUP_LOG 4.8b, 4.9)
             ih_persist <= 16'd0;                           // the first busy window holds, as before ID version 7
+            ih_prop <= 4'd0;                               // the release always ih_hold, as before ID version 8
+            lk_win <= CLK_HZ / 100; lk_below <= 8'd24; lk_at <= 8'd48;          // lockmon.v: 10 ms looks, of 64
+            led_auto <= 1'b1; led_sw <= 10'd0;
             sh_en <= 1'b0; sh_wlog <= 3'd5; sh_th <= 8'd64; sh_mask <= 5'b11110;
             sh_hold <= CLK_HZ / 1000; sh_max <= 10 * CLK_HZ;
             n_events <= 32'd0; n_decided <= 32'd0; n_confirm <= 32'd0; n_veto <= 32'd0; n_false <= 32'd0;
@@ -369,7 +390,10 @@ module rx_engine #(
                                       ih_mask <= bus_wdata[20:16]; end
                 R_RX_IHOLD_HOLD: ih_hold <= bus_wdata;
                 R_RX_IHOLD_MAX:  ih_max <= bus_wdata;
-                R_RX_IHOLD_PERSIST: ih_persist <= bus_wdata[15:0];
+                R_RX_IHOLD_PERSIST: begin ih_persist <= bus_wdata[15:0]; ih_prop <= bus_wdata[19:16]; end
+                R_RX_LOCK_CFG:  begin lk_below <= bus_wdata[7:0]; lk_at <= bus_wdata[15:8]; end
+                R_RX_LOCK_WIN:  lk_win <= (bus_wdata < 32'd1000) ? 32'd1000 : bus_wdata;
+                R_LED_CTRL:     begin led_auto <= bus_wdata[0]; led_sw <= bus_wdata[10:1]; end
                 R_RX_SHOLD_CFG: begin sh_en <= bus_wdata[0]; sh_wlog <= bus_wdata[3:1]; sh_th <= bus_wdata[15:8];
                                       sh_mask <= bus_wdata[20:16]; end
                 R_RX_SHOLD_HOLD: sh_hold <= bus_wdata;
@@ -571,7 +595,15 @@ module rx_engine #(
         R_RX_IHOLD_MAX:  bus_rdata = ih_max;
         R_RX_IHOLD_N:    bus_rdata = ih_n;
         R_RX_IHOLD_CLK:  bus_rdata = ih_clk;
-        R_RX_IHOLD_PERSIST: bus_rdata = {16'd0, ih_persist};
+        R_RX_IHOLD_PERSIST: bus_rdata = {12'd0, ih_prop, ih_persist};
+        R_RX_LOCK_STATE:  bus_rdata = {lk_i, 7'd0, lk_busy, lk_state};
+        R_RX_LOCK_CFG:    bus_rdata = {16'd0, lk_at, lk_below};
+        R_RX_LOCK_WIN:    bus_rdata = lk_win;
+        R_RX_LOCK_LOSSES: bus_rdata = lk_losses;
+        R_RX_LOCK_SECONDS: bus_rdata = lk_secs;
+        R_RX_LOCK_Q:      bus_rdata = {lk_qn, lk_qp};
+        R_RX_LOCK_IHIGH:  bus_rdata = lk_ihigh;
+        R_LED_CTRL:       bus_rdata = {21'd0, led_sw, led_auto};
         R_RX_BER_BITS: bus_rdata = ber_bits;
         R_RX_BER_ERR:  bus_rdata = ber_err;
         R_RX_INFO:     bus_rdata = {CLK_HZ_MHZ[15:0], 8'd6, SER_W[7:0]};

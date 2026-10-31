@@ -146,6 +146,21 @@ set_property SLEW FAST [get_ports {trig_b}]
 set_property PACKAGE_PIN Y9 [get_ports {cmp_i_s}]
 set_property IOSTANDARD LVCMOS33 [get_ports {cmp_i_s}]
 
+# the PYNQ-Z2's own LEDs (ID version 8, lockmon.v; the board file part0_pins.xml): LD0..LD3, and the two RGB LEDs,
+# rgb_led_tri_o_0..2 = LD4 B, G, R and 3..5 = LD5 B, G, R
+set_property PACKAGE_PIN R14 [get_ports {led[0]}]
+set_property PACKAGE_PIN P14 [get_ports {led[1]}]
+set_property PACKAGE_PIN N16 [get_ports {led[2]}]
+set_property PACKAGE_PIN M14 [get_ports {led[3]}]
+set_property PACKAGE_PIN L15 [get_ports {rgb_led[0]}]
+set_property PACKAGE_PIN G17 [get_ports {rgb_led[1]}]
+set_property PACKAGE_PIN N15 [get_ports {rgb_led[2]}]
+set_property PACKAGE_PIN G14 [get_ports {rgb_led[3]}]
+set_property PACKAGE_PIN L14 [get_ports {rgb_led[4]}]
+set_property PACKAGE_PIN M15 [get_ports {rgb_led[5]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {led[*]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {rgb_led[*]}]
+
 # the overlay's outputs need no timing to the board: the comparators are asynchronous to every clock here,
 # and the slow outputs (SPI, I2C, the control pins) change at kHz rates
 set_false_path -to [get_ports -filter {DIRECTION == OUT || DIRECTION == INOUT}]

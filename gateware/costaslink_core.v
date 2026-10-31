@@ -74,7 +74,10 @@ module costaslink_core #(
     output wire             tx_dis,
     output wire             trig_a,
     output wire             trig_b,
-    output wire             tr_a
+    output wire             tr_a,
+    // the PYNQ-Z2's own LEDs (lockmon.v, ID version 8): LD0..LD3, and {LD5 R G B, LD4 R G B}
+    output wire [3:0]       led,
+    output wire [5:0]       rgb_led
 );
 `include "regmap.vh"
     localparam integer CLK_MHZ = CLK_HZ / 1_000_000;
@@ -209,7 +212,7 @@ module costaslink_core #(
         .ev_pulse(rx_ev_p), .dec_pulse(rx_dec_p), .valid_pulse(rx_valid_p), .trig_in_rise(trig_in_rise),
         .cfg_idle(rx_cfg_idle), .cfg_mask(rx_cfg_mask), .cfg_lut(rx_cfg_lut), .cfg_first(rx_cfg_first),
         .cfg_dly(rx_cfg_dly), .arm_now(rx_arm_now), .arm_next(rx_arm_next),
-        .ref_now_o(rx_ref_now), .t_ref_o(rx_t_ref), .ihold_o(rx_ihold));
+        .ref_now_o(rx_ref_now), .t_ref_o(rx_t_ref), .ihold_o(rx_ihold), .led_o(led), .rgb_o(rgb_led));
 
     // ---- the receive-to-transmit paths: the synchronous reply, the fast path, the turnaround counter ---------
     wire reply_ev, fp_hit_ev, fp_armed;

@@ -8,6 +8,8 @@
 //  * persist (ID version 7) at 195 windows (0.5 ms): bursts of the beat (10 and 100 us) and a near CW's chatter (one
 //    busy window in 20) never hold, though the same chatter holds at persist 0; a streak broken by one quiet window
 //    does not hold; a beat that lasts holds after 195 windows;
+//  * prop (ID version 8) at 2, hold 20 ms: a 100 us burst released about 4 x 100 us after it, a lone busy window
+//    within two windows, a lasting beat 20 ms after its end;
 //  and the signal holdover (LEVEL 1, the I windows): no hold with the carrier, under BPSK data or for a lost loop's
 //  beat; held within two windows of the carrier's loss, released `hold` after its return; let go at `max`.
 //
@@ -24,6 +26,7 @@ module tb_ihold;
     reg [7:0]  thresh = 8'd8;
     reg [31:0] hold = 32'd1000, max = 32'd20000;
     reg [15:0] persist = 16'd0;
+    reg [3:0]  prop = 4'd0;
     wire active;
     wire [31:0] n_holds, n_clocks;
     wire [7:0] last_count;
@@ -34,11 +37,11 @@ module tb_ihold;
     wire [31:0] n_holds_s, n_clocks_s;
     wire [7:0] last_count_s;
     ihold #(.SER(SER), .LEVEL(1)) dut_s (.clk(clk), .rst(rst), .clr(clr), .en(en_s), .fs(fs), .mask(5'b11110), .wlog(3'd5),
-                            .thresh(8'd64), .hold(hold_s), .max(max_s), .persist(16'd0), .active(active_s), .n_holds(n_holds_s),
+                            .thresh(8'd64), .hold(hold_s), .max(max_s), .persist(16'd0), .prop(4'd0), .active(active_s), .n_holds(n_holds_s),
                             .n_clocks(n_clocks_s), .last_count(last_count_s));
 
     ihold #(.SER(SER)) dut (.clk(clk), .rst(rst), .clr(clr), .en(en), .fs(fs), .mask(mask), .wlog(wlog), .thresh(thresh),
-                            .hold(hold), .max(max), .persist(persist), .active(active), .n_holds(n_holds), .n_clocks(n_clocks),
+                            .hold(hold), .max(max), .persist(persist), .prop(prop), .active(active), .n_holds(n_holds), .n_clocks(n_clocks),
                             .last_count(last_count));
 
     // the comparators, as levels for the whole clock (each sample the same)
@@ -184,6 +187,39 @@ module tb_ihold;
         expect("persist 195: a lasting beat: clocks to the hold", t_first, 194 * 256, 196 * 256 + 4);
         expect("persist 195: holds", n_holds, 1, 1);
         persist = 16'd0;
+        // ---- prop: the release scaled to the busy span ----
+        prop = 4'd2; hold = 32'd2000000; max = 32'd100000000;
+        rst = 1'b1; repeat (3) @(negedge clk); rst = 1'b0;
+        for (k = 0; k < 2000; k = k + 1) @(negedge clk) lv = 5'd0;
+        t_first = -1; t_rel = -1;
+        for (k = 0; k < 200000; k = k + 1) begin          // a 100 us burst of the beat
+            @(negedge clk);
+            lv = 5'd0;
+            if (k < 10000) begin lv[1] = (k / 10) % 2; lv[2] = ((k + 5) / 10) % 2; end
+            if (active && t_first < 0) t_first = k;
+            if (!active && t_first >= 0 && t_rel < 0) t_rel = k;
+        end
+        expect("prop 2: a 100 us burst: clocks from its end to the release", t_rel - 10000, 4 * 9500, 4 * 10000 + 3 * 256);
+        t_first = -1; t_rel = -1;
+        for (k = 0; k < 20000; k = k + 1) begin           // one busy window (a near CW's chatter)
+            @(negedge clk);
+            lv = 5'd0;
+            if (k >= 5000 && k < 5256) begin lv[1] = (k / 10) % 2; lv[2] = ((k + 5) / 10) % 2; end
+            if (active && t_first < 0) t_first = k;
+            if (!active && t_first >= 0 && t_rel < 0) t_rel = k;
+        end
+        // a burst of one window's length straddles two (the windows run free): held 256 + 4 x 256 + a window
+        expect("prop 2: a lone busy window: clocks held", (t_first < 0) ? 0 : t_rel - t_first, 0, 8 * 256);
+        t_first = -1; t_rel = -1;
+        for (k = 0; k < 2600000; k = k + 1) begin         // a beat of 5 ms, then quiet
+            @(negedge clk);
+            lv = 5'd0;
+            if (k < 500000) begin lv[1] = (k / 10) % 2; lv[2] = ((k + 5) / 10) % 2; end
+            if (active && t_first < 0) t_first = k;
+            if (!active && t_first >= 0 && t_rel < 0) t_rel = k;
+        end
+        expect("prop 2: a lasting beat: clocks from its end to the release", t_rel - 500000, 2000000 - 256, 2000000 + 2 * 256 + 4);
+        prop = 4'd0; hold = 32'd1000; max = 32'd20000;
         // disabled: no hold at all
         en = 1'b0;
         held = 0;

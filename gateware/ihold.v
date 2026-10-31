@@ -25,6 +25,12 @@
 // lost held, 0 of 12 free).  What drags the loop is a CW 1-40 MHz off, busy in every window and pulling about
 // 13-19 kHz a millisecond: a streak of half a millisecond lets it move the loop by less than the capture window,
 // and ignores the bursts and the chatter.  A busy window during the streak keeps the hold armed; a quiet one ends it.
+// `prop` (ID version 8; BRINGUP_LOG 4.14): the release scaled to the busy span.  A streak long enough to skip 100 us
+// bursts lets a strong CW drag the loop 21-169 kHz first (340 kHz a ms with the error at its rail), so the hold must
+// start at once; what costs the decisions is how long it lasts (the held oscillator's phase walks 0.1 rad in 6 ms).
+// With prop n the hold lets go when quiet for the lesser of `hold` and (its busy span so far) << n plus a window: a
+// 100 us burst holds about half a millisecond (n 2), a near CW's lone busy windows a few microseconds, a CW of seconds
+// to its end plus `hold`.  0: `hold` always, as before.
 // The counts: holds started, clocks held; cleared by `clr`.  The signal holdover (LEVEL 1) needs no arming: holding
 // with the carrier gone cannot lose anything, and holding again after `max` keeps the oscillator near the carrier's
 // frequency for when it returns.
@@ -53,6 +59,7 @@ module ihold #(
     input  wire [31:0]       hold,              // clocks held after the last triggering window (and the guard)
     input  wire [31:0]       max,               // the longest hold without a break
     input  wire [15:0]       persist,           // busy windows in a row before a hold starts (0, 1: the first)
+    input  wire [3:0]        prop,              // the release: the lesser of hold and the busy span << prop (0: hold)
     output reg               active,            // the hold, to LOOP_HOLD
     output reg  [31:0]       n_holds,
     output reg  [31:0]       n_clocks,
@@ -115,6 +122,10 @@ module ihold #(
     reg  [31:0] run;                            // clocks held without a break
     reg  [31:0] guard;                          // clocks of the guard still to go
     reg         armed;                          // LEVEL 0: a quiet window came after the last busy one
+    // the release while held: the busy span so far (run - since) scaled, saturating at hold
+    wire [31:0] span = run - since;
+    wire [47:0] scaled = ({16'd0, span} << prop) + {37'd0, wlen_m1} + 48'd1;
+    wire [31:0] rel = (prop == 4'd0 || scaled >= {16'd0, hold}) ? hold : scaled[31:0];
 
     always @(posedge clk) begin
         if (rst) begin
@@ -154,7 +165,7 @@ module ihold #(
                 since <= trig ? 32'd0 : since + 1'b1;
                 if (run >= max) begin                        // too long: let go, the guard, and disarmed
                     active <= 1'b0; run <= 32'd0; guard <= hold; armed <= 1'b0;
-                end else if (!trig && since >= hold) begin   // quiet long enough
+                end else if (!trig && since >= rel) begin    // quiet long enough
                     active <= 1'b0; run <= 32'd0;
                 end
             end else if (trig && guard == 32'd0 && (armed || LEVEL != 0)) begin

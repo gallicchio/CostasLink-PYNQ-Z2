@@ -44,10 +44,11 @@ from board_constants import (RX_GAIN_DB, DEM_REG_DBM, A_REG_V, DSA_POWER_UP_DB, 
                              NTC_B, NTC_R25, NTC_RTOP, NTC_VDD, VR_I_V, VR_Q_V)
 
 R = regmap.BY_NAME
-ID_EXPECTED = 0x434C0007
-ID_ACCEPTED = (0x434C0003, 0x434C0004, 0x434C0005, 0x434C0006, 0x434C0007)   # 3: no timing recovery for the BER check
-                                                      # (the overlay of 2026-10-29); 4: no interference hold; 5: no
-                                                      # one-polarity timing recovery; 6: no hold persistence
+ID_EXPECTED = 0x434C0008
+ID_ACCEPTED = (0x434C0003, 0x434C0004, 0x434C0005, 0x434C0006, 0x434C0007, 0x434C0008)   # 3: no timing recovery for the
+                                                      # BER check (the overlay of 2026-10-29); 4: no interference hold;
+                                                      # 5: no one-polarity timing recovery; 6: no hold persistence; 7: no
+                                                      # lock monitor, LEDs or scaled release
 BOARDS = {0: "simulation", 1: "PYNQ-Z2", 2: "Icepi Zero"}
 
 # the fast comparators: their bit in the receiver's vectors (RX_IDLE, RX_LUT, RX_LAST), as rx_engine.v
@@ -344,6 +345,7 @@ class CostasLink:
             self.ihold_ok = ident >= 0x434C0005
             self.cdr_pol = ident >= 0x434C0006
             self.ihold_persist = ident >= 0x434C0007
+            self.lockmon = ident >= 0x434C0008
         b = self.rd("BUILD")
         self.ser = bits(b, 7, 0) or 1
         self.board = bits(b, 11, 8)
@@ -769,7 +771,7 @@ class CostasLink:
         self.wr("RX_BER_CFG", int(enable) | int(invert) << 1 | self.POLYS[poly] << 4 | (phase & 0xFFFF) << 8
                 | int(bool(cdr)) << 24 | (gain & 0xF) << 25 | int(bool(one_pol)) << 29)
 
-    def ihold(self, on=True, mask=(CMP_QP, CMP_QN), window=256, thresh=8, hold_s=20e-3, max_s=5.0, persist_s=0.0):
+    def ihold(self, on=True, mask=(CMP_QP, CMP_QN), window=256, thresh=8, hold_s=20e-3, max_s=5.0, persist_s=0.0, prop=0):
         """the interference hold (ID version 5, ihold.v): LOOP_HOLD while the comparators in `mask` change in `thresh`
         or more of each `window` clocks (a power of 2, 8-1024), released hold_s after they were last busy; never longer
         than max_s at a time.  A hold starts only after a quiet window, so it catches an interferer arriving at a
@@ -779,7 +781,9 @@ class CostasLink:
         own events and BPSK on I alone and catch an interferer's beat of 1 MHz and more from about -6 dB.  persist_s (ID
         version 7, RX_IHOLD_PERSIST): a hold starts only after the windows have been busy that long without a break;
         0 holds on the first busy window, as before.  Bursts of noise and a near CW's chatter re-triggered the hold and
-        cost the decisions without being able to drag the loop (BRINGUP_LOG 4.13, 4.14)"""
+        cost the decisions without being able to drag the loop (BRINGUP_LOG 4.13, 4.14).  prop (ID version 8): the
+        release the lesser of hold_s and the hold's busy span times 2**prop (plus a window): a short burst a short
+        hold, a long interferer hold_s after it; 0 hold_s always"""
         if not getattr(self, "ihold_ok", False):
             raise IOError("this overlay has no interference hold (ID version 5 has)")
         m = 0
@@ -788,9 +792,12 @@ class CostasLink:
         wlog = max(0, min(7, int(window).bit_length() - 1 - 3)) if window else 5
         self.wr("RX_IHOLD_HOLD", int(hold_s * self.clk_mhz * 1e6))
         self.wr("RX_IHOLD_MAX", int(max_s * self.clk_mhz * 1e6))
+        if prop and not getattr(self, "lockmon", False):
+            raise IOError("this overlay has no scaled release (ID version 8 has)")
         if getattr(self, "ihold_persist", False):
             w = 8 << wlog
-            self.wr("RX_IHOLD_PERSIST", min(0xFFFF, int(math.ceil(persist_s * self.clk_mhz * 1e6 / w))) if persist_s else 0)
+            n = min(0xFFFF, int(math.ceil(persist_s * self.clk_mhz * 1e6 / w))) if persist_s else 0
+            self.wr("RX_IHOLD_PERSIST", n | (int(prop) & 0xF) << 16)
         elif persist_s:
             raise IOError("this overlay has no hold persistence (ID version 7 has)")
         self.wr("RX_IHOLD_CFG", int(bool(on)) | (wlog & 7) << 1 | (thresh & 0xFF) << 8 | (m & 0x1F) << 16)
@@ -829,7 +836,38 @@ class CostasLink:
         return {"on": c & 1, "holding": c >> 4 & 1, "last_count": c >> 24 & 0xFF, "holds": self.rd("RX_IHOLD_N"),
                 "clocks": self.rd("RX_IHOLD_CLK"), "seconds": self.rd("RX_IHOLD_CLK") / f,
                 "hold_s": self.rd("RX_IHOLD_HOLD") / f, "max_s": self.rd("RX_IHOLD_MAX") / f,
-                "persist_s": (self.rd("RX_IHOLD_PERSIST") * (8 << (c >> 1 & 7)) / f) if getattr(self, "ihold_persist", False) else 0.0}
+                "persist_s": ((self.rd("RX_IHOLD_PERSIST") & 0xFFFF) * (8 << (c >> 1 & 7)) / f) if getattr(self, "ihold_persist", False) else 0.0,
+                "prop": (self.rd("RX_IHOLD_PERSIST") >> 16 & 0xF) if getattr(self, "lockmon", False) else 0}
+
+    # ---- the lock's state in gateware and the PYNQ-Z2's LEDs (lockmon.v, ID version 8) ----
+    LOCK_STATES = ("no carrier", "locked", "lost", "unsure")
+
+    def lock_state(self):
+        """the gateware's own judgement of the lock, every 10 ms (lockmon.v): its state, the last look's sub-windows
+        with both Q windows changing (of 64), the losses and seconds locked since reset, the raw counts"""
+        if not getattr(self, "lockmon", False):
+            return None
+        st, cfg, q = self.rd("RX_LOCK_STATE"), self.rd("RX_LOCK_CFG"), self.rd("RX_LOCK_Q")
+        return {"state": self.LOCK_STATES[st & 3], "busy": st >> 2 & 0x7F, "cmp_i": st >> 16, "losses": self.rd("RX_LOCK_LOSSES"),
+                "seconds_locked": self.rd("RX_LOCK_SECONDS"), "qp": q & 0xFFFF, "qn": q >> 16, "ihigh": self.rd("RX_LOCK_IHIGH"),
+                "window_s": self.rd("RX_LOCK_WIN") / (self.clk_mhz * 1e6), "locked_below": cfg & 0xFF, "lost_at": cfg >> 8 & 0xFF}
+
+    def lock_cfg(self, window_s=0.01, locked_below=24, lost_at=48):
+        """lockmon.v's settings: a look of window_s, 64 sub-windows; locked with Q busy in fewer than locked_below,
+        lost from lost_at (the resets)"""
+        self.wr("RX_LOCK_WIN", max(1000, int(window_s * self.clk_mhz * 1e6)))
+        self.wr("RX_LOCK_CFG", (int(locked_below) & 0xFF) | (int(lost_at) & 0xFF) << 8)
+
+    def leds(self, auto=True, ld=0, ld4=(0, 0, 0), ld5=(0, 0, 0)):
+        """the PYNQ-Z2's LEDs: auto, LD0-LD4 from lockmon.v's state (LD0 locked, LD1 lost blinking, LD2 no carrier,
+        LD3 a hold, LD4 green / red / yellow / blue); else LD0-LD3 from ld's bits and LD4 from ld4 (r, g, b).  LD5
+        (r, g, b) is always software's (linkd shows its recovery there)"""
+        v = (1 if auto else 0) | (int(ld) & 0xF) << 1
+        r, g, b = ld4
+        v |= (int(bool(b)) | int(bool(g)) << 1 | int(bool(r)) << 2) << 5
+        r, g, b = ld5
+        v |= (int(bool(b)) | int(bool(g)) << 1 | int(bool(r)) << 2) << 8
+        self.wr("LED_CTRL", v)
 
     def cdr_state(self):
         """the timing recovery since the last RX_BER_CFG write: its last edge error (samples), its corrections' sum

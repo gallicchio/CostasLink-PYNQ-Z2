@@ -74,6 +74,8 @@ module costaslink_pynq #(
     output wire        trig_a,
     output wire        trig_b,
     output wire        tr_a,
+    output wire [3:0]  led,                    // the PYNQ-Z2's LD0..LD3 (lockmon.v: the lock's state)
+    output wire [5:0]  rgb_led,                // its LD4, LD5: rgb_led[2:0] LD4 B G R, [5:3] LD5
     input  wire        mux_tx,
     input  wire        mux_rx
 );
@@ -136,7 +138,8 @@ module costaslink_pynq #(
         .i2c_scl_i(i2c_scl), .i2c_sda_i(i2c_sda), .i2c_scl_o(scl_o), .i2c_sda_o(sda_o),
         .tx_i1(lad_out[1]), .tx_i0(lad_out[0]), .tx_q1(lad_out[3]), .tx_q1_hiz(q1_hiz), .tx_q0(lad_out[2]),
         .spi_sclk(spi_sclk), .spi_sdata(spi_sdata), .le_pll_tx(le_pll_tx), .le_pll_rx(le_pll_rx), .le_dsa(le_dsa),
-        .loop_hold(loop_hold), .loop_sel(loop_sel), .tx_dis(tx_dis_core), .trig_a(trig_a), .trig_b(trig_b), .tr_a(tr_a));
+        .loop_hold(loop_hold), .loop_sel(loop_sel), .tx_dis(tx_dis_core), .trig_a(trig_a), .trig_b(trig_b), .tr_a(tr_a),
+        .led(led), .rgb_led(rgb_led));
 
     // open drain I2C (the PYNQ fits 2k2 pull-ups on these two pins)
     assign i2c_scl = scl_o ? 1'bz : 1'b0;

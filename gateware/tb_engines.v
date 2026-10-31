@@ -45,7 +45,7 @@ module tb_engines;
         .i2c_scl_i(scl_o), .i2c_sda_i(sda_o), .i2c_scl_o(scl_o), .i2c_sda_o(sda_o),
         .tx_i1(tx_i1), .tx_i0(tx_i0), .tx_q1(tx_q1), .tx_q1_hiz(tx_q1_hiz), .tx_q0(tx_q0),
         .spi_sclk(spi_sclk), .spi_sdata(spi_sdata), .le_pll_tx(le_pll_tx), .le_pll_rx(le_pll_rx), .le_dsa(le_dsa),
-        .loop_hold(loop_hold), .loop_sel(loop_sel), .tx_dis(tx_dis), .trig_a(trig_a), .trig_b(trig_b), .tr_a(tr_a));
+        .loop_hold(loop_hold), .loop_sel(loop_sel), .tx_dis(tx_dis), .trig_a(trig_a), .trig_b(trig_b), .tr_a(tr_a), .led(), .rgb_led());
 
     // ---- the bus ------------------------------------------------------------------------------------------
     task wr;
@@ -156,7 +156,7 @@ module tb_engines;
         repeat (5) @(posedge clk);
 
         // ---- identification ----
-        rd(R_ID, v); expect("ID", v, 32'h434C0007);
+        rd(R_ID, v); expect("ID", v, 32'h434C0008);
         rd(R_BUILD, v); expect("BUILD", v, {16'd100, RP_REG != 0, 3'b111, 4'd0, 8'd4});   // early lane, read-back, fast path
         rd(R_RX_INFO, v); expect("RX_INFO", v, {16'd100, 8'd6, 8'd4});
 

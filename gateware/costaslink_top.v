@@ -75,6 +75,10 @@ module costaslink_top #(
     wire tx_dis_core;
     assign tx_en = ~tx_dis_core;
 
+    // no LEDs on this top (the PYNQ-Z2's are in costaslink_pynq.v)
+    wire [3:0] leds_unused;
+    wire [5:0] rgb_unused;
+    wire _unused_leds = &{1'b0, leds_unused, rgb_unused};
     costaslink_core #(.CLK_HZ(CLK_HZ), .SER(1), .CAP_AW(10), .BOARD(0), .ID_WPM(ID_WPM), .ID_INTERVAL_S(ID_INTERVAL_S),
                       .CALLSIGN_LEN(CALLSIGN_LEN), .CALLSIGN(CALLSIGN)) u_core (
         .clk(sysclk), .rst(rst),
@@ -84,7 +88,8 @@ module costaslink_top #(
         .i2c_scl_i(i2c_scl), .i2c_sda_i(i2c_sda), .i2c_scl_o(scl_o), .i2c_sda_o(sda_o),
         .tx_i1(tx_i1), .tx_i0(tx_i0), .tx_q1(q1), .tx_q1_hiz(q1_hiz), .tx_q0(tx_q0),
         .spi_sclk(spi_sclk), .spi_sdata(spi_sdata), .le_pll_tx(le_pll_tx), .le_pll_rx(le_pll_rx), .le_dsa(le_dsa),
-        .loop_hold(loop_hold), .loop_sel(loop_sel), .tx_dis(tx_dis_core), .trig_a(trig_a), .trig_b(trig_b), .tr_a(tr_a));
+        .loop_hold(loop_hold), .loop_sel(loop_sel), .tx_dis(tx_dis_core), .trig_a(trig_a), .trig_b(trig_b), .tr_a(tr_a),
+        .led(leds_unused), .rgb_led(rgb_unused));
 
     // open drain: drive low or release to the pull-ups; TX_Q1 released for the board's TRIG IN bypass (CTRL[8])
     assign i2c_scl = scl_o ? 1'bz : 1'b0;

@@ -175,7 +175,21 @@ REGS = [
     (0x86, "RX_CDR_SKEW", "R", "rx3", "with RX_BER_CFG[29]: CMP_I's falling edges' mean place against its rising ones, "
                                       "signed, in 1/256 sample (the comparator's duty-cycle distortion; ID version 6)"),
     (0x87, "RX_IHOLD_PERSIST", "RW", "rx3", "[15:0] busy windows in a row before an interference hold starts (0 and 1: the "
-                                            "first, the reset); bursts and a near CW's chatter then pass (ID version 7)"),
+                                            "first, the reset); bursts and a near CW's chatter then pass (ID version 7); "
+                                            "[19:16] the release scaled: the lesser of RX_IHOLD_HOLD and the hold's busy "
+                                            "span << n plus a window (0, the reset: RX_IHOLD_HOLD; ID version 8)"),
+    (0x88, "RX_LOCK_STATE", "R", "rx3", "lockmon.v (ID version 8): [1:0] the lock, 0 no carrier, 1 locked, 2 lost, 3 unsure; "
+                                        "[8:2] the last look's sub-windows (of 64) with both Q windows changing; [31:16] the "
+                                        "clocks CMP_I changed in it"),
+    (0x89, "RX_LOCK_CFG", "RW", "rx3", "[7:0] Q busy in fewer sub-windows than this: still (reset 24), [15:8] in this many "
+                                       "or more: a beat, lost (reset 48)"),
+    (0x8A, "RX_LOCK_WIN", "RW", "rx3", "clocks a look (reset 10 ms; at least 1000)"),
+    (0x8B, "RX_LOCK_LOSSES", "R", "rx3", "losses since reset: a look locked, the next lost or no carrier"),
+    (0x8C, "RX_LOCK_SECONDS", "R", "rx3", "seconds locked since reset"),
+    (0x8D, "RX_LOCK_Q", "R", "rx3", "the last look: [15:0] the clocks CMP_QP changed, [31:16] CMP_QN"),
+    (0x8E, "RX_LOCK_IHIGH", "R", "rx3", "the last look: the clocks an I window (CMP_IP or CMP_IN) was high"),
+    (0x8F, "LED_CTRL", "RW", "rx3", "the PYNQ-Z2's LEDs: [0] LD0-LD4 from the lock's state (reset 1), [10:1] from "
+                                    "software {LD5 R G B, LD4 R G B, LD3..LD0} (LD5 always from here)"),
     (0x80, "BUILD", "R", "core", "[7:0] SER, [11:8] board (0 simulation, 1 PYNQ-Z2, 2 Icepi Zero), [12] the fast path is built, "
                                  "[13] the ladder pins are read back into the capture, [14] the reply lane reads the sampler's "
                                  "word a clock early, [15] the synchronous reply registered once more (a clock later), "

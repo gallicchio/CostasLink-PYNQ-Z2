@@ -39,7 +39,7 @@ module tb_axil;
         .i2c_scl_i(1'b1), .i2c_sda_i(1'b1), .i2c_scl_o(), .i2c_sda_o(),
         .tx_i1(), .tx_i0(), .tx_q1(), .tx_q1_hiz(), .tx_q0(),
         .spi_sclk(), .spi_sdata(), .le_pll_tx(), .le_pll_rx(), .le_dsa(),
-        .loop_hold(), .loop_sel(), .tx_dis(), .trig_a(), .trig_b(), .tr_a());
+        .loop_hold(), .loop_sel(), .tx_dis(), .trig_a(), .trig_b(), .tr_a(), .led(), .rgb_led());
     /* verilator lint_on PINCONNECTEMPTY */
 
     integer errors = 0;
@@ -147,9 +147,9 @@ module tb_axil;
         rst = 1'b0;
         repeat (3) @(posedge clk);
 
-        axi_read(R_ID, v, 0);    expect("ID", v, 32'h434C_0007);
+        axi_read(R_ID, v, 0);    expect("ID", v, 32'h434C_0008);
         axi_read(R_BUILD, v, 0); expect("BUILD", v, {16'd100, 4'b1000, 4'd1, 8'd8});   // [15]: RP_REG, the core's default
-        axi_read(8'h8F, v, 0);   expect("unlisted register", v, 32'hDEAD_008F);
+        axi_read(8'hB0, v, 0);   expect("unlisted register", v, 32'hDEAD_00B0);
 
         axi_write(R_TX_PERIOD, 32'h0001_2345, 0); axi_read(R_TX_PERIOD, v, 0);
         expect("write, address and data together", v, 32'h0001_2345);
@@ -160,7 +160,7 @@ module tb_axil;
 
         // back to back, alternating registers: each read returns its own register, never the last one's
         for (k = 0; k < 4; k = k + 1) begin
-            axi_read(R_ID, v, 0);        expect("back to back: ID", v, 32'h434C_0007);
+            axi_read(R_ID, v, 0);        expect("back to back: ID", v, 32'h434C_0008);
             axi_read(R_TX_PERIOD, v, 0); expect("back to back: TX_PERIOD", v, 32'h0000_0999);
         end
         // a write straight after a read, then a read of the written register
