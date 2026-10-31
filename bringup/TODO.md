@@ -24,6 +24,27 @@ ch2 I MON, ch3 Q MON, ch4 VC MON. 50 ohm on TX MON's pigtail. JP201 on TCXO.
 | 9 | Monday, last | **15 min** (the only rework) | 1 h | **Lift C102**, the 0.5 pF shunt from the LNA's input to ground; leave its pads empty, or lift only its ground end. Then repeat A, F and the night's map. The prediction is +25 dB at 5.8 GHz, and RX ANT's S11 from about -0.8 to -7 dB. If it misbehaves, a 0.5 pF goes back on the same pads | 6 (A first) | everything at 5.8 GHz |
 | 10 | only if needed, after 9 | 15-30 min | 1 h | **Bias-choke bodge capacitors**: a small 0402 tacked from an RF IC's supply pin to its nearest ground pad (the gates' finding: no 1 nF or smaller within 2 mm of any RF supply pin, and every choke reaches a plane via first). Only if the chain still falls short after C102, or test B puts the leak on the board. I model the value first (`sim/aslaid`), so none goes on blind | 9, 2 | rev B 13 |
 
+**Unattended operation (Jason, 2026-10-31: the boards run unattended, operated by physicists who do not know PLLs;
+"this part just needs to work reliably without intervention"; a live dashboard that survives new firmware, tests and
+experiments; pictures, not one-word states, each with what led to it and how to improve it):**
+1. The recovery algorithm proven from the PC first: a lock detector from the comparators, and on a loss the downward
+   VC_OFF search from above the carrier (3.9j: 52 of 52); then every failure the bench can make, unattended and
+   repeated: parked in the false lock and on the rail, dragged by full-power CWs above and below, the carrier blocked
+   for seconds and minutes, WiFi-like bursts, the far end restarted; each with its time to recover.
+2. The lock supervisor in gateware (ID version 8, with 7's persistence): on at reset in every overlay built from this
+   repo, no software needed; its state and counts in registers (losses, recoveries, time locked, the last
+   recovery's time, failed searches); a lease for any script that needs the loop itself (refreshed every few seconds,
+   or the supervisor takes over again); the PYNQ-Z2's LD0-LD3 and RGB LEDs showing its state (REVB U1, until rev B's
+   own LEDs).
+3. The dashboard: a service on the PYNQ, started at boot, read-only for now, that re-attaches after any overlay load
+   and says so when the loaded bitstream is not CostasLink's.  Live and rolling plots: signal strength, lock state and
+   its history, VC (how far from the carrier), the eye from the timing recovery's edge statistics and RX_CDR_SKEW, the
+   window comparators' occupancy (a coarse constellation; the real one needs REVB U2 or the B210 as a monitor), the
+   interference hold's activity, latency; each state with its cause and the remedy in words.  Every reader of the
+   board goes through one owner (the netbus server), so the page never contends with a test (REVB U3); later, control
+   from the page through the same owner, which shows who is driving.
+4. A one-page guide for the physicists: what the page and the LEDs show, what good and bad look like, what to do.
+
 **Gateware next (no hands needed; from the weekend's findings, BRINGUP_LOG 4.3-4.9):**
 - **Interference hold and signal holdover: done** (`ihold.v`, ID version 5 on; BRINGUP_LOG 4.8-4.10; `docs/LOCK.md`
   section 7): off at reset, `cl.protect(True)` once locked.  160 of 160 dragging CWs (three carriers) and 4 of 4 blocked

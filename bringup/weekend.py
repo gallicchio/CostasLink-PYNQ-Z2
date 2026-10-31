@@ -26,6 +26,8 @@ the B210 reaching -23 to +11 dB of the carrier there (BRINGUP_LOG 4.0).
         pullhold  pull's worst cases with the loop held (LOOP_HOLD) through the CW: what an interference hold saves
         pullauto  pull's dragging cases with the gateware's interference hold on (ID version 5); pullauto3 the same
                   with the busy rule blind to slow beats
+        captureauto4, pulsesauto4, pullauto4: the same three with the hold's persistence (ID version 7: busy for
+                  0.5 ms in a row before a hold; skipped on older overlays)
         iholdcheck the interference hold on through A3's events, BPSK data and quiet: it must not trigger
         segcheck  the BPSK BER's 50 ms segments with nothing sent, each with the lock read before and after
         eye       CMP_I against the TX's own pins during PRBS at 50 and 25 Mbaud: the latency, the eye, the rising and
@@ -253,6 +255,13 @@ class Weekend(O.OTA):
             return {"mhz": mhz, "skipped": "this overlay has no interference hold"}
         return self.capture(mhz, gains=(80, 89.75), auto=True, ihold_kw={"hold_s": 0.02})
 
+    def pullauto4(self, mhz):
+        """pullauto with the hold persistent (PERSIST, ID version 7): the dragging CWs of 1-40 MHz are busy in every
+        window; caught after half a millisecond, are they still back?"""
+        if not getattr(self.cl, "ihold_persist", False):
+            return {"mhz": mhz, "skipped": "this overlay has no hold persistence"}
+        return self.pull(mhz, offs_mhz=(1.0, 5.0, 10.0, 20.0, 40.0), gains=(80, 83, 86, 89.75), auto=True, ihold_kw=self.PERSIST)
+
     def captureauto2(self, mhz):
         """captureauto with the hold released 200 ms after the last busy window instead of 20 ms.  A CW 30-50 kHz off
         beats with a 20-33 us period, far slower than the busy rule's 2.56 us windows (built for beats of 1 MHz and
@@ -261,6 +270,12 @@ class Weekend(O.OTA):
         if not getattr(self.cl, "ihold_ok", False):
             return {"mhz": mhz, "skipped": "this overlay has no interference hold"}
         return self.capture(mhz, gains=(80, 89.75), auto=True, ihold_kw={"hold_s": 0.2})
+
+    def captureauto4(self, mhz):
+        """captureauto with the hold persistent (PERSIST, ID version 7): a near CW's chatter is never a streak"""
+        if not getattr(self.cl, "ihold_persist", False):
+            return {"mhz": mhz, "skipped": "this overlay has no hold persistence"}
+        return self.capture(mhz, gains=(80, 89.75), auto=True, ihold_kw=self.PERSIST)
 
     def captureauto3(self, mhz):
         """captureauto with the busy rule blind to slow beats (SLOW_BLIND): at 5.0 GHz the free loop rides out every
@@ -326,6 +341,14 @@ class Weekend(O.OTA):
         if not getattr(self.cl, "ihold_ok", False):
             return {"mhz": mhz, "skipped": "this overlay has no interference hold"}
         return self.pulses(mhz, shapes=self.PULSE_SHAPES_AUTO, reps=2, ihold_kw={"hold_s": 0.2})
+
+    PERSIST = {"hold_s": 0.02, "persist_s": 0.5e-3}     # ID version 7: busy for half a millisecond before a hold
+
+    def pulsesauto4(self, mhz):
+        """pulses with the hold persistent (PERSIST, ID version 7): bursts shorter than the streak should never hold"""
+        if not getattr(self.cl, "ihold_persist", False):
+            return {"mhz": mhz, "skipped": "this overlay has no hold persistence"}
+        return self.pulses(mhz, shapes=self.PULSE_SHAPES_AUTO, reps=2, ihold_kw=self.PERSIST)
 
     # ---- the pull: a strong CW above and below the carrier ----
     def pull(self, mhz, offs_mhz=(0.1, 0.3, 1.0, 2.0, 5.0, 10.0, 20.0, 40.0), gains=(74, 77, 80, 83, 86, 89.75), seconds=3.0,
@@ -784,8 +807,8 @@ def main(argv):
     ap.add_argument("what", choices=["baseline", "rounds", "once"])
     ap.add_argument("--hours", type=float, default=60.0)
     ap.add_argument("--quiet-min", type=float, default=60.0)
-    ap.add_argument("--pieces", nargs="*", default=["decide", "capture", "captureauto", "captureauto2", "captureauto3", "pulses", "pulsesauto", "pulsesauto2", "pull",
-                                                    "pullhold", "pullauto", "pullauto3", "iholdcheck", "segcheck", "eye", "b210cdr"])
+    ap.add_argument("--pieces", nargs="*", default=["decide", "capture", "captureauto", "captureauto2", "captureauto3", "captureauto4", "pulses", "pulsesauto", "pulsesauto2", "pulsesauto4", "pull",
+                                                    "pullhold", "pullauto", "pullauto3", "pullauto4", "iholdcheck", "segcheck", "eye", "b210cdr"])
     ap.add_argument("--mhz", type=int, nargs="*", default=None, help="once: the carriers (default all three)")
     ap.add_argument("--first", nargs="*", default=None, help="pieces run first in round 1 (at each carrier)")
     a = ap.parse_args(argv)
