@@ -160,8 +160,16 @@ class Server:
 
         return TCP((bind, port), Handler)
 
-    def serve(self, bind="0.0.0.0", port=PORT, dashboard=None):
-        """dashboard: a port for the read-only status page (dashboard.py), or None"""
+    def serve(self, bind="0.0.0.0", port=PORT, dashboard=None, linkd=False):
+        """dashboard: a port for the read-only status page (dashboard.py), or None; linkd: the link's automatic
+        recovery (linkd.py), active whenever no client has driven the board for a minute"""
+        self.linkd = None
+        if linkd:
+            try:
+                from linkd import LinkD
+                self.linkd = LinkD(self).start()
+            except Exception as e:                                   # noqa: BLE001 - the driver is served regardless
+                print("no linkd: %s: %s" % (type(e).__name__, e), flush=True)
         if dashboard:
             try:
                 from dashboard import Dashboard
@@ -298,6 +306,7 @@ def main():
     s.add_argument("--bind", default="0.0.0.0")
     s.add_argument("--port", type=int, default=PORT)
     s.add_argument("--dashboard", type=int, default=None, metavar="PORT", help="also serve the status page (dashboard.py)")
+    s.add_argument("--linkd", action="store_true", help="the link's automatic recovery (linkd.py) while no client drives")
     p = sub.add_parser("ping", help="on the PC: is the server there, and what does the board say")
     p.add_argument("host")
     p.add_argument("--port", type=int, default=PORT)
@@ -310,7 +319,7 @@ def main():
         else:
             from costaslink import PynqBus
             bus = PynqBus(a.bit, download=not a.no_download)
-        Server(CostasLink(bus)).serve(a.bind, a.port, dashboard=a.dashboard)
+        Server(CostasLink(bus)).serve(a.bind, a.port, dashboard=a.dashboard, linkd=a.linkd)
     else:
         with NetBus(a.host, a.port, timeout=10) as nb:
             print(json.dumps(nb.ping(), indent=1))

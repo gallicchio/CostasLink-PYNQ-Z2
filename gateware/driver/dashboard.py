@@ -31,7 +31,8 @@ from urllib.parse import parse_qs, urlparse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KV_HZ_PER_V_5800 = 457e3                 # the RX LO's pull at 5.8 GHz (bringup/linktests.py)
-I0_V = Q0_V = 1.63                       # the arms' outputs with no carrier, on the ADC (board A: 1.6535 / 1.628)
+I0_V, Q0_V = 1.6535, 1.628              # the arms' outputs with no carrier, on the ADC (board A, 2026-10-31): learned again
+                                         # whenever the board is in the bench's quiet state (TX muted, DSA 31.75)
 EDGES = ("CMP_I", "CMP_QP", "CMP_QN", "CMP_I_S", "CMP_QP_S", "CMP_QN_S", "CMP_IP", "CMP_IN")
 EDGE_REGS = ("EDGE_CNT0", "EDGE_CNT1", "EDGE_CNT2", "EDGE_CNT3", "EDGE_CNT4", "EDGE_CNT5", "EDGE_CNT6", "EDGE_CNT7")
 
@@ -50,12 +51,16 @@ class Dashboard:
         self.vc_lock = None              # VC at lock, learned
         self.leg_ref = None              # the I leg at lock, learned (the constellation's targets)
         self.t_state = (None, time.time())
+        self.i0, self.q0 = I0_V, Q0_V
 
     # ---- the looks ----
     def look(self):
         srv = self.server
         if not srv.lock.acquire(timeout=0.05):
-            return {"t": time.time(), "busy": True, "driving": dict(srv.last)}
+            out = {"t": time.time(), "busy": True, "driving": dict(srv.last)}
+            if getattr(srv, "linkd", None) is not None:
+                out["linkd"] = srv.linkd.state()
+            return out
         try:
             return self._look()
         except Exception as e:                                       # noqa: BLE001 - shown on the page, never fatal
@@ -68,6 +73,8 @@ class Dashboard:
         cl = self.server.cl
         t = time.time()
         r = {"t": t, "busy": False, "driving": dict(self.server.last)}
+        if getattr(self.server, "linkd", None) is not None:
+            r["linkd"] = self.server.linkd.state()
         ident = cl.rd("ID")
         r["id"] = "0x%08X" % ident
         if ident not in costaslink.ID_ACCEPTED:
@@ -120,8 +127,12 @@ class Dashboard:
         """the state, its cause and what to do, in words for someone who does not know PLLs"""
         rate = r.get("rate") or {}
         adc = r.get("adc") or {}
-        di = adc.get("I", I0_V) - I0_V
-        dq = adc.get("Q", Q0_V) - Q0_V
+        if adc and r.get("slow_now") and r["ctrl"]["tx_dis"] and r.get("dsa_db") == 31.75:
+            self.i0 = 0.8 * self.i0 + 0.2 * adc["I"]                  # no carrier reaches the arms: their middles
+            self.q0 = 0.8 * self.q0 + 0.2 * adc["Q"]
+        r["i0"], r["q0"] = self.i0, self.q0
+        di = adc.get("I", self.i0) - self.i0
+        dq = adc.get("Q", self.q0) - self.q0
         r["leg_mv"] = abs(di) * 1e3 if adc else None
         qp, qn = rate.get("CMP_QP", 0), rate.get("CMP_QN", 0)
         ip, inn = rate.get("CMP_IP", 0), rate.get("CMP_IN", 0)
@@ -296,9 +307,9 @@ const PANELS = [
   help:"<p>How far the receiver's oscillator is from where it sits when locked. Locked, it stays near zero.</p><p class='k'>Good: within 5 kHz (green).</p><p><b>Below -13 kHz</b> the loop cannot pull itself back: it drifts to a 'false lock' about 45 kHz below, or to its limit. <b>Above</b>, it drifts back down by itself. A red trace means a recovery is needed; it normally follows within seconds.</p><p>From the bench map of the unlocked loop (BRINGUP_LOG 4.12).</p>"},
  {id:"constellation", title:"Constellation (slow)", kind:"scatter",
   help:"<p>The received signal's I and Q, one dot per reading (slow: each reading averages about a millisecond). The rings mark where the idle carrier should sit when locked: on the horizontal axis, left or right.</p><p class='k'>Good: a tight cluster on a ring.</p><p><b>A smear around a circle</b>: not locked (the oscillator beats against the carrier). <b>A cluster near the middle</b>: no carrier, or data running (data averages out on this slow reading). The real constellation at the symbol rate needs the next board's fast I/Q converter.</p>"},
- {id:"interference", title:"Interference in the band", unit:"dB", get:r=>r.det&&r.det.peak_inr_db, lo:-5, hi:45, arrow:"down",
-  bands:[[-5,10,"good"],[10,25,"warn"],[25,45,"bad"]],
-  help:"<p>The strongest burst of power in the link's band lately, in dB over the receiver's own noise. It includes our own carrier, so it is never zero.</p><p class='k'>Good: low (green).</p><p><b>High:</b> something else transmits nearby in the band (WiFi, phones, radars). Move it, move the antennas, or choose another carrier frequency.</p><p>Bands provisional: to be set from the weekend's interference tests.</p>"},
+ {id:"interference", title:"Unwanted power (interference, or not locked)", unit:"dB", get:r=>r.det&&r.det.log_inr_db, lo:0, hi:60, arrow:"down",
+  bands:[[0,26,"good"],[26,35,"warn"],[35,60,"bad"]],
+  help:"<p>The average power on the receiver's Q arm, in dB over the receiver's own noise. Locked, the carrier sits on the I arm and Q holds only noise and whatever else is on the air: about 21 dB on the bench. Two things raise it: an interferer in the band, or the loop not being locked (then the carrier beats through Q: about 54 dB).</p><p class='k'>Good: low (green).</p><p><b>High while the status says Locked:</b> something else transmits nearby in the band (WiFi, phones, radars): move it, move the antennas, or choose another carrier frequency. <b>High while Lost:</b> that is the lost lock itself.</p><p>Bands provisional, from the bench's locked (20.8-23.9 dB) and lost (about 54 dB) readings, 2026-10-31.</p>"},
  {id:"hold", title:"Time spent riding out interference", unit:"%", get:r=>r.hold_pct, lo:0, hi:100, arrow:"down", symlog:1, ticks:[0,1,10,100],
   bands:[[0,1,"good"],[1,10,"warn"],[10,100,"bad"]],
   help:"<p>The share of the last second the interference hold kept the loop frozen.</p><p class='k'>Good: under 1 % (green).</p><p>The hold keeps a strong interferer from dragging the loop off, but while held the link's decisions slowly lose their phase, so long holds cost data. <b>Often high:</b> a persistent interferer nearby.</p>"},
@@ -387,7 +398,7 @@ function drawScatter(p) {
   const ref = last && last.leg_ref_mv ? last.leg_ref_mv / 1000 : 0.16;
   for (const sgn of [-1, 1]) { g.strokeStyle = C.good; g.lineWidth = 2; g.beginPath(); g.arc(cx + sgn * ref * sc, cy, 0.035 * sc, 0, 7); g.stroke(); }
   const t0 = Date.now() / 1000 - Math.min(span, 120);
-  for (const r of hist) { if (r.t < t0 || !r.adc || !r.slow_now) continue; const i = r.adc.I - 1.63, q = r.adc.Q - 1.63;
+  for (const r of hist) { if (r.t < t0 || !r.adc || !r.slow_now) continue; const i = r.adc.I - (r.i0 || 1.6535), q = r.adc.Q - (r.q0 || 1.628);
     g.fillStyle = C[stateColour(r.state)]; g.globalAlpha = 0.75; g.beginPath(); g.arc(cx + i * sc, cy - q * sc, 3.5, 0, 7); g.fill(); g.globalAlpha = 1; }
   document.getElementById("v_" + p.id).textContent = "";
   document.getElementById("x_" + p.id).textContent = "the last " + Math.min(span, 120) / 60 + " min of slow readings; rings: where the locked, idle carrier sits";
@@ -403,9 +414,18 @@ function status() {
   document.getElementById("why").textContent = s[2]; document.getElementById("todo").textContent = s[3];
   const since = r.state_since ? Math.round(Date.now() / 1000 - r.state_since) : null;
   const dr = r.driving || {}, ago = dr.t ? Math.round(Date.now() / 1000 - dr.t) : null;
-  document.getElementById("small").textContent = (since != null ? "in this state for " + dur(since) + ". " : "") +
-     (ago != null && ago < 30 ? "Being driven now by " + dr.peer + " (" + (dr.name || dr.op) + ")." : "No program is driving the board.") +
-     (r.error ? " Detail: " + r.error : "");
+  const L = r.linkd, rec = !L ? "Automatic recovery: not running on this board." :
+     "Automatic recovery: " + L.mode + ". " + L.losses + " loss" + (L.losses == 1 ? "" : "es") + ", " + L.recoveries + " recovered" +
+     (L.failed ? ", " + L.failed + " failed tries" : "") + (L.last_recovery_s != null ? " (the last in " + L.last_recovery_s.toFixed(1) + " s)" : "") +
+     (L.next_try_in_s != null ? "; trying again in " + Math.round(L.next_try_in_s) + " s" : "") + ".";
+  document.getElementById("small").textContent = (since != null ? "In this state for " + dur(since) + ". " : "") +
+     (ago != null && ago < 30 ? "Being driven now by " + dr.peer + " (" + (dr.name || dr.op) + "). " : "No program is driving the board. ") +
+     rec + (r.error ? " Detail: " + r.error : "");
+  if (L && L.mode == "recovering") { document.getElementById("word").textContent = "Recovering";
+     document.getElementById("why").textContent = "The link was lost; the board is bringing it back by itself (it re-centres its loop and starts it just above the carrier).";
+     document.getElementById("todo").textContent = "Wait a few seconds."; }
+  if (L && L.mode == "backing off") { document.getElementById("todo").textContent =
+     "The automatic recovery could not find the carrier and will try again. Check that the other board is on and transmitting, and that the antennas face each other."; }
   document.getElementById("meta").textContent = "firmware " + (r.id || "?") + (r.rx_mhz ? ", carrier " + r.rx_mhz + " MHz" : "") +
      (r.dsa_db != null ? ", attenuator " + r.dsa_db + " dB" : "") + ", updated " + new Date(r.t * 1000).toLocaleTimeString();
 }

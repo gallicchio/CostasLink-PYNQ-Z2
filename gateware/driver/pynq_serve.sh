@@ -8,4 +8,5 @@ for f in /etc/profile.d/pynq_venv.sh /etc/profile.d/xrt_setup.sh; do
     [ -f "$f" ] && source "$f"
 done
 cd "$(dirname "$0")" || exit 1
-exec python3 netbus.py serve --dashboard 8080 "$@"     # the status page on port 8080 (dashboard.py)
+exec python3 netbus.py serve --dashboard 8080 --linkd "$@"     # the status page on port 8080 (dashboard.py), the
+                                                              # automatic recovery while no client drives (linkd.py)
