@@ -65,6 +65,7 @@ class Server:
         self.lock = threading.Lock()
         self.t0 = time.time()
         self.requests = 0
+        self.last = {"peer": None, "op": None, "name": None, "t": None}   # who drove the board last (the dashboard shows it)
         try:
             self.driver = driver_id(sys.modules[type(cl).__module__].__file__)
         except (OSError, AttributeError, KeyError):
@@ -123,11 +124,13 @@ class Server:
             return [self.op(r) for r in req["ops"]]
         raise ValueError("unknown op %r" % (op,))
 
-    def handle_line(self, line):
+    def handle_line(self, line, peer=None):
         try:
             req = json.loads(line)
             with self.lock:
                 self.requests += 1
+                if req.get("op") != "ping":
+                    self.last = {"peer": peer, "op": req.get("op"), "name": req.get("name") or req.get("reg"), "t": time.time()}
                 result = self.op(req)
             return json.dumps({"ok": True, "result": result}, default=_jsonable)
         except Exception as e:                                       # noqa: BLE001 - every error goes back to the caller
@@ -146,7 +149,7 @@ class Server:
                 for raw in self.rfile:
                     line = raw.decode("utf-8", "replace").strip()
                     if line:
-                        self.wfile.write((server.handle_line(line) + "\n").encode())
+                        self.wfile.write((server.handle_line(line, peer) + "\n").encode())
                         self.wfile.flush()
                 if not quiet:
                     print("disconnect", peer, flush=True)
@@ -157,7 +160,14 @@ class Server:
 
         return TCP((bind, port), Handler)
 
-    def serve(self, bind="0.0.0.0", port=PORT):
+    def serve(self, bind="0.0.0.0", port=PORT, dashboard=None):
+        """dashboard: a port for the read-only status page (dashboard.py), or None"""
+        if dashboard:
+            try:
+                from dashboard import Dashboard
+                Dashboard(self, port=dashboard).start()
+            except Exception as e:                                   # noqa: BLE001 - the driver is served regardless
+                print("no dashboard: %s: %s" % (type(e).__name__, e), flush=True)
         with self.tcp_server(bind, port) as tcp:
             print("CostasLink netbus on %s:%d (%s)" % (bind, port, json.dumps(self.cl.info(), default=_jsonable)),
                   flush=True)
@@ -287,6 +297,7 @@ def main():
     s.add_argument("--sim", action="store_true", help="serve the RTL simulation instead (no board, no pynq)")
     s.add_argument("--bind", default="0.0.0.0")
     s.add_argument("--port", type=int, default=PORT)
+    s.add_argument("--dashboard", type=int, default=None, metavar="PORT", help="also serve the status page (dashboard.py)")
     p = sub.add_parser("ping", help="on the PC: is the server there, and what does the board say")
     p.add_argument("host")
     p.add_argument("--port", type=int, default=PORT)
@@ -299,7 +310,7 @@ def main():
         else:
             from costaslink import PynqBus
             bus = PynqBus(a.bit, download=not a.no_download)
-        Server(CostasLink(bus)).serve(a.bind, a.port)
+        Server(CostasLink(bus)).serve(a.bind, a.port, dashboard=a.dashboard)
     else:
         with NetBus(a.host, a.port, timeout=10) as nb:
             print(json.dumps(nb.ping(), indent=1))
