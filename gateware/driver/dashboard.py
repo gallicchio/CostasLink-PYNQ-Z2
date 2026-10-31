@@ -290,7 +290,7 @@ class Dashboard:
             self.vc_lock = vc if self.vc_lock is None else 0.95 * self.vc_lock + 0.05 * vc
             if abs(di) > 0.05 and r.get("ber") is None:
                 self.leg_ref = abs(di) if self.leg_ref is None else 0.9 * self.leg_ref + 0.1 * abs(di)
-        if off is not None:
+        if off is not None and st != "held":        # held, a program sets VC (and re-centres it at 5.8 GHz): no offset
             r["off_khz"] = off
         r["vc_lock"] = self.vc_lock
         r["leg_ref_mv"] = self.leg_ref * 1e3 if self.leg_ref else None
