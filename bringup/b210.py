@@ -185,6 +185,7 @@ class Stream:
         self.sent = 0
         self.error = None
         self.underflows = 0                              # UHD's async reports: gaps in what went out
+        self.t_first = None                              # time.time() of the first buffer handed to UHD
 
     def shape(self, base):
         """complex baseband (unit scale) to the buffer streamed: amp times it, shifted by park_hz; the length is cut to a
@@ -233,6 +234,8 @@ class Stream:
         md = self.b.uhd.types.TXMetadata()
         try:
             while not self._stop.is_set():
+                if self.t_first is None:
+                    self.t_first = time.time()
                 self.sent += self._tx.send(self._buf, md)
         except Exception as e:                               # noqa: BLE001
             self.error = str(e)

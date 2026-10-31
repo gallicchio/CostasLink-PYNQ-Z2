@@ -30,7 +30,8 @@ OUT = os.path.join(HERE, "data", "board_A", "holds")
 
 class Holds(BL.Link):
     def trace(self, st, t_on, dur, on_fn, off_fn, post=2.5, pre=0.5):
-        """VC from pre before the event to post after it; on_fn at t_on, off_fn dur later"""
+        """VC from pre before the event to post after it; on_fn at pre (it may return the event's true start, a
+        time.time(): the B210's stream starts sending inside its setup, before start() returns), off_fn dur later"""
         cl = self.cl
         rows = []
         t0 = time.time()
@@ -38,8 +39,8 @@ class Holds(BL.Link):
         while True:
             t = time.time() - t0
             if state == 0 and t >= pre:
-                on_fn()
-                t_ev = time.time() - t0
+                t_true = on_fn()
+                t_ev = (t_true if t_true else time.time()) - t0
                 state = 1
             elif state == 1 and t >= t_ev + dur:
                 off_fn()
@@ -73,6 +74,7 @@ class Holds(BL.Link):
                 def on():
                     sm["s"] = Stream(self.bb, mhz + off, 86, rate=4e6, park_hz=-1e6, amp=0.7)
                     sm["s"].start(np.ones(4000))
+                    return sm["s"].t_first
 
                 def off_():
                     sm["s"].stop()
