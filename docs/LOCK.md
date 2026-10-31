@@ -31,6 +31,9 @@ the bench's record is [`bringup/BRINGUP_LOG.md`](../bringup/BRINGUP_LOG.md) rows
    the oscillator at the carrier's frequency, and the loop is locked again within milliseconds of the release.
    Two holds now do this in the gateware, each switched and tuned from software: the **interference hold** and the
    **signal holdover** (section 7).
+5. A hold cannot undo a loss. The board notices one by itself (the oscillator's control voltage far from the lock)
+   and recovers it: re-centre the loop, start it just above the carrier, let it come down into the lock. It takes
+   about two seconds, with nobody there (section 8).
 
 Contents: [1 The loop](#1-the-loop-and-what-lock-means) ·
 [2 The S-curve](#2-the-detectors-s-curve-the-restoring-force) ·
@@ -39,10 +42,11 @@ Contents: [1 The loop](#1-the-loop-and-what-lock-means) ·
 [5 The drag in time](#5-what-the-drag-looks-like) ·
 [6 Why it stays lost](#6-why-a-dragged-loop-stays-lost) ·
 [7 The holds](#7-holding-on-the-two-holds-in-the-gateware) ·
-[8 Robustness](#8-what-else-makes-a-loop-robust) ·
-[9 The decisions](#9-the-decisions-are-a-separate-matter) ·
-[10 Reproducing it](#10-reproducing-everything) ·
-[11 Glossary](#11-glossary)
+[8 Coming back by itself](#8-coming-back-by-itself-the-boards-own-recovery) ·
+[9 Robustness](#9-what-else-makes-a-loop-robust) ·
+[10 The decisions](#10-the-decisions-are-a-separate-matter) ·
+[11 Reproducing it](#11-reproducing-everything) ·
+[12 Glossary](#12-glossary)
 
 ---
 
@@ -354,7 +358,85 @@ cl.ihold_state(), cl.shold_state()   # on, holding now, the last window's count,
 * The counters say what happened: a deployment can log `holds` and `seconds` per minute as a measure of how hostile
   the band was.
 
-## 8. What else makes a loop robust
+### 7.6 What a hold costs, and where it does harm
+
+The weekend's tests (BRINGUP_LOG 4.13-4.14) found the limits of holding.
+
+* **A hold costs the decisions.** The hold does not stop the link's decisions, but while the loop is frozen the
+  receiver's oscillator walks off the carrier's phase (about 0.1 rad in 6 ms): A3's decisions start failing some
+  50 ms into a hold. Under bursts of noise (WiFi's frames) every burst re-armed the hold within its 20 ms release, so
+  it held for most of each 3 s train, and A3 got 1 000-17 000 of 20 000 events right, against 21 000-32 000 with no
+  hold at all. **Noise bursts do not drag the loop** (only a CW's steady beat does, section 3), so the free loop
+  rides them out: holding there only costs.
+* **Near the carrier it does harm.** A CW within about 50 kHz beats too slowly for the busy rule's 2.56 µs windows
+  (it was built for beats of 1 MHz and more) and trips it only now and then, in the chatter at its slow crossings.
+  At 5.0 GHz the locked loop rides a full-power CW 2-50 kHz off by itself (72 of 72 over the weekend); with the hold
+  tripping and releasing, it lost 10 of 12, each short release letting the CW pull the loop a little further off.
+* **It must start at once.** A strong CW drags the loop up to about 340 kHz in a millisecond (the error at its rail).
+  Waiting for half a millisecond of sustained busy windows (ID version 7's `RX_IHOLD_PERSIST`) ignored the bursts,
+  but let 11 of 40 dragging CWs pull the loop past the watershed before the hold began; waiting 20 µs kept 79 of 80.
+* **So the release, not the start, is the lever.** ID version 8 scales it to how long the windows were busy
+  (`RX_IHOLD_PERSIST[19:16]`): a 100 µs burst costs a half-millisecond hold, a near CW's chatter microseconds, a long
+  CW holds to its end plus 20 ms. Its measurement under bursts is the next test. Until then the board runs with the
+  interference hold **off**, and relies on the recovery of section 8, which brings back whatever the hold would have
+  saved, in about two seconds.
+
+## 8. Coming back by itself: the board's own recovery
+
+Holds make losses rarer. They cannot undo one: the false lock, the rail and a drag all leave the loop where only a
+person, or a program, can get it out. These boards run unattended, looked after by people who do not know what a
+PLL is (Jason, 2026-10-31: "this part just needs to work reliably without intervention"), so the board does it
+itself.
+
+### 8.1 The rule
+
+* **Notice.** The board looks at the lock five times a second: locked when CMP_I is quiet with the I leg up, or when
+  both Q windows are quiet (the link's own data moves along I only). It calls the link lost when the oscillator's
+  control voltage VC has been more than 8 kHz from where it sits when locked for half a second. Judging on VC, not on
+  the comparators, is the lesson of the tests: noise bursts make the comparators chatter while the loop rides them
+  out with VC at the lock, and a first version recovered once in every train of bursts for nothing. Every real loss
+  moves VC tens of kHz (the false lock 45, the rail hundreds), and a lost loop cannot stay within 8 kHz of the lock,
+  where it pulls in (section 6's map).
+* **Recover.** Hold the loop; re-centre its integrator (both synthesizers moved away from any carrier, to 5.8 GHz,
+  and the trims used to walk it to mid-scale); back to the link's frequency and attenuation; VC 20 kHz **above** the
+  last lock; release. From above, the unlocked loop always comes down into the lock: the map again. If that start
+  fails, 40, 70 and 120 kHz above. If none locks (the far board off, the path blocked), wait 5 s, doubling to a minute,
+  and try again.
+
+### 8.2 Measured
+
+| test | result |
+|---|---|
+| every loss the bench can force (the false lock, the rail, the carrier gone 1-60 s, full-power CW drags), from the PC, at 5.0, 5.2 and 5.5 GHz | **171 of 171 back, 1.7-3.0 s, first start every time** (BRINGUP_LOG 4.15) |
+| trains of noise bursts (10 µs-1 ms, up to the beacon rhythm) | no needless recovery in 18 of 18 once judged on VC |
+| the same, the recovery running on the board itself with nobody driving it | **23 of 23 back, 1.3-5.4 s** (4.16) |
+| the B210's random interference for 15 minutes, nothing touching the board | 12 disturbances, 2 losses, both back by themselves (4.17); the 20-hour run is going |
+| the board's server started with nothing else touching it | the link set up and locked **15 s** later (4.17) |
+
+### 8.3 On the board
+
+The recovery is `gateware/driver/linkd.py`, running inside the board server on the PYNQ (`netbus.py serve --linkd`),
+which is itself the PYNQ's boot service (`costaslink-netbus`): power the PYNQ and the CostasLink board, and the
+server starts, loads the overlay, reads `link.json` beside it (the carrier frequency, its null, the target level) and
+sets the link up by itself, then watches it. **Whoever drives the board owns it**: linkd acts only after a minute with
+no request that changes anything (looking does not count), and leaves a loop that a program has deliberately held
+alone, so it never fights a test or a person. On rev A the recovery has to live in software, because re-centring the
+integrator needs the synthesizers retuned; with an integrator reset switch (REVB U4) the gateware could do it alone,
+in milliseconds.
+
+### 8.4 What an operator sees
+
+* **The status page**, `http://<the PYNQ>:8080/` on the lab network: a status card in words (the state, its likely
+  cause, what to do, who is driving the board, what the recovery is doing and its counts); plots with a help button,
+  an arrow on each axis pointing the good way and green, yellow and red bands; a coarse constellation; and *What
+  happened*, the losses and recoveries in words, newest first. It only reads, between the server's requests, so it
+  never disturbs a test.
+* **The PYNQ-Z2's own LEDs** (ID version 8, `gateware/lockmon.v`, the board's own judgement every 10 ms): LD0 locked,
+  LD1 lost (blinking), LD2 no carrier, LD3 a hold, LD4 green / red / yellow / blue for locked / lost / unsure / held,
+  LD5 blue while the board is recovering. The next board should have its own, with a signal-strength bar driven by
+  hardware, for pointing antennas without a laptop (REVB U1).
+
+## 9. What else makes a loop robust
 
 Seen through the S-curve, robustness is two numbers: how much restoring force survives an interferer, and how much
 push the interferer can create. Everything else is what to do once the loop has been pushed off anyway.
@@ -363,7 +445,7 @@ push the interferer can create. Everything else is what to do once the loop has 
 |---|---|---|---|
 | hold during interference | rev A gateware (`ihold.v`) | the push has nothing to act on while it lasts | 24 of 24 by hand (4.5); 40 of 40 in gateware (4.8b) |
 | hold while the carrier is gone | rev A gateware (`ihold.v`, LEVEL 1) | the LO stays on the carrier's frequency | 4 of 4 (4.8, 4.8a, 4.8b) |
-| know when you are lost, then search | rev A gateware (next) | recovery in tens of ms instead of never | 52 of 52 offsets by a downward sweep from the PC (3.9j); 96 of 96 recoveries (3.9f); REVB 21, 25 |
+| know when you are lost, then recover | rev A, the board's own software (`linkd.py`, section 8); the lock's state in gateware (`lockmon.v`) | recovery in seconds instead of never, with nobody there | 171 of 171 from the PC, 23 of 23 on the board itself (4.15, 4.16); with REVB U4, in gateware alone |
 | keep interferers away from the limiter | rev B | the loop needs a few kHz but its detector sees the arms' 94 MHz; a narrower, matched I/Q filter feeding the detector alone (the decisions keep the wide arms) stops most out-of-channel interferers reaching the comparator | the thresholds of section 4; REVB 27 |
 | remove the push | rev B | match the delay from the arms to U110 on the sign(I) and Q paths, and the push vanishes, leaving the capture effect | the model, section 3 |
 | null the offsets | rev B | one mid-point for the arms and the integrator removes the common 4-5 V/s downward drift, leaving the detector's 2.4-2.8 V/s toward the carrier on both sides: a dragged loop should come back by itself from either side, though the false locks near the carrier may move rather than vanish | section 6 (measured); REVB 17, 18 |
@@ -371,7 +453,7 @@ push the interferer can create. Everything else is what to do once the loop has 
 | the detector | design trade | a hard limiter gives a gain independent of level (it locks over 15 dB without retuning, and rides 25 dB fades) but hands the sign to the stronger signal; a linear multiplier (I·Q) has no capture effect, but its gain goes as the signal squared, so fades change the loop's dynamics | sections 2-3 |
 | loop bandwidth | design trade | wider: a larger pull-out range and a faster re-lock, but more noise in and a denser false-lock structure; it moves the drag threshold little (a ratio of two averaged forces), only how fast the drag happens | |
 
-## 9. The decisions are a separate matter
+## 10. The decisions are a separate matter
 
 The holds protect the lock. The link's decisions suffer earlier and are a different problem (BRINGUP_LOG 4.3, 4.3a,
 round 2's BER segments): with the windows at 0.5 a, A3's events are first lost (erased, not wrong) from about −16 dB,
@@ -381,23 +463,27 @@ about +1 dB, where the interferer takes the sign. The slow comparators' confirm 
 decisions almost one for one, but not a CW within a megahertz. Coding, the windows' placement and the slow path's
 use are the levers there, not the loop.
 
-## 10. Reproducing everything
+## 11. Reproducing everything
 
 | what | how | data |
 |---|---|---|
 | the decision ladder, the near-carrier capture, pulses, the pull and its held variant | `python3 bringup/weekend.py rounds` (pieces `decide`, `capture`, `pulses`, `pull`, `pullhold`, `pullauto`, `iholdcheck`) | `bringup/data/board_A/weekend/` |
 | the drag in time, the pull-out | `python3 bringup/explain_tests.py drag`, `pullout` | `bringup/data/board_A/explain/` |
 | the gateware's holds | `python3 bringup/holds_tests.py holds` | `bringup/data/board_A/holds/` |
+| the map of the unlocked loop, the push against the trims | `python3 bringup/weekend.py once --pieces pullin pushscan pushq` | `bringup/data/board_A/weekend/` |
+| the holds near the carrier and under bursts | `weekend.py rounds` (`captureauto`, `captureauto2`-`5`, `pulsesauto`, `pulsesauto2`, `pulsesauto4`, `pullauto3`-`5`) | `bringup/data/board_A/weekend/` |
+| the recovery, from the PC and on the board | `python3 bringup/autolock.py abuse`, `autolock.py linkd`; `gateware/driver/linkd.py` | `bringup/data/board_A/autolock/` |
+| unattended, with random interference | `python3 bringup/unattended.py --mhz 5200 --hours H` (the link set up by linkd or `bringup/linkup.py`) | `bringup/data/board_A/unattended/` |
 | the B210 (interferer, carrier, receiver) | `bringup/b210.py`, `bringup/b210link.py` | |
 | the model | `python3 bringup/loopmodel.py` | `bringup/data/board_A/model/` |
 | the figures of this note | `python3 docs/lock_figures.py` | `docs/images/lock_*.png` |
-| the gateware | `gateware/ihold.v`, `gateware/tb_ihold.v` (`iverilog -g2005 -o tb_ihold.vvp tb_ihold.v ihold.v && vvp tb_ihold.vvp`), `gateware/tb_engines.v` | |
+| the gateware | `gateware/ihold.v`, `gateware/tb_ihold.v` (`iverilog -g2005 -o tb_ihold.vvp tb_ihold.v ihold.v && vvp tb_ihold.vvp`), `gateware/lockmon.v`, `gateware/tb_lockmon.v`, `gateware/tb_engines.v` | |
 
 The bench for all of it: board A, four FPV antennas within 30-40 cm, the board's TX ANT and RX ANT and the B210's RF A
 TX/RX and RX2; the interferer's level at the receiver from the B210's gain by the calibration of BRINGUP_LOG 4.0
 (about −6.4 dB at gain 70, +3.2 at 80, +11.4 at 89.75, ±3 dB).
 
-## 11. Glossary
+## 12. Glossary
 
 * **S-curve** (detector characteristic): the detector's average output against the phase error. Its zeros with the
   right slope are the locks; its height is the restoring force.
