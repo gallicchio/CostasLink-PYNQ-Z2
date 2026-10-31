@@ -16,12 +16,14 @@ the B210 reaching -23 to +11 dB of the carrier there (BRINGUP_LOG 4.0).
         capture   a CW near the carrier (-50..+50 kHz, the B210's own LO leak parked 2 MHz away): the lock during (VC:
                   does the loop go to the interferer?) and after
         captureauto capture with the gateware's interference hold on (BRINGUP_LOG 4.11: at 5.5 GHz a full-power CW
-                  within +-50 kHz drags the free loop off for good)
+                  within +-50 kHz drags the free loop off for good); captureauto2 the same with a 200 ms release;
+                  captureauto3 with the busy rule blind to slow beats (a 1024-clock window, thresh 32)
         pulses    10 us every 1 ms and 100 us every 10 ms at full power: the lock, A3's errors
         pull      a CW 0.1-40 MHz above and below the carrier, gain 74-89.75: is the loop dragged off (VC, the I leg),
                   and does it come back by itself when the CW stops, how fast (added after round 1: BRINGUP_LOG 4.3)
         pullhold  pull's worst cases with the loop held (LOOP_HOLD) through the CW: what an interference hold saves
-        pullauto  pull's dragging cases with the gateware's interference hold on (ID version 5)
+        pullauto  pull's dragging cases with the gateware's interference hold on (ID version 5); pullauto3 the same
+                  with the busy rule blind to slow beats
         iholdcheck the interference hold on through A3's events, BPSK data and quiet: it must not trigger
         segcheck  the BPSK BER's 50 ms segments with nothing sent, each with the lock read before and after
         eye       CMP_I against the TX's own pins during PRBS at 50 and 25 Mbaud: the latency, the eye, the rising and
@@ -192,9 +194,9 @@ class Weekend(O.OTA):
 
     # ---- a CW near the carrier ----
     def capture(self, mhz, offs_khz=(-50, -30, -20, -10, -5, -2, 2, 5, 10, 20, 30, 50), gains=(70, 80, 89.75), park_mhz=2.0,
-                auto=False):
-        """auto: the gateware's interference hold on through each CW, the lock after polled for 3 s as pull's
-        (captureauto)"""
+                auto=False, ihold_kw=None):
+        """auto: the gateware's interference hold on through each CW (ihold_kw: its settings, the driver's defaults if
+        None), the lock after polled for 3 s as pull's (captureauto, captureauto2)"""
         out = {"mhz": mhz, "runs": []}
         st = self.ready(mhz)
         if st is None:
@@ -209,7 +211,7 @@ class Weekend(O.OTA):
                 vc_before = self.cl.adc("VC")
                 if auto:
                     self.cl.rx_clear()
-                    self.cl.ihold(True)
+                    self.cl.ihold(True, **(ihold_kw or {}))
                 th = self.bg(self.bb.tone, mhz + park_mhz, gain=g, seconds=3.0, offset_hz=k * 1e3 - park_mhz * 1e6, rate=5e6)
                 time.sleep(1.0)
                 o = self.observe(st["cen"], st["a"], side0=st["side"])
@@ -228,7 +230,7 @@ class Weekend(O.OTA):
                 else:
                     time.sleep(0.4)
                     after = self.observe(st["cen"], st["a"], side0=st["side"])
-                row = {"gain": g, "off_khz": k, "auto": auto, "ihold": ih, "t_back": t_back, "during": o, "after": after,
+                row = {"gain": g, "off_khz": k, "auto": auto, "ihold_kw": ihold_kw, "ihold": ih, "t_back": t_back, "during": o, "after": after,
                        "vc_before": vc_before, "vc_during": vc_during, "dvc_khz": (vc_during - vc_before) * self.kv(mhz) / 1e3}
                 out["runs"].append(row)
                 print("%d capture%s CW %+3d kHz gain %5.2f: during %s (VC moved %+.1f kHz, LOG_Q %.3f); after %s%s" % (
@@ -248,6 +250,23 @@ class Weekend(O.OTA):
         if not getattr(self.cl, "ihold_ok", False):
             return {"mhz": mhz, "skipped": "this overlay has no interference hold"}
         return self.capture(mhz, gains=(80, 89.75), auto=True)
+
+    def captureauto2(self, mhz):
+        """captureauto with the hold released 200 ms after the last busy window instead of 20 ms.  A CW 30-50 kHz off
+        beats with a 20-33 us period, far slower than the busy rule's 2.56 us windows (built for beats of 1 MHz and
+        more), so it reads busy only in the comparators' chatter at its crossings: at 5.0 GHz the 20 ms release let the
+        full-power CW 30 and 50 kHz below drag the loop 40-45 kHz down between 8-12 holds (BRINGUP_LOG 4.13)"""
+        if not getattr(self.cl, "ihold_ok", False):
+            return {"mhz": mhz, "skipped": "this overlay has no interference hold"}
+        return self.capture(mhz, gains=(80, 89.75), auto=True, ihold_kw={"hold_s": 0.2})
+
+    def captureauto3(self, mhz):
+        """captureauto with the busy rule blind to slow beats (SLOW_BLIND): at 5.0 GHz the free loop rides out every
+        full-power CW within 50 kHz (72 of 72, VC unmoved) but the default hold, tripped now and then by the chatter at
+        the slow beat's crossings, lost 10 of 12 (BRINGUP_LOG 4.13).  Blind to it, the hold should leave those alone"""
+        if not getattr(self.cl, "ihold_ok", False):
+            return {"mhz": mhz, "skipped": "this overlay has no interference hold"}
+        return self.capture(mhz, gains=(80, 89.75), auto=True, ihold_kw=self.SLOW_BLIND)
 
     # ---- pulses ----
     def pulses(self, mhz, shapes=((10e-6, 1e-3), (100e-6, 10e-3), (1e-3, 20e-3)), gains=(80, 89.75), reps=3):
@@ -281,7 +300,7 @@ class Weekend(O.OTA):
 
     # ---- the pull: a strong CW above and below the carrier ----
     def pull(self, mhz, offs_mhz=(0.1, 0.3, 1.0, 2.0, 5.0, 10.0, 20.0, 40.0), gains=(74, 77, 80, 83, 86, 89.75), seconds=3.0,
-             hold=False, auto=False):
+             hold=False, auto=False, ihold_kw=None):
         """the lock during a CW at +-offs_mhz and how it comes back (round 1's decide: a CW 5-20 MHz above at +1..+3 dB
         dragged VC to its rail, and the loop came back by itself, drifting down through the carrier; one dragged below
         would not): VC and the I leg's DC three times during (dragged off: I ~ 0 and VC away from the lock), then after
@@ -303,7 +322,7 @@ class Weekend(O.OTA):
                     vc0 = self.cl.adc("VC")
                     if auto:
                         self.cl.rx_clear()
-                        self.cl.ihold(True)
+                        self.cl.ihold(True, **(ihold_kw or {}))
                     if hold:
                         self.cl.ctrl(loop_hold=1)
                         time.sleep(0.2)
@@ -328,7 +347,8 @@ class Weekend(O.OTA):
                     if auto:
                         ih = self.cl.ihold_state()
                         self.cl.ihold(False)
-                    row = {"off_mhz": sgn * off, "gain": g, "hold": hold, "auto": auto, "ihold": ih, "vc0": vc0, "during": during, "lost_during": lost,
+                    row = {"off_mhz": sgn * off, "gain": g, "hold": hold, "auto": auto, "ihold_kw": ihold_kw, "ihold": ih, "vc0": vc0,
+                           "during": during, "lost_during": lost,
                            "dvc_khz": [(d["vc"] - vc0) * self.kv(mhz) / 1e3 for d in during], "polls": polls, "t_back": t_back,
                            "after": polls[-1][1] if polls else None}
                     out["runs"].append(row)
@@ -352,6 +372,16 @@ class Weekend(O.OTA):
         if not getattr(self.cl, "ihold_ok", False):
             return {"mhz": mhz, "skipped": "this overlay has no interference hold"}
         return self.pull(mhz, offs_mhz=(1.0, 5.0, 10.0, 20.0, 40.0), gains=(80, 83, 86, 89.75), auto=True)
+
+    SLOW_BLIND = {"window": 1024, "thresh": 32}
+
+    def pullauto3(self, mhz):
+        """pullauto with the busy rule blind to slow beats (SLOW_BLIND: 16 changes of each Q window comparator in 10.24
+        us; a beat of 1 MHz gives about 20, the chatter at a 30-50 kHz beat's crossings a few): does it still catch the
+        dragging CWs of 1-40 MHz?"""
+        if not getattr(self.cl, "ihold_ok", False):
+            return {"mhz": mhz, "skipped": "this overlay has no interference hold"}
+        return self.pull(mhz, offs_mhz=(1.0, 5.0, 10.0, 20.0, 40.0), gains=(80, 83, 86, 89.75), auto=True, ihold_kw=self.SLOW_BLIND)
 
     def iholdcheck(self, mhz):
         """the interference hold must leave the link alone: on through A3's 20 000 events, 25 Mbaud BPSK and 20 s of
@@ -724,8 +754,8 @@ def main(argv):
     ap.add_argument("what", choices=["baseline", "rounds", "once"])
     ap.add_argument("--hours", type=float, default=60.0)
     ap.add_argument("--quiet-min", type=float, default=60.0)
-    ap.add_argument("--pieces", nargs="*", default=["decide", "capture", "captureauto", "pulses", "pull", "pullhold", "pullauto", "iholdcheck",
-                                                    "segcheck", "eye", "b210cdr"])
+    ap.add_argument("--pieces", nargs="*", default=["decide", "capture", "captureauto", "captureauto2", "captureauto3", "pulses", "pull",
+                                                    "pullhold", "pullauto", "pullauto3", "iholdcheck", "segcheck", "eye", "b210cdr"])
     ap.add_argument("--mhz", type=int, nargs="*", default=None, help="once: the carriers (default all three)")
     ap.add_argument("--first", nargs="*", default=None, help="pieces run first in round 1 (at each carrier)")
     a = ap.parse_args(argv)
