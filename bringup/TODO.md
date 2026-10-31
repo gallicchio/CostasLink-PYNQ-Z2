@@ -34,6 +34,23 @@ experiments; pictures, not one-word states, each with what led to it and how to 
    monitor and the PYNQ-Z2's LEDs in ID 8 (`lockmon.v`, building); 3's page v1 at http://192.168.8.142:8080/ (since
    11:07).  Next: `bringup/unattended.py` overnight (the B210 throwing random interference, nothing touching the
    board, linkd and the page doing the work); the page's eye, latency and history plots.
+   **Status 2026-10-31 14:50:** 1 and 2 done on the board (linkd in the boot service, ID 8's lock monitor and LEDs;
+   BRINGUP_LOG 4.16-4.18: 58 random disturbances overnight-style, 18 losses, 18 recovered by linkd).  3 and 4: the
+   page's third version (`gateware/driver/dashboard.html`, re-read at every request): the state from the gateware's
+   judgement and VC ('Interference' apart from 'Lost'), the measured pull-in map with the live loop on it, the S-curve
+   (a model) with the live phase, the slow constellation, the carrier's level at RX ANT and at the demodulator with the
+   band's strongest other power beside it, announced interventions (POST /api/note) on every plot, its history and
+   notes kept across restarts; checked against deliberate disturbances by `bringup/pagecheck.py` (4.19: 11 of 12, the
+   miss the check's own expectation).  Open:
+   * the eye, latency and bit errors need data on the link: the idle link carries none, so those plots stay empty
+     unless a data check runs (rev A's timing recovery and RX_CDR_SKEW); decide whether the deployed link should run a
+     low-duty data check for them
+   * an S-curve measured, not modelled: a slow beat (the loop held, the B210 locked to the board's reference, or the
+     SDS2104X on I, Q and ERR at once)
+   * the page's log on the PYNQ's SD card grows about 150 MB a day (`~/costaslink_current/dashboard/`): rotate it (a
+     week) before the boards are left
+   * the carrier gone with the holdover off sends VC to its rail in 2 s (4.19), so every interruption costs a recovery
+     when the carrier returns; measure the signal holdover (shold) with linkd and decide whether deployment turns it on
 1. The recovery algorithm proven from the PC first: a lock detector from the comparators, and on a loss the downward
    VC_OFF search from above the carrier (3.9j: 52 of 52); then every failure the bench can make, unattended and
    repeated: parked in the false lock and on the rail, dragged by full-power CWs above and below, the carrier blocked
