@@ -85,6 +85,7 @@ module rx_engine #(
     reg [15:0] ber_phase;
     reg        ber_cdr;                         // RX_BER_CFG[24]: the timing recovered (ber_cdr.v)
     reg [3:0]  ber_gain;                        // [28:25]: its loop's gain, 2^-gain
+    reg        ber_pol;                         // [29]: it tracks the rising edges and centres on the skew (one_pol)
     reg        ih_en;                           // RX_IHOLD_CFG: the interference hold (ihold.v)
     reg [2:0]  ih_wlog;
     reg [7:0]  ih_th;
@@ -284,10 +285,11 @@ module rx_engine #(
     wire signed [15:0] cdr_err;
     wire signed [31:0] cdr_sum;
     wire [31:0]        cdr_edges;
+    wire signed [31:0] cdr_skew;
     ber_cdr #(.SER(SER)) u_cdr (
-        .clk(clk), .rst(rst), .restart(bus_we && bus_addr == R_RX_BER_CFG), .track(1'b1), .d(cmp_i_s),
-        .period(sym_period[15:0]), .offset(ber_phase), .gain(ber_gain),
-        .bit_v(cdr_v), .bit_o(cdr_raw), .err_o(cdr_err), .corr_sum(cdr_sum), .edges(cdr_edges));
+        .clk(clk), .rst(rst), .restart(bus_we && bus_addr == R_RX_BER_CFG), .track(1'b1), .one_pol(ber_pol),
+        .d(cmp_i_s), .period(sym_period[15:0]), .offset(ber_phase), .gain(ber_gain),
+        .bit_v(cdr_v), .bit_o(cdr_raw), .err_o(cdr_err), .corr_sum(cdr_sum), .edges(cdr_edges), .skew(cdr_skew));
     wire        cdr_bit = cdr_raw ^ ber_inv;
 
     // the interference hold: LOOP_HOLD while the chosen comparators chatter (a strong interferer), its counts
@@ -312,9 +314,9 @@ module rx_engine #(
             idle <= 5'b00001; mask <= 5'b00001; dly <= 8'd4; quiet <= 8'd4; cdly <= 8'd6; window <= 32'd100;
             lut <= 128'd0; slow_exp <= 32'd0; hist_what <= 2'd1; hist_shift <= 4'd0; hist_addr <= 10'd0; cm_addr <= 6'd0;
             ber_en <= 1'b0; ber_inv <= 1'b0; ber_poly <= 3'd2; ber_phase <= 16'd0; clr <= 1'b0;
-            ber_cdr <= 1'b0; ber_gain <= 4'd4;
+            ber_cdr <= 1'b0; ber_gain <= 4'd4; ber_pol <= 1'b0;
             ih_en <= 1'b0; ih_wlog <= 3'd5; ih_th <= 8'd8; ih_mask <= 5'b00110;
-            ih_hold <= CLK_HZ / 1000; ih_max <= 5 * CLK_HZ;
+            ih_hold <= CLK_HZ / 50; ih_max <= 5 * CLK_HZ;  // released 20 ms after the last busy window (BRINGUP_LOG 4.8b, 4.9)
             sh_en <= 1'b0; sh_wlog <= 3'd5; sh_th <= 8'd64; sh_mask <= 5'b11110;
             sh_hold <= CLK_HZ / 1000; sh_max <= 10 * CLK_HZ;
             n_events <= 32'd0; n_decided <= 32'd0; n_confirm <= 32'd0; n_veto <= 32'd0; n_false <= 32'd0;
@@ -358,7 +360,7 @@ module rx_engine #(
                 R_RX_HIST_ADDR: hist_addr <= bus_wdata[9:0];
                 R_RX_BER_CFG:  begin ber_en <= bus_wdata[0]; ber_inv <= bus_wdata[1]; ber_poly <= bus_wdata[6:4];
                                      ber_phase <= bus_wdata[23:8]; ber_cdr <= bus_wdata[24];
-                                     ber_gain <= bus_wdata[28:25]; end
+                                     ber_gain <= bus_wdata[28:25]; ber_pol <= bus_wdata[29]; end
                 R_RX_IHOLD_CFG: begin ih_en <= bus_wdata[0]; ih_wlog <= bus_wdata[3:1]; ih_th <= bus_wdata[15:8];
                                       ih_mask <= bus_wdata[20:16]; end
                 R_RX_IHOLD_HOLD: ih_hold <= bus_wdata;
@@ -549,10 +551,11 @@ module rx_engine #(
         R_RX_HIST_ADDR: bus_rdata = {22'd0, hist_addr};
         R_RX_HIST_DATA: bus_rdata = h_rdata;
         R_RX_EVT_TS:   bus_rdata = evt_ts;
-        R_RX_BER_CFG:  bus_rdata = {3'd0, ber_gain, ber_cdr, ber_phase, 1'b0, ber_poly, 2'd0, ber_inv, ber_en};
+        R_RX_BER_CFG:  bus_rdata = {2'd0, ber_pol, ber_gain, ber_cdr, ber_phase, 1'b0, ber_poly, 2'd0, ber_inv, ber_en};
         R_RX_CDR_ERR:  bus_rdata = {{16{cdr_err[15]}}, cdr_err};
         R_RX_CDR_SUM:  bus_rdata = cdr_sum;
         R_RX_CDR_EDGES: bus_rdata = cdr_edges;
+        R_RX_CDR_SKEW: bus_rdata = cdr_skew;
         R_RX_IHOLD_CFG: bus_rdata = {ih_last, 3'd0, ih_mask, ih_th, 3'd0, ih_act, ih_wlog, ih_en};
         R_RX_SHOLD_CFG: bus_rdata = {sh_last, 3'd0, sh_mask, sh_th, 3'd0, sh_act, sh_wlog, sh_en};
         R_RX_SHOLD_HOLD: bus_rdata = sh_hold;

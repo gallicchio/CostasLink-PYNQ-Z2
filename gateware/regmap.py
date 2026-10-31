@@ -113,7 +113,10 @@ REGS = [
                                      "[23:8] the sampling phase (samples into each symbol), symbol length = TX_PERIOD; "
                                      "[24] the timing recovered from CMP_I's edges (ber_cdr.v: a transmitter on another "
                                      "clock), the phase then the sampling point's distance from the edge (period x SER / 2: "
-                                     "mid-symbol), [28:25] the recovery's gain (2^-gain, 4 by default)"),
+                                     "mid-symbol), [28:25] the recovery's gain (2^-gain, 4 by default), [29] it tracks "
+                                     "the rising edges alone and samples half RX_CDR_SKEW later (ID version 6: with "
+                                     "the rising and falling edges apart, both together have a second, false lock "
+                                     "between them)"),
     (0x5D, "RX_BER_BITS", "R", "rx", "bits checked"),
     (0x5E, "RX_BER_ERR", "R", "rx", "mismatches (a self-synchronising check counts each bit error three times)"),
     (0x5F, "RX_INFO", "R", "rx", "[7:0] samples a clock (SER), [15:8] fast inputs, [31:16] the clock in MHz"),
@@ -126,7 +129,7 @@ REGS = [
                                         "{CMP_IN CMP_IP CMP_QN CMP_QP CMP_I} (reset: QP, QN, 256 clocks, 8, off); R [4] holding "
                                         "now, [31:24] the last window's count"),
     (0x74, "RX_IHOLD_HOLD", "RW", "cdr", "clocks the loop stays held after the last triggering window, and the guard after a "
-                                         "release at RX_IHOLD_MAX (reset 1 ms)"),
+                                         "release at RX_IHOLD_MAX (reset 20 ms; 1 ms before ID version 6)"),
     (0x75, "RX_IHOLD_MAX", "RW", "cdr", "the longest hold without a break, clocks (reset 5 s); a hold starts only after a quiet "
                                         "window, so a lost, beating loop is never held"),
     (0x76, "RX_IHOLD_N", "R", "cdr", "holds started since RX_CTRL[1]'s clear"),
@@ -169,6 +172,8 @@ REGS = [
     (0x83, "RX_SHOLD_MAX", "RW", "rx3", "the longest holdover without a break, clocks (reset 10 s)"),
     (0x84, "RX_SHOLD_N", "R", "rx3", "holdovers started since RX_CTRL[1]'s clear"),
     (0x85, "RX_SHOLD_CLK", "R", "rx3", "clocks held since then"),
+    (0x86, "RX_CDR_SKEW", "R", "rx3", "with RX_BER_CFG[29]: CMP_I's falling edges' mean place against its rising ones, "
+                                      "signed, in 1/256 sample (the comparator's duty-cycle distortion; ID version 6)"),
     (0x80, "BUILD", "R", "core", "[7:0] SER, [11:8] board (0 simulation, 1 PYNQ-Z2, 2 Icepi Zero), [12] the fast path is built, "
                                  "[13] the ladder pins are read back into the capture, [14] the reply lane reads the sampler's "
                                  "word a clock early, [15] the synchronous reply registered once more (a clock later), "

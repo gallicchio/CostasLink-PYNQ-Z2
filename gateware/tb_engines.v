@@ -156,7 +156,7 @@ module tb_engines;
         repeat (5) @(posedge clk);
 
         // ---- identification ----
-        rd(R_ID, v); expect("ID", v, 32'h434C0005);
+        rd(R_ID, v); expect("ID", v, 32'h434C0006);
         rd(R_BUILD, v); expect("BUILD", v, {16'd100, RP_REG != 0, 3'b111, 4'd0, 8'd4});   // early lane, read-back, fast path
         rd(R_RX_INFO, v); expect("RX_INFO", v, {16'd100, 8'd6, 8'd4});
 
@@ -325,6 +325,18 @@ module tb_engines;
             $display("FAIL CDR: corrections %0d / 256 samples with one clock", $signed(v)); errors = errors + 1;
         end
         rd(R_RX_BER_CFG, v); expect("RX_BER_CFG read back", v, {3'd0, 4'd4, 1'b1, 16'd4, 1'b0, 3'd2, 2'd0, 1'b0, 1'b1});
+        // and with one_pol (ID version 6, RX_BER_CFG[29]): the rising edges tracked, the falling ones measured: no
+        // errors, and with the simulation's ideal comparators no skew
+        wr(R_RX_BER_CFG, {2'd0, 1'b1, 4'd4, 1'b1, 16'd4, 1'b0, 3'd2, 2'd0, 1'b0, 1'b1});
+        idle_clocks(2000);
+        rd(R_RX_BER_BITS, v); rd(R_RX_BER_ERR, v2);
+        if (v < 900) begin $display("FAIL BER (one polarity): only %0d bits checked", v); errors = errors + 1; end
+        expect("BER (timing recovered, one polarity)", v2, 0);
+        rd(R_RX_CDR_SKEW, v);
+        if ($signed(v) > 256 || $signed(v) < -256) begin
+            $display("FAIL CDR: skew %0d / 256 samples with ideal comparators", $signed(v)); errors = errors + 1;
+        end else $display("ok   CDR skew with ideal comparators: %0d / 256 sample", $signed(v));
+        rd(R_RX_BER_CFG, v); expect("RX_BER_CFG read back (one polarity)", v, {2'd0, 1'b1, 4'd4, 1'b1, 16'd4, 1'b0, 3'd2, 2'd0, 1'b0, 1'b1});
         wr(R_TX_GO, 32'd2); wr(R_RX_BER_CFG, 32'd0);
 
         // ---- the interference hold (ihold.v): the loop released by CTRL, the PRBS put on Q, (+1, +1) / (+1, -1), so

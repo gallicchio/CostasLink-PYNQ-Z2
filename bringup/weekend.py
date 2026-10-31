@@ -21,6 +21,9 @@ the B210 reaching -23 to +11 dB of the carrier there (BRINGUP_LOG 4.0).
         pullauto  pull's dragging cases with the gateware's interference hold on (ID version 5)
         iholdcheck the interference hold on through A3's events, BPSK data and quiet: it must not trigger
         segcheck  the BPSK BER's 50 ms segments with nothing sent, each with the lock read before and after
+        eye       CMP_I against the TX's own pins during PRBS at 50 and 25 Mbaud: the latency, the eye, the rising and
+                  falling edges' places in the symbol; then timing-recovered segments with the recovery's state
+                  (BRINGUP_LOG 4.9: at 5.0 GHz some recovered segments read random bits)
         b210cdr   the B210's BPSK at 1 and 2 Mbaud through the board's timing recovery (ID version 4): the BER, and
                   the two clocks' offset round by round (cdr_tests.py)
         quiet     an hour of the lock watched with nothing sent (drift, the board's own stability)
@@ -43,9 +46,64 @@ sys.path.insert(0, HERE)
 import ota as O                                      # noqa: E402
 import linktests as LT                               # noqa: E402
 import stages as S                                   # noqa: E402
+from costaslink import point_code                    # noqa: E402
 
 OUT = os.path.join(HERE, "data", "board_A", "weekend")
 CARRIERS = (5200, 5000, 5500)
+
+
+def circ_mean(pos, L):
+    """the circular mean of places in a symbol of L samples, wrapped into [-L/2, L/2)"""
+    if len(pos) == 0:
+        return None
+    a = np.asarray(pos, dtype=float) * 2 * np.pi / L
+    m = math.atan2(np.mean(np.sin(a)), np.mean(np.cos(a))) * L / (2 * np.pi)
+    return float((m + L / 2) % L - L / 2)
+
+
+def eye_fold(c, p, max_lag=400):
+    """one capture taken during PRBS BPSK of p clocks a symbol: CMP_I folded against the TX's own I pins (the
+    capture reads the ladder pads back sample for sample).  The latency (samples from the pins' readback to CMP_I) is
+    the lag of best agreement; the TX's symbol boundary is the phase its transitions share; place 0 is that boundary
+    plus the latency.  Returns the eye (per place in the symbol, the fraction of symbols CMP_I reads right), the
+    rising and falling edges' histograms over the places and their circular means, and where ber_cdr.v would sample:
+    its loop sets the frame's start at the mean of all edges (wrapped) and samples half a symbol later; with the
+    rising and falling edges apart it has a second stable point half a symbol away, sampling between them (a
+    simulation of ber_cdr.v with the rising edges 6 samples late: 6 of 24 restarts at 50 Mbaud read random bits)"""
+    ser = len(c["CMP_I"]) // max(1, len(c["words"]))
+    L = p * ser
+    v0 = c["valid_from"] * ser
+    x = np.array(c["CMP_I"][v0:], dtype=np.int64)
+    d = (np.array(c["TX_PINS"][v0:]) & 3 == point_code(1, 0) & 3).astype(np.int64)
+    n = len(x)
+    if n < 4 * max_lag:
+        return {"error": "short capture (%d samples)" % n}
+    m = n - max_lag
+    xs, ds = 2 * x - 1, 2 * d - 1
+    corr = np.array([np.dot(xs[k:k + m], ds[:m]) for k in range(max_lag)]) / m
+    lag = int(np.argmax(np.abs(corr)))
+    inv = bool(corr[lag] < 0)
+    tt = np.nonzero(np.diff(d))[0] + 1
+    if len(tt) < 10:
+        return {"error": "the TX pins hardly moved (%d transitions)" % len(tt)}
+    phi = int(np.argmax(np.bincount(tt % L, minlength=L)))
+    starts = np.arange(phi, m - L, L)
+    want = (1 - d[starts]) if inv else d[starts]
+    eye = [float(np.mean(x[starts + lag + k] == want)) for k in range(L)]
+    rt = np.nonzero(np.diff(x))[0] + 1
+    rising = x[rt] == 1
+    place = (rt - lag - phi) % L
+    rise_h = np.bincount(place[rising], minlength=L)
+    fall_h = np.bincount(place[~rising], minlength=L)
+    mr, mf, ma = circ_mean(place[rising], L), circ_mean(place[~rising], L), circ_mean(place, L)
+    true_pt = int(round(ma + L / 2)) % L if ma is not None else None
+    false_pt = int(round(ma)) % L if ma is not None else None
+    return {"samples": n, "period": p, "L": L, "lag": lag, "inverted": inv, "agreement": float(abs(corr[lag])),
+            "tx_phase": phi, "tx_edges": int(len(tt)), "rx_edges": int(len(rt)), "eye": [round(e, 4) for e in eye],
+            "open": int(sum(e >= 0.999 for e in eye)), "rise_hist": rise_h.tolist(), "fall_hist": fall_h.tolist(),
+            "rise_mean": mr, "fall_mean": mf, "skew": (None if mr is None or mf is None else (mr - mf + L / 2) % L - L / 2),
+            "cdr_point": true_pt, "eye_at_cdr": eye[true_pt] if true_pt is not None else None,
+            "false_point": false_pt, "eye_at_false": eye[false_pt] if false_pt is not None else None}
 
 
 def save(name, obj):
@@ -328,6 +386,51 @@ class Weekend(O.OTA):
             save("segcheck_partial", out)
         return out
 
+    def eye(self, mhz, periods=(2, 4), caps=3, n_cdr=10):
+        """BRINGUP_LOG 4.9: at 5.0 GHz some timing-recovered 25 / 50 Mbaud segments read exactly half their bits
+        wrong, the loop unmoved.  Here CMP_I against the TX's own pins during PRBS15 BPSK (eye_fold: the eye, and
+        the rising and falling edges apart), then n_cdr recovered segments of 50 ms, each with the recovery's state"""
+        out = {"mhz": mhz, "runs": []}
+        st = self.ready(mhz)
+        if st is None:
+            out["error"] = "no lock"
+            return out
+        out.update(dsa=st["dsa"], a_leg=st["a"])
+        cl = self.cl
+        depth = cl.cap_info()["depth"]
+        for p in periods:
+            cl.tx_points(point_code(1, 0), [point_code(1, 0), point_code(-1, 0)])
+            cl.tx_timing(period=p)
+            cl.tx_prbs(15)
+            cl.tx_mode("prbs", n=2)
+            cl.tx_go()
+            time.sleep(0.005)
+            folds = []
+            for _ in range(caps):
+                cl.cap_arm("none", post=depth - 16)
+                cl.cap_force()
+                folds.append(eye_fold(cl.cap_read(timeout=2.0), p))
+            cl.tx_stop()
+            cl.hold_point(1, 0)
+            o = self.observe(st["cen"], st["a"], side0=st["side"])
+            segs = []
+            for _ in range(n_cdr):
+                r = self.ber_once(st["side"], p, 0, 0.05)
+                b, e = r["bits"] or 0, r["mismatches"] or 0
+                segs.append({"rate": e / 3.0 / b if b else None, "bits": b, "mism": e, "cdr_state": r.get("cdr_state")})
+            row = {"period": p, "folds": folds, "lock": {x: o[x] for x in ("state", "side", "di", "dq", "vc")}, "segs": segs}
+            out["runs"].append(row)
+            f = [x for x in folds if "error" not in x]
+            rnd = [s for s in segs if s["rate"] is not None and s["rate"] > 0.1]
+            print("%d eye %.0f Mbaud: %s | recovered: %d of %d random (their last edge errors %s samples; the others' %s)" % (
+                mhz, 100.0 / p, "; ".join("latency %d, open %d of %d, rise %+.1f fall %+.1f (skew %+.1f samples), eye %.3f at the recovery's point, %.3f at its false one"
+                                          % (x["lag"], x["open"], x["L"], x["rise_mean"], x["fall_mean"], x["skew"], x["eye_at_cdr"], x["eye_at_false"]) for x in f[:1])
+                or "no capture: %s" % [x.get("error") for x in folds],
+                len(rnd), len(segs), [s["cdr_state"]["err_samples"] for s in rnd if s.get("cdr_state")],
+                [s["cdr_state"]["err_samples"] for s in segs if s not in rnd and s.get("cdr_state")]), flush=True)
+            save("eye_partial", out)
+        return out
+
     # ---- once: the link over the air without interference ----
     def baseline(self):
         out = {"rows": []}
@@ -383,7 +486,8 @@ def main(argv):
     ap.add_argument("what", choices=["baseline", "rounds"])
     ap.add_argument("--hours", type=float, default=60.0)
     ap.add_argument("--quiet-min", type=float, default=60.0)
-    ap.add_argument("--pieces", nargs="*", default=["decide", "capture", "pulses", "pull", "pullhold", "pullauto", "iholdcheck", "segcheck", "b210cdr"])
+    ap.add_argument("--pieces", nargs="*", default=["decide", "capture", "pulses", "pull", "pullhold", "pullauto", "iholdcheck", "segcheck", "eye",
+                                                    "b210cdr"])
     ap.add_argument("--first", nargs="*", default=None, help="pieces run first in round 1 (at each carrier)")
     a = ap.parse_args(argv)
     try:

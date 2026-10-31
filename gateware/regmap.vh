@@ -109,6 +109,7 @@ localparam [7:0] R_RX_SHOLD_HOLD = 8'h82;
 localparam [7:0] R_RX_SHOLD_MAX = 8'h83;
 localparam [7:0] R_RX_SHOLD_N   = 8'h84;
 localparam [7:0] R_RX_SHOLD_CLK = 8'h85;
+localparam [7:0] R_RX_CDR_SKEW  = 8'h86;
 localparam [7:0] R_BUILD        = 8'h80;
 localparam [7:0] R_RP_CTRL      = 8'h90;
 localparam [7:0] R_RP_MAP       = 8'h91;

@@ -44,9 +44,10 @@ from board_constants import (RX_GAIN_DB, DEM_REG_DBM, A_REG_V, DSA_POWER_UP_DB, 
                              NTC_B, NTC_R25, NTC_RTOP, NTC_VDD, VR_I_V, VR_Q_V)
 
 R = regmap.BY_NAME
-ID_EXPECTED = 0x434C0005
-ID_ACCEPTED = (0x434C0003, 0x434C0004, 0x434C0005)   # 3: no timing recovery for the BER check (the overlay of 2026-10-29);
-                                                      # 4: no interference hold
+ID_EXPECTED = 0x434C0006
+ID_ACCEPTED = (0x434C0003, 0x434C0004, 0x434C0005, 0x434C0006)   # 3: no timing recovery for the BER check (the overlay
+                                                      # of 2026-10-29); 4: no interference hold; 5: no one-polarity
+                                                      # timing recovery
 BOARDS = {0: "simulation", 1: "PYNQ-Z2", 2: "Icepi Zero"}
 
 # the fast comparators: their bit in the receiver's vectors (RX_IDLE, RX_LUT, RX_LAST), as rx_engine.v
@@ -341,6 +342,7 @@ class CostasLink:
                 raise IOError("ID reads 0x%08X, not 0x%08X: wrong overlay, or no board" % (ident, ID_EXPECTED))
             self.cdr = ident >= 0x434C0004
             self.ihold_ok = ident >= 0x434C0005
+            self.cdr_pol = ident >= 0x434C0006
         b = self.rd("BUILD")
         self.ser = bits(b, 7, 0) or 1
         self.board = bits(b, 11, 8)
@@ -742,14 +744,21 @@ class CostasLink:
         self.wr("RX_HIST_ADDR", 0)
         return [self.rd("RX_HIST_DATA") for _ in range(bins)]
 
-    def ber_config(self, poly=15, phase=None, invert=False, enable=True, cdr=False, gain=4, period=None):
+    def ber_config(self, poly=15, phase=None, invert=False, enable=True, cdr=False, gain=4, period=None, one_pol=None):
         """the PRBS check on CMP_I, sampled `phase` samples into each symbol (TX_PERIOD clocks long).
         Enabling starts a new count; disabling keeps it, so stop the check before reading a snapshot.
         cdr: the symbol timing recovered from CMP_I's own edges (ID version 4: a transmitter on another clock),
         `phase` then the sampling point's distance from the edge, mid-symbol by default (period x SER / 2,
-        the period TX_PERIOD's, given here or read back); gain: the recovery's loop gain, 2^-gain."""
+        the period TX_PERIOD's, given here or read back); gain: the recovery's loop gain, 2^-gain.
+        one_pol (ID version 6, on by default there): the recovery tracks the rising edges alone and samples half the
+        falling edges' skew later; with both, CMP_I's rising and falling edges apart give it a second, false lock
+        between them (BRINGUP_LOG 4.9: random segments at 5.0 GHz)."""
         if cdr and not getattr(self, "cdr", False):
             raise IOError("this overlay has no timing recovery (ID version 4 has)")
+        if one_pol is None:
+            one_pol = bool(cdr) and getattr(self, "cdr_pol", False)
+        if one_pol and not getattr(self, "cdr_pol", False):
+            raise IOError("this overlay has no one-polarity timing recovery (ID version 6 has)")
         if phase is None:
             if cdr:
                 period = period or self.rd("TX_PERIOD")
@@ -757,7 +766,7 @@ class CostasLink:
             else:
                 phase = self.ser // 2
         self.wr("RX_BER_CFG", int(enable) | int(invert) << 1 | self.POLYS[poly] << 4 | (phase & 0xFFFF) << 8
-                | int(bool(cdr)) << 24 | (gain & 0xF) << 25)
+                | int(bool(cdr)) << 24 | (gain & 0xF) << 25 | int(bool(one_pol)) << 29)
 
     def ihold(self, on=True, mask=(CMP_QP, CMP_QN), window=256, thresh=8, hold_s=20e-3, max_s=5.0):
         """the interference hold (ID version 5, ihold.v): LOOP_HOLD while the comparators in `mask` change in `thresh`
@@ -819,7 +828,12 @@ class CostasLink:
         sm = self.rd("RX_CDR_SUM")
         e = e - (1 << 32) if e & 0x80000000 else e
         sm = sm - (1 << 32) if sm & 0x80000000 else sm
-        return {"err_samples": e / 16.0, "sum_samples": sm / 256.0, "edges": self.rd("RX_CDR_EDGES")}
+        out = {"err_samples": e / 16.0, "sum_samples": sm / 256.0, "edges": self.rd("RX_CDR_EDGES")}
+        if getattr(self, "cdr_pol", False):
+            c, sk = self.rd("RX_BER_CFG"), self.rd("RX_CDR_SKEW")
+            out["one_pol"] = c >> 29 & 1
+            out["skew_samples"] = (sk - (1 << 32) if sk & 0x80000000 else sk) / 256.0
+        return out
 
     def ber(self):
         """the count so far (read BITS after ERR: while the check runs, ERR never exceeds BITS)"""
