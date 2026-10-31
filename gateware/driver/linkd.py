@@ -18,14 +18,26 @@ If that start does not lock, 40, 70 and 120 kHz above.  A failed recovery (the f
 backs off: 5 s, doubling to 60 s, so it does not thrash.  The TX's mode is left as it was: only TX_DIS is restored.
 
 A loop held by software (CTRL's LOOP_HOLD) is parked on purpose (a test setting up, the bench's quiet state): linkd
-leaves it alone.  It records losses, recoveries, failures, how long the last took, in `state()`, for the dashboard.  Settings it
-needs from whoever configured the link: the synthesizers' frequencies and the attenuation (the driver's own record
-of its last pll_tune and dsa calls), and a lock to learn from.
+leaves it alone.  It records losses, recoveries, failures, how long the last took, in `state()`, for the dashboard.
+
+Setting the link up from nothing (the board just powered, the server just started): when link.json sits beside the
+server, linkd does it first, before anyone asks.  link.json: {"mhz": 5200, "vr": {"VR_I": .., "VR_Q": ..} (the TX
+carrier's null at that frequency, from the board's calibration), "leg_target": 0.15, "window_frac": 0.5, "v_t2": 2.9,
+"dsa_min": 6.0}.  Both synthesizers to the carrier, the TX at its idle point; with no carrier (TX muted, DSA 31.75)
+the arms' middles on the ADC and each window comparator's centre (Rice's parabola, stage 3.7); then the attenuation
+stepped down from 31.75 dB in 2 dB steps, the loop released 60 kHz above the nominal lock at each (the map: from
+above it comes down into the lock), until it locks with the I leg at leg_target or more; the windows at window_frac
+of the leg, V_T2.  If it finds no carrier (the far board off, the path blocked) it backs off and tries again.
+Without link.json it waits for someone to set the link up, and learns from the first lock it sees.
 """
+import json
+import os
 import threading
 import time
 
+HERE = os.path.dirname(os.path.abspath(__file__))
 V_MID = 1.65
+VC_NOMINAL = 1.861                       # VC with the VCXO on the TCXO's frequency (bringup/linktests.py VC_LOCK)
 KV_HZ_PER_V_5800 = 457e3
 RELOCK_S = 0.2
 DAC1, DAC2 = 0x60, 0x61                 # the two AD5696R (costaslink.DAC1, DAC2)
@@ -34,8 +46,17 @@ DAC1, DAC2 = 0x60, 0x61                 # the two AD5696R (costaslink.DAC1, DAC2
 class LinkD:
     STARTS_KHZ = (20, 40, 70, 120)
 
-    def __init__(self, server, idle_s=60.0, poll_s=0.2, off_khz_min=8.0, t_lost=0.5, backoff_s=(5.0, 60.0)):
+    def __init__(self, server, idle_s=60.0, poll_s=0.2, off_khz_min=8.0, t_lost=0.5, backoff_s=(5.0, 60.0), config=None):
         self.server = server
+        path = config or os.path.join(HERE, "link.json")
+        try:
+            with open(path) as f:
+                self.cfg = json.load(f)
+        except (OSError, ValueError):
+            self.cfg = None
+        self.set_up = self.cfg is None                   # nothing to set up: learn from the first lock seen
+        self.setup_next = 0.0
+        self.setup_wait = backoff_s[0]
         self.idle_s, self.poll_s, self.off_khz_min, self.t_lost = idle_s, poll_s, off_khz_min, t_lost
         self.backoff_s = backoff_s
         self.vc_lock = self.leg = None
@@ -50,7 +71,7 @@ class LinkD:
 
     # ---- for the dashboard ----
     def state(self):
-        return {"mode": self.mode, "enabled": self.enabled, "vc_lock": self.vc_lock, "leg": self.leg,
+        return {"mode": self.mode, "enabled": self.enabled, "vc_lock": self.vc_lock, "leg": self.leg, "config": self.cfg,
                 "lost_for_s": (time.time() - self.lost_since) if self.lost_since else None,
                 "next_try_in_s": max(0.0, self.next_try - time.time()) if self.mode == "backing off" else None,
                 **self.counts}
@@ -76,6 +97,23 @@ class LinkD:
 
     def step(self):
         cl = self.server.cl
+        if not self.set_up:
+            if time.time() < self.setup_next:
+                return
+            self.led(recovering=True)
+            try:
+                ok = self.setup(self.cfg)
+            finally:
+                self.led(recovering=False)
+            if ok:
+                self.set_up = True
+                self.mode = "locked"
+                self.setup_wait = self.backoff_s[0]
+            else:
+                self.mode = "setup found no carrier: trying again"
+                self.setup_next = time.time() + self.setup_wait
+                self.setup_wait = min(self.backoff_s[1], 2 * self.setup_wait)
+            return
         if cl.rd("CTRL") >> 1 & 1:                                   # LOOP_HOLD by software: someone has taken the loop
             self.mode = "parked: the loop is held by a program"
             self.lost_since = None
@@ -129,6 +167,56 @@ class LinkD:
         cl = self.server.cl
         if getattr(cl, "lockmon", False):
             cl.leds(auto=True, ld5=(0, 0, 1) if recovering else (0, 0, 0))
+
+    # ---- the link from nothing ----
+    def setup(self, cfg):
+        cl = self.server.cl
+        mhz = float(cfg["mhz"])
+        self.mode = "setting up the link at %g MHz" % mhz
+        cl.ctrl(loop_hold=1, tx_dis=1)
+        for which in (0, 1):
+            cl.pll_tune(which, mhz)
+        time.sleep(RELOCK_S)
+        vr = cfg.get("vr")
+        if vr:
+            cl.dac(DAC1, VR_I=float(vr["VR_I"]), VR_Q=float(vr["VR_Q"]))
+        cl.hold_point(1, 0)
+        cl.dsa(31.75)
+        time.sleep(0.1)
+        self.i0 = sum(cl.adc("I") for _ in range(8)) / 8.0
+        self.q0 = sum(cl.adc("Q") for _ in range(8)) / 8.0
+        cen = {}
+        for w in ("QP", "QN", "IP", "IN"):
+            vs = [V_MID - 0.06 + 0.002 * k for k in range(61)]
+            try:
+                cen[w] = cl.rice_fit([p for p in cl.threshold_scan(w, vs, seconds=0.02) if p[1] > 0])[0]
+            except ValueError:
+                cen[w] = V_MID
+        self.cen = cen
+        target = float(cfg.get("leg_target", 0.15))
+        pll = dict(cl._pll)
+        self.vc_lock = VC_NOMINAL
+        dsa, floor, got = 31.75, float(cfg.get("dsa_min", 6.0)), None
+        while dsa >= floor - 1e-9:
+            if self.release_at(VC_NOMINAL + 60e3 / self.kv(), pll, dsa, 0):
+                leg = abs(self.observe()["di"])
+                got = (dsa, leg)
+                if leg >= target:
+                    break
+            dsa -= 2.0
+        if got is None:
+            cl.ctrl(loop_hold=1, tx_dis=1)
+            return False
+        if abs(dsa - got[0]) > 1e-9:                      # the last step did not lock: back to the best one
+            self.release_at(VC_NOMINAL + 60e3 / self.kv(), pll, got[0], 0)
+        a = abs(self.observe()["di"])
+        frac = float(cfg.get("window_frac", 0.5))
+        for w, v0 in cen.items():
+            cl.threshold(w, min(2.499, max(0.0, v0 + frac * a)))
+        cl.dac(DAC2, V_T2=float(cfg.get("v_t2", 2.9)))
+        self.vc_lock = cl.adc("VC")
+        self.leg = a
+        return True
 
     # ---- the recovery (bringup/autolock.py's, on the driver alone) ----
     def recover(self):
