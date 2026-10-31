@@ -5,6 +5,9 @@
 //    windows (256 clocks each) of its start, released `hold` clocks after its end, one hold counted;
 //  * a beat that never stops: released after `max` and not held again while it lasts (no quiet window to arm it);
 //  * a lost, beating loop with no quiet window before it: never held; quiet, then an interferer: held;
+//  * persist (ID version 7) at 195 windows (0.5 ms): bursts of the beat (10 and 100 us) and a near CW's chatter (one
+//    busy window in 20) never hold, though the same chatter holds at persist 0; a streak broken by one quiet window
+//    does not hold; a beat that lasts holds after 195 windows;
 //  and the signal holdover (LEVEL 1, the I windows): no hold with the carrier, under BPSK data or for a lost loop's
 //  beat; held within two windows of the carrier's loss, released `hold` after its return; let go at `max`.
 //
@@ -20,6 +23,7 @@ module tb_ihold;
     reg [2:0]  wlog = 3'd5;                     // 256 clocks
     reg [7:0]  thresh = 8'd8;
     reg [31:0] hold = 32'd1000, max = 32'd20000;
+    reg [15:0] persist = 16'd0;
     wire active;
     wire [31:0] n_holds, n_clocks;
     wire [7:0] last_count;
@@ -30,11 +34,11 @@ module tb_ihold;
     wire [31:0] n_holds_s, n_clocks_s;
     wire [7:0] last_count_s;
     ihold #(.SER(SER), .LEVEL(1)) dut_s (.clk(clk), .rst(rst), .clr(clr), .en(en_s), .fs(fs), .mask(5'b11110), .wlog(3'd5),
-                            .thresh(8'd64), .hold(hold_s), .max(max_s), .active(active_s), .n_holds(n_holds_s),
+                            .thresh(8'd64), .hold(hold_s), .max(max_s), .persist(16'd0), .active(active_s), .n_holds(n_holds_s),
                             .n_clocks(n_clocks_s), .last_count(last_count_s));
 
     ihold #(.SER(SER)) dut (.clk(clk), .rst(rst), .clr(clr), .en(en), .fs(fs), .mask(mask), .wlog(wlog), .thresh(thresh),
-                            .hold(hold), .max(max), .active(active), .n_holds(n_holds), .n_clocks(n_clocks),
+                            .hold(hold), .max(max), .persist(persist), .active(active), .n_holds(n_holds), .n_clocks(n_clocks),
                             .last_count(last_count));
 
     // the comparators, as levels for the whole clock (each sample the same)
@@ -129,6 +133,57 @@ module tb_ihold;
             if (active && t_first < 0) t_first = k;
         end
         expect("quiet, then an interferer: clocks to the hold", t_first - 3000, 0, 2 * 256 + 4);
+        // ---- persist: a hold only after 195 busy windows in a row ----
+        max = 32'd1000000;
+        for (k = 0; k < 2; k = k + 1) begin              // a near CW's chatter: one busy window in 20, at persist 0 and 195
+            persist = k ? 16'd195 : 16'd0;
+            rst = 1'b1; repeat (3) @(negedge clk); rst = 1'b0;
+            for (t_on = 0; t_on < 2000; t_on = t_on + 1) @(negedge clk) lv = 5'd0;
+            held = 0;
+            for (t_on = 0; t_on < 20 * 256 * 12; t_on = t_on + 1) begin
+                @(negedge clk);
+                lv = 5'd0;
+                if ((t_on / 256) % 20 == 7) begin lv[1] = (t_on / 10) % 2; lv[2] = ((t_on + 5) / 10) % 2; end
+                if (active) held = held + 1;
+            end
+            if (k == 0) expect("persist 0: a near CW's chatter (a busy window in 20) holds: holds", n_holds, 1, 12);
+            else expect("persist 195: the same chatter: clocks held", held, 0, 0);
+        end
+        persist = 16'd195;
+        rst = 1'b1; repeat (3) @(negedge clk); rst = 1'b0;
+        for (k = 0; k < 2000; k = k + 1) @(negedge clk) lv = 5'd0;
+        held = 0;
+        for (k = 0; k < 10 * 10000; k = k + 1) begin      // 10 us bursts of the beat every 100 us
+            @(negedge clk);
+            lv = 5'd0;
+            if ((k % 10000) < 1000) begin lv[1] = (k / 10) % 2; lv[2] = ((k + 5) / 10) % 2; end
+            if (active) held = held + 1;
+        end
+        for (k = 0; k < 5 * 20000; k = k + 1) begin       // 100 us bursts every 200 us
+            @(negedge clk);
+            lv = 5'd0;
+            if ((k % 20000) < 10000) begin lv[1] = (k / 10) % 2; lv[2] = ((k + 5) / 10) % 2; end
+            if (active) held = held + 1;
+        end
+        expect("persist 195: bursts of 10 and 100 us: clocks held", held, 0, 0);
+        for (k = 0; k < 2000; k = k + 1) @(negedge clk) lv = 5'd0;
+        for (k = 0; k < 201 * 256; k = k + 1) begin       // a beat of 100 windows, one quiet, 100 more: the streak broken
+            @(negedge clk);
+            lv = 5'd0;
+            if ((k / 256) != 100) begin lv[1] = (k / 10) % 2; lv[2] = ((k + 5) / 10) % 2; end
+            if (active) held = held + 1;
+        end
+        expect("persist 195: a streak broken by a quiet window: clocks held", held, 0, 0);
+        for (k = 0; k < 2000; k = k + 1) @(negedge clk) lv = 5'd0;
+        t_first = -1;
+        for (k = 0; k < 260 * 256; k = k + 1) begin       // a beat that lasts: held after 195 windows
+            @(negedge clk);
+            lv = 5'd0; lv[1] = (k / 10) % 2; lv[2] = ((k + 5) / 10) % 2;
+            if (active && t_first < 0) t_first = k;
+        end
+        expect("persist 195: a lasting beat: clocks to the hold", t_first, 194 * 256, 196 * 256 + 4);
+        expect("persist 195: holds", n_holds, 1, 1);
+        persist = 16'd0;
         // disabled: no hold at all
         en = 1'b0;
         held = 0;

@@ -16,6 +16,15 @@
 // without a break the hold lets go, the guard (`hold` clocks) passes, and it can start again only after a quiet
 // window (measured on the bench, 2026-10-30 19:30: without the arming a hold released at `max` under the CW froze
 // the dragged loop 37 kHz off, re-holding its beat 86 times).
+// `persist` (ID version 7; BRINGUP_LOG 4.13, 4.14): a hold starts only after that many busy windows in a row (0 and 1:
+// the first).  A held loop's oscillator walks off the carrier's phase (about 0.1 rad in 6 ms), so every hold costs
+// the decisions; bursts of noise (WiFi's frames, 10 us - 1 ms) do not drag the loop at all, yet each re-triggered
+// the hold within its release, and held through a burst train A3 got 1-17 thousand of 20 000 events right against 21-32
+// thousand free.  A CW near the carrier beats too slowly for the windows and trips them only now and then, in its
+// crossings' chatter; each short hold lost the loop's phase under a CW it would have ridden out (5.0 GHz: 10 of 12
+// lost held, 0 of 12 free).  What drags the loop is a CW 1-40 MHz off, busy in every window and pulling about
+// 13-19 kHz a millisecond: a streak of half a millisecond lets it move the loop by less than the capture window,
+// and ignores the bursts and the chatter.  A busy window during the streak keeps the hold armed; a quiet one ends it.
 // The counts: holds started, clocks held; cleared by `clr`.  The signal holdover (LEVEL 1) needs no arming: holding
 // with the carrier gone cannot lose anything, and holding again after `max` keeps the oscillator near the carrier's
 // frequency for when it returns.
@@ -43,6 +52,7 @@ module ihold #(
     input  wire [7:0]        thresh,            // active comparator-clocks in a window that trigger
     input  wire [31:0]       hold,              // clocks held after the last triggering window (and the guard)
     input  wire [31:0]       max,               // the longest hold without a break
+    input  wire [15:0]       persist,           // busy windows in a row before a hold starts (0, 1: the first)
     output reg               active,            // the hold, to LOOP_HOLD
     output reg  [31:0]       n_holds,
     output reg  [31:0]       n_clocks,
@@ -97,6 +107,10 @@ module ihold #(
     reg  [10:0] acc;                            // actives so far in it
     wire [10:0] wlen_m1 = (11'd8 << wlog) - 11'd1;
     reg         trig;                           // the window just closed over the threshold
+    reg         wclose;                         // a window just closed
+    reg  [15:0] streak;                         // busy windows in a row before this one
+    wire [16:0] streak_now = {1'b0, streak} + 17'd1;            // with this one, when trig
+    wire        long_enough = (persist <= 16'd1) || (streak_now >= {1'b0, persist});
     reg  [31:0] since;                          // clocks since the last trigger (hold timer)
     reg  [31:0] run;                            // clocks held without a break
     reg  [31:0] guard;                          // clocks of the guard still to go
@@ -104,7 +118,7 @@ module ihold #(
 
     always @(posedge clk) begin
         if (rst) begin
-            prev <= 5'd0; n_act_q <= 3'd0; wcnt <= 11'd0; acc <= 11'd0; trig <= 1'b0;
+            prev <= 5'd0; n_act_q <= 3'd0; wcnt <= 11'd0; acc <= 11'd0; trig <= 1'b0; wclose <= 1'b0; streak <= 16'd0;
             act_q <= 5'd0; c0 <= 8'd0; c1 <= 8'd0; c2 <= 8'd0; c3 <= 8'd0; c4 <= 8'd0;
             since <= 32'd0; run <= 32'd0; guard <= 32'd0; active <= 1'b0; armed <= 1'b0;
             n_holds <= 32'd0; n_clocks <= 32'd0; last_count <= 8'd0;
@@ -113,8 +127,11 @@ module ihold #(
             n_act_q <= n_act;
             act_q <= act;
             trig <= 1'b0;
+            wclose <= 1'b0;
+            if (wclose) streak <= !trig ? 16'd0 : (streak == 16'hFFFF) ? streak : streak + 1'b1;
             if (wcnt >= wlen_m1) begin
                 wcnt <= 11'd0;
+                wclose <= 1'b1;
                 acc <= 11'd0;
                 c0 <= 8'd0; c1 <= 8'd0; c2 <= 8'd0; c3 <= 8'd0; c4 <= 8'd0;
                 // LEVEL 0 arms on a quiet window (a quarter of the threshold or less) and disarms on a busy one that
@@ -141,8 +158,10 @@ module ihold #(
                     active <= 1'b0; run <= 32'd0;
                 end
             end else if (trig && guard == 32'd0 && (armed || LEVEL != 0)) begin
-                active <= 1'b1; since <= 32'd0; run <= 32'd0; armed <= 1'b0;
-                n_holds <= n_holds + 1'b1;
+                if (long_enough) begin                      // busy for `persist` windows in a row: hold
+                    active <= 1'b1; since <= 32'd0; run <= 32'd0; armed <= 1'b0;
+                    n_holds <= n_holds + 1'b1;
+                end                                         // else still armed, counting the streak
             end else if (trig) begin
                 armed <= 1'b0;                              // busy and not allowed to hold: disarmed
             end

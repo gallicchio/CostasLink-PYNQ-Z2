@@ -174,6 +174,8 @@ REGS = [
     (0x85, "RX_SHOLD_CLK", "R", "rx3", "clocks held since then"),
     (0x86, "RX_CDR_SKEW", "R", "rx3", "with RX_BER_CFG[29]: CMP_I's falling edges' mean place against its rising ones, "
                                       "signed, in 1/256 sample (the comparator's duty-cycle distortion; ID version 6)"),
+    (0x87, "RX_IHOLD_PERSIST", "RW", "rx3", "[15:0] busy windows in a row before an interference hold starts (0 and 1: the "
+                                            "first, the reset); bursts and a near CW's chatter then pass (ID version 7)"),
     (0x80, "BUILD", "R", "core", "[7:0] SER, [11:8] board (0 simulation, 1 PYNQ-Z2, 2 Icepi Zero), [12] the fast path is built, "
                                  "[13] the ladder pins are read back into the capture, [14] the reply lane reads the sampler's "
                                  "word a clock early, [15] the synchronous reply registered once more (a clock later), "

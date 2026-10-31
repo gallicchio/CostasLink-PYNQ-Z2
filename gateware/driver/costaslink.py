@@ -44,10 +44,10 @@ from board_constants import (RX_GAIN_DB, DEM_REG_DBM, A_REG_V, DSA_POWER_UP_DB, 
                              NTC_B, NTC_R25, NTC_RTOP, NTC_VDD, VR_I_V, VR_Q_V)
 
 R = regmap.BY_NAME
-ID_EXPECTED = 0x434C0006
-ID_ACCEPTED = (0x434C0003, 0x434C0004, 0x434C0005, 0x434C0006)   # 3: no timing recovery for the BER check (the overlay
-                                                      # of 2026-10-29); 4: no interference hold; 5: no one-polarity
-                                                      # timing recovery
+ID_EXPECTED = 0x434C0007
+ID_ACCEPTED = (0x434C0003, 0x434C0004, 0x434C0005, 0x434C0006, 0x434C0007)   # 3: no timing recovery for the BER check
+                                                      # (the overlay of 2026-10-29); 4: no interference hold; 5: no
+                                                      # one-polarity timing recovery; 6: no hold persistence
 BOARDS = {0: "simulation", 1: "PYNQ-Z2", 2: "Icepi Zero"}
 
 # the fast comparators: their bit in the receiver's vectors (RX_IDLE, RX_LUT, RX_LAST), as rx_engine.v
@@ -343,6 +343,7 @@ class CostasLink:
             self.cdr = ident >= 0x434C0004
             self.ihold_ok = ident >= 0x434C0005
             self.cdr_pol = ident >= 0x434C0006
+            self.ihold_persist = ident >= 0x434C0007
         b = self.rd("BUILD")
         self.ser = bits(b, 7, 0) or 1
         self.board = bits(b, 11, 8)
@@ -768,14 +769,17 @@ class CostasLink:
         self.wr("RX_BER_CFG", int(enable) | int(invert) << 1 | self.POLYS[poly] << 4 | (phase & 0xFFFF) << 8
                 | int(bool(cdr)) << 24 | (gain & 0xF) << 25 | int(bool(one_pol)) << 29)
 
-    def ihold(self, on=True, mask=(CMP_QP, CMP_QN), window=256, thresh=8, hold_s=20e-3, max_s=5.0):
+    def ihold(self, on=True, mask=(CMP_QP, CMP_QN), window=256, thresh=8, hold_s=20e-3, max_s=5.0, persist_s=0.0):
         """the interference hold (ID version 5, ihold.v): LOOP_HOLD while the comparators in `mask` change in `thresh`
         or more of each `window` clocks (a power of 2, 8-1024), released hold_s after they were last busy; never longer
         than max_s at a time.  A hold starts only after a quiet window, so it catches an interferer arriving at a
         locked loop and never freezes a lost, beating one.  hold_s 20 ms: with 1 ms, 3 of 40 dragging CWs got the loop
         in a release between busy windows (an interferer at the threshold, the B210's underflows); with 20 ms, 40 of 40
         came back (BRINGUP_LOG 4.8b).  The defaults leave the link's
-        own events and BPSK on I alone and catch an interferer's beat of 1 MHz and more from about -6 dB"""
+        own events and BPSK on I alone and catch an interferer's beat of 1 MHz and more from about -6 dB.  persist_s (ID
+        version 7, RX_IHOLD_PERSIST): a hold starts only after the windows have been busy that long without a break;
+        0 holds on the first busy window, as before.  Bursts of noise and a near CW's chatter re-triggered the hold and
+        cost the decisions without being able to drag the loop (BRINGUP_LOG 4.13, 4.14)"""
         if not getattr(self, "ihold_ok", False):
             raise IOError("this overlay has no interference hold (ID version 5 has)")
         m = 0
@@ -784,6 +788,11 @@ class CostasLink:
         wlog = max(0, min(7, int(window).bit_length() - 1 - 3)) if window else 5
         self.wr("RX_IHOLD_HOLD", int(hold_s * self.clk_mhz * 1e6))
         self.wr("RX_IHOLD_MAX", int(max_s * self.clk_mhz * 1e6))
+        if getattr(self, "ihold_persist", False):
+            w = 8 << wlog
+            self.wr("RX_IHOLD_PERSIST", min(0xFFFF, int(math.ceil(persist_s * self.clk_mhz * 1e6 / w))) if persist_s else 0)
+        elif persist_s:
+            raise IOError("this overlay has no hold persistence (ID version 7 has)")
         self.wr("RX_IHOLD_CFG", int(bool(on)) | (wlog & 7) << 1 | (thresh & 0xFF) << 8 | (m & 0x1F) << 16)
 
     def shold(self, on=True, mask=(CMP_IP, CMP_IN, CMP_QP, CMP_QN), window=256, thresh=64, hold_s=1e-3, max_s=10.0):
@@ -819,7 +828,8 @@ class CostasLink:
         c, f = self.rd("RX_IHOLD_CFG"), self.clk_mhz * 1e6
         return {"on": c & 1, "holding": c >> 4 & 1, "last_count": c >> 24 & 0xFF, "holds": self.rd("RX_IHOLD_N"),
                 "clocks": self.rd("RX_IHOLD_CLK"), "seconds": self.rd("RX_IHOLD_CLK") / f,
-                "hold_s": self.rd("RX_IHOLD_HOLD") / f, "max_s": self.rd("RX_IHOLD_MAX") / f}
+                "hold_s": self.rd("RX_IHOLD_HOLD") / f, "max_s": self.rd("RX_IHOLD_MAX") / f,
+                "persist_s": (self.rd("RX_IHOLD_PERSIST") * (8 << (c >> 1 & 7)) / f) if getattr(self, "ihold_persist", False) else 0.0}
 
     def cdr_state(self):
         """the timing recovery since the last RX_BER_CFG write: its last edge error (samples), its corrections' sum

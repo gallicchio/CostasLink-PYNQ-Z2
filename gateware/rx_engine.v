@@ -91,6 +91,7 @@ module rx_engine #(
     reg [7:0]  ih_th;
     reg [4:0]  ih_mask;
     reg [31:0] ih_hold, ih_max;
+    reg [15:0] ih_persist;
     reg        sh_en;                           // RX_SHOLD_CFG: the signal holdover (ihold.v, LEVEL 1)
     reg [2:0]  sh_wlog;
     reg [7:0]  sh_th;
@@ -299,12 +300,14 @@ module rx_engine #(
     wire        ih_act, sh_act;
     ihold #(.SER(SER)) u_ihold (
         .clk(clk), .rst(rst), .clr(clr), .en(ih_en), .fs(fs), .mask(ih_mask), .wlog(ih_wlog), .thresh(ih_th),
-        .hold(ih_hold), .max(ih_max), .active(ih_act), .n_holds(ih_n), .n_clocks(ih_clk), .last_count(ih_last));
+        .hold(ih_hold), .max(ih_max), .persist(ih_persist), .active(ih_act), .n_holds(ih_n), .n_clocks(ih_clk),
+        .last_count(ih_last));
     // and the signal holdover: the loop held while the carrier is too weak for the windows (someone in front of the
     // antenna), so it is still on the carrier's frequency when the carrier is back
     ihold #(.SER(SER), .LEVEL(1)) u_shold (
         .clk(clk), .rst(rst), .clr(clr), .en(sh_en), .fs(fs), .mask(sh_mask), .wlog(sh_wlog), .thresh(sh_th),
-        .hold(sh_hold), .max(sh_max), .active(sh_act), .n_holds(sh_n), .n_clocks(sh_clk), .last_count(sh_last));
+        .hold(sh_hold), .max(sh_max), .persist(16'd0), .active(sh_act), .n_holds(sh_n), .n_clocks(sh_clk),
+        .last_count(sh_last));
     assign ihold_o = ih_act | sh_act;
 
     // ---- the state ------------------------------------------------------------------------------------------
@@ -317,6 +320,7 @@ module rx_engine #(
             ber_cdr <= 1'b0; ber_gain <= 4'd4; ber_pol <= 1'b0;
             ih_en <= 1'b0; ih_wlog <= 3'd5; ih_th <= 8'd8; ih_mask <= 5'b00110;
             ih_hold <= CLK_HZ / 50; ih_max <= 5 * CLK_HZ;  // released 20 ms after the last busy window (BRINGUP_LOG 4.8b, 4.9)
+            ih_persist <= 16'd0;                           // the first busy window holds, as before ID version 7
             sh_en <= 1'b0; sh_wlog <= 3'd5; sh_th <= 8'd64; sh_mask <= 5'b11110;
             sh_hold <= CLK_HZ / 1000; sh_max <= 10 * CLK_HZ;
             n_events <= 32'd0; n_decided <= 32'd0; n_confirm <= 32'd0; n_veto <= 32'd0; n_false <= 32'd0;
@@ -365,6 +369,7 @@ module rx_engine #(
                                       ih_mask <= bus_wdata[20:16]; end
                 R_RX_IHOLD_HOLD: ih_hold <= bus_wdata;
                 R_RX_IHOLD_MAX:  ih_max <= bus_wdata;
+                R_RX_IHOLD_PERSIST: ih_persist <= bus_wdata[15:0];
                 R_RX_SHOLD_CFG: begin sh_en <= bus_wdata[0]; sh_wlog <= bus_wdata[3:1]; sh_th <= bus_wdata[15:8];
                                       sh_mask <= bus_wdata[20:16]; end
                 R_RX_SHOLD_HOLD: sh_hold <= bus_wdata;
@@ -566,6 +571,7 @@ module rx_engine #(
         R_RX_IHOLD_MAX:  bus_rdata = ih_max;
         R_RX_IHOLD_N:    bus_rdata = ih_n;
         R_RX_IHOLD_CLK:  bus_rdata = ih_clk;
+        R_RX_IHOLD_PERSIST: bus_rdata = {16'd0, ih_persist};
         R_RX_BER_BITS: bus_rdata = ber_bits;
         R_RX_BER_ERR:  bus_rdata = ber_err;
         R_RX_INFO:     bus_rdata = {CLK_HZ_MHZ[15:0], 8'd6, SER_W[7:0]};
