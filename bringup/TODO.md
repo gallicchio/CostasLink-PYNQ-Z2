@@ -83,9 +83,11 @@ experiments; pictures, not one-word states, each with what led to it and how to 
   lock, while 16-129 kHz below ends in the false lock.  The interference hold cannot cover a CW inside the capture
   window (the loop locks onto it; `captureauto`, 4.12): only this recovers it.
 - Build with Vivado 2022.1 for PYNQ 3.0.1 (`build.tcl -strategy Performance_ExplorePostRoutePhysOpt`: the default
-  misses the fast path's 6 ns by picoseconds).  The server runs from `~/costaslink_lockmon/` (ID 0x434C0008, `4ae6ab2`, with `link.json`: linkd
-  sets the link up at 5.2 GHz itself) since 2026-10-31 12:52, started by hand (sudo nohup `pynq_serve.sh`), not the boot
-  service yet; `~/costaslink_persist/` (ID 7), `~/costaslink_cdrpol/` (ID 6), `~/costaslink_holds3/` (ID 5) and the
+  misses the fast path's 6 ns by picoseconds).  The server runs from `~/costaslink_current/`, a symlink to `~/costaslink_lockmon/` (ID 0x434C0008,
+  `4ae6ab2`, with `link.json`: linkd sets the link up at 5.2 GHz itself), as the boot service `costaslink-netbus`
+  since 2026-10-31 12:55 (installed by `install_service.sh`; it starts at power-up and restarts on failure; to deploy
+  a new overlay: a new directory, repoint the symlink, `sudo systemctl restart costaslink-netbus`; to hand the PL back
+  to notebooks: `sudo systemctl disable --now costaslink-netbus`); `~/costaslink_persist/` (ID 7), `~/costaslink_cdrpol/` (ID 6), `~/costaslink_holds3/` (ID 5) and the
   older directories are kept.  Whenever `gateware/driver/` changes, copy it there and restart the server: the client now warns when
   the server's driver differs from its own (`netbus.driver_id`); `~/costaslink_cdr/`, `~/costaslink_holds*/`
   and `~/costaslink/` (the 2024.1 turnaround overlay) are kept.
