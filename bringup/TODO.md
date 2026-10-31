@@ -24,6 +24,16 @@ ch2 I MON, ch3 Q MON, ch4 VC MON. 50 ohm on TX MON's pigtail. JP201 on TCXO.
 | 9 | Monday, last | **15 min** (the only rework) | 1 h | **Lift C102**, the 0.5 pF shunt from the LNA's input to ground; leave its pads empty, or lift only its ground end. Then repeat A, F and the night's map. The prediction is +25 dB at 5.8 GHz, and RX ANT's S11 from about -0.8 to -7 dB. If it misbehaves, a 0.5 pF goes back on the same pads | 6 (A first) | everything at 5.8 GHz |
 | 10 | only if needed, after 9 | 15-30 min | 1 h | **Bias-choke bodge capacitors**: a small 0402 tacked from an RF IC's supply pin to its nearest ground pad (the gates' finding: no 1 nF or smaller within 2 mm of any RF supply pin, and every choke reaches a plane via first). Only if the chain still falls short after C102, or test B puts the leak on the board. I model the value first (`sim/aslaid`), so none goes on blind | 9, 2 | rev B 13 |
 
+**Gateware next (no hands needed; from the weekend's findings, BRINGUP_LOG 4.3-4.7):**
+- **Interference hold**: LOOP_HOLD from the gateware while CMP_I or the window comparators change outside an expected
+  event, released after they have been quiet a while (the drag takes milliseconds, the chatter is seen in a
+  microsecond).  Held by hand through a dragging CW the loop came back 24 of 24 (4.5); free, 0 of 24.
+- **Lock detector and search in gateware** (REVB 21, 25, 26): the edge-count lock state as a register, and the downward
+  VC_OFF sweep from above the carrier when it reads lost (52 of 52 offsets recovered from the PC, 3.9j).
+- Both build with Vivado 2022.1 for PYNQ 3.0.1; the server runs from `~/costaslink_cdr/` (overlay 0x434C0004, the
+  timing recovery) since 2026-10-30 17:31, started by hand (sudo nohup `pynq_serve.sh`), not the boot service;
+  `~/costaslink/` keeps the 2024.1 turnaround overlay.
+
 Latency checks that fit around these (`bringup/LATENCY.md` section 5): a and b are remote; c is a 2 min recabling after step 1 (TRIG OUT A to ch1, CMP I MON to ch4, both at 50 ohm); d is a rebuild; e (the PYNQ's 200 ohm on the 4 ladder outputs) is your call.
 
 Optional, ten seconds each: JP103 to FPGA with LOOP_SEL held, for a plain PLL on Q. It is a cross-check of the loop's
