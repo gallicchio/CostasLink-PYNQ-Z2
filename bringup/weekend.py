@@ -344,6 +344,26 @@ class Weekend(O.OTA):
 
     PERSIST = {"hold_s": 0.02, "persist_s": 0.5e-3}     # ID version 7: busy for half a millisecond before a hold
 
+    PERSIST_SHORT = {"hold_s": 0.02, "persist_s": 20e-6}   # 8 windows: a strong CW drags up to ~340 kHz/ms (4.14)
+
+    def pullauto5(self, mhz):
+        """pullauto with a 20 us persistence: 0.5 ms let the CWs below drag the loop 21-169 kHz before the hold (4.14)"""
+        if not getattr(self.cl, "ihold_persist", False):
+            return {"mhz": mhz, "skipped": "this overlay has no hold persistence"}
+        return self.pull(mhz, offs_mhz=(1.0, 5.0, 10.0, 20.0, 40.0), gains=(80, 83, 86, 89.75), auto=True, ihold_kw=self.PERSIST_SHORT)
+
+    def pulsesauto5(self, mhz):
+        """pulses with a 20 us persistence: the 10 us bursts should pass, the longer ones still hold"""
+        if not getattr(self.cl, "ihold_persist", False):
+            return {"mhz": mhz, "skipped": "this overlay has no hold persistence"}
+        return self.pulses(mhz, shapes=self.PULSE_SHAPES_AUTO, reps=2, ihold_kw=self.PERSIST_SHORT)
+
+    def captureauto5(self, mhz):
+        """captureauto with a 20 us persistence"""
+        if not getattr(self.cl, "ihold_persist", False):
+            return {"mhz": mhz, "skipped": "this overlay has no hold persistence"}
+        return self.capture(mhz, gains=(80, 89.75), auto=True, ihold_kw=self.PERSIST_SHORT)
+
     def pulsesauto4(self, mhz):
         """pulses with the hold persistent (PERSIST, ID version 7): bursts shorter than the streak should never hold"""
         if not getattr(self.cl, "ihold_persist", False):
