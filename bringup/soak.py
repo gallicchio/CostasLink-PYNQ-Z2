@@ -151,7 +151,7 @@ def shot(name):
     def go():
         try:
             subprocess.run(["chromium-browser", "--headless", "--disable-gpu", "--hide-scrollbars", "--window-size=1400,3000",
-                            "--virtual-time-budget=8000", "--screenshot=" + p, DASH + "/"], capture_output=True, timeout=90)
+                            "--virtual-time-budget=2500", "--screenshot=" + p, DASH + "/"], capture_output=True, timeout=90)
         except Exception:                                        # noqa: BLE001
             pass
     threading.Thread(target=go, daemon=True).start()
@@ -286,8 +286,16 @@ def audit(t0, t_end, t_back, note_id=None, kind=None, params=None, marks=None, t
     pk = [(r.get("det") or {}).get("peak_dbm") for r in during]
     out["peak_dbm_max"] = max((x for x in pk if x is not None), default=None)
 
-    # back, and as before
+    # back, and as before; when the page read locked for good (the wait for 'back' starts 3 s after the end, to let
+    # the page see the disturbance first, so its time is no measure of a quick return)
     check("back", t_back is not None, "" if t_back is not None else "not locked again with linkd active")
+    tail = [r for r in real if r["t"] > t_end - 1.5 and r["t"] <= t_last]
+    t_rel = None
+    for r in reversed(tail):
+        if r.get("state") != "locked":
+            break
+        t_rel = r["t"]
+    out["relocked_s"] = (t_rel - t_end) if t_rel is not None else None
     after = [r for r in real if t_back is not None and r["t"] > t_back][:10]
     if t_back is not None and len(after) >= 4:
         a = {k: med([r.get(k) for r in after]) for k in ("rx_ant_dbm", "dem_dbm", "off_khz")}
@@ -459,7 +467,9 @@ class Soak:
 
     def trial(self, n, kind, p, shots_at, path):
         r0 = get("/api/now")
-        note = post("/api/note", {"text": describe(kind, p) + " (soak #%d)" % n, "kind": "intervention", "source": "soak.py"})
+        # an end 10 min on, in case this program dies before it ends the note (an open one would read 'under way' for ever)
+        note = post("/api/note", {"text": describe(kind, p) + " (soak #%d)" % n, "kind": "intervention", "source": "soak.py",
+                                  "t_end": time.time() + 600})
         t0 = time.time()
         err = None
         try:
@@ -487,7 +497,8 @@ class Soak:
             extra = " dem %+.1f, RX ANT %+.1f dB" % (a["attn"]["dem_db"], a["attn"]["ant_db"])
         print("%s #%-3d %-11s %s | %s%s, back %s | %s" % (
             time.strftime("%H:%M:%S"), n, kind, describe(kind, p).split(": ", 1)[-1], rec["outcome"], extra,
-            ("%.1f s" % rec["back_s"]) if rec["back_s"] is not None else "NEVER",
+            ("%.1f s" % max(0.0, a["relocked_s"])) if a.get("relocked_s") is not None else
+            ("%.1f s (linkd)" % rec["back_s"]) if rec["back_s"] is not None else "NEVER",
             ("all %d checks ok" % sum(1 for c in a["checks"] if c["ok"])) if not bad else
             "FLAGS: " + "; ".join("%s (%s)" % (c["name"], c["detail"]) for c in bad)) + (" ERROR " + err if err else ""), flush=True)
         return rec

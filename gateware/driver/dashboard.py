@@ -11,7 +11,9 @@ engines' state, the control bits, the timing recovery's registers; every few loo
 detectors as well, each one I2C transaction that the lock keeps whole.  The page re-attaches by itself after the
 server restarts or the overlay is reloaded, and says so when the loaded firmware is not CostasLink's.
 
-It keeps two hours in memory and appends every look to dashboard/YYYY-MM-DD.jsonl beside the server.  HTTP: / the
+It keeps two hours in memory and appends every look to dashboard/YYYY-MM-DD.jsonl beside the server (about 160 MB a
+day; the days older than keep_days, and the oldest while the card has under min_free_mb left, are deleted at each new
+day's first look).  HTTP: / the
 page (dashboard.html beside this file, read again at every request, so a new page needs no restart), /api/now the
 latest look, /api/history?s=600 the last s seconds, /api/events, /api/notes?s=, /api/pullin (pullin_map.json: the
 measured map of the unlocked loop); POST /api/note {"text", "kind": "intervention" | "explained" | "info", "source",
@@ -44,13 +46,15 @@ EDGE_REGS = ("EDGE_CNT0", "EDGE_CNT1", "EDGE_CNT2", "EDGE_CNT3", "EDGE_CNT4", "E
 
 
 class Dashboard:
-    def __init__(self, server, port=8080, period_s=1.0, slow_every=1, keep_s=7200, log_dir=None):
+    def __init__(self, server, port=8080, period_s=1.0, slow_every=1, keep_s=7200, log_dir=None, keep_days=14, min_free_mb=1000):
         self.server = server
         self.port = port
         self.period_s = period_s
         self.slow_every = slow_every
         self.hist = collections.deque(maxlen=int(keep_s / period_s) + 10)
         self.log_dir = log_dir or os.path.join(HERE, "dashboard")
+        self.keep_days, self.min_free_mb = keep_days, min_free_mb
+        self._day = None                 # the day of the last write (a new one prunes the old logs)
         self.n = 0
         self._prev = None                # (t, edges, ihold clocks, shold clocks)
         self._slow = {}                  # the last slow readings, carried into the looks between them
@@ -135,10 +139,18 @@ class Dashboard:
         self.note_events(r)
         return r
 
+    OPEN_NOTE_S = 3600.0                 # a note never ended (its program died) counts as ended an hour after it began
+
+    def note_end(self, n):
+        if n.get("t_end") is not None:
+            return n["t_end"]
+        return n["t_start"] + self.OPEN_NOTE_S if time.time() - n["t_start"] > self.OPEN_NOTE_S else None
+
     def active_note(self, t, grace_s=10.0):
         """the intervention under way at t (or ended within grace_s), if any"""
         for n in reversed(self.notes):
-            if n.get("kind") == "intervention" and n["t_start"] <= t <= (n.get("t_end") or 1e18) + grace_s:
+            end = self.note_end(n)
+            if n.get("kind") == "intervention" and n["t_start"] <= t <= (end if end is not None else 1e18) + grace_s:
                 return n
         return None
 
@@ -314,8 +326,35 @@ class Dashboard:
         try:
             os.makedirs(self.log_dir, exist_ok=True)
             day = time.strftime("%Y-%m-%d", time.localtime(r["t"]))
+            if day != self._day:
+                self._day = day
+                self.prune(day)
             with open(os.path.join(self.log_dir, day + ".jsonl"), "a") as f:
                 f.write(json.dumps(r, default=str) + "\n")
+        except OSError:
+            pass
+
+    def prune(self, today):
+        """the SD card kept from filling: the day logs older than keep_days go, then the oldest (never today's or
+        yesterday's, which restore() reads) while less than min_free_mb is left"""
+        try:
+            t_today = time.mktime(time.strptime(today, "%Y-%m-%d"))
+            days = sorted(f for f in os.listdir(self.log_dir) if f.endswith(".jsonl") and len(f) == 16)
+            keep = []
+            for f in days:
+                try:
+                    age = (t_today - time.mktime(time.strptime(f[:10], "%Y-%m-%d"))) / 86400.0
+                except ValueError:
+                    continue
+                if age > self.keep_days:
+                    os.remove(os.path.join(self.log_dir, f))
+                elif age >= 2:
+                    keep.append(f)
+            for f in keep:
+                st = os.statvfs(self.log_dir)
+                if st.f_bavail * st.f_frsize / 1e6 >= self.min_free_mb:
+                    break
+                os.remove(os.path.join(self.log_dir, f))
         except OSError:
             pass
 
@@ -359,8 +398,8 @@ class Dashboard:
                 elif u.path == "/api/notes":
                     s = float(parse_qs(u.query).get("s", ["7200"])[0])
                     t0 = time.time() - s
-                    self.send(200, json.dumps([n for n in dash.notes if (n.get("t_end") or 1e18) >= t0], default=str),
-                              "application/json")
+                    ns = [dict(n, t_end=dash.note_end(n)) for n in dash.notes]
+                    self.send(200, json.dumps([n for n in ns if (n["t_end"] or 1e18) >= t0], default=str), "application/json")
                 elif u.path == "/api/now":
                     self.send(200, json.dumps(dash.hist[-1] if dash.hist else {}, default=str), "application/json")
                 elif u.path == "/api/events":

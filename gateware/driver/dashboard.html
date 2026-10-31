@@ -98,7 +98,7 @@ const PANELS = [
  {id:"gwlock", title:"The board's own lock judgement", unit:"of 64", get:r=>r.gw_lock&&r.gw_lock.busy, lo:0, hi:64,
   judge:r=>r&&r.gw_lock ? ({locked:"good", unsure:"warn", lost:"bad", "no carrier":"bad"})[r.gw_lock.state] : null,
   ticks:[0,24,48,64], bands:[[0,24,"good"],[24,48,"warn"],[48,64,"bad"]],
-  help:"<p>The FPGA's own lock monitor (lockmon.v), which drives the board's LEDs: every 10 ms it counts in how many of 64 slices both Q window comparators toggled. A beat (not locked) toggles them all the time; bursts of noise only now and then.</p><p class='k'>Good: under 24 (green; it calls that locked).</p><p><b>48 or more</b> (red): lost, a beat. In between: unsure, usually a dense train of interference bursts. <b>No carrier</b> reads 0 (nothing toggles) and is judged bad by its own state, not by the count. The text below gives its state and its own count of losses since power-up.</p>"},
+  help:"<p>The FPGA's own lock monitor (lockmon.v), which drives the board's LEDs: every 10 ms it counts in how many of 64 slices both Q window comparators toggled. A beat (not locked) toggles them all the time; bursts of noise only now and then.</p><p class='k'>Good: under 24 (green; it calls that locked).</p><p><b>48 or more</b> (red): lost, a beat. In between: unsure, usually a dense train of interference bursts. <b>No carrier</b> reads 0 (nothing toggles) and is judged bad by its own state, not by the count. The text below gives its state and its own count of losses since the firmware was loaded (the server loads it when it starts).</p>"},
  {id:"vc", title:"Loop control voltage (VC)", unit:"V", get:r=>r.adc&&r.adc.VC, lo:0, hi:3.3,
   ticks:[0,0.3,1.65,3.0,3.3], bands:[[0,0.3,"bad"],[0.3,1.0,"warn"],[1.0,2.7,"good"],[2.7,3.0,"warn"],[3.0,3.3,"bad"]],
   help:"<p>The voltage that tunes the receiver's reference oscillator (the loop's output). Locked, it sits where the oscillator matches the carrier (about 1.86 V on board A, marked by the dashed line) and moves only slowly as the boards' clocks drift.</p><p class='k'>Good: steady, in the green.</p><p><b>At a rail</b> (red): the loop was dragged off and ran to the end of its range; the board's recovery re-centres it. <b>Drifting steadily while locked:</b> the two boards' clocks are drifting apart (temperature); the loop follows that up to its range.</p>"},
@@ -115,8 +115,8 @@ const PANELS = [
   bands:[[0,1.5,"good"],[1.5,3.5,"warn"],[3.5,6,"bad"]],
   help:"<p>When a timing-recovered data check runs: how much later the receiver's sign comparator switches one way than the other (its duty-cycle distortion). It eats into the eye.</p><p class='k'>Good: under 1.5 ns.</p><p>Shown only while data is being checked: the link left alone carries only its idle carrier, so this plot is empty then, and that is fine. Large values come from the comparator's threshold sitting off the signal's middle (REVB 30).</p>"},
  {id:"temp", title:"Board temperature", unit:"°C", get:r=>r.det&&r.det.temp_c, lo:0, hi:90,
-  bands:[[0,5,"bad"],[5,15,"warn"],[15,60,"good"],[60,75,"warn"],[75,90,"bad"]],
-  help:"<p>The board's thermistor, near the RF chain.</p><p class='k'>Good: 15-60 °C.</p><p><b>Hot:</b> shade the board, give it airflow. Its frequencies drift with temperature; the loop follows slow drift.</p>"},
+  bands:[[0,5,"bad"],[5,15,"warn"],[15,70,"good"],[70,80,"warn"],[80,90,"bad"]],
+  help:"<p>The board's thermistor, near the RF chain. Board A runs at 59-60 °C on the bench (all of 2026-10-31).</p><p class='k'>Good: 15-70 °C.</p><p><b>Hot</b> (yellow from 70 °C, 10 above its usual; red from 80, short of the 85 °C top of the RF chips' operating range): shade the board, give it airflow. Its frequencies drift with temperature; the loop follows slow drift.</p>"},
  {id:"supply", title:"RF supply", unit:"V", get:r=>r.det&&r.det.v5_rf, lo:4.5, hi:5.5,
   bands:[[4.5,4.75,"bad"],[4.75,4.85,"warn"],[4.85,5.25,"good"],[5.25,5.35,"warn"],[5.35,5.5,"bad"]],
   help:"<p>The +5 V rail of the RF chain (the demodulator and amplifiers want 4.75-5.25 V).</p><p class='k'>Good: 4.85-5.25 V.</p><p><b>Low:</b> a weak or long USB / power cable, or a supply set too low.</p>"}
@@ -154,6 +154,11 @@ function drawNotes(g, x, top, height, t0) {
     g.fillStyle = n.kind == "intervention" ? "rgba(124,58,237,.13)" : "rgba(124,58,237,.06)"; g.fillRect(xa, top, Math.max(2, xb - xa), height);
     g.fillStyle = C.note; g.fillRect(xa, top, 1.5, height); }
 }
+// a look the board was too busy for (the recovery running, a program's request) carries no readings: after a few such
+// seconds every panel says so instead of showing the last full look's values as now (the soak's photographs, 16:06)
+function fullLast() { for (let i = hist.length - 1; i >= 0; i--) if (!hist[i].busy && !hist[i].error) return hist[i]; return null; }
+function busyNow() { const f = fullLast(); return !!(last && last.busy && (!f || last.t - f.t > 2.5)); }
+function busyWhy() { return last && last.linkd && last.linkd.mode == "recovering" ? "the board is busy recovering the link" : "the board is busy with a program's request"; }
 function lastValue(get) { for (let i = hist.length - 1; i >= 0; i--) { const r = hist[i]; if (!r.busy) { const v = get(r); if (v != null) return v; } } return null; }
 function drawSeries(p) {
   const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv);
@@ -187,15 +192,16 @@ function drawSeries(p) {
   }
   const el = document.getElementById("v_" + p.id), xv = document.getElementById("x_" + p.id);
   if (p.kind == "multi") { el.textContent = ""; xv.innerHTML = p.series.map(([k, lab], i) => "<span style='color:" + SERIES[i] + "'>&#9632;</span> " + lab).join(" &nbsp; "); return; }
-  const lv = lastValue(p.get), nowNull = p.nm && last && !last.busy && p.get(last) == null;
-  const k = nowNull ? null : p.judge ? p.judge(last) : band(p, lv);
+  const stale = busyNow(), fl = fullLast() || last || {};
+  const lv = lastValue(p.get), nowNull = stale || (p.nm && last && !last.busy && p.get(last) == null);
+  const k = nowNull ? null : p.judge ? p.judge(fl) : band(p, lv);
   el.textContent = lv == null ? "-" : fmt(lv) + " " + p.unit + (lv > p.hi ? " ▲" : lv < p.lo ? " ▼" : "") + (nowNull ? " (last)" : "");
   el.style.color = k ? C[k] : C.ink2;
   let extra = "";
-  if (p.id == "dem" && last && last.dsa_db != null) extra = " (attenuator " + last.dsa_db + " dB of 0-31.75)";
-  if (p.id == "gwlock" && last && last.gw_lock) extra = " (it says: " + last.gw_lock.state + "; " + last.gw_lock.losses + " losses since power-up)";
+  if (p.id == "dem" && fl.dsa_db != null) extra = " (attenuator " + fl.dsa_db + " dB of 0-31.75)";
+  if (p.id == "gwlock" && fl.gw_lock) extra = " (it says: " + fl.gw_lock.state + "; " + fl.gw_lock.losses + " losses since the firmware was loaded)";
   if (lv == null && p.absent) extra = " (" + p.absent + ")";
-  const why = {lost: "not locked", nocarrier: "no carrier", interfered: "interference", held: "a program holds the loop", holdover: "the carrier interrupted"}[last && last.state] || "the comparators busy";
+  const why = stale ? busyWhy() : {lost: "not locked", nocarrier: "no carrier", interfered: "interference", held: "a program holds the loop", holdover: "the carrier interrupted"}[last && last.state] || "the comparators busy";
   xv.textContent = (lv == null ? "no reading yet" : nowNull ? "not measurable now (" + why + "); the last reading shown, in grey" : ({good:"good", warn:"marginal", bad:"bad"}[k] || "")) + (nowNull ? "" : extra);
   if (p.also || p.nm) xv.innerHTML = xv.innerHTML + "<br>" + (p.also ? "<span style='color:" + C.data + "'>&#9632;</span> the carrier &nbsp; <span style='color:" + SERIES[p.also[1]] + "'>&#9632;</span> " + p.also[2] + " &nbsp; " : "") +
     "<span class='hz'></span> not measurable then";
@@ -218,7 +224,8 @@ function drawTimeline(p) {
   let lost = 0, said = 0, run = null; for (const r of hist) { if (r.t < t0 || r.busy) continue; const bad = r.state == "lost" || r.state == "nocarrier";
     if (bad && !run) { lost++; if (notes.some(n => n.kind == "intervention" && n.t_start - 2 <= r.t && r.t <= (n.t_end || now) + 10)) said++; } run = bad; }
   const s = last && !last.busy ? last.state : null, e = document.getElementById("v_" + p.id);
-  e.textContent = s ? (STATES[s] || STATES.unsettled)[0] : "-"; e.style.color = s ? C[stateColour(s)] : C.ink2;
+  const rec = !s && last && last.linkd && last.linkd.mode == "recovering";
+  e.textContent = rec ? "Recovering" : s ? (STATES[s] || STATES.unsettled)[0] : "-"; e.style.color = rec ? C.warn : s ? C[stateColour(s)] : C.ink2;
   document.getElementById("x_" + p.id).textContent = lost + " loss" + (lost == 1 ? "" : "es") + " shown in this window" +
     (lost ? (said == lost ? (lost == 1 ? ", during an announced intervention" : ", all during announced interventions") : said ? ", " + said + " of them during announced interventions" : ", none announced") : "");
 }
@@ -262,24 +269,33 @@ function drawPullin(p) {
   g.fillStyle = C.good; g.beginPath(); g.arc(x(0), y(0), 5, 0, 7); g.fill();
   g.save(); g.fillStyle = C.ink2; g.font = "11px system-ui"; g.translate(10, T + ph / 2); g.rotate(-Math.PI / 2); g.textAlign = "center"; g.fillText("VC, V/s", 0, 0); g.restore();
   // the live loop: where it is, and how fast VC moves there (between consecutive readings), newer darker
-  const win = Math.min(span, 120), now = Date.now() / 1000; let pr = null;
-  for (const r of hist) { if (r.t < now - win - 5 || !r.slow_now || !r.adc || r.off_khz == null || r.state == "held" || r.busy) { pr = null; continue; }
+  const win = Math.min(span, 120), now = Date.now() / 1000; let pr = null; const recent = [];
+  // (not with no carrier: the map is the drift of an unlocked loop with the carrier there)
+  for (const r of hist) { if (r.t < now - win - 5 || !r.slow_now || !r.adc || r.off_khz == null || r.state == "held" || r.state == "nocarrier" || r.busy) { pr = null; continue; }
     if (pr && r.t - pr.t < 5 && r.t >= now - win) { const rate = (r.adc.VC - pr.adc.VC) / (r.t - pr.t), o = (r.off_khz + pr.off_khz) / 2;
       const lum = Math.round(30 + 55 * Math.min(1, (now - r.t) / win)), col = "hsl(222, 75%, " + lum + "%)";
+      if (r.t >= now - 8) recent.push([o, rate]);
       const xx = x(o), yy = y(rate); g.fillStyle = col; g.beginPath(); g.arc(xx, yy, 3.5, 0, 7); g.fill();
       if (rate > 12 || rate < -15) tri(g, xx, rate > 12 ? T + 1 : T + ph - 1, rate > 12, col);
       if (Math.abs(o) > 450) side(g, o > 0 ? L + pw - 1 : L + 1, yy, o < 0, col); }
     pr = r; }
   // where the loop is now, and which way the map says it would go
   const off = lastValue(r => r.off_khz);
-  if (off != null) { const xo = x(off); g.strokeStyle = C.data; g.lineWidth = 1; g.beginPath(); g.moveTo(xo, T); g.lineTo(xo, T + ph); g.stroke();
+  let lastSt = null; for (let i = hist.length - 1; i >= 0; i--) if (!hist[i].busy && hist[i].state) { lastSt = hist[i].state; break; }
+  if (busyNow()) el.textContent = "black: measured at " + k + " MHz; no reading now: " + busyWhy();
+  else if (lastSt == "nocarrier") el.textContent = "black: measured at " + k + " MHz; now no carrier: the map is how an unlocked loop drifts with the carrier there. " +
+      "With none, the oscillator runs to the end of its range (in about 2 s), and the recovery brings it back once the carrier returns";
+  else if (off != null) { const xo = x(off); g.strokeStyle = C.data; g.lineWidth = 1; g.beginPath(); g.moveTo(xo, T); g.lineTo(xo, T + ph); g.stroke();
     let rate = null; for (let i = 0; i + 1 < m.length; i++) if (m[i][0] <= off && off <= m[i + 1][0]) rate = m[i][1] + (m[i + 1][1] - m[i][1]) * (off - m[i][0]) / (m[i + 1][0] - m[i][0]);
     const vcNow = lastValue(r => r.adc && r.adc.VC), railed = vcNow != null && (vcNow < 0.35 || vcNow > 2.95);
     const rest = rests.find(c => Math.abs(c - off) < 8);
+    // held where the map says it would move: something else holds it (a CW stronger than the carrier captures the loop)
+    const here = recent.filter(([o]) => Math.abs(o - off) < 5), stays = rate != null && Math.abs(rate) > 3 && here.length >= 3 && here.every(([, v]) => Math.abs(v) < 1);
     if (rate != null && Math.abs(off) > 4 && rest == null && !railed) { const dir = rate > 0 ? 1 : -1; g.fillStyle = C.data; g.beginPath(); g.moveTo(xo + dir * 18, T + 14); g.lineTo(xo, T + 8); g.lineTo(xo, T + 20); g.fill(); }
     if (Math.abs(off) > 450) side(g, off > 0 ? L + pw - 1 : L + 1, T + ph / 2, off < 0, C.data);
     el.textContent = "black: measured at " + k + " MHz; blue: live; now " + fmt(off) + " kHz from the lock" + (Math.abs(off) <= 5 ? " (locked)" :
       railed ? ": VC at the end of its range; only the recovery brings it back" : rest != null ? ": resting in the false lock; it stays until the recovery moves it" :
+      stays ? ": the map says it would drift " + (rate < 0 ? "down" : "up") + " from here, but it stays: something holds it (an interferer stronger than the carrier can capture the loop; it lets go when the interferer goes)" :
       rate == null ? "" : rate < 0 ? (off > 0 ? ": it would drift down into the lock" : ": it would drift further down") : ": it would drift up");
   } else el.textContent = "map at " + k + " MHz; no offset reading yet";
   document.getElementById("v_" + p.id).textContent = "";
@@ -306,9 +322,14 @@ function drawSCurve(p) {
     if (Math.hypot(di, dq) < 0.4 * ref || r.state == "held") { skipped++; lastPt = null; continue; }     // no vector: a beat averaged away, or no carrier
     let th = Math.atan2(dq, di) * 180 / Math.PI; if (th > 90) th -= 180; else if (th < -90) th += 180;     // BPSK: two lock points
     const err = (r.adc.ERR - V_REF) * 1000, age = (Date.now() / 1000 - r.t) / win, lum = Math.round(30 + 55 * Math.min(1, age));
-    g.fillStyle = "hsl(222, 75%, " + lum + "%)"; g.beginPath(); g.arc(x(th), y(err), 3.5, 0, 7); g.fill(); lastPt = [th, err]; }
+    const other = r.state == "lost" || r.state == "unsettled", col = "hsl(222, 75%, " + lum + "%)";
+    g.beginPath(); g.arc(x(th), y(err), 3.5, 0, 7); if (other) { g.strokeStyle = col; g.lineWidth = 1.5; g.stroke(); } else { g.fillStyle = col; g.fill(); }
+    lastPt = [th, err, other ? r.off_khz : null, other]; }
   document.getElementById("v_" + p.id).textContent = "";
-  document.getElementById("x_" + p.id).textContent = !lastPt && skipped ? "no phase to show now: not locked or no carrier (these slow readings average a beat away)" : lastPt ? "grey: model; blue: live; now: phase " + lastPt[0].toFixed(0) + "°, error " + lastPt[1].toFixed(0) + " mV from the loop's reference" : "no reading yet";
+  document.getElementById("x_" + p.id).textContent = busyNow() ? "no phase to show now: " + busyWhy() :
+    lastPt && lastPt[3] && lastPt[2] != null && lastPt[2] <= -35 && lastPt[2] >= -55 ? "now: resting in the false lock, " + fmt(-lastPt[2]) + " kHz below the carrier, not locked to it; the open circles are not its phase to the carrier" :
+    lastPt && lastPt[3] ? "now: the loop follows something" + (lastPt[2] != null ? " " + fmt(Math.abs(lastPt[2])) + " kHz " + (lastPt[2] < 0 ? "below" : "above") + " the carrier" : " other than the carrier") +
+      " (an interferer stronger than the carrier has captured it); the open circles are its phase to that, not to the carrier" : !lastPt && skipped ? "no phase to show now: not locked or no carrier (these slow readings average a beat away)" : lastPt ? "grey: model; blue: live; now: phase " + lastPt[0].toFixed(0) + "°, error " + lastPt[1].toFixed(0) + " mV from the loop's reference" : "no reading yet";
 }
 function drawAll() { for (const p of PANELS) { try { ({timeline: drawTimeline, scatter: drawScatter, pullin: drawPullin, scurve: drawSCurve}[p.kind] || drawSeries)(p); } catch (e) { console.log(p.id, e); } } }
 function status() {
@@ -332,13 +353,15 @@ function status() {
   document.getElementById("small").textContent = (since != null ? "In this state for " + dur(since) + ". " : "") +
      (ago != null && ago < 30 ? "Being driven now by " + dr.peer + " (" + (dr.name || dr.op) + "). " :
       paused && ago != null ? "Last driven " + ago + " s ago by " + dr.peer + " (" + (dr.name || dr.op) + "). " : "No program is driving the board. ") + rec +
-     (r.gw_lock ? " The board's own lock monitor: " + r.gw_lock.state + " (" + r.gw_lock.losses + " losses, " + dur(r.gw_lock.seconds_locked) + " locked since power-up)." : "") +
+     (r.gw_lock ? " The board's own lock monitor: " + r.gw_lock.state + " (" + r.gw_lock.losses + " losses, " + dur(r.gw_lock.seconds_locked) + " locked since the firmware was loaded)." : "") +
      (r.error ? " Detail: " + r.error : "");
   if (Ld && Ld.mode == "recovering") { word.textContent = "Recovering"; why.textContent = "The link was lost; the board is bringing it back by itself (it re-centres its loop and starts it just above the carrier)."; todo.textContent = "Wait a few seconds."; }
   if (Ld && /setting up/.test(Ld.mode)) { word.textContent = "Setting up"; why.textContent = "The board has just started and is setting the link up by itself."; todo.textContent = "Wait about half a minute."; }
   if (Ld && Ld.mode == "backing off") todo.textContent = "The automatic recovery could not find the carrier and will try again. Check that the other board is on and transmitting, and that the antennas face each other.";
-  document.getElementById("meta").textContent = "firmware " + (r.id || "?") + (r.rx_mhz ? ", carrier " + r.rx_mhz + " MHz" : "") +
-     (r.dsa_db != null ? ", attenuator " + r.dsa_db + " dB" : "") + ", updated " + new Date(r.t * 1000).toLocaleTimeString();
+  const f = fullLast() || r;                    // a busy look has no firmware, carrier or attenuator reading
+  document.getElementById("meta").textContent = "firmware " + (f.id || "?") + (f.rx_mhz ? ", carrier " + f.rx_mhz + " MHz" : "") +
+     (f.dsa_db != null ? ", attenuator " + f.dsa_db + " dB" : "") + ", updated " + new Date(r.t * 1000).toLocaleTimeString() +
+     (busyNow() ? " (" + busyWhy() + ": no readings for " + Math.round(r.t - (fullLast() || r).t) + " s)" : "");
 }
 function dur(s) { return s < 90 ? Math.round(s) + " s" : s < 5400 ? Math.round(s / 60) + " min" : (s / 3600).toFixed(1) + " h"; }
 const EV = {"recovered": [C.good, "●"], "loss": [C.bad, "●"], "loss-expected": [C.note, "●"], "failed": [C.warn, "●"],
