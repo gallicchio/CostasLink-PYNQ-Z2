@@ -1,0 +1,33 @@
+==== linkd (5200,) 11:42:39
+5200 cwdrag     #0: back by linkd in 4.6 s after the disturbance (its own record: 5.5 s, 2 starts)
+5200 cwdrag     #1: back by linkd in 61.0 s after the disturbance (its own record: 2.4 s, 1 starts)
+5200 cwnear     #0: NOT recovered by linkd in 180 s: {'mode': 'locked', 'enabled': True, 'vc_lock': 1.8607445578080861, 'leg': 0.15465818524748656, 'lost_for_s': None, 'next_try_in_s': None, 'losses': 2, 'recoveries': 2, 'failed': 0, 'last_recovery_s': 2.3539960384368896, 't_last_loss': 1793472354.4666836, 't_last_recovery': 1793472356.1458786, 'last_starts': 1}
+5200 cwnear     #1: NOT recovered by linkd in 180 s: {'mode': 'locked', 'enabled': True, 'vc_lock': 1.8608421907559587, 'leg': 0.1691090853566596, 'lost_for_s': None, 'next_try_in_s': None, 'losses': 2, 'recoveries': 2, 'failed': 0, 'last_recovery_s': 2.3539960384368896, 't_last_loss': 1793472354.4666836, 't_last_recovery': 1793472356.1458786, 'last_starts': 1}
+5200 falselock  #0: back by linkd in 61.5 s after the disturbance (its own record: 1.3 s, 1 starts)
+5200 falselock  #1: back by linkd in 62.0 s after the disturbance (its own record: 1.3 s, 1 starts)
+5200 rail       #0: back by linkd in 62.5 s after the disturbance (its own record: 1.8 s, 1 starts)
+5200 rail       #1: back by linkd in 62.5 s after the disturbance (its own record: 1.8 s, 1 starts)
+5200 blocked10  #0: back by linkd in 65.1 s after the disturbance (its own record: 2.4 s, 1 starts)
+5200 blocked10  #1: back by linkd in 65.1 s after the disturbance (its own record: 2.4 s, 1 starts)
+==== linkd (5000,) 11:58:57
+5000 cwdrag     #0: back by linkd in 4.6 s after the disturbance (its own record: 5.0 s, 2 starts)
+5000 cwdrag     #1: back by linkd in 61.0 s after the disturbance (its own record: 1.9 s, 1 starts)
+5000 cwnear     #0: NOT recovered by linkd in 180 s: {'mode': 'locked', 'enabled': True, 'vc_lock': 1.8609734072264996, 'leg': 0.19876732706129635, 'lost_for_s': None, 'next_try_in_s': None, 'losses': 10, 'recoveries': 10, 'failed': 0, 'last_recovery_s': 1.898831844329834, 't_last_loss': 1793473326.6568348, 't_last_recovery': 1793473327.8625264, 'last_starts': 1}
+5000 cwnear     #1: NOT recovered by linkd in 180 s: {'mode': 'locked', 'enabled': True, 'vc_lock': 1.861191709171399, 'leg': 0.19833898842135217, 'lost_for_s': None, 'next_try_in_s': None, 'losses': 10, 'recoveries': 10, 'failed': 0, 'last_recovery_s': 1.898831844329834, 't_last_loss': 1793473326.6568348, 't_last_recovery': 1793473327.8625264, 'last_starts': 1}
+5000 falselock  #0: back by linkd in 62.0 s after the disturbance (its own record: 1.3 s, 1 starts)
+5000 falselock  #1: back by linkd in 61.0 s after the disturbance (its own record: 1.3 s, 1 starts)
+5000 rail       #0: back by linkd in 61.6 s after the disturbance (its own record: 1.8 s, 1 starts)
+5000 rail       #1: back by linkd in 63.1 s after the disturbance (its own record: 1.8 s, 1 starts)
+5000 blocked10  #0: back by linkd in 64.6 s after the disturbance (its own record: 1.9 s, 1 starts)
+5000 blocked10  #1: back by linkd in 65.1 s after the disturbance (its own record: 1.9 s, 1 starts)
+==== linkd (5500,) 12:15:07
+5500 cwdrag     #0: back by linkd in 4.6 s after the disturbance (its own record: 5.4 s, 2 starts)
+5500 cwdrag     #1: back by linkd in 62.0 s after the disturbance (its own record: 2.4 s, 1 starts)
+5500 cwnear     #0: NOT recovered by linkd in 180 s: {'mode': 'locked', 'enabled': True, 'vc_lock': 1.8612464161248712, 'leg': 0.14563423495758482, 'lost_for_s': None, 'next_try_in_s': None, 'losses': 18, 'recoveries': 18, 'failed': 0, 'last_recovery_s': 2.352308988571167, 't_last_loss': 1793474382.3900886, 't_last_recovery': 1793474384.0681672, 'last_starts': 1}
+5500 cwnear     #1: NOT recovered by linkd in 180 s: {'mode': 'locked', 'enabled': True, 'vc_lock': 1.8613797182171856, 'leg': 0.14567841807272688, 'lost_for_s': None, 'next_try_in_s': None, 'losses': 18, 'recoveries': 18, 'failed': 0, 'last_recovery_s': 2.352308988571167, 't_last_loss': 1793474382.3900886, 't_last_recovery': 1793474384.0681672, 'last_starts': 1}
+5500 falselock  #0: back by linkd in 62.1 s after the disturbance (its own record: 1.3 s, 1 starts)
+5500 falselock  #1: back by linkd in 62.6 s after the disturbance (its own record: 1.3 s, 1 starts)
+5500 rail       #0: back by linkd in 62.6 s after the disturbance (its own record: 2.4 s, 1 starts)
+5500 rail       #1: back by linkd in 63.1 s after the disturbance (its own record: 2.4 s, 1 starts)
+5500 blocked10  #0: back by linkd in 64.6 s after the disturbance (its own record: 2.4 s, 1 starts)
+5500 blocked10  #1: NOT recovered by linkd in 180 s: {'mode': 'locked', 'enabled': True, 'vc_lock': 1.8613349046897354, 'leg': 0.15970273392400655, 'lost_for_s': None, 'next_try_in_s': None, 'losses': 23, 'recoveries': 23, 'failed': 0, 'last_recovery_s': 2.3517303466796875, 't_last_loss': 1793475088.5820653, 't_last_recovery': 1793475090.259266, 'last_starts': 1}

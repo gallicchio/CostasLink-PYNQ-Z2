@@ -1,0 +1,3 @@
+# The bench's full record stays on the bench PC: only code, docs and a few examples go to git (Jason, 2026-10-31)
+bringup/data/*
+!bringup/data/examples/

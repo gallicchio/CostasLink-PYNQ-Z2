@@ -1,0 +1,16 @@
+waiting for the link to be locked with linkd active ...
+12:38:32 #1 drag_below gain 86.00 off_mhz -1.00, seconds 5.46: locked again 2.0 s after it ended | 0 loss, 0 recovered by linkd, 0 failed tries
+12:39:16 #2 bursts     gain 83.00 on_ms 0.01, per_ms 100.00, seconds 5.71: locked again 0.0 s after it ended | 0 loss, 0 recovered by linkd, 0 failed tries
+12:40:22 #3 bursts     gain 80.00 on_ms 1.00, per_ms 100.00, seconds 11.66: locked again 1.5 s after it ended | 0 loss, 0 recovered by linkd, 0 failed tries
+12:41:46 #4 beacons    gain 80.00 on_ms 1.00, per_ms 102.40, seconds 30.00: locked again 1.0 s after it ended | 0 loss, 0 recovered by linkd, 0 failed tries
+interpolation = dsp_rate/samp_rate -> 3 = (32 MHz)/(10 MHz)
+12:42:51 #5 drag_below gain 80.00 off_mhz -1.00, seconds 6.85: locked again 2.0 s after it ended | 0 loss, 0 recovered by linkd, 0 failed tries
+12:43:32 #6 bursts     gain 83.00 on_ms 0.10, per_ms 1.00, seconds 18.19: locked again 2.0 s after it ended | 0 loss, 0 recovered by linkd, 0 failed tries
+U12:44:46 #7 bursts     gain 83.00 on_ms 0.10, per_ms 10.00, seconds 21.92: locked again 1.5 s after it ended | 0 loss, 0 recovered by linkd, 0 failed tries
+12:45:42 #8 near       gain 80.00 off_khz 2, seconds 4.35: locked again 1.0 s after it ended | 0 loss, 0 recovered by linkd, 0 failed tries
+12:46:29 #9 drag_below gain 83.00 off_mhz -10.00, seconds 2.09: locked again 2.5 s after it ended | 1 loss, 1 recovered by linkd, 0 failed tries
+12:47:34 #10 beacons    gain 89.75 on_ms 1.00, per_ms 102.40, seconds 30.00: locked again 1.0 s after it ended | 0 loss, 0 recovered by linkd, 0 failed tries
+interpolation = dsp_rate/samp_rate -> 3 = (32 MHz)/(10 MHz)
+12:48:24 #11 drag_above gain 86.00 off_mhz 10.00, seconds 6.29: locked again 3.5 s after it ended | 1 loss, 1 recovered by linkd, 0 failed tries
+12:49:51 #12 beacons    gain 89.75 on_ms 1.00, per_ms 102.40, seconds 30.00: locked again 1.0 s after it ended | 0 loss, 0 recovered by linkd, 0 failed tries
+interpolation = dsp_rate/samp_rate -> 3 = (32 MHz)/(10 MHz)
