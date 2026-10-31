@@ -496,7 +496,7 @@ class Soak:
         elif kind == "attn" and a.get("attn") and a["attn"]["ant_db"] is not None:
             extra = " dem %+.1f, RX ANT %+.1f dB" % (a["attn"]["dem_db"], a["attn"]["ant_db"])
         print("%s #%-3d %-11s %s | %s%s, back %s | %s" % (
-            time.strftime("%H:%M:%S"), n, kind, describe(kind, p).split(": ", 1)[-1], rec["outcome"], extra,
+            time.strftime("%H:%M:%S"), n, kind, describe(kind, p).replace("B210: ", "", 1), rec["outcome"], extra,
             ("%.1f s" % max(0.0, a["relocked_s"])) if a.get("relocked_s") is not None else
             ("%.1f s (linkd)" % rec["back_s"]) if rec["back_s"] is not None else "NEVER",
             ("all %d checks ok" % sum(1 for c in a["checks"] if c["ok"])) if not bad else

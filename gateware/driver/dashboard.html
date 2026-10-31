@@ -199,11 +199,14 @@ function drawSeries(p) {
   el.style.color = k ? C[k] : C.ink2;
   let extra = "";
   if (p.id == "dem" && fl.dsa_db != null) extra = " (attenuator " + fl.dsa_db + " dB of 0-31.75)";
-  if (p.id == "gwlock" && fl.gw_lock) extra = " (it says: " + fl.gw_lock.state + "; " + fl.gw_lock.losses + " losses since the firmware was loaded)";
+  if (p.id == "gwlock" && fl.gw_lock) extra = " (it says: " + fl.gw_lock.state + "; " + fl.gw_lock.losses + " losses since the firmware was loaded)" +
+     (fl.gw_lock.state == "lost" && fl.state == "interfered" ? ". It judges from the comparators alone; the oscillator is still on the carrier, so the page calls this interference, not a loss" : "");
   if (lv == null && p.absent) extra = " (" + p.absent + ")";
-  const why = stale ? busyWhy() : {lost: "not locked", nocarrier: "no carrier", interfered: "interference", held: "a program holds the loop", holdover: "the carrier interrupted"}[last && last.state] || "the comparators busy";
+  const why = stale ? busyWhy() : {lost: "not locked", nocarrier: "no carrier", interfered: "interference", held: "a program holds the loop", holdover: "the carrier interrupted"}[last && last.state] ||
+     "the I comparator is toggling: bursts of interference, or data on the link, spoil this slow reading";
   xv.textContent = (lv == null ? "no reading yet" : nowNull ? "not measurable now (" + why + "); the last reading shown, in grey" : ({good:"good", warn:"marginal", bad:"bad"}[k] || "")) + (nowNull ? "" : extra);
-  if (p.also || p.nm) xv.innerHTML = xv.innerHTML + "<br>" + (p.also ? "<span style='color:" + C.data + "'>&#9632;</span> the carrier &nbsp; <span style='color:" + SERIES[p.also[1]] + "'>&#9632;</span> " + p.also[2] + " &nbsp; " : "") +
+  if (p.also || p.nm) xv.innerHTML = xv.innerHTML + "<br>" + (p.also ? "<span style='color:" + C.data + "'>&#9632;</span> the carrier &nbsp; <span style='color:" + SERIES[p.also[1]] + "'>&#9632;</span> " + p.also[2] +
+      (fl.state && fl.state != "locked" && fl.state != "interfered" ? " (not locked now, so it includes the carrier itself)" : "") + " &nbsp; " : "") +
     "<span class='hz'></span> not measurable then";
 }
 function drawTimeline(p) {
@@ -347,13 +350,13 @@ function status() {
   const Ld = r.linkd, paused = Ld && /^paused/.test(Ld.mode), idle = (Ld && Ld.idle_s) || 60;
   const rec = !Ld ? "Automatic recovery: not running on this board." :
      "Automatic recovery: " + (paused ? "waiting, as it does until no program has driven the board for " + Math.round(idle) + " s" +
-       (ago != null ? " (about " + Math.max(0, Math.round(idle - ago)) + " s more)" : "") : Ld.mode) + ". " + Ld.losses + " loss" + (Ld.losses == 1 ? "" : "es") + ", " + Ld.recoveries + " recovered" +
+       (ago != null ? " (about " + Math.max(0, Math.round(idle - ago)) + " s more)" : "") : LD_WORDS[Ld.mode] || Ld.mode) + ". " + Ld.losses + " loss" + (Ld.losses == 1 ? "" : "es") + ", " + Ld.recoveries + " recovered" +
      (Ld.failed ? ", " + Ld.failed + " failed tries" : "") + (Ld.last_recovery_s != null ? " (the last in " + Ld.last_recovery_s.toFixed(1) + " s)" : "") +
      (Ld.next_try_in_s != null ? "; trying again in " + Math.round(Ld.next_try_in_s) + " s" : "") + ".";
   document.getElementById("small").textContent = (since != null ? "In this state for " + dur(since) + ". " : "") +
      (ago != null && ago < 30 ? "Being driven now by " + dr.peer + " (" + (dr.name || dr.op) + "). " :
       paused && ago != null ? "Last driven " + ago + " s ago by " + dr.peer + " (" + (dr.name || dr.op) + "). " : "No program is driving the board. ") + rec +
-     (r.gw_lock ? " The board's own lock monitor: " + r.gw_lock.state + " (" + r.gw_lock.losses + " losses, " + dur(r.gw_lock.seconds_locked) + " locked since the firmware was loaded)." : "") +
+     (r.gw_lock ? " The board's own lock monitor (the LEDs; it judges from the comparators alone, so it counts strong interference as losses too): " + r.gw_lock.state + " (" + r.gw_lock.losses + " losses, " + dur(r.gw_lock.seconds_locked) + " locked since the firmware was loaded)." : "") +
      (r.error ? " Detail: " + r.error : "");
   if (Ld && Ld.mode == "recovering") { word.textContent = "Recovering"; why.textContent = "The link was lost; the board is bringing it back by itself (it re-centres its loop and starts it just above the carrier)."; todo.textContent = "Wait a few seconds."; }
   if (Ld && /setting up/.test(Ld.mode)) { word.textContent = "Setting up"; why.textContent = "The board has just started and is setting the link up by itself."; todo.textContent = "Wait about half a minute."; }
@@ -363,6 +366,9 @@ function status() {
      (f.dsa_db != null ? ", attenuator " + f.dsa_db + " dB" : "") + ", updated " + new Date(r.t * 1000).toLocaleTimeString() +
      (busyNow() ? " (" + busyWhy() + ": no readings for " + Math.round(r.t - (fullLast() || r).t) + " s)" : "");
 }
+const LD_WORDS = {locked: "standing by, the link locked", watching: "watching: its own check sees the lock disturbed but the oscillator still on the carrier, so nothing to do yet",
+  recovering: "bringing the link back now", "backing off": "waiting to try again (its last try found no carrier)", off: "switched off",
+  "parked: the loop is held by a program": "standing aside: a program holds the loop", "waiting for a first lock": "waiting for a first lock to learn from"};
 function dur(s) { return s < 90 ? Math.round(s) + " s" : s < 5400 ? Math.round(s / 60) + " min" : (s / 3600).toFixed(1) + " h"; }
 const EV = {"recovered": [C.good, "●"], "loss": [C.bad, "●"], "loss-expected": [C.note, "●"], "failed": [C.warn, "●"],
             "note-intervention": [C.note, "■"], "note-explained": [C.note, "◆"], "note-info": [C.ink2, "◆"]};
