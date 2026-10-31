@@ -1,4 +1,4 @@
-// ihold: the interference hold (2026-10-30; BRINGUP_LOG 4.3-4.5).  A strong interferer drags the loop to a rail
+// ihold: the interference hold and the signal holdover (2026-10-30; BRINGUP_LOG 4.3-4.5).  A strong interferer drags the loop to a rail
 // within milliseconds and the loop does not come back by itself; held (LOOP_HOLD) through the interferer it comes
 // back in 50 ms, 24 times of 24.  This asks for the hold itself: while the chosen comparators keep changing, the
 // loop is held, and it is released `hold` clocks after they were last busy.
@@ -12,8 +12,19 @@
 // half the carrier.  A lost, beating loop also makes them chatter, and a hold must never keep it from locking again:
 // after `max` clocks held without a break the hold lets go and cannot trigger again for `hold` clocks (the guard).
 // The counts: holds started, clocks held; cleared by `clr`.
+//
+// LEVEL = 1 makes the same machine the signal holdover: a clock counts if any sample has a comparator of `mask`
+// high, and a window with fewer than `thresh` such clocks triggers.  The default mask is all four windows (IP, IN,
+// QP, QN): the carrier's idle sits beyond one of them, BPSK data and events swing across them, and with the carrier
+// gone I and Q sit in the middle and all four are quiet.  Someone in front of the antenna: the loop is held while the
+// carrier is gone, so it is still at the carrier's frequency when the carrier comes back.  A lost loop's vector
+// rotates at full length, and a vector of length a always has |I| or |Q| beyond a / sqrt 2 > a / 2, so a lost loop
+// that is trying to pull in is never held by this one (with the I windows alone it would be, for a third of each
+// beat: the reason for all four).
 module ihold #(
-    parameter integer SER = 8
+    parameter integer SER   = 8,
+    parameter integer LEVEL = 0                 // 0: the interference hold (changes, at thresh or more);
+                                                // 1: the signal holdover (clocks with a comparator of mask high, under thresh)
 ) (
     input  wire              clk,
     input  wire              rst,
@@ -43,7 +54,16 @@ module ihold #(
         end
     end
     wire [4:0] act = chg & mask;
-    wire [2:0] n_act = {2'd0, act[0]} + {2'd0, act[1]} + {2'd0, act[2]} + {2'd0, act[3]} + {2'd0, act[4]};
+    // LEVEL 1: this clock shows the carrier if any of its samples has a comparator of mask high
+    reg        lvl;
+    integer    s2;                              // its own loop variable (one shared by two always @* is multi-driven)
+    always @* begin
+        lvl = 1'b0;
+        for (s2 = 0; s2 < SER; s2 = s2 + 1)
+            if (|(fs[6*s2 +: 5] & mask)) lvl = 1'b1;
+    end
+    wire [2:0] n_act = (LEVEL != 0) ? {2'd0, lvl} :
+                       {2'd0, act[0]} + {2'd0, act[1]} + {2'd0, act[2]} + {2'd0, act[3]} + {2'd0, act[4]};
 
     reg  [2:0]  n_act_q;                        // registered: the window's adder starts from a register
     reg  [10:0] wcnt;                           // clocks into the window
@@ -66,7 +86,8 @@ module ihold #(
             if (wcnt >= wlen_m1) begin
                 wcnt <= 11'd0;
                 acc <= 11'd0;
-                trig <= ((acc + {8'd0, n_act_q}) >= {3'd0, thresh});
+                trig <= (LEVEL != 0) ? ((acc + {8'd0, n_act_q}) <  {3'd0, thresh})
+                              : ((acc + {8'd0, n_act_q}) >= {3'd0, thresh});
                 last_count <= ((acc + {8'd0, n_act_q}) > 11'd255) ? 8'd255 : acc[7:0] + {5'd0, n_act_q};
             end else begin
                 wcnt <= wcnt + 1'b1;

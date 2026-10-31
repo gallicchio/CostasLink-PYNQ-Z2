@@ -774,6 +774,32 @@ class CostasLink:
         self.wr("RX_IHOLD_MAX", int(max_s * self.clk_mhz * 1e6))
         self.wr("RX_IHOLD_CFG", int(bool(on)) | (wlog & 7) << 1 | (thresh & 0xFF) << 8 | (m & 0x1F) << 16)
 
+    def shold(self, on=True, mask=(CMP_IP, CMP_IN, CMP_QP, CMP_QN), window=256, thresh=64, hold_s=1e-3, max_s=10.0):
+        """the signal holdover (ID version 5, ihold.v LEVEL 1): LOOP_HOLD while fewer than `thresh` of each `window`
+        clocks have a comparator of `mask` high (the carrier gone: someone in front of the antenna), released hold_s
+        after it is back; never longer than max_s at a time.  With the windows at 0.5 a it holds from a fade of about
+        6 dB, where the decisions stop anyway; a lost loop's beat keeps the windows busy, so it never holds a lost
+        loop.  Switch it off while searching for the carrier"""
+        if not getattr(self, "ihold_ok", False):
+            raise IOError("this overlay has no signal holdover (ID version 5 has)")
+        m = 0
+        for c in mask:
+            m |= 1 << c
+        wlog = max(0, min(7, int(window).bit_length() - 1 - 3)) if window else 5
+        self.wr("RX_SHOLD_HOLD", int(hold_s * self.clk_mhz * 1e6))
+        self.wr("RX_SHOLD_MAX", int(max_s * self.clk_mhz * 1e6))
+        self.wr("RX_SHOLD_CFG", int(bool(on)) | (wlog & 7) << 1 | (thresh & 0xFF) << 8 | (m & 0x1F) << 16)
+
+    def shold_state(self):
+        c = self.rd("RX_SHOLD_CFG")
+        return {"on": c & 1, "holding": c >> 4 & 1, "last_count": c >> 24 & 0xFF, "holds": self.rd("RX_SHOLD_N"),
+                "clocks": self.rd("RX_SHOLD_CLK"), "seconds": self.rd("RX_SHOLD_CLK") / (self.clk_mhz * 1e6)}
+
+    def protect(self, on=True):
+        """both holds with their defaults (the deployment's setting): on once locked, off while searching"""
+        self.ihold(on)
+        self.shold(on)
+
     def ihold_state(self):
         c = self.rd("RX_IHOLD_CFG")
         return {"on": c & 1, "holding": c >> 4 & 1, "last_count": c >> 24 & 0xFF, "holds": self.rd("RX_IHOLD_N"),

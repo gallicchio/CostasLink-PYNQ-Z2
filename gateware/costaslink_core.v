@@ -285,6 +285,7 @@ module costaslink_core #(
         else if (a_core <= 8'h77) rsel <= 3'd2;          // the receiver's second window (ber_cdr, ihold)
         else if (a_core >= 8'h78 && a_core <= 8'h7F) rsel <= 3'd4;
         else if (a_core == R_BUILD) rsel <= 3'd5;
+        else if (a_core <= 8'h8F) rsel <= 3'd2;          // the receiver's third window (the signal holdover)
         else if (a_core >= 8'h90 && a_core <= 8'hAF) rsel <= 3'd6;
         else rsel <= 3'd7;
     end

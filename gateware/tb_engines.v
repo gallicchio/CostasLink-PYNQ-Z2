@@ -346,6 +346,20 @@ module tb_engines;
         rd(R_RX_IHOLD_CLK, v);
         if (v < 200) begin $display("FAIL RX_IHOLD_CLK: %0d clocks held", v); errors = errors + 1; end
         wr(R_RX_IHOLD_CFG, 32'd0);
+        // ---- the signal holdover: the idle at (0, 0), the windows all quiet (the carrier gone), holds the loop; the
+        //      idle back at (+1, 0), it lets go RX_SHOLD_HOLD later
+        wr(R_RX_SHOLD_HOLD, 32'd200);
+        wr(R_RX_SHOLD_CFG, {11'd0, 5'b11110, 8'd8, 3'd0, 1'b0, 3'd2, 1'b1});   // IP, IN, QP, QN; 32 clocks; under 8; on
+        idle_clocks(100);
+        expect("LOOP_HOLD with the carrier", loop_hold, 0);
+        wr(R_TX_IDLE, {28'd0, 4'b0101});                            // (0, 0): nothing on the windows
+        idle_clocks(200);
+        expect("LOOP_HOLD with the carrier gone", loop_hold, 1);
+        wr(R_TX_IDLE, {28'd0, P_IDLE});
+        idle_clocks(400);
+        expect("LOOP_HOLD 400 clocks after the carrier is back", loop_hold, 0);
+        rd(R_RX_SHOLD_N, v); expect("RX_SHOLD_N", v, 1);
+        wr(R_RX_SHOLD_CFG, 32'd0);
         wr(R_CTRL, v2 & ~32'h80);
 
         // ---- events on TRIG_IN, TRIG_IN the reference: the latency from TRIG_IN's rising sample ----

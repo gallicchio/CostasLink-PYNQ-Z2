@@ -14,7 +14,7 @@ import os, sys
 # (address, name, access, block, description).  access: R, W, RW; "pulse" in the text = acts once.
 REGS = [
     # ---- the first firmware (Response 9 and 14): costaslink_regs.v, cmp_monitor.v ------------------------
-    (0x00, "ID", "R", "regs", "0x434C0005: 'CL', version 5 (2026-10-30: the interference hold; 4 the BER check's timing recovery; 3 the reply paths and the turnaround counter, Prompt 36; 2 Response 15's engines)"),
+    (0x00, "ID", "R", "regs", "0x434C0005: 'CL', version 5 (2026-10-30: the interference hold and the signal holdover; 4 the BER check's timing recovery; 3 the reply paths and the turnaround counter, Prompt 36; 2 Response 15's engines)"),
     (0x01, "CTRL", "RW", "regs", "[0] TX_DIS (reset 1: muted; header pin 24 carries its inverse, TX_EN), [1] LOOP_HOLD (reset 1), [2] LOOP_SEL, [3] TR_A (reset 1: receive), "
                                  "[6] ID enable, [7] pulse: ID now, [8] TX_Q1 high-impedance (unused since Prompt 35: TRIG IN sums into the Q ladder on the board)"),
     (0x02, "TXSYM", "RW", "regs", "[3:0] {Q1 Q0 I1 I0} ladder point in TX_MODE 0; a write pulses TRIG_A; R [7:4] the pins now"),
@@ -159,6 +159,15 @@ REGS = [
                                     "the arming (only the newest that many are this capture's)"),
 
     # ---- build information --------------------------------------------------------------------------------------
+    (0x81, "RX_SHOLD_CFG", "RW", "rx3", "the signal holdover (ihold.v, LEVEL 1): [0] on, [3:1] window 2^(3 + n) clocks, [15:8] "
+                                        "fewer clocks than this with a window comparator high trigger (the carrier gone), "
+                                        "[20:16] the comparators {CMP_IN CMP_IP CMP_QN CMP_QP CMP_I} (reset: IP, IN, QP, QN, 256 "
+                                        "clocks, 64, off); R [4] holding now, [31:24] the last window's count"),
+    (0x82, "RX_SHOLD_HOLD", "RW", "rx3", "clocks the loop stays held after the carrier is back, and the guard after a release "
+                                         "at RX_SHOLD_MAX (reset 1 ms)"),
+    (0x83, "RX_SHOLD_MAX", "RW", "rx3", "the longest holdover without a break, clocks (reset 10 s)"),
+    (0x84, "RX_SHOLD_N", "R", "rx3", "holdovers started since RX_CTRL[1]'s clear"),
+    (0x85, "RX_SHOLD_CLK", "R", "rx3", "clocks held since then"),
     (0x80, "BUILD", "R", "core", "[7:0] SER, [11:8] board (0 simulation, 1 PYNQ-Z2, 2 Icepi Zero), [12] the fast path is built, "
                                  "[13] the ladder pins are read back into the capture, [14] the reply lane reads the sampler's "
                                  "word a clock early, [15] the synchronous reply registered once more (a clock later), "
@@ -200,7 +209,7 @@ REGS = [
 
 BLOCKS = {"regs": (0x00, 0x2F), "tx": (0x30, 0x3F), "rx": (0x40, 0x5F), "seq": (0x60, 0x6F), "cdr": (0x70, 0x77),
           "cap": (0x78, 0x7F),
-          "core": (0x80, 0x80), "lat": (0x90, 0xAF)}
+          "core": (0x80, 0x80), "rx3": (0x81, 0x8F), "lat": (0x90, 0xAF)}
 
 BY_NAME = {name: addr for addr, name, *_ in REGS}
 
