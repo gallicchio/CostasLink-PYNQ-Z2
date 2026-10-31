@@ -88,6 +88,8 @@ class Dashboard:
         r["ihold"] = {k: ih[k] for k in ("on", "holding", "holds", "seconds", "hold_s", "persist_s") if k in ih}
         r["shold"] = {k: sh[k] for k in ("on", "holding", "holds", "seconds")}
         r["cmp"] = cl.rd("CMP_STATE")
+        if getattr(cl, "lockmon", False):
+            r["gw_lock"] = cl.lock_state()            # the gateware's own judgement (ID version 8, lockmon.v)
         pll = getattr(cl, "_pll", {})
         r["rx_mhz"] = pll.get(1, (None,))[0] if isinstance(pll, dict) else None
         r["dsa_db"] = getattr(cl, "_dsa_db", None)
@@ -420,7 +422,8 @@ function status() {
      (L.next_try_in_s != null ? "; trying again in " + Math.round(L.next_try_in_s) + " s" : "") + ".";
   document.getElementById("small").textContent = (since != null ? "In this state for " + dur(since) + ". " : "") +
      (ago != null && ago < 30 ? "Being driven now by " + dr.peer + " (" + (dr.name || dr.op) + "). " : "No program is driving the board. ") +
-     rec + (r.error ? " Detail: " + r.error : "");
+     rec + (r.gw_lock ? " The board's own lock monitor: " + r.gw_lock.state + " (" + r.gw_lock.losses + " losses, " +
+     dur(r.gw_lock.seconds_locked) + " locked since power-up)." : "") + (r.error ? " Detail: " + r.error : "");
   if (L && L.mode == "recovering") { document.getElementById("word").textContent = "Recovering";
      document.getElementById("why").textContent = "The link was lost; the board is bringing it back by itself (it re-centres its loop and starts it just above the carrier).";
      document.getElementById("todo").textContent = "Wait a few seconds."; }

@@ -27,6 +27,13 @@ ch2 I MON, ch3 Q MON, ch4 VC MON. 50 ohm on TX MON's pigtail. JP201 on TCXO.
 **Unattended operation (Jason, 2026-10-31: the boards run unattended, operated by physicists who do not know PLLs;
 "this part just needs to work reliably without intervention"; a live dashboard that survives new firmware, tests and
 experiments; pictures, not one-word states, each with what led to it and how to improve it):**
+   **Status 2026-10-31 noon:** 1 done (BRINGUP_LOG 4.15: 0 of 171 forced losses unrecovered, 1.7-3.0 s, the loss
+   judged on VC so bursts draw nothing); the recovery runs on the board in `linkd.py` (in the board server, since
+   11:40: recovering on rev A needs the integrator re-centred, which needs the synthesizers retuned: software's job;
+   REVB U4 asks rev B for an integrator reset so gateware alone could do it), its end-to-end test running; 2's lock
+   monitor and the PYNQ-Z2's LEDs in ID 8 (`lockmon.v`, building); 3's page v1 at http://192.168.8.142:8080/ (since
+   11:07).  Next: `bringup/unattended.py` overnight (the B210 throwing random interference, nothing touching the
+   board, linkd and the page doing the work); the page's eye, latency and history plots.
 1. The recovery algorithm proven from the PC first: a lock detector from the comparators, and on a loss the downward
    VC_OFF search from above the carrier (3.9j: 52 of 52); then every failure the bench can make, unattended and
    repeated: parked in the false lock and on the rail, dragged by full-power CWs above and below, the carrier blocked

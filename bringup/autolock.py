@@ -235,27 +235,41 @@ class LinkdTest(AutoLock):
                 ok, _ = self.locked(st)
                 if not ok:
                     self.recover(mhz, st)
-                # leave the board alone until linkd is active and locked
-                rr, t_idle = self.wait_linkd(lambda x: (x.get("linkd") or {}).get("mode") == "locked", idle_s + 60)
+                # leave the board alone until linkd is active and locked, the last driving request over a minute old
+                # (the dashboard's look can be a second behind linkd: the first run's second drag fell in the pause)
+                def ready_(x):
+                    d = (x.get("driving") or {}).get("t")
+                    return (x.get("linkd") or {}).get("mode") == "locked" and (d is None or x["t"] - d > idle_s + 2)
+                rr, t_idle = self.wait_linkd(ready_, idle_s + 90)
                 if rr is None:
                     out["trials"].append({"kind": kind, "error": "linkd never active and locked"})
                     print("%d %-10s #%d: linkd never active and locked" % (mhz, kind, r), flush=True)
                     continue
-                n0 = rr["linkd"]["recoveries"]
+                n0, l0 = rr["linkd"]["recoveries"], rr["linkd"]["losses"]
                 t_dist = time.time()
                 if kind in ("cwdrag", "cwnear"):
                     self.induce(kind, mhz, st)                    # the B210 only: no request to the board
                 else:
                     self.induce(kind, mhz, st)
                 t_end = time.time()
-                back, t_back = self.wait_linkd(lambda x: (x.get("linkd") or {}).get("recoveries", 0) > n0 and x.get("state") == "locked", 180)
+                # done when linkd has recovered it, or when it is locked a few seconds on with no loss counted (the
+                # loop rode the disturbance out)
+                def done_(x):
+                    L = x.get("linkd") or {}
+                    if L.get("recoveries", 0) > n0 and x.get("state") == "locked":
+                        return True
+                    return L.get("losses", 0) == l0 and L.get("mode") == "locked" and x["t"] - t_end > 5
+                back, t_back = self.wait_linkd(done_, 180)
                 after = back or self.now()
-                tr = {"kind": kind, "rep": r, "back_s": (time.time() - t_end) if back else None,
-                      "linkd": after.get("linkd"), "state": after.get("state")}
+                L = after.get("linkd") or {}
+                rec = L.get("recoveries", 0) > n0
+                tr = {"kind": kind, "rep": r, "back_s": (time.time() - t_end) if back else None, "recovered_by_linkd": rec,
+                      "linkd": L, "state": after.get("state")}
                 out["trials"].append(tr)
                 print("%d %-10s #%d: %s" % (mhz, kind, r, ("back by linkd in %.1f s after the disturbance (its own record: %.1f s, %s starts)"
-                      % (tr["back_s"], after["linkd"].get("last_recovery_s") or -1, after["linkd"].get("last_starts")))
-                      if back else "NOT recovered by linkd in 180 s: %s" % after.get("linkd")), flush=True)
+                      % (tr["back_s"], L.get("last_recovery_s") or -1, L.get("last_starts"))) if back and rec
+                      else "no loss: the loop rode it out" if back
+                      else "NOT recovered by linkd in 180 s: %s" % L), flush=True)
                 save("linkd_partial", out)
         return out
 

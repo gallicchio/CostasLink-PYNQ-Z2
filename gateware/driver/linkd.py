@@ -105,7 +105,11 @@ class LinkD:
                 self.counts["t_last_loss"] = now
             self.mode = "recovering"
             t0 = time.time()
-            ok, starts = self.recover()
+            self.led(recovering=True)
+            try:
+                ok, starts = self.recover()
+            finally:
+                self.led(recovering=False)
             self.counts["last_starts"] = starts
             if ok:
                 self.counts["recoveries"] += 1
@@ -119,6 +123,12 @@ class LinkD:
                 self.mode = "backing off"
                 self.next_try = time.time() + self.wait
                 self.wait = min(self.backoff_s[1], 2 * self.wait)
+
+    def led(self, recovering):
+        """LD5 blue while recovering (ID version 8's LEDs; nothing on older overlays)"""
+        cl = self.server.cl
+        if getattr(cl, "lockmon", False):
+            cl.leds(auto=True, ld5=(0, 0, 1) if recovering else (0, 0, 0))
 
     # ---- the recovery (bringup/autolock.py's, on the driver alone) ----
     def recover(self):
