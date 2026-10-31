@@ -58,7 +58,7 @@ class Dashboard:
         self.leg_ref = None              # the I leg at lock, learned (the constellation's targets)
         self.t_state = (None, time.time())
         self.i0, self.q0 = I0_V, Q0_V
-        self.events = collections.deque(maxlen=200)    # what happened, in words, for the page's list
+        self.events = collections.deque(maxlen=5000)   # what happened, in words, for the page's list (2 h of a busy test)
         self.notes = collections.deque(maxlen=500)     # notes posted by experiments: interventions, explanations
         self._lk = None                                 # linkd's counts at the last look
 
@@ -364,7 +364,9 @@ class Dashboard:
                 elif u.path == "/api/now":
                     self.send(200, json.dumps(dash.hist[-1] if dash.hist else {}, default=str), "application/json")
                 elif u.path == "/api/events":
-                    self.send(200, json.dumps(list(dash.events)[-50:], default=str), "application/json")
+                    s = float(parse_qs(u.query).get("s", ["7200"])[0])     # the page's span (it listed only the last 30)
+                    t0 = time.time() - s
+                    self.send(200, json.dumps([e for e in dash.events if e["t"] >= t0][-3000:], default=str), "application/json")
                 elif u.path == "/api/history":
                     s = float(parse_qs(u.query).get("s", ["600"])[0])
                     self.send(200, json.dumps(dash.history(s), default=str), "application/json")

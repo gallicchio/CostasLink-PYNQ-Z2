@@ -71,7 +71,7 @@ class LinkD:
 
     # ---- for the dashboard ----
     def state(self):
-        return {"mode": self.mode, "enabled": self.enabled, "vc_lock": self.vc_lock, "leg": self.leg, "config": self.cfg,
+        return {"mode": self.mode, "enabled": self.enabled, "vc_lock": self.vc_lock, "leg": self.leg, "config": self.cfg, "idle_s": self.idle_s,
                 "lost_for_s": (time.time() - self.lost_since) if self.lost_since else None,
                 "next_try_in_s": max(0.0, self.next_try - time.time()) if self.mode == "backing off" else None,
                 **self.counts}
