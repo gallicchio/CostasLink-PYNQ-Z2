@@ -52,6 +52,8 @@ class Dashboard:
         self.leg_ref = None              # the I leg at lock, learned (the constellation's targets)
         self.t_state = (None, time.time())
         self.i0, self.q0 = I0_V, Q0_V
+        self.events = collections.deque(maxlen=200)    # what happened, in words, for the page's list
+        self._lk = None                                 # linkd's counts at the last look
 
     # ---- the looks ----
     def look(self):
@@ -123,7 +125,27 @@ class Dashboard:
             r["slow_now"] = True
         r.update(self._slow)
         self.judge(r)
+        self.note_events(r)
         return r
+
+    def note_events(self, r):
+        """losses and recoveries as linkd counted them, and the state's changes, for 'What happened'"""
+        L = r.get("linkd")
+        if L:
+            if self._lk is not None:
+                if L["losses"] > self._lk["losses"]:
+                    off = r.get("off_khz")
+                    where = (" (the oscillator %.0f kHz %s the carrier)" % (abs(off), "below" if off < 0 else "above")) if off is not None else ""
+                    self.events.append({"t": r["t"], "kind": "loss", "text": "The lock was lost" + where + "; the board started to recover it."})
+                if L["recoveries"] > self._lk["recoveries"]:
+                    d = L.get("last_recovery_s")
+                    self.events.append({"t": r["t"], "kind": "recovered",
+                                        "text": "Locked again by itself" + (" %.1f s after the loss" % d if d is not None else "") +
+                                                ((", %d start(s)" % L["last_starts"]) if L.get("last_starts") else "") + "."})
+                if L["failed"] > self._lk["failed"]:
+                    self.events.append({"t": r["t"], "kind": "failed",
+                                        "text": "A recovery found no carrier; it will try again (is the other board on?)."})
+            self._lk = {k: L.get(k, 0) for k in ("losses", "recoveries", "failed")}
 
     def judge(self, r):
         """the state, its cause and what to do, in words for someone who does not know PLLs"""
@@ -219,6 +241,8 @@ class Dashboard:
                     self.send(200, PAGE, "text/html; charset=utf-8")
                 elif u.path == "/api/now":
                     self.send(200, json.dumps(dash.hist[-1] if dash.hist else {}, default=str), "application/json")
+                elif u.path == "/api/events":
+                    self.send(200, json.dumps(list(dash.events)[-50:], default=str), "application/json")
                 elif u.path == "/api/history":
                     s = float(parse_qs(u.query).get("s", ["600"])[0])
                     self.send(200, json.dumps(dash.history(s), default=str), "application/json")
@@ -277,6 +301,8 @@ dialog button { margin-top:10px; }
 <div class="ranges"><span class="meta" style="align-self:center">show the last</span>
 <button data-s="600" class="on">10 min</button><button data-s="3600">1 hour</button><button data-s="7200">2 hours</button></div>
 <div class="grid" id="grid"></div>
+<div class="panel" style="margin:0 16px 16px"><h2><button class='help' id='evhelp'>?</button>What happened</h2>
+<div id="events" class="verdict" style="font-size:14px;color:#16181d"></div></div>
 <dialog id="dlg"><h3 id="dlgt"></h3><div id="dlgb"></div><button onclick="dlg.close()">Close</button></dialog>
 <script>
 const C = {good:"#1f9d6a", warn:"#d9a400", bad:"#d64545"};
@@ -309,7 +335,7 @@ const PANELS = [
   help:"<p>How far the receiver's oscillator is from where it sits when locked. Locked, it stays near zero.</p><p class='k'>Good: within 5 kHz (green).</p><p><b>Below -13 kHz</b> the loop cannot pull itself back: it drifts to a 'false lock' about 45 kHz below, or to its limit. <b>Above</b>, it drifts back down by itself. A red trace means a recovery is needed; it normally follows within seconds.</p><p>From the bench map of the unlocked loop (BRINGUP_LOG 4.12).</p>"},
  {id:"constellation", title:"Constellation (slow)", kind:"scatter",
   help:"<p>The received signal's I and Q, one dot per reading (slow: each reading averages about a millisecond). The rings mark where the idle carrier should sit when locked: on the horizontal axis, left or right.</p><p class='k'>Good: a tight cluster on a ring.</p><p><b>A smear around a circle</b>: not locked (the oscillator beats against the carrier). <b>A cluster near the middle</b>: no carrier, or data running (data averages out on this slow reading). The real constellation at the symbol rate needs the next board's fast I/Q converter.</p>"},
- {id:"interference", title:"Unwanted power (interference, or not locked)", unit:"dB", get:r=>r.det&&r.det.log_inr_db, lo:0, hi:60, arrow:"down",
+ {id:"interference", title:"Unwanted power in Q", unit:"dB", get:r=>r.det&&r.det.log_inr_db, lo:0, hi:60, arrow:"down",
   bands:[[0,26,"good"],[26,35,"warn"],[35,60,"bad"]],
   help:"<p>The average power on the receiver's Q arm, in dB over the receiver's own noise. Locked, the carrier sits on the I arm and Q holds only noise and whatever else is on the air: about 21 dB on the bench. Two things raise it: an interferer in the band, or the loop not being locked (then the carrier beats through Q: about 54 dB).</p><p class='k'>Good: low (green).</p><p><b>High while the status says Locked:</b> something else transmits nearby in the band (WiFi, phones, radars): move it, move the antennas, or choose another carrier frequency. <b>High while Lost:</b> that is the lost lock itself.</p><p>Bands provisional, from the bench's locked (20.8-23.9 dB) and lost (about 54 dB) readings, 2026-10-31.</p>"},
  {id:"hold", title:"Time spent riding out interference", unit:"%", get:r=>r.hold_pct, lo:0, hi:100, arrow:"down", symlog:1, ticks:[0,1,10,100],
@@ -433,10 +459,20 @@ function status() {
      (r.dsa_db != null ? ", attenuator " + r.dsa_db + " dB" : "") + ", updated " + new Date(r.t * 1000).toLocaleTimeString();
 }
 function dur(s) { return s < 90 ? s + " s" : s < 5400 ? Math.round(s / 60) + " min" : (s / 3600).toFixed(1) + " h"; }
+async function events() { try { const ev = await (await fetch("/api/events")).json();
+  const el = document.getElementById("events");
+  el.innerHTML = ev.length ? ev.slice().reverse().slice(0, 20).map(e => "<div><span style='color:" +
+     (e.kind == "recovered" ? C.good : e.kind == "loss" ? C.bad : C.warn) + "'>\u25cf</span> " +
+     new Date(e.t * 1000).toLocaleString() + ": " + e.text + "</div>").join("") : "Nothing since the page's server started."; } catch (e) {} }
+document.getElementById("evhelp").onclick = () => { document.getElementById("dlgt").textContent = "What happened";
+  document.getElementById("dlgb").innerHTML = "<p>The board's own record of losses and recoveries, newest first: when the lock was lost, " +
+  "how far the oscillator had gone, and how long the board took to bring it back by itself.</p><p class='k'>Good: few entries, each loss " +
+  "followed by 'Locked again' within seconds.</p><p><b>Many losses:</b> strong interference or a weak signal (see the plots). <b>A loss " +
+  "without a recovery, or repeated 'found no carrier':</b> check that the other board is on and that the antennas face each other.</p>"; dlg.showModal(); };
 async function load() { try { hist = await (await fetch("/api/history?s=" + span)).json(); last = hist[hist.length - 1]; status(); drawAll(); } catch (e) {} }
 async function tick() { try { const r = await (await fetch("/api/now")).json(); if (r && r.t && (!last || r.t > last.t)) { hist.push(r); last = r;
     const t0 = Date.now() / 1000 - span; while (hist.length && hist[0].t < t0) hist.shift(); } status(); drawAll(); }
   catch (e) { document.getElementById("meta").textContent = "cannot reach the board's server (restarting, or the network?)"; } }
-window.onresize = drawAll; load(); setInterval(tick, 1000);
+window.onresize = drawAll; load(); events(); setInterval(tick, 1000); setInterval(events, 5000);
 </script></body></html>
 """
