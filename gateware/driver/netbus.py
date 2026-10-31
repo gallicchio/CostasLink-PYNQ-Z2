@@ -37,6 +37,11 @@ import traceback
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 PORT = 5800
+# requests that only look: they do not make the caller the board's driver (linkd stays active, the status page does not
+# say 'being driven'): the bench's watchdog reads the detectors every half minute (BRINGUP_LOG 4.15)
+OBSERVE_OPS = {"ping", "names", "get", "rd"}
+OBSERVE_CALLS = {"detectors", "info", "status", "pll_locked", "ihold_state", "shold_state", "cdr_state", "cmp_state",
+                 "dac_volts", "ber", "i2c_lines", "temperature", "adc", "adc_all", "det_adc"}
 
 
 def driver_id(path=None):
@@ -129,7 +134,7 @@ class Server:
             req = json.loads(line)
             with self.lock:
                 self.requests += 1
-                if req.get("op") != "ping":
+                if not (req.get("op") in OBSERVE_OPS or (req.get("op") == "call" and req.get("name") in OBSERVE_CALLS)):
                     self.last = {"peer": peer, "op": req.get("op"), "name": req.get("name") or req.get("reg"), "t": time.time()}
                 result = self.op(req)
             return json.dumps({"ok": True, "result": result}, default=_jsonable)
