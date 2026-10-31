@@ -25,21 +25,19 @@ ch2 I MON, ch3 Q MON, ch4 VC MON. 50 ohm on TX MON's pigtail. JP201 on TCXO.
 | 10 | only if needed, after 9 | 15-30 min | 1 h | **Bias-choke bodge capacitors**: a small 0402 tacked from an RF IC's supply pin to its nearest ground pad (the gates' finding: no 1 nF or smaller within 2 mm of any RF supply pin, and every choke reaches a plane via first). Only if the chain still falls short after C102, or test B puts the leak on the board. I model the value first (`sim/aslaid`), so none goes on blind | 9, 2 | rev B 13 |
 
 **Gateware next (no hands needed; from the weekend's findings, BRINGUP_LOG 4.3-4.9):**
-- **Interference hold and signal holdover: done** (`ihold.v`, ID 0x434C0005, overlay `a1eb2e6` in `~/costaslink_holds3/`
-  since 2026-10-30 21:12; BRINGUP_LOG 4.8-4.8b; `docs/LOCK.md` section 7): off at reset, `cl.protect(True)` once
-  locked.  40 of 40 dragging CWs and 4 of 4 blocked carriers come back; no hold on the link's own traffic.  The
-  gateware's reset value of RX_IHOLD_HOLD is 1 ms, the driver's default 20 ms: make the reset 20 ms at the next build
-  (the weekend's first round ran at 1 ms from a stale driver on the PYNQ: 154 of 160 at 1 ms, 4.9).
-- **The timing recovery at 5.0 GHz** (4.9): some 25 and 50 Mbaud segments read random bits (exactly half wrong, the
-  bit count right), only at 5.0 GHz, the loop unmoved.  The recovery's state is now kept with each segment
-  (`campaign.ber_once`); next, CMP_I's edge distribution there (two edge clusters, rising and falling, far apart?)
-  against `tb_ber_cdr.v`.
+- **Interference hold and signal holdover: done** (`ihold.v`, ID version 5 on; BRINGUP_LOG 4.8-4.10; `docs/LOCK.md`
+  section 7): off at reset, `cl.protect(True)` once locked.  160 of 160 dragging CWs (three carriers) and 4 of 4 blocked
+  carriers come back at the 20 ms release (154 of 160 at 1 ms); no hold on the link's own traffic.  RX_IHOLD_HOLD
+  resets to 20 ms from ID version 6.
+- **The timing recovery's false lock: fixed** (ID 0x434C0006, `38f46f7`, BRINGUP_LOG 4.10, REVB 30): it tracks the
+  rising edges and centres on the measured skew (RX_CDR_SKEW).  To try: a servo of the I comparator's trim on
+  RX_CDR_SKEW during data, and whether nulling the skew also removes the unlocked loop's push (REVB 18).
 - **Lock detector and search in gateware** (REVB 21, 25, 26): the edge-count lock state as a register, and the downward
   VC_OFF sweep from above the carrier when it reads lost (52 of 52 offsets recovered from the PC, 3.9j).
 - Build with Vivado 2022.1 for PYNQ 3.0.1 (`build.tcl -strategy Performance_ExplorePostRoutePhysOpt`: the default
-  misses the fast path's 6 ns by picoseconds).  The server runs from `~/costaslink_holds3/` since 2026-10-30 21:12
-  (its driver replaced with the repository's 2026-10-31 00:48), started by hand (sudo nohup `pynq_serve.sh`), not the
-  boot service.  Whenever `gateware/driver/` changes, copy it there and restart the server: the client now warns when
+  misses the fast path's 6 ns by picoseconds).  The server runs from `~/costaslink_cdrpol/` (ID 0x434C0006) since
+  2026-10-31 02:35, started by hand (sudo nohup `pynq_serve.sh`), not the boot service; `~/costaslink_holds3/` (ID 5)
+  and the older directories are kept.  Whenever `gateware/driver/` changes, copy it there and restart the server: the client now warns when
   the server's driver differs from its own (`netbus.driver_id`); `~/costaslink_cdr/`, `~/costaslink_holds*/`
   and `~/costaslink/` (the 2024.1 turnaround overlay) are kept.
 

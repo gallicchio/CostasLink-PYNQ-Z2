@@ -262,8 +262,8 @@ LOOP_HOLD with the software's own CTRL bit. **Both are off at reset**: nothing c
   must never do is hold a loop that is not locked.
 * **Release.** 20 ms after the last busy window (the driver's default; the gateware's reset value is 1 ms): an
   interferer near the drag threshold, or one with gaps, is busy only part of the time, and with a 1 ms release 6 of
-  160 dragging CWs caught the loop between holds, every one of them a CW below the carrier, against 0 of 40 at 20 ms
-  (BRINGUP_LOG 4.8b, 4.9); the phase walks well under a degree in 20 ms. At most 5 s in one go, after which it lets go, waits out the guard and can start again
+  160 dragging CWs caught the loop between holds, every one of them a CW below the carrier, against 0 of 160 at 20 ms
+  (BRINGUP_LOG 4.8b, 4.9, 4.10); the phase walks well under a degree in 20 ms. At most 5 s in one go, after which it lets go, waits out the guard and can start again
   only after a quiet window. Five seconds is long against any WiFi burst; a longer interferer than that leaves the
   loop to fend for itself, and the lock detector and search are the next line (section 8).
 * **Registers** (`gateware/regmap.py`): `RX_IHOLD_CFG` 0x73 ([0] on, [3:1] window 2^(3+n) clocks, [15:8] threshold,
@@ -304,7 +304,7 @@ front of the antenna; each with the protection off and then on.
 | CW −10 MHz, +9 dB, 1 s | lost both times: dragged to −672 kHz, stays at the rail | **locked again both times** (1 hold of 1.01-1.02 s; once 180° over) |
 | carrier gone 0.3 s | lost both times (a false lock, VC 1.75 V) | **locked at once both times** (0.31 s held) |
 | carrier gone 2 s | lost both times (VC 0.37-0.41 V, near the bottom rail) | **locked at once both times** (2.00 s held; once 180° over) |
-| the pull test's 40 dragging CWs (1-40 MHz either side, about +3 to +12 dB) | 0 of 24 back (4.5) | **40 of 40 back** (release 20 ms; 154 of 160 at 1 ms, the 6 lost all below the carrier) |
+| the pull test's 40 dragging CWs (1-40 MHz either side, about +3 to +12 dB) | 0 of 24 back (4.5) | **160 of 160 back** at 5.0, 5.2 and 5.5 GHz (release 20 ms; 154 of 160 at 1 ms, the 6 lost all below the carrier) |
 | A3's 20 000 events, 25 Mbaud BPSK, 20 s of quiet | | **no hold at all**; A3 19 984 right against 19 988 off, BPSK 10 of 10 clean |
 
 ![the gateware's holds at work](images/lock_holds.png)
