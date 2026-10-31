@@ -260,9 +260,12 @@ LOOP_HOLD with the software's own CTRL bit. **Both are off at reset**: nothing c
   maximum while a CW was still on, the loop was dragged 37 kHz, and the hold then re-held the lost loop's beat 86
   times, freezing it off the lock (BRINGUP_LOG 4.8). A hold freezes the loop wherever it is, so the one thing it
   must never do is hold a loop that is not locked.
-* **Release.** 1 ms after the last busy window; at most 5 s in one go, after which it lets go, waits 1 ms (the guard)
-  and can start again only after a quiet window. Five seconds is long against any WiFi burst; a longer interferer
-  than that gets the loop back to fend for itself, and the lock detector and search are the next line (section 8).
+* **Release.** 20 ms after the last busy window (the driver's default; the gateware's reset value is 1 ms): an
+  interferer near the drag threshold, or one with gaps, is busy only part of the time, and with a 1 ms release 3 of
+  40 dragging CWs caught the loop between holds, against 0 of 40 at 20 ms (BRINGUP_LOG 4.8b); the phase walks well
+  under a degree in 20 ms. At most 5 s in one go, after which it lets go, waits out the guard and can start again
+  only after a quiet window. Five seconds is long against any WiFi burst; a longer interferer than that leaves the
+  loop to fend for itself, and the lock detector and search are the next line (section 8).
 * **Registers** (`gateware/regmap.py`): `RX_IHOLD_CFG` 0x73 ([0] on, [3:1] window 2^(3+n) clocks, [15:8] threshold,
   [20:16] the comparators; reads [4] holding now, [31:24] the last window's count), `RX_IHOLD_HOLD` 0x74 (release
   delay and guard, clocks), `RX_IHOLD_MAX` 0x75, `RX_IHOLD_N` 0x76 (holds started), `RX_IHOLD_CLK` 0x77 (clocks held);
@@ -290,18 +293,31 @@ LOOP_HOLD with the software's own CTRL bit. **Both are off at reset**: nothing c
 
 ### 7.4 Measured
 
-`bringup/holds_tests.py holds`, 5.2 GHz over the air: the board's own link with a 1 s CW at +9 dB 10 MHz above or
-below the carrier, and the B210 as the carrier (the board's TX muted) switched off for 0.3 s and 2 s, as if someone
-stood in front of the antenna; each with the protection off and then on.
+`bringup/holds_tests.py holds` (twice, 21:13 and 21:38) and `weekend.py iholdcheck`, `pullauto`, 5.2 GHz over the air,
+on the overlay of 2026-10-30 21:12 (`a1eb2e6`; BRINGUP_LOG 4.8b): the board's own link with a 1 s CW at +9 dB 10 MHz above or below
+the carrier, and the B210 as the carrier (the board's TX muted) switched off for 0.3 s and 2 s, as if someone stood in
+front of the antenna; each with the protection off and then on.
 
 | case | protection off | protection on |
 |---|---|---|
-| CW +10 MHz, +9 dB, 1 s | lost: dragged to +578 kHz, parked in the +45 kHz false lock | *(the armed hold: see BRINGUP_LOG 4.8)* |
-| CW −10 MHz, +9 dB, 1 s | lost: dragged to −672 kHz, stays at the rail | *(the armed hold: see BRINGUP_LOG 4.8)* |
-| carrier gone 0.3 s | lost (beating, VC 1.749 V) | **locked at once** (1 holdover, 0.30 s) |
-| carrier gone 2 s | lost (VC 0.381 V, near the bottom rail) | **back at once** (1 holdover, 2.01 s; 180° over) |
+| CW +10 MHz, +9 dB, 1 s | lost both times: dragged to +578 kHz, parked in the +45 kHz false lock | **locked again both times** (1 hold of 1.01-1.02 s; 180° over both times) |
+| CW −10 MHz, +9 dB, 1 s | lost both times: dragged to −672 kHz, stays at the rail | **locked again both times** (1 hold of 1.01-1.02 s; once 180° over) |
+| carrier gone 0.3 s | lost both times (a false lock, VC 1.75 V) | **locked at once both times** (0.31 s held) |
+| carrier gone 2 s | lost both times (VC 0.37-0.41 V, near the bottom rail) | **locked at once both times** (2.00 s held; once 180° over) |
+| the pull test's 40 dragging CWs (1-40 MHz either side, about +3 to +12 dB) | 0 of 24 back (4.5) | **40 of 40 back** (release 20 ms; 37 of 40 at 1 ms) |
+| A3's 20 000 events, 25 Mbaud BPSK, 20 s of quiet | | **no hold at all**; A3 19 984 right against 19 988 off, BPSK 10 of 10 clean |
 
 ![the gateware's holds at work](images/lock_holds.png)
+
+*VC against the time from the event's start. Left: a 1 s CW at +9 dB, 10 MHz above (solid) or below (dashed) the
+carrier: free (orange) the loop goes to a rail and stays lost; with the interference hold (aqua) VC does not move and
+the loop locks again when the CW ends. Right: the carrier gone for 0.3 s (dashed) or 2 s (solid): free (blue) the LO
+walks off at about 300 kHz a second and the loop is lost; with the signal holdover (aqua) it stays put and locks again
+at once.*
+
+After a hold of a second the loop comes back at either of its two points (the references drift apart by up to a few
+hertz while it is held); after a WiFi burst of milliseconds the phase hardly moves. A link that sends data has to
+resolve the 180° ambiguity in any case (differential encoding, or a known preamble).
 
 ### 7.5 Using them
 
@@ -311,7 +327,7 @@ From the PC or the PYNQ, through the driver (`gateware/driver/costaslink.py`):
 cl.protect(True)          # both holds on, with their defaults: the deployment's setting, once locked
 cl.protect(False)         # both off: before a search or acquisition, and for tests that make the windows busy
 
-cl.ihold(True, mask=(CMP_QP, CMP_QN), window=256, thresh=8, hold_s=1e-3, max_s=5.0)      # the interference hold
+cl.ihold(True, mask=(CMP_QP, CMP_QN), window=256, thresh=8, hold_s=20e-3, max_s=5.0)     # the interference hold
 cl.shold(True, mask=(CMP_IP, CMP_IN, CMP_QP, CMP_QN), window=256, thresh=64, hold_s=1e-3, max_s=10.0)   # the holdover
 cl.ihold_state(), cl.shold_state()   # on, holding now, the last window's count, holds started, seconds held
 ```
@@ -333,8 +349,8 @@ push the interferer can create. Everything else is what to do once the loop has 
 
 | lever | where | what it buys | evidence |
 |---|---|---|---|
-| hold during interference | rev A gateware (`ihold.v`) | the push has nothing to act on while it lasts | 24 of 24 by hand (4.5); 4.8 |
-| hold while the carrier is gone | rev A gateware (`ihold.v`, LEVEL 1) | the LO stays on the carrier's frequency | 4.8 |
+| hold during interference | rev A gateware (`ihold.v`) | the push has nothing to act on while it lasts | 24 of 24 by hand (4.5); 40 of 40 in gateware (4.8b) |
+| hold while the carrier is gone | rev A gateware (`ihold.v`, LEVEL 1) | the LO stays on the carrier's frequency | 4 of 4 (4.8, 4.8a, 4.8b) |
 | know when you are lost, then search | rev A gateware (next) | recovery in tens of ms instead of never | 52 of 52 offsets by a downward sweep from the PC (3.9j); 96 of 96 recoveries (3.9f); REVB 21, 25 |
 | keep interferers away from the limiter | rev B | the loop needs a few kHz but its detector sees the arms' 94 MHz; a narrower, matched I/Q filter feeding the detector alone (the decisions keep the wide arms) stops most out-of-channel interferers reaching the comparator | the thresholds of section 4; REVB 27 |
 | remove the push | rev B | match the delay from the arms to U110 on the sign(I) and Q paths, and the push vanishes, leaving the capture effect | the model, section 3 |

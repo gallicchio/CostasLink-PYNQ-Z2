@@ -67,19 +67,28 @@ class Holds(BL.Link):
                 if not self.relock(mhz, st):
                     out["runs"].append({"kind": "interferer", "off_mhz": off, "protect": protect, "error": "no lock before"})
                     continue
+                # the B210 set up and streaming zeros before the trace (while it is configured it radiates its LO,
+                # here 11 MHz from the carrier, strongly enough to drag the loop: BRINGUP_LOG 4.8b), so the CW's
+                # start is a buffer swap, at once
+                sm = Stream(self.bb, mhz + off, 86, rate=4e6, park_hz=-1e6, amp=0.7)
+                sm.start(np.zeros(4000))
+                time.sleep(0.5)
+                if not self.relock(mhz, st):
+                    sm.stop()
+                    out["runs"].append({"kind": "interferer", "off_mhz": off, "protect": protect, "error": "no lock with the B210 idle"})
+                    continue
                 cl.rx_clear()
                 cl.ihold(protect)
-                sm = {}
 
                 def on():
-                    sm["s"] = Stream(self.bb, mhz + off, 86, rate=4e6, park_hz=-1e6, amp=0.7)
-                    sm["s"].start(np.ones(4000))
-                    return sm["s"].t_first
+                    sm.set(np.ones(4000))
+                    return time.time()
 
                 def off_():
-                    sm["s"].stop()
+                    sm.set(np.zeros(4000))
 
                 rows, t_ev, o = self.trace(st, 0.5, 1.0, on, off_)
+                sm.stop()
                 ih = cl.ihold_state()
                 cl.ihold(False)
                 r = {"kind": "interferer", "off_mhz": off, "gain": 86, "protect": protect, "t_on": t_ev, "dur_s": 1.0,

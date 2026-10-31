@@ -313,7 +313,7 @@ def fig_holds():
         ax.axhspan(-10, 60, color=AQUA, alpha=0.12, zorder=0)
         ax.set_xlabel("time from the event's start (s)")
         ax.set_xlim(-0.5, 4.0)
-        ax.legend(loc="lower right", fontsize=8.5)
+        ax.legend(loc="lower right", bbox_to_anchor=(1.0, 0.17), fontsize=8.5)
     axs[0].set_ylim(-720, 650)
     axs[1].set_ylim(-720, 650)
     axs[0].set_ylabel("the loop's oscillator, offset from the lock (kHz)")
