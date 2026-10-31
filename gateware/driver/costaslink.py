@@ -759,10 +759,11 @@ class CostasLink:
         self.wr("RX_BER_CFG", int(enable) | int(invert) << 1 | self.POLYS[poly] << 4 | (phase & 0xFFFF) << 8
                 | int(bool(cdr)) << 24 | (gain & 0xF) << 25)
 
-    def ihold(self, on=True, mask=(CMP_QP, CMP_QN), window=256, thresh=8, hold_s=1e-3, max_s=1.0):
+    def ihold(self, on=True, mask=(CMP_QP, CMP_QN), window=256, thresh=8, hold_s=1e-3, max_s=5.0):
         """the interference hold (ID version 5, ihold.v): LOOP_HOLD while the comparators in `mask` change in `thresh`
         or more of each `window` clocks (a power of 2, 8-1024), released hold_s after they were last busy; never longer
-        than max_s at a time (a lost, beating loop is let go, and kept off for hold_s).  The defaults leave the link's
+        than max_s at a time.  A hold starts only after a quiet window, so it catches an interferer arriving at a
+        locked loop and never freezes a lost, beating one.  The defaults leave the link's
         own events and BPSK on I alone and catch an interferer's beat of 1 MHz and more from about -6 dB"""
         if not getattr(self, "ihold_ok", False):
             raise IOError("this overlay has no interference hold (ID version 5 has)")

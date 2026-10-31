@@ -127,7 +127,8 @@ REGS = [
                                         "now, [31:24] the last window's count"),
     (0x74, "RX_IHOLD_HOLD", "RW", "cdr", "clocks the loop stays held after the last triggering window, and the guard after a "
                                          "release at RX_IHOLD_MAX (reset 1 ms)"),
-    (0x75, "RX_IHOLD_MAX", "RW", "cdr", "the longest hold without a break, clocks (reset 1 s): a lost, beating loop is let go"),
+    (0x75, "RX_IHOLD_MAX", "RW", "cdr", "the longest hold without a break, clocks (reset 5 s); a hold starts only after a quiet "
+                                        "window, so a lost, beating loop is never held"),
     (0x76, "RX_IHOLD_N", "R", "cdr", "holds started since RX_CTRL[1]'s clear"),
     (0x77, "RX_IHOLD_CLK", "R", "cdr", "clocks held since then"),
 

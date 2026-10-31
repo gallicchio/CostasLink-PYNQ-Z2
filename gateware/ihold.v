@@ -9,9 +9,15 @@
 // triggers (a 5 MHz beat gives about 50), an event touches them twice, and the hold starts 3-5 us after the beat
 // does: the drag takes milliseconds.  The default mask is the Q windows (QP, QN): the link's own BPSK data and A1 events move
 // along I and leave them quiet, an A3 event touches each twice, and an interferer's beat crosses them once it reaches
-// half the carrier.  A lost, beating loop also makes them chatter, and a hold must never keep it from locking again:
-// after `max` clocks held without a break the hold lets go and cannot trigger again for `hold` clocks (the guard).
-// The counts: holds started, clocks held; cleared by `clr`.
+// half the carrier.  A lost, beating loop also makes them chatter, and a hold must never keep a lost loop frozen:
+// so a hold starts only if a quiet window (a quarter of the threshold or less) came after the last busy one: an
+// interferer arriving at a locked loop finds it armed, a lost loop's beat never does.  After `max` clocks held
+// without a break the hold lets go, the guard (`hold` clocks) passes, and it can start again only after a quiet
+// window (measured on the bench, 2026-10-30 19:30: without the arming a hold released at `max` under the CW froze
+// the dragged loop 37 kHz off, re-holding its beat 86 times).
+// The counts: holds started, clocks held; cleared by `clr`.  The signal holdover (LEVEL 1) needs no arming: holding
+// with the carrier gone cannot lose anything, and holding again after `max` keeps the oscillator near the carrier's
+// frequency for when it returns.
 //
 // LEVEL = 1 makes the same machine the signal holdover: a clock counts if any sample has a comparator of `mask`
 // high, and a window with fewer than `thresh` such clocks triggers.  The default mask is all four windows (IP, IN,
@@ -73,11 +79,12 @@ module ihold #(
     reg  [31:0] since;                          // clocks since the last trigger (hold timer)
     reg  [31:0] run;                            // clocks held without a break
     reg  [31:0] guard;                          // clocks of the guard still to go
+    reg         armed;                          // LEVEL 0: a quiet window came after the last busy one
 
     always @(posedge clk) begin
         if (rst) begin
             prev <= 5'd0; n_act_q <= 3'd0; wcnt <= 11'd0; acc <= 11'd0; trig <= 1'b0;
-            since <= 32'd0; run <= 32'd0; guard <= 32'd0; active <= 1'b0;
+            since <= 32'd0; run <= 32'd0; guard <= 32'd0; active <= 1'b0; armed <= 1'b0;
             n_holds <= 32'd0; n_clocks <= 32'd0; last_count <= 8'd0;
         end else begin
             prev <= {fs[6*(SER-1) + 4], fs[6*(SER-1) + 3], fs[6*(SER-1) + 2], fs[6*(SER-1) + 1], fs[6*(SER-1)]};
@@ -86,6 +93,9 @@ module ihold #(
             if (wcnt >= wlen_m1) begin
                 wcnt <= 11'd0;
                 acc <= 11'd0;
+                // LEVEL 0 arms on a quiet window (a quarter of the threshold or less) and disarms on a busy one that
+                // starts no hold: an interferer arriving at a locked loop finds it armed, a lost loop never is
+                if ((acc + {8'd0, n_act_q}) <= {5'd0, thresh[7:2]}) armed <= 1'b1;
                 trig <= (LEVEL != 0) ? ((acc + {8'd0, n_act_q}) <  {3'd0, thresh})
                               : ((acc + {8'd0, n_act_q}) >= {3'd0, thresh});
                 last_count <= ((acc + {8'd0, n_act_q}) > 11'd255) ? 8'd255 : acc[7:0] + {5'd0, n_act_q};
@@ -101,14 +111,16 @@ module ihold #(
                 n_clocks <= n_clocks + 1'b1;
                 run <= run + 1'b1;
                 since <= trig ? 32'd0 : since + 1'b1;
-                if (run >= max) begin                        // too long: let go, and the guard
-                    active <= 1'b0; run <= 32'd0; guard <= hold;
+                if (run >= max) begin                        // too long: let go, the guard, and disarmed
+                    active <= 1'b0; run <= 32'd0; guard <= hold; armed <= 1'b0;
                 end else if (!trig && since >= hold) begin   // quiet long enough
                     active <= 1'b0; run <= 32'd0;
                 end
-            end else if (trig && guard == 32'd0) begin
-                active <= 1'b1; since <= 32'd0; run <= 32'd0;
+            end else if (trig && guard == 32'd0 && (armed || LEVEL != 0)) begin
+                active <= 1'b1; since <= 32'd0; run <= 32'd0; armed <= 1'b0;
                 n_holds <= n_holds + 1'b1;
+            end else if (trig) begin
+                armed <= 1'b0;                              // busy and not allowed to hold: disarmed
             end
             if (clr) begin
                 n_holds <= 32'd0; n_clocks <= 32'd0;

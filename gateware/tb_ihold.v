@@ -3,8 +3,8 @@
 //  * BPSK data on I (CMP_I toggling every 4 clocks, the Q windows quiet): no hold;
 //  * an interferer's beat, QP and QN toggling every 10 clocks (a 5 MHz beat) for 50 000 clocks: held within two
 //    windows (256 clocks each) of its start, released `hold` clocks after its end, one hold counted;
-//  * a beat that never stops (a lost, beating loop): released after `max`, the guard keeps it off for `hold`, then
-//    it holds again;
+//  * a beat that never stops: released after `max` and not held again while it lasts (no quiet window to arm it);
+//  * a lost, beating loop with no quiet window before it: never held; quiet, then an interferer: held;
 //  and the signal holdover (LEVEL 1, the I windows): no hold with the carrier, under BPSK data or for a lost loop's
 //  beat; held within two windows of the carrier's loss, released `hold` after its return; let go at `max`.
 //
@@ -99,8 +99,26 @@ module tb_ihold;
             if (active && t_off >= 0 && t_rel < 0) t_rel = k;
         end
         expect("a beat that never stops: held for (max)", t_off - t_first, 20000, 20002);
-        expect("then off for at least the guard", t_rel - t_off, 1000, 1000 + 2 * 256 + 4);
-        expect("holds", n_holds, 3, 3);
+        expect("then not again while it lasts (no quiet window)", t_rel, -1, -1);
+        expect("holds", n_holds, 2, 2);
+        // a lost, beating loop from the start (no quiet window before it): never held
+        rst = 1'b1; repeat (3) @(negedge clk); rst = 1'b0;
+        held = 0;
+        for (k = 0; k < 20000; k = k + 1) begin
+            @(negedge clk);
+            lv = 5'd0; lv[1] = (k / 10) % 2; lv[2] = ((k + 5) / 10) % 2;
+            if (active) held = held + 1;
+        end
+        expect("a beating loop with no quiet window before it: clocks held", held, 0, 0);
+        // quiet again, then an interferer: held
+        t_first = -1;
+        for (k = 0; k < 6000; k = k + 1) begin
+            @(negedge clk);
+            lv = 5'd0;
+            if (k >= 3000) begin lv[1] = (k / 10) % 2; lv[2] = ((k + 5) / 10) % 2; end
+            if (active && t_first < 0) t_first = k;
+        end
+        expect("quiet, then an interferer: clocks to the hold", t_first - 3000, 0, 2 * 256 + 4);
         // disabled: no hold at all
         en = 1'b0;
         held = 0;

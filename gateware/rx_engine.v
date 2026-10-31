@@ -314,7 +314,7 @@ module rx_engine #(
             ber_en <= 1'b0; ber_inv <= 1'b0; ber_poly <= 3'd2; ber_phase <= 16'd0; clr <= 1'b0;
             ber_cdr <= 1'b0; ber_gain <= 4'd4;
             ih_en <= 1'b0; ih_wlog <= 3'd5; ih_th <= 8'd8; ih_mask <= 5'b00110;
-            ih_hold <= CLK_HZ / 1000; ih_max <= CLK_HZ;
+            ih_hold <= CLK_HZ / 1000; ih_max <= 5 * CLK_HZ;
             sh_en <= 1'b0; sh_wlog <= 3'd5; sh_th <= 8'd64; sh_mask <= 5'b11110;
             sh_hold <= CLK_HZ / 1000; sh_max <= 10 * CLK_HZ;
             n_events <= 32'd0; n_decided <= 32'd0; n_confirm <= 32'd0; n_veto <= 32'd0; n_false <= 32'd0;
