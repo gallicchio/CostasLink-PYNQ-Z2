@@ -18,7 +18,9 @@ the B210 reaching -23 to +11 dB of the carrier there (BRINGUP_LOG 4.0).
         captureauto capture with the gateware's interference hold on (BRINGUP_LOG 4.11: at 5.5 GHz a full-power CW
                   within +-50 kHz drags the free loop off for good); captureauto2 the same with a 200 ms release;
                   captureauto3 with the busy rule blind to slow beats (a 1024-clock window, thresh 32)
-        pulses    10 us every 1 ms and 100 us every 10 ms at full power: the lock, A3's errors
+        pulses    10 us every 1 ms and 100 us every 10 ms at full power: the lock, A3's errors; pulsesauto,
+                  pulsesauto2 the same with the interference hold on at the 20 and 200 ms releases (and 1 ms every
+                  102.4 ms, a beacon's rhythm)
         pull      a CW 0.1-40 MHz above and below the carrier, gain 74-89.75: is the loop dragged off (VC, the I leg),
                   and does it come back by itself when the CW stops, how fast (added after round 1: BRINGUP_LOG 4.3)
         pullhold  pull's worst cases with the loop held (LOOP_HOLD) through the CW: what an interference hold saves
@@ -249,7 +251,7 @@ class Weekend(O.OTA):
         band?"""
         if not getattr(self.cl, "ihold_ok", False):
             return {"mhz": mhz, "skipped": "this overlay has no interference hold"}
-        return self.capture(mhz, gains=(80, 89.75), auto=True)
+        return self.capture(mhz, gains=(80, 89.75), auto=True, ihold_kw={"hold_s": 0.02})
 
     def captureauto2(self, mhz):
         """captureauto with the hold released 200 ms after the last busy window instead of 20 ms.  A CW 30-50 kHz off
@@ -266,11 +268,13 @@ class Weekend(O.OTA):
         the slow beat's crossings, lost 10 of 12 (BRINGUP_LOG 4.13).  Blind to it, the hold should leave those alone"""
         if not getattr(self.cl, "ihold_ok", False):
             return {"mhz": mhz, "skipped": "this overlay has no interference hold"}
-        return self.capture(mhz, gains=(80, 89.75), auto=True, ihold_kw=self.SLOW_BLIND)
+        return self.capture(mhz, gains=(80, 89.75), auto=True, ihold_kw=dict(self.SLOW_BLIND, hold_s=0.02))
 
     # ---- pulses ----
-    def pulses(self, mhz, shapes=((10e-6, 1e-3), (100e-6, 10e-3), (1e-3, 20e-3)), gains=(80, 89.75), reps=3):
-        out = {"mhz": mhz, "runs": []}
+    def pulses(self, mhz, shapes=((10e-6, 1e-3), (100e-6, 10e-3), (1e-3, 20e-3)), gains=(80, 89.75), reps=3, ihold_kw=None):
+        """ihold_kw: the interference hold on through each burst train with these settings (pulsesauto, pulsesauto2),
+        its holds counted"""
+        out = {"mhz": mhz, "runs": [], "ihold_kw": ihold_kw}
         st = self.ready(mhz)
         if st is None:
             out["error"] = "no lock"
@@ -280,6 +284,9 @@ class Weekend(O.OTA):
                 for r in range(reps):
                     if not self.relock(mhz, st):
                         break
+                    if ihold_kw is not None:
+                        self.cl.rx_clear()
+                        self.cl.ihold(True, **ihold_kw)
                     th = self.bg(self.bb.bursts, mhz, gain=g, bw_mhz=8.0, on_ms=t_on * 1e3, off_ms=(t_per - t_on) * 1e3, seconds=3.0)
                     time.sleep(0.5)
                     o = self.observe(st["cen"], st["a"], side0=st["side"])
@@ -287,16 +294,38 @@ class Weekend(O.OTA):
                     th.join(timeout=6)
                     time.sleep(0.3)
                     after = self.observe(st["cen"], st["a"], side0=st["side"])
-                    row = {"t_on": t_on, "t_per": t_per, "gain": g, "rep": r, "during": o, "after": after,
+                    ih = None
+                    if ihold_kw is not None:
+                        ih = self.cl.ihold_state()
+                        self.cl.ihold(False)
+                    row = {"t_on": t_on, "t_per": t_per, "gain": g, "rep": r, "during": o, "after": after, "ihold": ih,
                            "a3": {k: a3[k] for k in ("events", "decided", "right", "symbol_errors", "false", "missed", "confirm", "veto")}}
                     out["runs"].append(row)
-                    print("%d pulses %4.0f us every %4.1f ms gain %5.2f: PEAK_Q %.3f | A3 %d right, %d wrong, %d false, %d missed | after %s" % (
-                        mhz, t_on * 1e6, t_per * 1e3, g, o["peak_q"], a3["right"], a3["symbol_errors"], a3["false"], a3["missed"],
-                        after["state"]), flush=True)
+                    print("%d pulses%s %4.0f us every %5.1f ms gain %5.2f: PEAK_Q %.3f | A3 %d right, %d wrong, %d false, %d missed | after %s%s" % (
+                        mhz, ihold_kw is not None and " (ihold)" or "", t_on * 1e6, t_per * 1e3, g, o["peak_q"], a3["right"],
+                        a3["symbol_errors"], a3["false"], a3["missed"], after["state"],
+                        ih and " | ihold: %d holds, %.2f s held (release %.0f ms)" % (ih["holds"], ih["seconds"], ih["hold_s"] * 1e3) or ""),
+                        flush=True)
                     if after["state"] == "slipped":
                         st["side"] = after["side"]
             save("pulses_partial", out)
         return out
+
+    PULSE_SHAPES_AUTO = ((10e-6, 1e-3), (100e-6, 10e-3), (1e-3, 20e-3), (1e-3, 102.4e-3))   # the last like a WiFi beacon
+
+    def pulsesauto(self, mhz):
+        """pulses with the interference hold on at the 20 ms release: does it hold through bursts, and do A3's
+        decisions suffer for it?"""
+        if not getattr(self.cl, "ihold_ok", False):
+            return {"mhz": mhz, "skipped": "this overlay has no interference hold"}
+        return self.pulses(mhz, shapes=self.PULSE_SHAPES_AUTO, reps=2, ihold_kw={"hold_s": 0.02})
+
+    def pulsesauto2(self, mhz):
+        """pulses with the hold at the 200 ms release (captureauto2's, BRINGUP_LOG 4.13): bursts closer than 200 ms
+        merge into one hold, up to max_s; does the loop or A3 pay for it?"""
+        if not getattr(self.cl, "ihold_ok", False):
+            return {"mhz": mhz, "skipped": "this overlay has no interference hold"}
+        return self.pulses(mhz, shapes=self.PULSE_SHAPES_AUTO, reps=2, ihold_kw={"hold_s": 0.2})
 
     # ---- the pull: a strong CW above and below the carrier ----
     def pull(self, mhz, offs_mhz=(0.1, 0.3, 1.0, 2.0, 5.0, 10.0, 20.0, 40.0), gains=(74, 77, 80, 83, 86, 89.75), seconds=3.0,
@@ -381,7 +410,8 @@ class Weekend(O.OTA):
         dragging CWs of 1-40 MHz?"""
         if not getattr(self.cl, "ihold_ok", False):
             return {"mhz": mhz, "skipped": "this overlay has no interference hold"}
-        return self.pull(mhz, offs_mhz=(1.0, 5.0, 10.0, 20.0, 40.0), gains=(80, 83, 86, 89.75), auto=True, ihold_kw=self.SLOW_BLIND)
+        return self.pull(mhz, offs_mhz=(1.0, 5.0, 10.0, 20.0, 40.0), gains=(80, 83, 86, 89.75), auto=True,
+                         ihold_kw=dict(self.SLOW_BLIND, hold_s=0.02))
 
     def iholdcheck(self, mhz):
         """the interference hold must leave the link alone: on through A3's 20 000 events, 25 Mbaud BPSK and 20 s of
@@ -754,7 +784,7 @@ def main(argv):
     ap.add_argument("what", choices=["baseline", "rounds", "once"])
     ap.add_argument("--hours", type=float, default=60.0)
     ap.add_argument("--quiet-min", type=float, default=60.0)
-    ap.add_argument("--pieces", nargs="*", default=["decide", "capture", "captureauto", "captureauto2", "captureauto3", "pulses", "pull",
+    ap.add_argument("--pieces", nargs="*", default=["decide", "capture", "captureauto", "captureauto2", "captureauto3", "pulses", "pulsesauto", "pulsesauto2", "pull",
                                                     "pullhold", "pullauto", "pullauto3", "iholdcheck", "segcheck", "eye", "b210cdr"])
     ap.add_argument("--mhz", type=int, nargs="*", default=None, help="once: the carriers (default all three)")
     ap.add_argument("--first", nargs="*", default=None, help="pieces run first in round 1 (at each carrier)")
