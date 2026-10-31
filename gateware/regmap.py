@@ -14,7 +14,7 @@ import os, sys
 # (address, name, access, block, description).  access: R, W, RW; "pulse" in the text = acts once.
 REGS = [
     # ---- the first firmware (Response 9 and 14): costaslink_regs.v, cmp_monitor.v ------------------------
-    (0x00, "ID", "R", "regs", "0x434C0004: 'CL', version 4 (2026-10-30: the BER check's timing recovery; 3 the reply paths and the turnaround counter, Prompt 36; 2 Response 15's engines)"),
+    (0x00, "ID", "R", "regs", "0x434C0005: 'CL', version 5 (2026-10-30: the interference hold; 4 the BER check's timing recovery; 3 the reply paths and the turnaround counter, Prompt 36; 2 Response 15's engines)"),
     (0x01, "CTRL", "RW", "regs", "[0] TX_DIS (reset 1: muted; header pin 24 carries its inverse, TX_EN), [1] LOOP_HOLD (reset 1), [2] LOOP_SEL, [3] TR_A (reset 1: receive), "
                                  "[6] ID enable, [7] pulse: ID now, [8] TX_Q1 high-impedance (unused since Prompt 35: TRIG IN sums into the Q ladder on the board)"),
     (0x02, "TXSYM", "RW", "regs", "[3:0] {Q1 Q0 I1 I0} ladder point in TX_MODE 0; a write pulses TRIG_A; R [7:4] the pins now"),
@@ -121,6 +121,15 @@ REGS = [
     (0x71, "RX_CDR_SUM", "R", "cdr", "its corrections since RX_BER_CFG's write, signed, in 1/256 sample: the transmitter's "
                                      "clock against this one is -SUM / 256 / (samples elapsed)"),
     (0x72, "RX_CDR_EDGES", "R", "cdr", "CMP_I's transitions it has seen since that write"),
+    (0x73, "RX_IHOLD_CFG", "RW", "cdr", "the interference hold (ihold.v): [0] on, [3:1] window 2^(3 + n) clocks, [15:8] the "
+                                        "active comparator-clocks in a window that trigger, [20:16] the comparators "
+                                        "{CMP_IN CMP_IP CMP_QN CMP_QP CMP_I} (reset: QP, QN, 256 clocks, 8, off); R [4] holding "
+                                        "now, [31:24] the last window's count"),
+    (0x74, "RX_IHOLD_HOLD", "RW", "cdr", "clocks the loop stays held after the last triggering window, and the guard after a "
+                                         "release at RX_IHOLD_MAX (reset 1 ms)"),
+    (0x75, "RX_IHOLD_MAX", "RW", "cdr", "the longest hold without a break, clocks (reset 1 s): a lost, beating loop is let go"),
+    (0x76, "RX_IHOLD_N", "R", "cdr", "holds started since RX_CTRL[1]'s clear"),
+    (0x77, "RX_IHOLD_CLK", "R", "cdr", "clocks held since then"),
 
     # ---- the sequencer and the counting gate: seq_gate.v -----------------------------------------------------
     (0x60, "SEQ_CTRL", "RW", "seq", "W [0] pulse: run, [1] loop, [2] pulse: stop, [10:8] steps less one, [11] enable "

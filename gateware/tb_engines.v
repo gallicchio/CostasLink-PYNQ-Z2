@@ -156,7 +156,7 @@ module tb_engines;
         repeat (5) @(posedge clk);
 
         // ---- identification ----
-        rd(R_ID, v); expect("ID", v, 32'h434C0004);
+        rd(R_ID, v); expect("ID", v, 32'h434C0005);
         rd(R_BUILD, v); expect("BUILD", v, {16'd100, RP_REG != 0, 3'b111, 4'd0, 8'd4});   // early lane, read-back, fast path
         rd(R_RX_INFO, v); expect("RX_INFO", v, {16'd100, 8'd6, 8'd4});
 
@@ -326,6 +326,27 @@ module tb_engines;
         end
         rd(R_RX_BER_CFG, v); expect("RX_BER_CFG read back", v, {3'd0, 4'd4, 1'b1, 16'd4, 1'b0, 3'd2, 2'd0, 1'b0, 1'b1});
         wr(R_TX_GO, 32'd2); wr(R_RX_BER_CFG, 32'd0);
+
+        // ---- the interference hold (ihold.v): the loop released by CTRL, the PRBS put on Q, (+1, +1) / (+1, -1), so
+        //      QP and QN chatter: LOOP_HOLD comes up; the TX stopped (the idle on I), it goes down RX_IHOLD_HOLD later
+        rd(R_CTRL, v2);
+        wr(R_CTRL, v2 & ~32'h82);                                   // LOOP_HOLD off (and not the ID pulse)
+        wr(R_RX_IHOLD_HOLD, 32'd200);
+        wr(R_RX_IHOLD_CFG, {11'd0, 5'b00110, 8'd8, 3'd0, 1'b0, 3'd2, 1'b1});   // QP, QN; 32 clocks; 8; on
+        idle_clocks(100);
+        expect("LOOP_HOLD before the chatter", loop_hold, 0);
+        wr(R_TX_POINTS, {24'd0, 4'b0011, 4'b1111});                // bit 0 -> (+1, +1), bit 1 -> (+1, -1)
+        wr(R_TX_GO, 32'd1);
+        idle_clocks(200);
+        expect("LOOP_HOLD under the Q windows' chatter", loop_hold, 1);
+        wr(R_TX_GO, 32'd2);
+        idle_clocks(400);
+        expect("LOOP_HOLD 400 clocks after the chatter", loop_hold, 0);
+        rd(R_RX_IHOLD_N, v); expect("RX_IHOLD_N", v, 1);
+        rd(R_RX_IHOLD_CLK, v);
+        if (v < 200) begin $display("FAIL RX_IHOLD_CLK: %0d clocks held", v); errors = errors + 1; end
+        wr(R_RX_IHOLD_CFG, 32'd0);
+        wr(R_CTRL, v2 & ~32'h80);
 
         // ---- events on TRIG_IN, TRIG_IN the reference: the latency from TRIG_IN's rising sample ----
         wr(R_TX_IDLE, {28'd0, P_IDLE});

@@ -201,6 +201,7 @@ module costaslink_core #(
     wire         rx_cfg_first, rx_arm_now, rx_arm_next, rx_ref_now;
     wire [31:0]  rx_t_ref;
     wire [7:0]   rx_cfg_dly;
+    wire rx_ihold;                              // the interference hold: LOOP_HOLD while the comparators chatter
     rx_engine #(.SER(SER), .CLK_HZ(CLK_HZ)) u_rx (
         .clk(clk), .rst(rst_rx), .bus_addr(a_rx), .bus_wdata(d_rx), .bus_we(we_rx), .bus_re(re_rx),
         .bus_rdata(rx_rdata), .fs(fs), .slow(slow_s2[2:0]), .free_cnt(free_cnt),
@@ -208,7 +209,7 @@ module costaslink_core #(
         .ev_pulse(rx_ev_p), .dec_pulse(rx_dec_p), .valid_pulse(rx_valid_p), .trig_in_rise(trig_in_rise),
         .cfg_idle(rx_cfg_idle), .cfg_mask(rx_cfg_mask), .cfg_lut(rx_cfg_lut), .cfg_first(rx_cfg_first),
         .cfg_dly(rx_cfg_dly), .arm_now(rx_arm_now), .arm_next(rx_arm_next),
-        .ref_now_o(rx_ref_now), .t_ref_o(rx_t_ref));
+        .ref_now_o(rx_ref_now), .t_ref_o(rx_t_ref), .ihold_o(rx_ihold));
 
     // ---- the receive-to-transmit paths: the synchronous reply, the fast path, the turnaround counter ---------
     wire reply_ev, fp_hit_ev, fp_armed;
@@ -230,7 +231,7 @@ module costaslink_core #(
 
     // ---- the control pins: the sequencer's while it runs, else CTRL's; the identification keys TX_DIS ------------
     assign tx_dis    = id_active ? ~id_key : (seq_active ? seq_out[2] : ctrl_tx_dis);
-    assign loop_hold = seq_active ? seq_out[1] : ctrl_loop_hold;
+    assign loop_hold = seq_active ? seq_out[1] : (ctrl_loop_hold | rx_ihold);     // the interference hold (ihold.v)
     assign tr_a      = seq_active ? seq_out[0] : ctrl_tr_a;
     assign loop_sel  = ctrl_loop_sel;
     assign {tx_q1, tx_q0, tx_i1, tx_i0} = pins_out;
@@ -281,7 +282,7 @@ module costaslink_core #(
         else if (a_core <= 8'h3F) rsel <= 3'd1;
         else if (a_core <= 8'h5F) rsel <= 3'd2;
         else if (a_core <= 8'h6F) rsel <= 3'd3;
-        else if (a_core <= 8'h77) rsel <= 3'd2;          // the receiver's second window (ber_cdr's state)
+        else if (a_core <= 8'h77) rsel <= 3'd2;          // the receiver's second window (ber_cdr, ihold)
         else if (a_core >= 8'h78 && a_core <= 8'h7F) rsel <= 3'd4;
         else if (a_core == R_BUILD) rsel <= 3'd5;
         else if (a_core >= 8'h90 && a_core <= 8'hAF) rsel <= 3'd6;

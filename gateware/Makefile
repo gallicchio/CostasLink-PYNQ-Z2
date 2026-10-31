@@ -29,7 +29,7 @@ PYTHON    ?= python3
 SCRATCH := ../build/gateware_scratch
 TOP     := costaslink_top
 CORE    := costaslink_core.v bus_stage.v costaslink_regs.v spi_master.v max2871_init.v i2c_master.v tx_symbol.v \
-           tx_engine.v rx_engine.v ber_cdr.v count_ram.v prbs.v capture.v seq_gate.v cmp_monitor.v morse_keyer.v turnaround.v fp_lut5.v
+           tx_engine.v rx_engine.v ber_cdr.v ihold.v count_ram.v prbs.v capture.v seq_gate.v cmp_monitor.v morse_keyer.v turnaround.v fp_lut5.v
 RTL     := costaslink_top.v fast_sampler_flop.v uart_rx.v uart_tx.v uart_cmd.v $(CORE)
 TB      := tb_costaslink.v
 

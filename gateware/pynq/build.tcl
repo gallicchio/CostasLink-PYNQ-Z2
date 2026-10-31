@@ -1,12 +1,11 @@
 # ---------------------------------------------------------------------------
 # Build the CostasLink overlay for a PYNQ-Z2, from nothing, in one command (Response 15):
 #
-#     source <Vivado 2024.1>/settings64.sh
+#     source <Vivado 2022.1>/settings64.sh     (PYNQ 3.0.x; 2024.1 for PYNQ 3.1)
 #     cd gateware && vivado -mode batch -source pynq/build.tcl [-tclargs -bench | -synth_only | -jobs N]
 #
-# Vivado 2024.1: the release PYNQ v3.1 (the newest image for the PYNQ-Z2, kernel xilinx-v2024.1) is built
-# on.  The GPSDO's 2022.1 bitstream loaded unchanged on PYNQ 3.1.1 too, so 2022.1 would also do; 2024.1 is
-# the one its tutorials and its board files match.
+# The bench's PYNQ-Z2 runs PYNQ 3.0.1, built on Vivado 2022.1: its overlays are built with 2022.1 (one tools
+# version per image; 2024.1 is PYNQ v3.1's).  The script runs on either.
 #
 # After GPSDO-PYNQ-Z2/gateware/build.tcl: everything scripted (the project, the block design, the address
 # map, synthesis, implementation, the handoff files), so the result is reviewable as a diff.  The block
@@ -24,6 +23,9 @@
 #                  manager over the PYNQ's USB cable, with no Linux): build/pynq/bench/, never overlay/
 #     -synth_only  stop after synthesis
 #     -jobs N      parallel jobs (default 8)
+#     -strategy S  the implementation strategy (default Vivado's; 2022.1 met the fast path's 6 ns with
+#                  Performance_ExplorePostRoutePhysOpt when the default missed it by 10 ps, 2026-10-30)
+#     -out NAME    publish to build/pynq/NAME/ instead of build/pynq/overlay/
 # Outputs: build/pynq/overlay/costaslink_top.{bit,hwh,xsa}: PYNQ loads the .bit with the .hwh beside it.
 # A design that fails timing is refused: no .bit is published.
 # ---------------------------------------------------------------------------
@@ -37,11 +39,15 @@ set bd_name    costaslink_top
 set synth_only 0
 set bench      0
 set jobs       8
+set strategy   ""
+set out_name   overlay
 for {set i 0} {$i < [llength $argv]} {incr i} {
     switch -- [lindex $argv $i] {
         -synth_only { set synth_only 1 }
         -bench      { set bench 1 }
         -jobs       { incr i; set jobs [lindex $argv $i] }
+        -strategy   { incr i; set strategy [lindex $argv $i] }
+        -out        { incr i; set out_name [lindex $argv $i] }
     }
 }
 if {$bench} { set proj_name costaslink_bench }
@@ -61,7 +67,7 @@ set_property board_part tul.com.tw:pynq-z2:part0:1.0 [current_project]
 set_property target_language Verilog [current_project]
 
 set rtl {costaslink_pynq.v axil_bridge.v fast_sampler_7series.v costaslink_core.v bus_stage.v costaslink_regs.v spi_master.v
-         max2871_init.v i2c_master.v tx_symbol.v tx_engine.v rx_engine.v ber_cdr.v count_ram.v prbs.v capture.v seq_gate.v
+         max2871_init.v i2c_master.v tx_symbol.v tx_engine.v rx_engine.v ber_cdr.v ihold.v count_ram.v prbs.v capture.v seq_gate.v
          cmp_monitor.v morse_keyer.v turnaround.v fp_lut5_7series.v}
 foreach f $rtl { add_files -norecurse $gw_dir/$f }
 add_files -norecurse $gw_dir/regmap.vh $gw_dir/max2871_words.vh
@@ -171,6 +177,7 @@ if {[get_property PROGRESS [get_runs synth_1]] != "100%"} { error "SYNTHESIS FAI
 puts "--- synthesis complete"
 if {$synth_only} { puts "--- -synth_only: stopping"; exit 0 }
 
+if {$strategy ne ""} { set_property strategy $strategy [get_runs impl_1]; puts "--- implementation strategy: $strategy" }
 launch_runs impl_1 -to_step write_bitstream -jobs $jobs
 wait_on_run impl_1
 if {[get_property PROGRESS [get_runs impl_1]] != "100%"} { error "IMPLEMENTATION FAILED: $build_dir/$proj_name/${proj_name}.runs/impl_1" }
@@ -199,7 +206,7 @@ foreach p {i2c_scl i2c_sda tx_q1} {
 }
 set bit [glob -nocomplain $build_dir/$proj_name/${proj_name}.runs/impl_1/*.bit]
 set hwh [glob -nocomplain $build_dir/$proj_name/${proj_name}.gen/sources_1/bd/$bd_name/hw_handoff/$bd_name.hwh]
-set out [expr {$bench ? "$build_dir/bench" : "$build_dir/overlay"}]
+set out [expr {$bench ? "$build_dir/bench" : "$build_dir/$out_name"}]
 file mkdir $out
 if {$bit ne ""} { file copy -force [lindex $bit 0] $out/$bd_name.bit }
 if {$hwh ne ""} { file copy -force [lindex $hwh 0] $out/$bd_name.hwh }
