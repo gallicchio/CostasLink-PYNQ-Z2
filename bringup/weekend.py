@@ -6,6 +6,7 @@ face a concrete wall).  The bench as ota.py's: four antennas within 30-40 cm, th
 the B210 reaching -23 to +11 dB of the carrier there (BRINGUP_LOG 4.0).
 
     python3 bringup/weekend.py baseline           once: the schemes, the BER against the rate, the ring, over the air
+    python3 bringup/weekend.py once --pieces P ... [--mhz F ...]   the pieces once at each carrier
     python3 bringup/weekend.py rounds --hours H [--pieces ...] [--first ...]
                                                   repeated: per carrier (5200, 5000, 5500)
         decide    the decisions under interference: CW 0.1 / 1 / 5 / 20 MHz off and 8 MHz noise at 20 / 100 % duty, the
@@ -14,6 +15,8 @@ the B210 reaching -23 to +11 dB of the carrier there (BRINGUP_LOG 4.0).
                   segments, LOG_Q / PEAK_Q, the lock after
         capture   a CW near the carrier (-50..+50 kHz, the B210's own LO leak parked 2 MHz away): the lock during (VC:
                   does the loop go to the interferer?) and after
+        captureauto capture with the gateware's interference hold on (BRINGUP_LOG 4.11: at 5.5 GHz a full-power CW
+                  within +-50 kHz drags the free loop off for good)
         pulses    10 us every 1 ms and 100 us every 10 ms at full power: the lock, A3's errors
         pull      a CW 0.1-40 MHz above and below the carrier, gain 74-89.75: is the loop dragged off (VC, the I leg),
                   and does it come back by itself when the CW stops, how fast (added after round 1: BRINGUP_LOG 4.3)
@@ -26,6 +29,8 @@ the B210 reaching -23 to +11 dB of the carrier there (BRINGUP_LOG 4.0).
                   (BRINGUP_LOG 4.9: at 5.0 GHz some recovered segments read random bits)
         b210cdr   the B210's BPSK at 1 and 2 Mbaud through the board's timing recovery (ID version 4): the BER, and
                   the two clocks' offset round by round (cdr_tests.py)
+        skewtrim  (not in the rounds) I_OFF_F stepped: CMP_I's skew (RX_CDR_SKEW, the eye fold) and the unlocked loop's
+                  push at each, for one trim servo nulling both (REVB 18, 30)
         quiet     an hour of the lock watched with nothing sent (drift, the board's own stability)
 
 Each piece writes bringup/data/board_A/weekend/<piece>_<mhz>_<time>.json; a verdict per round.  The board is left
@@ -46,7 +51,7 @@ sys.path.insert(0, HERE)
 import ota as O                                      # noqa: E402
 import linktests as LT                               # noqa: E402
 import stages as S                                   # noqa: E402
-from costaslink import point_code                    # noqa: E402
+from costaslink import point_code, DAC1_CH           # noqa: E402
 
 OUT = os.path.join(HERE, "data", "board_A", "weekend")
 CARRIERS = (5200, 5000, 5500)
@@ -186,7 +191,10 @@ class Weekend(O.OTA):
         return out
 
     # ---- a CW near the carrier ----
-    def capture(self, mhz, offs_khz=(-50, -30, -20, -10, -5, -2, 2, 5, 10, 20, 30, 50), gains=(70, 80, 89.75), park_mhz=2.0):
+    def capture(self, mhz, offs_khz=(-50, -30, -20, -10, -5, -2, 2, 5, 10, 20, 30, 50), gains=(70, 80, 89.75), park_mhz=2.0,
+                auto=False):
+        """auto: the gateware's interference hold on through each CW, the lock after polled for 3 s as pull's
+        (captureauto)"""
         out = {"mhz": mhz, "runs": []}
         st = self.ready(mhz)
         if st is None:
@@ -199,23 +207,47 @@ class Weekend(O.OTA):
                 if not self.relock(mhz, st):
                     break
                 vc_before = self.cl.adc("VC")
+                if auto:
+                    self.cl.rx_clear()
+                    self.cl.ihold(True)
                 th = self.bg(self.bb.tone, mhz + park_mhz, gain=g, seconds=3.0, offset_hz=k * 1e3 - park_mhz * 1e6, rate=5e6)
                 time.sleep(1.0)
                 o = self.observe(st["cen"], st["a"], side0=st["side"])
                 vc_during = self.cl.adc("VC")
                 th.join(timeout=6)
-                time.sleep(0.4)
-                after = self.observe(st["cen"], st["a"], side0=st["side"])
-                row = {"gain": g, "off_khz": k, "during": o, "after": after, "vc_before": vc_before, "vc_during": vc_during,
-                       "dvc_khz": (vc_during - vc_before) * self.kv(mhz) / 1e3}
+                ih, t_back = None, None
+                if auto:
+                    t0 = time.time()
+                    while time.time() - t0 < 3.0:
+                        after = self.observe(st["cen"], st["a"], side0=st["side"])
+                        if after["state"] in ("locked", "slipped"):
+                            t_back = time.time() - t0
+                            break
+                    ih = self.cl.ihold_state()
+                    self.cl.ihold(False)
+                else:
+                    time.sleep(0.4)
+                    after = self.observe(st["cen"], st["a"], side0=st["side"])
+                row = {"gain": g, "off_khz": k, "auto": auto, "ihold": ih, "t_back": t_back, "during": o, "after": after,
+                       "vc_before": vc_before, "vc_during": vc_during, "dvc_khz": (vc_during - vc_before) * self.kv(mhz) / 1e3}
                 out["runs"].append(row)
-                print("%d capture CW %+3d kHz gain %5.2f: during %s (VC moved %+.1f kHz, LOG_Q %.3f); after %s" % (
-                    mhz, k, g, o["state"], row["dvc_khz"], o["log_q"], after["state"]), flush=True)
+                print("%d capture%s CW %+3d kHz gain %5.2f: during %s (VC moved %+.1f kHz, LOG_Q %.3f); after %s%s" % (
+                    mhz, auto and " (ihold)" or "", k, g, o["state"], row["dvc_khz"], o["log_q"], after["state"],
+                    ih and " after %s s | ihold: %d holds, %.2f s held" % (t_back and "%.2f" % t_back, ih["holds"], ih["seconds"])
+                    or ""), flush=True)
                 if after["state"] == "slipped":
                     st["side"] = after["side"]
             save("capture_partial", out)
         out["vc0"] = vc0
         return out
+
+    def captureauto(self, mhz):
+        """capture with the gateware's interference hold on: at 5.5 GHz every full-power CW within +-50 kHz drags the
+        free loop 39-91 kHz down and it stays lost (BRINGUP_LOG 4.11); does the hold see a CW inside the loop's own
+        band?"""
+        if not getattr(self.cl, "ihold_ok", False):
+            return {"mhz": mhz, "skipped": "this overlay has no interference hold"}
+        return self.capture(mhz, gains=(80, 89.75), auto=True)
 
     # ---- pulses ----
     def pulses(self, mhz, shapes=((10e-6, 1e-3), (100e-6, 10e-3), (1e-3, 20e-3)), gains=(80, 89.75), reps=3):
@@ -431,6 +463,212 @@ class Weekend(O.OTA):
             save("eye_partial", out)
         return out
 
+    # ---- the fast I comparator's trim against CMP_I's skew and the unlocked loop's push ----
+    def skewtrim(self, mhz, ioffs=(1.0, S.V_MID, 2.0, 2.3, 2.6, 2.8, 3.0, 3.15, 3.3), periods=(2, 4),
+                 push_khz=(-40, -20, 20, 40), release_s=0.003, reps=2, n_skew=3):
+        """REVB 30: RX_CDR_SKEW reads CMP_I's duty-cycle distortion during data (a threshold offset on a slow edge);
+        REVB 18: the fast I comparator's offset pushes the unlocked loop one way (-4 V/s at 5.0 GHz with I_OFF_F at
+        V_MID, +11..+45 V/s at its no-carrier null: 3.6d).  I_OFF_F (-0.020 V/V on I) stepped through ioffs: at each
+        the loop locked with it, then for each period CMP_I's duty and the skew during PRBS (the eye fold's, and
+        RX_CDR_SKEW over n_skew restarts with the check's count), then VC's rate released for release_s at push_khz
+        from the lock (the integrator centred first).  Where does each cross zero, and is it the same trim?"""
+        out = {"mhz": mhz, "rows": []}
+        cl = self.cl
+        v_null, trace = self.null_fast_i()
+        out["i_off_f_null"], out["null_trace"] = v_null, trace
+        self.ioff(S.V_MID)
+        st = self.ready(mhz)
+        if st is None:
+            out["error"] = "no lock"
+            return out
+        out.update(dsa=st["dsa"], a_leg=st["a"], cen=st["cen"])
+        depth = cl.cap_info()["depth"]
+        for v in ioffs:
+            row = {"i_off_f": v, "tries": [], "periods": [], "push": []}
+            o = None
+            for k in (10, 20, -5, 30, 5, -10, 40):
+                lk = self.trial(mhz, v, LT.VC_LOCK + k * 1e3 / self.kv(mhz), st["dsa"])
+                o = self.observe(st["cen"], st["a"])
+                row["tries"].append({"start_khz": k, "state": lk["state"], "obs": o["state"]})
+                if lk["state"] == "locked" and o["state"] == "locked":
+                    break
+                cl.ctrl(loop_hold=1)
+            row["lock"] = {x: o[x] for x in ("state", "side", "di", "dq", "vc", "cmp_i_duty")}
+            if o["state"] == "locked":
+                inv = o["side"] > 0
+                for p in periods:
+                    cl.tx_points(point_code(1, 0), [point_code(1, 0), point_code(-1, 0)])
+                    cl.tx_timing(period=p)
+                    cl.tx_prbs(15)
+                    cl.tx_mode("prbs", n=2)
+                    cl.tx_go()
+                    time.sleep(0.005)
+                    duty = cl.gate(seconds=0.01, inputs=("CMP_I",))["CMP_I"]["duty"]
+                    cl.cap_arm("none", post=depth - 16)
+                    cl.cap_force()
+                    f = eye_fold(cl.cap_read(timeout=2.0), p)
+                    sk = []
+                    for _ in range(n_skew):
+                        cl.ber_config(15, None, invert=inv, enable=True, cdr=True, period=p)
+                        time.sleep(0.05)
+                        c = cl.cdr_state()
+                        b = cl.ber()
+                        sk.append({**c, "bits": b["bits"], "mism": b["mismatches"]})
+                    cl.ber_config(15, None, invert=inv, enable=False, cdr=True, period=p)
+                    cl.tx_stop()
+                    cl.hold_point(1, 0)
+                    row["periods"].append({"period": p, "duty": duty, "fold": f, "cdr": sk})
+            self.tx(False)
+            self.center(mhz)
+            cl.dsa(float(st["dsa"]))
+            self.ioff(v)
+            cl.ctrl(loop_hold=1)
+            for off in push_khz:
+                rates, duties = [], []
+                for _ in range(reps):
+                    self.set_vc(LT.VC_LOCK + off * 1e3 / self.kv(mhz))
+                    self.tx(True)
+                    time.sleep(0.1)
+                    duties.append(cl.gate(seconds=0.01, inputs=("CMP_I",))["CMP_I"]["duty"])
+                    rates.append(self.release_rate(release_s))
+                row["push"].append({"offset_khz": off, "rate_v_s": float(np.mean(rates)), "rates": rates,
+                                    "cmp_i_duty": float(np.mean(duties))})
+            self.tx(False)
+            out["rows"].append(row)
+
+            def per(x):
+                f = x["fold"]
+                cs = [c.get("skew_samples") for c in x["cdr"] if c.get("skew_samples") is not None]
+                return "%.0f Mbaud duty %.3f, fold %s, RX_CDR_SKEW %s, mism %s" % (
+                    100.0 / x["period"], x["duty"], "error" if "error" in f or f["skew"] is None
+                    else "%+.2f (open %d of %d)" % (f["skew"], f["open"], f["L"]),
+                    "/".join("%+.2f" % s for s in cs), "/".join(str(c["mism"]) for c in x["cdr"]))
+            print("%d I_OFF_F %.2f V: %s dI %+.3f | %s | push %s V/s at %s kHz" % (
+                mhz, v, o["state"], o["di"], " | ".join(per(x) for x in row["periods"]) or "no data",
+                "/".join("%+.1f" % r["rate_v_s"] for r in row["push"]), "/".join("%+d" % k for k in push_khz)), flush=True)
+            save("skewtrim_partial", out)
+        print("%d I_OFF_F's null with no carrier: %s V" % (mhz, "%.3f" % v_null if v_null is not None else "none"), flush=True)
+        return out
+
+    def release_rate(self, release_s, muted=False):
+        """VC's rate (V/s) over a release of the hold for release_s by the sequencer.  A sequencer step drives every
+        bit it does not name to 1 (costaslink_core.v: tx_dis = seq_out[2] while it runs), so a step naming only
+        loop_hold mutes the TX for the release: 3.6d's push, and skewtrim's first run (BRINGUP_LOG 4.12), measured
+        the integrator with no carrier.  Here the TX stays on (and T/R as CTRL has it) unless muted"""
+        cl = self.cl
+        tr_a = cl.rd("CTRL") >> cl.CTRL_BITS["tr_a"] & 1
+        v0 = cl.adc("VC")
+        cl.seq_program([(release_s / cl.t_clk, {"loop_hold": 0, "tx_dis": int(muted), "tx_gate": 1, "tr_a": tr_a})])
+        cl.seq_run()
+        time.sleep(release_s + 0.03)
+        return (cl.adc("VC") - v0) / release_s
+
+    def pushscan(self, mhz, trim="I_OFF_F", vals=tuple(round(2.0 + 0.05 * k, 2) for k in range(27)), offs_khz=(30, -30),
+                 n_adc=12, release_s=0.003, reps=2):
+        """the unlocked loop's push in detail: the loop held off the lock (a beat), a fast arm's trim (I_OFF_F or
+        Q_OFF_F) stepped; at each ERR's mean on the ADC (each conversion 1.2 ms, many beat cycles), CMP_I's
+        edges and duty, I and Q, VC's rate released for release_s with the TX on (the push) and muted (no carrier:
+        3.6d's measure); and ERR with the TX muted.  ERR is one leg of Q chosen by CMP_I (U110), so across a beat
+        sign(I) x Q averages to nothing at any threshold, and the push is ERR's mid-point against the integrator's
+        V_MID: I_OFF_F should not move it, Q_OFF_F (-0.020 V/V on ERR) should"""
+        out = {"mhz": mhz, "trim": trim, "rows": []}
+        cl = self.cl
+        st = self.ready(mhz)
+        if st is None:
+            out["error"] = "no lock"
+            return out
+        out.update(dsa=st["dsa"], a_leg=st["a"], cen=st["cen"])
+        dac = S.DAC1 if trim in DAC1_CH else S.DAC2
+
+        def mean_adc(ch):
+            return float(np.mean([cl.adc(ch) for _ in range(n_adc)]))
+        try:
+            self._pushscan(mhz, st, trim, dac, vals, offs_khz, release_s, reps, mean_adc, out)
+        finally:
+            cl.dac(dac, **{trim: S.V_MID})
+        return out
+
+    def _pushscan(self, mhz, st, trim, dac, vals, offs_khz, release_s, reps, mean_adc, out):
+        cl = self.cl
+        for off in offs_khz:
+            self.tx(False)
+            self.center(mhz)
+            cl.dsa(float(st["dsa"]))
+            cl.ctrl(loop_hold=1)
+            for v in vals:
+                cl.dac(dac, **{trim: float(v)})
+                time.sleep(0.02)
+                self.tx(False)
+                g0 = cl.gate(seconds=0.01, inputs=("CMP_I",))["CMP_I"]
+                err0 = mean_adc("ERR")
+                self.set_vc(LT.VC_LOCK + off * 1e3 / self.kv(mhz))
+                self.tx(True)
+                time.sleep(0.05)
+                g = cl.gate(seconds=0.01, inputs=("CMP_I",))["CMP_I"]
+                err, i, q = mean_adc("ERR"), mean_adc("I"), mean_adc("Q")
+                rates, rates_m = [], []
+                for _ in range(reps):
+                    for muted, lst in ((False, rates), (True, rates_m)):
+                        self.set_vc(LT.VC_LOCK + off * 1e3 / self.kv(mhz))
+                        lst.append(self.release_rate(release_s, muted=muted))
+                row = {"offset_khz": off, trim.lower(): v, "err": err, "i": i, "q": q, "edges": g["edges"], "duty": g["duty"],
+                       "rate_v_s": float(np.mean(rates)), "rates": rates, "rate_muted_v_s": float(np.mean(rates_m)),
+                       "rates_muted": rates_m, "muted": {"err": err0, "edges": g0["edges"], "duty": g0["duty"]}}
+                out["rows"].append(row)
+                print("%d %+d kHz %s %.2f: ERR %.4f V (muted %.4f, CMP_I %s), CMP_I %d edges duty %.3f, I %.4f Q %.4f, "
+                      "push %+.1f V/s (muted %+.1f)" % (
+                          mhz, off, trim, v, err, err0, "high" if g0["duty"] > 0.5 else "low", g["edges"], g["duty"], i, q,
+                          row["rate_v_s"], row["rate_muted_v_s"]), flush=True)
+            self.tx(False)
+            cl.dac(dac, **{trim: S.V_MID})
+            save("pushscan_partial", out)
+
+    def pullin(self, mhz, offs_khz=(-400, -250, -150, -100, -70, -50, -40, -30, -20, -15, -10, -5, 5, 10, 15, 20, 30, 40, 50,
+                                    70, 100, 150, 250, 400),
+               release_s=0.003, reps=3, n_adc=8):
+        """what moves an unlocked loop, measured (docs/LOCK.md section 6 drew it from a model and 3.6d's muted rates):
+        the loop held at each offset from the lock with the TX on, then released for release_s with the TX on (VC's
+        rate: the board's drift plus the carrier's pull; near the lock the start of a capture), and muted (the
+        integrator against ERR with no carrier: its reference); ERR's mean held, with and without the carrier; the
+        trims at V_MID"""
+        out = {"mhz": mhz, "rows": []}
+        cl = self.cl
+        st = self.ready(mhz)
+        if st is None:
+            out["error"] = "no lock"
+            return out
+        out.update(dsa=st["dsa"], a_leg=st["a"], cen=st["cen"])
+        self.tx(False)
+        self.center(mhz)
+        cl.dsa(float(st["dsa"]))
+        cl.ctrl(loop_hold=1)
+        for off in offs_khz:
+            vc_at = LT.VC_LOCK + off * 1e3 / self.kv(mhz)
+            self.set_vc(vc_at)
+            self.tx(False)
+            err0 = float(np.mean([cl.adc("ERR") for _ in range(n_adc)]))
+            rm = self.release_rate(release_s, muted=True)
+            self.tx(True)
+            time.sleep(0.05)
+            g = cl.gate(seconds=0.01, inputs=("CMP_I",))["CMP_I"]
+            err = float(np.mean([cl.adc("ERR") for _ in range(n_adc)]))
+            rates = []
+            for _ in range(reps):
+                self.set_vc(vc_at)
+                rates.append(self.release_rate(release_s))
+            self.tx(False)
+            row = {"offset_khz": off, "rate_v_s": float(np.mean(rates)), "rates": rates, "err": err, "edges": g["edges"],
+                   "duty": g["duty"], "muted": {"err": err0, "rate_v_s": rm}}
+            out["rows"].append(row)
+            print("%d %+4d kHz: VC %+6.1f V/s (%s) | ERR held %.4f V, CMP_I %d edges duty %.3f | muted: ERR %.4f V, %+.1f V/s" % (
+                mhz, off, row["rate_v_s"], "/".join("%+.1f" % r for r in rates), err, g["edges"], g["duty"], err0, rm), flush=True)
+            save("pullin_partial", out)
+        return out
+
+    def pushq(self, mhz):
+        """pushscan with Q_OFF_F: can the fast Q arm's trim null the push (ERR's mid-point)?"""
+        return self.pushscan(mhz, trim="Q_OFF_F", vals=tuple(round(0.6 + 0.1 * k, 2) for k in range(22)))
+
     # ---- once: the link over the air without interference ----
     def baseline(self):
         out = {"rows": []}
@@ -483,11 +721,12 @@ class Weekend(O.OTA):
 
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("what", choices=["baseline", "rounds"])
+    ap.add_argument("what", choices=["baseline", "rounds", "once"])
     ap.add_argument("--hours", type=float, default=60.0)
     ap.add_argument("--quiet-min", type=float, default=60.0)
-    ap.add_argument("--pieces", nargs="*", default=["decide", "capture", "pulses", "pull", "pullhold", "pullauto", "iholdcheck", "segcheck", "eye",
-                                                    "b210cdr"])
+    ap.add_argument("--pieces", nargs="*", default=["decide", "capture", "captureauto", "pulses", "pull", "pullhold", "pullauto", "iholdcheck",
+                                                    "segcheck", "eye", "b210cdr"])
+    ap.add_argument("--mhz", type=int, nargs="*", default=None, help="once: the carriers (default all three)")
     ap.add_argument("--first", nargs="*", default=None, help="pieces run first in round 1 (at each carrier)")
     a = ap.parse_args(argv)
     try:
@@ -498,6 +737,15 @@ def main(argv):
         W = Weekend()
     if a.what == "baseline":
         W.piece("baseline", W.baseline)
+        return
+    if a.what == "once":
+        for mhz in a.mhz or CARRIERS:
+            for name in a.pieces:
+                W.piece(name, getattr(W, name), mhz)
+        try:
+            W.b.sa_live()
+        except Exception:                                        # noqa: BLE001
+            pass
         return
     t_end = time.time() + a.hours * 3600
     n = 0

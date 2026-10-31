@@ -10,8 +10,8 @@ This note explains, for anyone who works on this board after us, what keeps the 
 two ways the bench saw it lose lock (a strong interferer, and the carrier going away), why it does not come back by
 itself, and what was built into the gateware so that it does. Every figure is drawn from measurements on board A
 over the air at 5.2 GHz, or from a model of this board's own detector, by [`docs/lock_figures.py`](lock_figures.py);
-the bench's record is [`bringup/BRINGUP_LOG.md`](../bringup/BRINGUP_LOG.md) rows 3.9-4.8 and
-[`bringup/REVB.md`](../bringup/REVB.md) rows 17-28.
+the bench's record is [`bringup/BRINGUP_LOG.md`](../bringup/BRINGUP_LOG.md) rows 3.9-4.12 and
+[`bringup/REVB.md`](../bringup/REVB.md) rows 17-30.
 
 **In short**
 
@@ -25,7 +25,8 @@ the bench's record is [`bringup/BRINGUP_LOG.md`](../bringup/BRINGUP_LOG.md) rows
 3. After the interferer goes, the carrier is where it always was, but the loop's oscillator is 580 kHz above it or
    670 kHz below. The lock window is a window in *frequency difference*, about 10-60 kHz wide here, and the loop is
    far outside it. Out there the carrier's pull on the loop is weaker than the board's own offsets, which push the
-   oscillator downward: from below it runs away, from above it comes down and parks in a false lock 36-45 kHz short.
+   oscillator downward: from below it runs away, from above it comes back down, to the lock or to a false lock
+   36-45 kHz short (section 6 maps it).
 4. Holding the loop (freezing its integrator) while the interferer is present, or while the carrier is gone, keeps
    the oscillator at the carrier's frequency, and the loop is locked again within milliseconds of the release.
    Two holds now do this in the gateware, each switched and tuned from software: the **interference hold** and the
@@ -185,47 +186,58 @@ at that frequency. The loop responds only to a few kilohertz, so it sees the bea
 far outside its lock window, which on this board runs only from about −10 to +20..+60 kHz around the lock
 (BRINGUP_LOG 3.9h).
 
-**What is left to move an unlocked loop is two weak effects.**
+**What moves an unlocked loop, measured.** Hold the loop at some offset from the lock with the carrier on, release
+it for 3 ms, and read how fast VC moves: that is the force on an unlocked loop at that offset
+(`bringup/weekend.py pullin`, BRINGUP_LOG 4.12). Here it is at 24 offsets from −400 to +400 kHz, at three carriers:
 
-* *The carrier's pull.* An unlocked loop is not completely blind to the carrier: the loop filter's proportional path
-  ripples the LO's phase at the beat, and that ripple correlates with the detector's output, leaving a small average
-  error that points toward the carrier. The textbook result for a PI loop is v ≈ K_d²·K_o·(τ₂/τ₁)/(2·Δω), which the
-  integrator turns into a drift of v/τ₁ volts a second; with this loop's parts it is about 4.6 V/s at 50 kHz from the
-  carrier and only 0.4 V/s at 580 kHz. It falls as 1/Δf. The design expected this pull to bring the loop in from
-  anywhere within ±580 kHz, in about 0.42 s from 300 kHz (the note in `block_loop.png`).
-* *The board's own drift.* While the loop beats, the fast I comparator's offset makes sign(I) spend about 56 % of the
-  time on one side, and Q carries a DC offset of its own (13.7 mV between the loop's mid-point and the arms' common
-  mode, REVB 17). Their product is a steady error into the integrator, pushing VC *downward* at 4 V/s at 5.0 GHz
-  (REVB 18) and about 7.7 V/s at 5.2 GHz (the descent from the top rail in the drag figure).
+![what moves an unlocked loop, measured](images/lock_pullin.png)
 
-![what moves an unlocked loop](images/lock_pullin.png)
+*VC's rate of change for an unlocked loop against the LO's offset from the carrier, measured at 5.0, 5.2 and 5.5 GHz
+(three releases a point; the carriers agree within 1-2 V/s). Positive: VC rises. Dashed grey: the textbook's pull
+for this loop's parts. The grey bands are the false locks found earlier by releasing the loop (BRINGUP_LOG 3.9h,
+4.5).*
 
-*VC's rate of change for an unlocked loop against the LO's offset from the carrier. Orange: the board's drift,
-downward everywhere. Dashed blue: the carrier's pull, toward the carrier from both sides, from the textbook formula
-with this loop's parts. Black: their sum, where VC actually goes. The aqua bands are the false locks measured on this
-board.*
+Read it as a map. Where the curve is above zero the loop drifts up, where it is below, down. Where it crosses zero
+going down (left to right), the drifts on either side meet, and the loop comes to rest there. Where it crosses going
+up, they run apart: a watershed.
 
-Read the black curve from where a drag leaves the loop:
+* **Above the carrier the curve never crosses zero.** From anywhere above, VC comes down to the lock: 7-8 V/s far
+  out, 12-13 V/s at +15 kHz where the carrier's pull is strongest, but only 1-4 V/s around +30..+40 kHz, where a loop
+  coming down from a drag has been seen to park, beating (the band on the right).
+* **Below the carrier the curve crosses three times before the lock**: a watershed 13-16 kHz below, a resting place
+  43-49 kHz below (the false lock: the loop sits there beating and never locks), and a second watershed 94-129 kHz
+  below. Below that, VC falls to its bottom rail.
+* **Far out the rate is neither zero nor symmetric**: 7-8 V/s down above the carrier, 1.6-3 V/s down below it. Two
+  things add up to that. First, a common downward drift of 4-5 V/s. The error signal is one leg of the Q arm, chosen
+  by sign(I), so across a beat it averages to the Q arm's own mid-point, and that sits 4-10 mV below the reference of
+  the loop's integrator (V_MID: the board has two mid-points, REVB 17). The integrator turns millivolts into volts a
+  second (R126 · C130 = 1 ms). Second, 2.4-2.8 V/s toward the carrier, already in the detector's average with the loop
+  held: sign(I) switches a little late on a beat's slow crossings. The textbook's pull (dashed) is far smaller out
+  there.
 
-* **Dragged below (−672 kHz)**, the drift points down, away from the carrier, and is ten times the pull: VC runs to
-  its bottom rail and stays. The pull wins only within some tens of kilohertz below the carrier (the formula says
-  −39 kHz; the bench's window edge is −10 kHz, so the real pull through this hard-limited detector is a few times
-  weaker than the textbook's).
-* **Dragged above (+578 kHz)**, drift and pull both point down, toward the carrier, and the loop comes down fast
-  (the orange descent in section 5). But it stops 36-45 kHz short, in a **false lock**: a frequency where the loop
-  is stable without being locked, beating steadily. False locks were found on both sides of the lock in the lock lab
-  (−61 to −46 kHz, +36 kHz; BRINGUP_LOG 3.9h) and at +45 kHz after today's drags. The two smooth effects in the
-  figure do not explain them; something in the detector's response to a beat of that frequency makes a stable spot
-  there, and pinning it down is open work.
+Now read the map from where a drag leaves the loop:
 
-So the textbook promise, "a type-II loop pulls in from anywhere in its range", fails here for a concrete reason: the
-pull falls as 1/Δf, and a few millivolts of offset in the error path outweigh it beyond a few tens of kilohertz.
-Twenty-four of twenty-four dragged loops were still lost three seconds after the interferer stopped (BRINGUP_LOG 4.5).
+* **Dragged below (−672 kHz)**: VC falls, away from the carrier, to the bottom rail, and stays.
+* **Dragged above (+578 kHz)**: VC comes down toward the carrier. It reaches the lock, or slows and parks near
+  +40 kHz, beating (as after the drags of BRINGUP_LOG 4.5).
+* **Let go 16-129 kHz below** (for example by an interferer close to the carrier that the loop followed for a while):
+  it ends in the false lock.
 
-The cures follow from the figure. Keep the loop from being dragged (section 7). If it is lost anyway, notice and
-sweep the LO back into the window from above: a stepped downward search from +120 kHz acquired every one of 52 real
-offsets up to ±73 kHz (BRINGUP_LOG 3.9j), and a centre-and-release recovered 96 of 96 losses (3.9f). And in rev B,
-remove the offsets, so that the pull can do what the design expected.
+So the textbook promise, "a type-II loop pulls in from anywhere in its range", fails here for a concrete reason:
+away from the carrier the board's own offsets outweigh the pull, and they point down. Twenty-four of twenty-four
+dragged loops were still lost three seconds after the interferer stopped (BRINGUP_LOG 4.5).
+
+*A lesson in measuring this.* The first measurement of the drift (BRINGUP_LOG 3.6d) released the loop with the
+gateware's sequencer, and a sequencer step drives every output it does not name to its safe state, which mutes the
+transmitter. The "drift" was measured with no carrier at all. It read the same 4 V/s at every offset, and reversed
+when the I comparator was trimmed, because with no signal the comparator only picks one leg of Q, or chatters on
+noise. A rate that did not depend on the offset from the carrier should have been the clue.
+
+The cures follow from the map. Keep the loop from being dragged (section 7). If it is lost anyway, notice, and sweep
+the LO back from above: everything above comes down to the lock, and a stepped downward search from +120 kHz
+acquired every one of 52 real offsets up to ±73 kHz (BRINGUP_LOG 3.9j); a centre-and-release recovered 96 of 96
+losses (3.9f). And in rev B, remove the offsets (one mid-point for the arms and the integrator), so that a designed
+search, not a drift, decides where a lost loop goes.
 
 ## 7. Holding on: the two holds in the gateware
 
@@ -354,7 +366,7 @@ push the interferer can create. Everything else is what to do once the loop has 
 | know when you are lost, then search | rev A gateware (next) | recovery in tens of ms instead of never | 52 of 52 offsets by a downward sweep from the PC (3.9j); 96 of 96 recoveries (3.9f); REVB 21, 25 |
 | keep interferers away from the limiter | rev B | the loop needs a few kHz but its detector sees the arms' 94 MHz; a narrower, matched I/Q filter feeding the detector alone (the decisions keep the wide arms) stops most out-of-channel interferers reaching the comparator | the thresholds of section 4; REVB 27 |
 | remove the push | rev B | match the delay from the arms to U110 on the sign(I) and Q paths, and the push vanishes, leaving the capture effect | the model, section 3 |
-| null the offsets | rev B | the pull-in the design expected works again: a dragged loop would come back by itself | section 6; REVB 17, 18 |
+| null the offsets | rev B | one mid-point for the arms and the integrator removes the common 4-5 V/s downward drift, leaving the detector's 2.4-2.8 V/s toward the carrier on both sides: a dragged loop should come back by itself from either side, though the false locks near the carrier may move rather than vanish | section 6 (measured); REVB 17, 18 |
 | limit the damage | rev B | VC can swing ±600 kHz while two TCXOs need perhaps ±50 kHz; a clamped range keeps a dragged loop within a short search | REVB 27 |
 | the detector | design trade | a hard limiter gives a gain independent of level (it locks over 15 dB without retuning, and rides 25 dB fades) but hands the sign to the stronger signal; a linear multiplier (I·Q) has no capture effect, but its gain goes as the signal squared, so fades change the loop's dynamics | sections 2-3 |
 | loop bandwidth | design trade | wider: a larger pull-out range and a faster re-lock, but more noise in and a denser false-lock structure; it moves the drag threshold little (a ratio of two averaged forces), only how fast the drag happens | |

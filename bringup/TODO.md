@@ -30,10 +30,15 @@ ch2 I MON, ch3 Q MON, ch4 VC MON. 50 ohm on TX MON's pigtail. JP201 on TCXO.
   carriers come back at the 20 ms release (154 of 160 at 1 ms); no hold on the link's own traffic.  RX_IHOLD_HOLD
   resets to 20 ms from ID version 6.
 - **The timing recovery's false lock: fixed** (ID 0x434C0006, `38f46f7`, BRINGUP_LOG 4.10, REVB 30): it tracks the
-  rising edges and centres on the measured skew (RX_CDR_SKEW).  To try: a servo of the I comparator's trim on
-  RX_CDR_SKEW during data, and whether nulling the skew also removes the unlocked loop's push (REVB 18).
+  rising edges and centres on the measured skew (RX_CDR_SKEW).  The trim tried (BRINGUP_LOG 4.12): I_OFF_F at 3.3 V
+  opens the 50 Mbaud eye from 10-12 to 14-15 of 16, so a servo of I_OFF_F on RX_CDR_SKEW during BPSK data is worth
+  building (A3's idle wants the no-carrier null instead: switch per mode; the defaults are Jason's call).  It does not
+  touch the unlocked loop's push, which is the mid-point of REVB 17 (REVB 18 corrected).
 - **Lock detector and search in gateware** (REVB 21, 25, 26): the edge-count lock state as a register, and the downward
-  VC_OFF sweep from above the carrier when it reads lost (52 of 52 offsets recovered from the PC, 3.9j).
+  VC_OFF sweep from above the carrier when it reads lost (52 of 52 offsets recovered from the PC, 3.9j).  The measured
+  map of the unlocked loop (4.12, `docs/LOCK.md` section 6) says why from above: everything above comes down to the
+  lock, while 16-129 kHz below ends in the false lock.  The interference hold cannot cover a CW inside the capture
+  window (the loop locks onto it; `captureauto`, 4.12): only this recovers it.
 - Build with Vivado 2022.1 for PYNQ 3.0.1 (`build.tcl -strategy Performance_ExplorePostRoutePhysOpt`: the default
   misses the fast path's 6 ns by picoseconds).  The server runs from `~/costaslink_cdrpol/` (ID 0x434C0006) since
   2026-10-31 02:35, started by hand (sudo nohup `pynq_serve.sh`), not the boot service; `~/costaslink_holds3/` (ID 5)

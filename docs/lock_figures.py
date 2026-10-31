@@ -9,8 +9,8 @@ it after new measurements and the figures follow.
     lock_forces      the restoring force and the push against the interferer's level, at three offsets (the model)
     lock_threshold   where the loop is dragged off, against the interferer's offset: the model and the bench
     lock_drag        VC through a strong CW, above and below, free and held (the bench)
-    lock_pullin      why a dragged loop stays lost: what moves an unlocked loop, the carrier's pull and the board's
-                     own drift, across the frequency offset (the loop's parameters and the bench)
+    lock_pullin      why a dragged loop stays lost: what moves an unlocked loop, measured across the frequency
+                     offset at three carriers, with the textbook's pull for comparison
     lock_pullout     the restoring force measured: the largest frequency step survived against a CW's level
     lock_holds       the gateware's holds at work (when bringup/data/board_A/holds/ has their tests)
 
@@ -201,49 +201,70 @@ def fig_drag():
     save(fig, "lock_drag")
 
 
-def fig_pullin(kd=0.12, ko=2.70e6, tau1=1000e-6, tau2=75e-6, push_vs=(-4.0, -7.7)):
-    """what moves an unlocked loop: VC's rate of change against the oscillator's offset from the carrier.  The
-    carrier's pull, from the textbook's first-order result for a PI loop (Gardner, Phaselock Techniques, the pull-in
+def zero_crossings(x, y):
+    """where y changes sign between neighbours of x, by linear interpolation: (x0, falling) pairs; falling (y going
+    from positive to negative as x rises) is a place an unlocked loop rests, rising a watershed"""
+    out = []
+    for k in range(len(x) - 1):
+        if y[k] == 0 or y[k] * y[k + 1] < 0:
+            x0 = x[k] - y[k] * (x[k + 1] - x[k]) / (y[k + 1] - y[k])
+            out.append((float(x0), bool(y[k] > y[k + 1])))
+    return out
+
+
+def fig_pullin(kd=0.12, ko=2.70e6, tau1=1000e-6, tau2=75e-6):
+    """what moves an unlocked loop: VC's rate of change against the oscillator's offset from the carrier, measured at
+    three carriers (`bringup/weekend.py pullin`, BRINGUP_LOG 4.12: the loop held at each offset with the carrier on,
+    then released for 3 ms by the sequencer with the TX left on, three releases a point).  For comparison the
+    carrier's pull from the textbook's first-order result for a PI loop (Gardner, Phaselock Techniques, the pull-in
     chapter: the proportional path ripples the oscillator's phase at the beat, and the ripple's correlation with the
     detector leaves v = K_d^2 K_o (tau2 / tau1) / (2 dw), which the integrator turns into v / tau1 volts a second,
-    toward the carrier), with this loop's parts (docs/images/block_loop.png); and the board's own drift, which pushes
-    VC down on both sides (REVB 18: -4 V/s at 5.0 GHz; -7.7 V/s from the top rail at 5.2 GHz, BRINGUP_LOG 4.5)"""
-    df = np.concatenate([-np.logspace(np.log10(700e3), np.log10(2e3), 400), np.logspace(np.log10(2e3), np.log10(700e3), 400)])
+    toward the carrier), with this loop's parts (docs/images/block_loop.png).  Returns the measured zero crossings"""
+    runs = [(m, c, latest("weekend/pullin_%d_*.json" % m)) for m, c in ((5000, BLUE), (5200, ORANGE), (5500, AQUA))]
+    fig, ax = plt.subplots(figsize=(9.5, 5.0))
+    ax.axvspan(36, 45, color=GREY, alpha=0.22, zorder=0)
+    ax.axvspan(-61, -46, color=GREY, alpha=0.22, zorder=0)
+    df = np.concatenate([-np.logspace(np.log10(700e3), np.log10(4e3), 300), np.logspace(np.log10(4e3), np.log10(700e3), 300)])
     pull = -np.sign(df) * kd ** 2 * ko * (tau2 / tau1) / (2 * 2 * np.pi * np.abs(df)) / tau1
-    push = np.mean(push_vs)
-    net = pull + push
-    fig, ax = plt.subplots(figsize=(9.5, 4.8))
-    ax.axhspan(min(push_vs), max(push_vs), color=ORANGE, alpha=0.18, zorder=0)
-    ax.plot(df / 1e3, np.full_like(df, push), color=ORANGE, lw=1.6, label="the board's own drift, unlocked (measured: 4-7.7 V/s, downward)")
-    ax.plot(df[df < 0] / 1e3, pull[df < 0], color=BLUE, lw=1.6, ls="--", label="the carrier's pull (textbook, this loop's parts)")
-    ax.plot(df[df > 0] / 1e3, pull[df > 0], color=BLUE, lw=1.6, ls="--")
-    ax.plot(df[df < 0] / 1e3, net[df < 0], color=INK, lw=2.2, label="their sum: where VC goes")
-    ax.plot(df[df > 0] / 1e3, net[df > 0], color=INK, lw=2.2)
+    ax.plot(df[df < 0] / 1e3, pull[df < 0], color=GREY, lw=1.4, ls="--", label="the carrier's pull alone (textbook, this loop's parts)")
+    ax.plot(df[df > 0] / 1e3, pull[df > 0], color=GREY, lw=1.4, ls="--")
+    crossings = {}
+    for m, c, d in runs:
+        if not d:
+            continue
+        rows = sorted(d["rows"], key=lambda r: r["offset_khz"])
+        x = np.array([r["offset_khz"] for r in rows], dtype=float)
+        y = np.array([r["rate_v_s"] for r in rows])
+        for side in (x < 0, x > 0):
+            ax.plot(x[side], y[side], color=c, lw=1.8, marker="o", ms=5, mec="white", mew=1.0, zorder=3,
+                    label="measured at %.1f GHz" % (m / 1e3) if side[0] else None)
+        crossings[m] = zero_crossings(x[x < 0], y[x < 0]) + [(0.0, True)]
     ax.axhline(0, color=INK2, lw=0.8)
-    edge = df[df < 0][np.argmin(np.abs(net[df < 0]))] / 1e3
-    ax.axvline(edge, color=INK2, ls=":", lw=1)
-    ax.annotate("sum = 0 at %.0f kHz (textbook pull);\nthe bench's window edge is -10 kHz" % edge, xy=(edge, 0), xytext=(-600, 9),
-                fontsize=9, color=INK, arrowprops=dict(arrowstyle="->", color=INK2, lw=0.8))
-    ax.axvspan(36, 45, color=AQUA, alpha=0.3, zorder=0)
-    ax.axvspan(-61, -46, color=AQUA, alpha=0.3, zorder=0)
-    ax.annotate("false locks, measured (3.9h, 4.5):\n-61 to -46 kHz and +36 to +45 kHz;\nthe loop parks there, beating", xy=(40, -3),
-                xytext=(120, 9), fontsize=9, color=INK, arrowprops=dict(arrowstyle="->", color=INK2, lw=0.8))
-    ax.annotate("", xy=(-53, -3), xytext=(110, 8.5), arrowprops=dict(arrowstyle="->", color=INK2, lw=0.8))
     ax.axvline(578, color=GREY, ls=":", lw=1)
     ax.axvline(-672, color=GREY, ls=":", lw=1)
-    ax.text(570, -17, "dragged\nabove", fontsize=8.5, color=INK2, ha="right")
-    ax.text(-664, -17, "dragged\nbelow", fontsize=8.5, color=INK2, ha="left")
-    ax.annotate("", xy=(-660, -11), xytext=(-330, -11), arrowprops=dict(arrowstyle="->", color=INK, lw=1.2))
-    ax.text(-640, -9.3, "below: down, away from the carrier", fontsize=8.5, color=INK)
-    ax.annotate("", xy=(140, -11), xytext=(560, -11), arrowprops=dict(arrowstyle="->", color=INK, lw=1.2))
-    ax.text(150, -9.3, "above: down, toward the carrier", fontsize=8.5, color=INK)
-    ax.set_xlim(-700, 700)
-    ax.set_ylim(-20, 20)
-    ax.set_xlabel("the loop's oscillator, offset from the carrier (kHz)")
+    ax.text(560, -14.6, "dragged\nabove", fontsize=8.5, color=INK2, ha="right", va="bottom")
+    ax.text(-650, -14.6, "dragged\nbelow", fontsize=8.5, color=INK2, ha="left", va="bottom")
+    ax.annotate("below -100 kHz VC falls:\nto the bottom rail", xy=(-300, -2.6), xytext=(-640, -9.5), fontsize=8.5, color=INK,
+                arrowprops=dict(arrowstyle="->", color=INK2, lw=0.8))
+    ax.annotate("a resting place:\nthe false lock\n(-46 to -61 kHz, 3.9h)", xy=(-47, 0), xytext=(-640, 6.0), fontsize=8.5,
+                color=INK, arrowprops=dict(arrowstyle="->", color=INK2, lw=0.8))
+    ax.annotate("watersheds", xy=(-13, 0), xytext=(-48, -12.5), fontsize=8.5, color=INK,
+                arrowprops=dict(arrowstyle="->", color=INK2, lw=0.8))
+    ax.annotate("", xy=(-110, 0), xytext=(-40, -11.3), arrowprops=dict(arrowstyle="->", color=INK2, lw=0.8))
+    ax.annotate("the lock", xy=(0, 0), xytext=(4, 9.5), fontsize=8.5, color=INK,
+                arrowprops=dict(arrowstyle="->", color=INK2, lw=0.8))
+    ax.annotate("above: VC falls everywhere,\ndown to the lock; slowest\nnear +40 kHz, where drags\nhave parked (4.5)",
+                xy=(40, -1.5), xytext=(90, 4.0), fontsize=8.5, color=INK, arrowprops=dict(arrowstyle="->", color=INK2, lw=0.8))
+    ax.set_xscale("symlog", linthresh=20, linscale=1.0)
+    ax.set_xticks([-600, -300, -100, -50, -20, -10, 0, 10, 20, 50, 100, 300, 600])
+    ax.set_xticklabels(["-600", "-300", "-100", "-50", "-20", "-10", "0", "10", "20", "50", "100", "300", "600"])
+    ax.set_xlim(-750, 750)
+    ax.set_ylim(-15, 12)
+    ax.set_xlabel("the loop's oscillator, offset from the carrier (kHz; linear within +-20, logarithmic beyond)")
     ax.set_ylabel("rate of change of VC (V/s)\n(positive: up)")
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.16), ncol=2, fontsize=8.5)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=2, fontsize=8.5)
     save(fig, "lock_pullin")
-    return edge
+    return crossings
 
 
 def fig_pullout():
@@ -325,10 +346,12 @@ def main():
     fig_forces()
     fig_threshold()
     fig_drag()
-    cross = fig_pullin()
+    crossings = fig_pullin()
     fig_pullout()
     fig_holds()
-    print("below the carrier the textbook pull balances the drift at %.0f kHz" % cross)
+    for m, c in sorted(crossings.items()):
+        print("%d MHz, the unlocked loop's rate crosses zero at %s kHz (r: rests there, w: a watershed)" % (
+            m, ", ".join("%+.0f %s" % (x, "r" if f else "w") for x, f in c)))
 
 
 if __name__ == "__main__":

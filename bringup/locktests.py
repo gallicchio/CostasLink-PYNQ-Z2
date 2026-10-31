@@ -600,7 +600,9 @@ def _drift_rates(self, mhz, cen, offsets_khz=(-60, -40, -30, -20, -15, -10, 10, 
                  release_s=0.003, reps=2):
     """the unlocked loop's push: VC held at each offset from the lock (TX on, the integrator centred), released for
     release_s by the sequencer; VC's rate (V/s) is (ERR - V_MID) / (R126 C130).  Pull-in from both sides needs the rate
-    toward the lock from both (VC falling for + offsets, rising for -)"""
+    toward the lock from both (VC falling for + offsets, rising for -).  Until 2026-10-31 the release step named only
+    loop_hold, and a sequencer step drives every bit it does not name to 1: the TX was muted for the release, so 3.6d's
+    rates were the integrator with no carrier (BRINGUP_LOG 4.12).  The step now keeps the TX on"""
     rows = []
     for off in offsets_khz:
         rates = []
@@ -614,7 +616,8 @@ def _drift_rates(self, mhz, cen, offsets_khz=(-60, -40, -30, -20, -15, -10, 10, 
             time.sleep(0.1)
             g = self.cl.gate(seconds=0.01, inputs=("CMP_I",))
             v0 = self.cl.adc("VC")
-            self.cl.seq_program([(release_s / self.cl.t_clk, {"loop_hold": 0})])
+            tr_a = self.cl.rd("CTRL") >> self.cl.CTRL_BITS["tr_a"] & 1
+            self.cl.seq_program([(release_s / self.cl.t_clk, {"loop_hold": 0, "tx_dis": 0, "tx_gate": 1, "tr_a": tr_a})])
             self.cl.seq_run()
             time.sleep(release_s + 0.03)
             v1 = self.cl.adc("VC")
