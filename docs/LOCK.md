@@ -247,14 +247,19 @@ LOOP_HOLD with the software's own CTRL bit. **Both are off at reset**: nothing c
 ### 7.2 The interference hold
 
 * **Trigger.** Each clock counts as active for each comparator of a chosen set (default: the Q windows, QP and QN)
-  that changed during it; the actives are summed over a window of 256 clocks (2.56 µs). A window with 8 or more is
-  *busy*. The link's own BPSK data and A1 events move along I and leave the Q windows alone; an A3 event touches them
-  twice; an interferer's beat of 1 MHz or more crosses them dozens of times a window once it reaches half the carrier.
+  that changed during it, over a window of 256 clocks (2.56 µs). The window is *busy* when **both** Q windows were
+  each active in at least 4 clocks (half the threshold of 8). An interferer's beat of 1 MHz or more, once it reaches
+  half the carrier, swings Q across both windows several times a window. The link's own BPSK data and A1 events move
+  along I and leave the Q windows alone; an A3 event touches one Q window twice. And noise on a Q leg that sits at
+  one window's threshold chatters that one comparator only (the windows have no hysteresis), which is why one
+  window's activity is not enough: the second version of the hold, counting the two together, froze the loop with Q
+  at a threshold after a CW and held itself until its maximum (BRINGUP_LOG 4.8a).
 * **Arming.** A hold may start only if a *quiet* window (a quarter of the threshold or less) came after the last busy
   one. An interferer arriving at a locked loop finds it armed; a lost, beating loop, whose rotating vector also makes
   the Q windows chatter, never does. This is the lesson of the first version, which had no arming: released at its
   maximum while a CW was still on, the loop was dragged 37 kHz, and the hold then re-held the lost loop's beat 86
-  times, freezing it off the lock (BRINGUP_LOG 4.8).
+  times, freezing it off the lock (BRINGUP_LOG 4.8). A hold freezes the loop wherever it is, so the one thing it
+  must never do is hold a loop that is not locked.
 * **Release.** 1 ms after the last busy window; at most 5 s in one go, after which it lets go, waits 1 ms (the guard)
   and can start again only after a quiet window. Five seconds is long against any WiFi burst; a longer interferer
   than that gets the loop back to fend for itself, and the lock detector and search are the next line (section 8).
@@ -272,6 +277,10 @@ LOOP_HOLD with the software's own CTRL bit. **Both are off at reset**: nothing c
 * **Why all four windows.** A lost loop's vector rotates at full length, and a vector of length a always has |I| or
   |Q| beyond a/√2, more than the windows' a/2: so a lost loop that is trying to pull in is never held. With the I
   windows alone it would be, for a third of each beat (the first testbench caught exactly that).
+* **Why it is needed.** With no carrier the detector sees only noise, the integrator integrates the board's own
+  offsets, and the free LO walks off at about 300 kHz a second (the blocked-carrier traces below): out of the capture
+  window in a few tens of milliseconds, so a person in front of the antenna for a third of a second is enough to lose
+  the lock for good.
 * **With the windows at 0.5 a** it holds from a fade of about 6 dB, where the decisions stop anyway; the loop itself
   would ride through much deeper fades (section 2), so the holdover costs nothing there.
 * **Release.** 1 ms after the carrier is back; at most 10 s in one go, and it may hold again at once (holding with
