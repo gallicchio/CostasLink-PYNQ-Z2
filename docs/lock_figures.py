@@ -145,12 +145,13 @@ def fig_threshold():
             g = next((g for g, lost in v if lost), None)
             pts.append(("pull", "above" if off > 0 else "below", abs(off), ic_db(g if g else max(gg for gg, _ in v)), g is None))
         runs += 1 if by else 0
+    dodge = {("round", "above"): 0.90, ("pull", "above"): 0.97, ("pull", "below"): 1.07}    # apart, on the log axis
     for side, color in (("above", ORANGE), ("below", BLUE)):
         for setn, marker, lab in (("round", "o", "decision ladder"), ("pull", "^", "pull test")):
             p = [q for q in pts if q[0] == setn and q[1] == side]
             if not p:
                 continue
-            ax.scatter([q[2] for q in p], [q[3] for q in p], marker=marker, s=60, zorder=3,
+            ax.scatter([q[2] * dodge.get((setn, side), 1.0) for q in p], [q[3] for q in p], marker=marker, s=60, zorder=3,
                        facecolors=[("white" if q[4] else color) for q in p], edgecolors=color, linewidths=1.6,
                        label="CW %s the carrier, %s" % (side, lab))
     ax.set_xscale("log")
@@ -160,7 +161,8 @@ def fig_threshold():
     ax.set_ylim(-2, 22)
     ax.set_xlabel("interferer's offset from the carrier (MHz)")
     ax.set_ylabel("dragged off from (dB over the carrier)")
-    ax.text(0.055, -1.4, "%d runs at 5.2 GHz; hollow: never dragged up to the B210's +11 dB" % runs, fontsize=9, color=INK2)
+    ax.text(0.055, -1.4, "%d runs at 5.2 GHz (the kinds nudged apart sideways); hollow: never dragged up to the B210's +11 dB"
+            % runs, fontsize=9, color=INK2)
     ax.legend(loc="upper right", fontsize=9)
     save(fig, "lock_threshold")
 

@@ -145,8 +145,8 @@ while the CW was on (`weekend.py decide` and `pull`: the USRP B210 sending a CW 
 *The interferer-to-carrier ratio at which the loop is dragged off, against the interferer's offset. Grey: the model.
 Points: the bench at 5.2 GHz, orange for a CW above the carrier, blue for one below; hollow points never dragged up
 to the B210's maximum (+11 dB), so their threshold is higher. Levels carry about ±3 dB from the B210's calibration
-(BRINGUP_LOG 4.0), and runs at different times and receiver attenuations (DSA 13.75 and 17.75) differ by up to 5 dB
-at the same offset; the model, with its one parameter (the 12 ns delay, from the measured edge, not fitted), sits on
+(BRINGUP_LOG 4.0), and runs at different times and receiver attenuations (DSA 13.75 to 17.75, the weekend's rounds)
+differ by up to 8 dB at the same offset; the model, with its one parameter (the 12 ns delay, from the measured edge, not fitted), sits on
 the vulnerable edge of the spread.*
 
 What to take from it:
