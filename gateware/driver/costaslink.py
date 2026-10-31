@@ -765,7 +765,7 @@ class CostasLink:
         than max_s at a time.  A hold starts only after a quiet window, so it catches an interferer arriving at a
         locked loop and never freezes a lost, beating one.  hold_s 20 ms: with 1 ms, 3 of 40 dragging CWs got the loop
         in a release between busy windows (an interferer at the threshold, the B210's underflows); with 20 ms, 40 of 40
-        came back (BRINGUP_LOG 4.8b)  The defaults leave the link's
+        came back (BRINGUP_LOG 4.8b).  The defaults leave the link's
         own events and BPSK on I alone and catch an interferer's beat of 1 MHz and more from about -6 dB"""
         if not getattr(self, "ihold_ok", False):
             raise IOError("this overlay has no interference hold (ID version 5 has)")
@@ -794,9 +794,10 @@ class CostasLink:
         self.wr("RX_SHOLD_CFG", int(bool(on)) | (wlog & 7) << 1 | (thresh & 0xFF) << 8 | (m & 0x1F) << 16)
 
     def shold_state(self):
-        c = self.rd("RX_SHOLD_CFG")
+        c, f = self.rd("RX_SHOLD_CFG"), self.clk_mhz * 1e6
         return {"on": c & 1, "holding": c >> 4 & 1, "last_count": c >> 24 & 0xFF, "holds": self.rd("RX_SHOLD_N"),
-                "clocks": self.rd("RX_SHOLD_CLK"), "seconds": self.rd("RX_SHOLD_CLK") / (self.clk_mhz * 1e6)}
+                "clocks": self.rd("RX_SHOLD_CLK"), "seconds": self.rd("RX_SHOLD_CLK") / f,
+                "hold_s": self.rd("RX_SHOLD_HOLD") / f, "max_s": self.rd("RX_SHOLD_MAX") / f}
 
     def protect(self, on=True):
         """both holds with their defaults (the deployment's setting): on once locked, off while searching"""
@@ -804,9 +805,12 @@ class CostasLink:
         self.shold(on)
 
     def ihold_state(self):
-        c = self.rd("RX_IHOLD_CFG")
+        """the counts, and the settings they ran with (hold_s: the release; the weekend of 2026-10-30 ran its first
+        round at 1 ms, the PYNQ's copy of the driver older than the repository's)"""
+        c, f = self.rd("RX_IHOLD_CFG"), self.clk_mhz * 1e6
         return {"on": c & 1, "holding": c >> 4 & 1, "last_count": c >> 24 & 0xFF, "holds": self.rd("RX_IHOLD_N"),
-                "clocks": self.rd("RX_IHOLD_CLK"), "seconds": self.rd("RX_IHOLD_CLK") / (self.clk_mhz * 1e6)}
+                "clocks": self.rd("RX_IHOLD_CLK"), "seconds": self.rd("RX_IHOLD_CLK") / f,
+                "hold_s": self.rd("RX_IHOLD_HOLD") / f, "max_s": self.rd("RX_IHOLD_MAX") / f}
 
     def cdr_state(self):
         """the timing recovery since the last RX_BER_CFG write: its last edge error (samples), its corrections' sum

@@ -24,6 +24,7 @@ bound method.  Only the CostasLink's public names are reachable (no leading unde
 (a lock), no authentication: run it on the lab's network or a direct cable, not the internet.
 """
 import argparse
+import hashlib
 import json
 import os
 import socket
@@ -36,6 +37,14 @@ import traceback
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 PORT = 5800
+
+
+def driver_id(path=None):
+    """the driver's identity: the first 12 hex digits of costaslink.py's sha256.  The server reports the one it
+    loaded, the client compares its own: a server started from an older copy runs the older defaults (2026-10-31: the
+    weekend's interference hold released at 1 ms, the PYNQ's copy older than the repository's 20 ms)"""
+    with open(path or os.path.join(HERE, "costaslink.py"), "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()[:12]
 
 
 def _jsonable(o):
@@ -56,6 +65,10 @@ class Server:
         self.lock = threading.Lock()
         self.t0 = time.time()
         self.requests = 0
+        try:
+            self.driver = driver_id(sys.modules[type(cl).__module__].__file__)
+        except (OSError, AttributeError, KeyError):
+            self.driver = None
 
     def _public(self, name):
         if not isinstance(name, str) or name.startswith("_") or not hasattr(self.cl, name):
@@ -77,7 +90,7 @@ class Server:
         op = req.get("op")
         if op == "ping":
             return {"time": time.time(), "host": socket.gethostname(), "uptime_s": time.time() - self.t0,
-                    "requests": self.requests, "pid": os.getpid()}
+                    "requests": self.requests, "pid": os.getpid(), "driver": self.driver}
         if op == "names":
             methods, values = [], {}
             for n in dir(self.cl):
@@ -241,6 +254,11 @@ class RemoteCostasLink:
         self.bus = NetBus(host, port, timeout)
         names = self.bus.request({"op": "names"})
         self._methods = set(names["methods"])
+        self.driver = self.bus.ping().get("driver")
+        self.driver_here = driver_id()
+        if self.driver != self.driver_here:
+            sys.stderr.write("netbus: the board's server runs driver %s, this side's costaslink.py is %s: its defaults "
+                             "may differ (copy the driver over and restart the server)\n" % (self.driver, self.driver_here))
 
     def __getattr__(self, name):
         if name.startswith("_"):

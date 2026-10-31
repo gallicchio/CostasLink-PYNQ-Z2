@@ -114,6 +114,7 @@ class Camp(T.Lock0):
         time.sleep(seconds)
         cl.ber_config(15, None, invert=side > 0, enable=False, cdr=True, period=p)
         r = cl.ber()
+        r["cdr_state"] = cl.cdr_state()                  # with each segment: 5.0 GHz's random ones (BRINGUP_LOG 4.9)
         cl.tx_stop()
         cl.hold_point(1, 0)
         r["cdr"] = True
