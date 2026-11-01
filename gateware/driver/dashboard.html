@@ -176,6 +176,12 @@ const PANELS = [
 ];
 let span = 600, hist = [], last = null, notes = [], pullin = null;
 const grid = document.getElementById("grid");
+// ?view=demo: what a demonstration shows first (the link at work, its signal, its bits and symbols, the scope), the
+// loop's physics after (the order only: every panel is still there)
+const DEMO = ["activity_lanes", "state", "rxant", "ber", "symbols", "latency", "fastconst", "data_eye", "sym_fold", "data_raw", "sym_raw",
+              "offset", "scurve", "pullin", "constellation", "dem", "gwlock", "vc", "activity", "interference", "hold", "skew", "temp", "supply"];
+if (new URLSearchParams(location.search).get("view") == "demo")
+  PANELS.sort((a, b) => (DEMO.indexOf(a.id) + 1 || 99) - (DEMO.indexOf(b.id) + 1 || 99));
 for (const p of PANELS) {
   const d = document.createElement("div"); d.className = "panel";
   d.innerHTML = "<h2><button class='help' title='What is this?'>?</button><span>" + p.title + "</span><span class='val' id='v_" + p.id + "'></span></h2>" +
@@ -235,7 +241,7 @@ function drawActivity(p) {
   for (const r of hist) { if (r.t < t0 - 2) { prev = r; continue; } const a = linkAct(r) == "recovering" ? "recovering" : r.busy ? (prev && linkAct(prev)) : linkAct(r); if (!a) { prev = r; continue; }
     const xa = prev ? Math.max(x(prev.t), L) : x(r.t); if (prev && r.t - prev.t > Math.max(10, span / 150)) { prev = r; continue; }
     g.fillStyle = ACT[a][0]; g.fillRect(xa, lanes[0][0], Math.max(1, x(r.t) - xa + 0.5), lanes[0][1]);
-    const lab = r.busy ? null : linkLabel(r); if (lab && lab != lastLab && x(r.t) - labX > 46) { g.fillStyle = a == "data" ? "#fff" : "#16181d"; g.font = "11px system-ui"; g.fillText(lab, xa + 2, lanes[0][0] + lanes[0][1] / 2 + 4); labX = x(r.t); g.font = "12px system-ui"; }
+    const lab = r.busy ? null : linkLabel(r); if (lab && lab != lastLab && x(r.t) - labX > 46 && xa + 40 < L + pw) { g.fillStyle = a == "data" ? "#fff" : "#16181d"; g.font = "11px system-ui"; g.fillText(lab, xa + 2, lanes[0][0] + lanes[0][1] / 2 + 4); labX = x(r.t); g.font = "12px system-ui"; }
     if (!r.busy) lastLab = lab || null; prev = r.busy ? Object.assign({}, prev || r, {t: r.t}) : r; }
   // the B210: one segment per announcement
   for (const n of b210Notes()) { const a = n.t_start, b = n.t_end || now; if (b < t0) continue; const xa = x(Math.max(a, t0)), xb = x(Math.min(b, now));
@@ -321,7 +327,8 @@ function drawSeries(p) {
      "the I comparator is toggling: bursts of interference, or data on the link, spoil this slow reading";
   xv.textContent = (lv == null ? "no reading yet" : nowNull ? "not measurable now (" + why + "); the last reading shown, in grey" : ({good:"good", warn:"marginal", bad:"bad"}[k] || "")) + (nowNull ? "" : extra);
   if (p.also || p.nm) xv.innerHTML = xv.innerHTML + "<br>" + (p.also ? "<span style='color:" + C.data + "'>&#9632;</span> the carrier &nbsp; <span style='color:" + SERIES[p.also[1]] + "'>&#9632;</span> " + p.also[2] +
-      (fl.state == "lost" || fl.state == "unsettled" ? " (not locked now, so it includes the carrier itself)" : "") + " &nbsp; " : "") +
+      (fl.state == "lost" || fl.state == "unsettled" ? " (not locked now, so it includes the carrier itself)" :
+       fl.tx && fl.tx.running && fl.tx.mode != "hold" ? " (the board's own symbols or data show in it too)" : "") + " &nbsp; " : "") +
     "<span class='hz'></span> not measurable then";
 }
 function drawTimeline(p) {
