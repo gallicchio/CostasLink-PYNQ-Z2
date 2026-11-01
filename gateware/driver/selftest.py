@@ -113,6 +113,7 @@ class SelfTest:
         except (OSError, ValueError):
             pass
         self._cal_tried = 0.0
+        self._bad_windows = False            # a quiet run lost over 1 %: calibrate again (the windows may be wrong)
         self.last_levels = None              # the last sweep of the windows' levels (the page's 'own constellation')
         self.now = {"step": "off", "since": time.time(), "text": "off"}
         self.results = collections.deque(maxlen=30)
@@ -364,9 +365,31 @@ class SelfTest:
         if L is None or not L.cen or not L.leg_windows:
             return {"step": "calibrate", "error": "linkd has not set the windows up"}
         before = {w: round(v, 4) for w, v in L.thresholds().items()}
+        # not while an intervention is announced, and only if the carrier's level is the one linkd keeps the windows
+        # for, before and after the sweeps: one taken while the attenuator was 4.75 dB down set the Q windows for the
+        # stronger carrier (QP 107, QN 119 mV out for a 159 mV one) and left A2, A3 and QPSK 60 % missed after (13:41)
+        dash = getattr(self.server, "dashboard", None)
+
+        def level(cl):
+            time.sleep(0.02)
+            return abs(sum(cl.adc("I") for _ in range(3)) / 3.0 - L.i0)
+
+        def off_level():
+            lv = self._do(level)
+            return lv if abs(lv - L.leg_windows) > 0.12 * L.leg_windows else None
+
+        if dash is not None and dash.active_note(time.time()):
+            return {"step": "calibrate", "skipped": "an intervention is announced"}
+        lv0 = off_level()
+        if lv0 is not None:
+            return {"step": "calibrate", "skipped": "the carrier's I leg %.0f mV, the windows' %.0f mV" % (lv0 * 1e3, L.leg_windows * 1e3)}
         sw = {name: self._sweep_levels(name) for name in ("A3", "A1")}
         if any(r.get("interrupted") or r.get("error") for r in sw.values()):
             return {"step": "calibrate", "interrupted": True, "before_v": before}
+        lv1 = off_level()
+        if lv1 is not None or (dash is not None and dash.active_note(time.time(), grace_s=0.0)):
+            return {"step": "calibrate", "skipped": "the level moved or an intervention began during the sweep",
+                    "before_v": before}
         side, leg = sw["A3"]["side"], L.leg_windows
         k_of = {"QP": 1, "QN": 2, "IP": 3, "IN": 4}
         new, plateaus = {}, {}
@@ -411,6 +434,7 @@ class SelfTest:
                             "sweeps": sw["A3"]["sweeps"], "b210": self._b210(time.time() - 10, time.time())}
         if len(new) == 4:
             self._do(lambda cl: L.set_windows(cl, new, side))
+            self._bad_windows = False
         else:
             res["error"] = "no plateau for %s: the windows left as they were" % ", ".join(w for w in k_of if w not in new)
         return res
@@ -423,7 +447,7 @@ class SelfTest:
         if time.time() - self._cal_tried < 60.0:
             return False
         side = self._do(self._side)
-        return (L.cal is None or L.cal["side"] != side or
+        return (L.cal is None or L.cal["side"] != side or self._bad_windows or
                 abs((L.leg or L.leg_windows) - L.cal["leg"]) > 0.15 * L.cal["leg"])
 
     def symbols(self, st):
@@ -715,6 +739,13 @@ class SelfTest:
                 res["interrupted"] = True
             res.update(t0=t0, t1=time.time())
             res["b210"] = self._b210(t0, res["t1"])
+            # a quiet run of symbols that lost over 1 % (missed or undecided) says the windows are wrong for the link
+            # now: calibrate again (13:41 a calibration taken during an attenuator step left A2, A3 and QPSK 60 % missed)
+            dash = getattr(self.server, "dashboard", None)
+            if (res.get("step") in ("symbols", "qpsk") and res.get("sent") and not res.get("interrupted")
+                    and res["b210"] == "quiet" and not (dash and dash.active_note(t0))
+                    and ((res.get("missed") or 0) + (res.get("undecided") or 0)) > 0.01 * res["sent"]):
+                self._bad_windows = True
             self.results.append(res)
 
     def start(self):
