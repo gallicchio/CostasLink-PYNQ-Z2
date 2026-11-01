@@ -66,6 +66,10 @@ const STATES = {
                 "If it lasts, look for a nearby transmitter (a WiFi access point, a phone, a microwave oven) and move it or the antennas."],
   holdover:    ["Carrier interrupted: holding", "warn", "The carrier went away (someone or something in the path?); the loop is held at the carrier's frequency so it picks up again at once when the carrier returns.",
                 "Clear the path between the antennas."],
+  // the holdover also fires under a strong signal a few tens of kHz off (its slow beat leaves the windows quiet in
+  // stretches): with the carrier still there the board's lock monitor reads busy, not 'no carrier' (soak9, 21:02)
+  holdover_if: ["Interference: holding", "warn", "Something strong close to the carrier's frequency is in the band; the loop is held at the carrier's frequency until it goes, so the link picks up again at once.",
+                "If it lasts, look for a nearby transmitter (a WiFi access point, a phone, a microwave oven) and move it or the antennas."],
   held:        ["Held by a test", "warn", "A test program, or a person, has frozen the loop on purpose.", "Nothing to do: it is part of a test."],
   unsettled:   ["Settling", "warn", "The readings disagree for the moment: the receiver may be acquiring the carrier, or interference is passing.", "Wait a few seconds."],
   starting:    ["Starting", "warn", "The status page has just started.", "Wait a moment."],
@@ -202,7 +206,7 @@ function drawSeries(p) {
   if (p.id == "gwlock" && fl.gw_lock) extra = " (it says: " + fl.gw_lock.state + "; " + fl.gw_lock.losses + " losses since the firmware was loaded)" +
      (fl.gw_lock.state == "lost" && fl.state == "interfered" ? ". It judges from the comparators alone; the oscillator is still on the carrier, so the page calls this interference, not a loss" : "");
   if (lv == null && p.absent) extra = " (" + p.absent + ")";
-  const why = stale ? busyWhy() : {lost: "not locked", nocarrier: "no carrier", interfered: "interference", held: "a program holds the loop", holdover: "the carrier interrupted"}[last && last.state] ||
+  const why = stale ? busyWhy() : {lost: "not locked", nocarrier: "no carrier", interfered: "interference", held: "a program holds the loop", holdover: last && last.gw_lock && last.gw_lock.state != "no carrier" ? "held through interference" : "the carrier interrupted"}[last && last.state] ||
      "the I comparator is toggling: bursts of interference, or data on the link, spoil this slow reading";
   xv.textContent = (lv == null ? "no reading yet" : nowNull ? "not measurable now (" + why + "); the last reading shown, in grey" : ({good:"good", warn:"marginal", bad:"bad"}[k] || "")) + (nowNull ? "" : extra);
   if (p.also || p.nm) xv.innerHTML = xv.innerHTML + "<br>" + (p.also ? "<span style='color:" + C.data + "'>&#9632;</span> the carrier &nbsp; <span style='color:" + SERIES[p.also[1]] + "'>&#9632;</span> " + p.also[2] +
@@ -286,8 +290,10 @@ function drawPullin(p) {
   const off = lastValue(r => r.off_khz);
   let lastSt = null; for (let i = hist.length - 1; i >= 0; i--) if (!hist[i].busy && hist[i].state) { lastSt = hist[i].state; break; }
   if (busyNow()) el.textContent = "black: measured at " + k + " MHz; no reading now: " + busyWhy();
-  else if (lastSt == "holdover") el.textContent = "black: measured at " + k + " MHz; now held by the holdover while the carrier is gone" +
-      (off != null ? ", " + fmt(off) + " kHz from the lock" : "") + ": the map does not apply until the carrier is back, when the loop picks up where it was";
+  else if (lastSt == "holdover") el.textContent = "black: measured at " + k + " MHz; now held by the holdover" +
+      (last && last.gw_lock && last.gw_lock.state != "no carrier" ? " through interference" : " while the carrier is gone") +
+      (off != null ? ", " + fmt(off) + " kHz from the lock" : "") + ": the map does not apply while held; the loop picks up where it was when " +
+      (last && last.gw_lock && last.gw_lock.state != "no carrier" ? "the interference goes" : "the carrier is back");
   else if (lastSt == "nocarrier") el.textContent = "black: measured at " + k + " MHz; now no carrier: the map is how an unlocked loop drifts with the carrier there. " +
       "With none, the oscillator runs to the end of its range (in about 2 s), and the recovery brings it back once the carrier returns";
   else if (off != null) { const xo = x(off); g.strokeStyle = C.data; g.lineWidth = 1; g.beginPath(); g.moveTo(xo, T); g.lineTo(xo, T + ph); g.stroke();
@@ -342,6 +348,8 @@ function status() {
   if (!r) return;
   let key = r.error ? "error" : r.busy ? "busy" : (r.state || "unsettled");
   if (r.busy) { for (let i = hist.length - 1; i >= 0; i--) if (!hist[i].busy && hist[i].state) { key = hist[i].state; break; } }
+  const fk = fullLast() || r;
+  if (key == "holdover" && fk.gw_lock && fk.gw_lock.state != "no carrier") key = "holdover_if";
   const s = STATES[key] || STATES.unsettled; st.style.borderLeftColor = C[s[1]];
   const word = document.getElementById("word"), why = document.getElementById("why"), todo = document.getElementById("todo");
   word.textContent = s[0]; word.style.color = C[s[1]]; why.textContent = s[2]; todo.textContent = s[3];
