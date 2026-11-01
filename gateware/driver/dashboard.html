@@ -135,6 +135,8 @@ const PANELS = [
   series:[["CMP_I","sign of I"],["CMP_QP","Q window +"],["CMP_QN","Q window -"],["CMP_IP","I window +"],["CMP_IN","I window -"]],
   help:"<p>How often each fast comparator switches, per second (log scale; no judgement, so no colours of good or bad). The sign of I switches with the link's own data; the Q windows stay quiet when locked and switch at the beat when not; interference makes them all chatter.</p><p>Use it to see what kind of trouble is passing: a beat (both Q windows at a steady high rate), bursts (spikes), or the link's own data (the I comparators only).</p>"},
  {id:"interference", title:"Unwanted power in Q", unit:"dB", get:r=>r.det&&r.det.log_inr_db, lo:0, hi:60,
+  // not judged while the board's own single symbols (A2, A3 step Q) or data run: they show in it
+  judge:r=>{ if (ownTx(r)) return null; const v = r && r.det && r.det.log_inr_db; return v == null ? null : v < 26 ? "good" : v < 35 ? "warn" : "bad"; },
   bands:[[0,26,"good"],[26,35,"warn"],[35,60,"bad"]],
   help:"<p>The average power on the receiver's Q arm, in dB over the receiver's own noise. Locked, the carrier sits on the I arm and Q holds only noise and whatever else is on the air: about 21 dB on the bench. Two things raise it: an interferer in the band, or the loop not being locked (then the carrier beats through Q: about 54 dB).</p><p class='k'>Good: low (green).</p><p><b>High while the status says Locked:</b> something else transmits nearby in the band (WiFi, phones, radars): move it, move the antennas, or choose another carrier frequency. <b>High while Lost:</b> that is the lost lock itself.</p><p>Bands provisional, from the bench's locked (20.8-23.9 dB) and lost (about 54 dB) readings.</p>"},
  {id:"hold", title:"Time spent riding out interference", unit:"%", get:r=>r.hold_pct, lo:0, hi:100, symlog:1, ticks:[0,1,10,100],
@@ -212,6 +214,7 @@ const ACT = {recovering: ["#7f1d1d", "the automatic recovery at work"], carrier:
              rotate: ["#8b5a2b", "rotating (FSK-like)"], off: ["#d4d7dd", "the carrier off"], held: ["#4b5563", "the loop held by a program"]};
 const B2 = {cw_far: ["#0e7490", "a CW MHz away"], cw_near: ["#be185d", "a CW near the carrier"], bursts: ["#a16207", "noise bursts"],
             b210: ["#6b7280", "the B210"]};
+function ownTx(r) { return !!(r && r.tx && r.tx.running && r.tx.mode != "hold"); }      // the board's own symbols or data
 function linkAct(r) { if (r && r.busy && r.linkd && r.linkd.mode == "recovering") return "recovering"; if (!r || !r.tx || !r.ctrl) return null; if (r.ctrl.tx_dis) return "off"; if (r.ctrl.loop_hold) return "held";
   const m = r.tx.mode, run = r.tx.running; return run && (m == "events" || m == "trig_in") ? "symbols" : run && m == "prbs" ? "data" : run && m == "rotate" ? "rotate" : "carrier"; }
 function linkLabel(r) { const a = linkAct(r), s = r.selftest && r.selftest.on ? r.selftest.now : null;
@@ -303,6 +306,7 @@ function drawSeries(p) {
   }
   const el = document.getElementById("v_" + p.id), xv = document.getElementById("x_" + p.id);
   if (p.kind == "multi") { el.textContent = ""; xv.innerHTML = p.series.map(([k, lab, col], i) => "<span style='color:" + (col || SERIES[i]) + "'>&#9632;</span> " + lab).join(" &nbsp; ");
+    if (p.id == "activity" && ownTx(fullLast())) xv.innerHTML = "The board's own symbols or data toggle them now.<br>" + xv.innerHTML;
     if (p.id == "symbols") { const tot = {events: 0, right: 0, wrong: 0, false: 0, missed: 0}; for (const r of hist) if (r.t >= t0 && r._rx) for (const k in tot) tot[k] += r._rx[k];
       xv.innerHTML = (tot.events ? "In this window: " + tot.events + " sent, " + tot.right + " right, " + tot.wrong + " wrong, " + tot.false + " false, " + tot.missed + " missed.<br>" :
         "No single symbols in this window (only while a test sends them).<br>") + xv.innerHTML; }
@@ -322,6 +326,7 @@ function drawSeries(p) {
      (fl.gw_lock.state == "lost" && fl.state == "interfered" ? ". It judges from the comparators alone; the oscillator is still on the carrier, so the page calls this interference, not a loss" : "");
   if (lv == null && p.absent) extra = " (" + p.absent + ")";
   if (p.id == "ber") { const b = lastValue(r => r._ber); if (b) extra = " (the last second: " + Math.round(b.errs) + " errors in " + b.bits.toExponential(1) + " bits" + (b.errs ? "" : ": the rate is below one in that many") + "; green ticks along the bottom: seconds with no error)"; }
+  if (p.id == "interference" && ownTx(fl)) extra = " (the board's own symbols or data show in it now: not judged)";
   if (p.id == "latency") { const x = lastValue(r => r._rx && r._rx.lat_ns != null ? r._rx : null); if (x) extra = " (from " + fmt(x.lat_min_ns) + " to " + fmt(x.lat_max_ns) + " ns in this run)"; }
   const why = stale ? busyWhy() : {lost: "not locked", nocarrier: "no carrier", interfered: "interference", held: "a program holds the loop", holdover: last && last.gw_lock && last.gw_lock.state != "no carrier" ? "held through interference" : "the carrier interrupted"}[last && last.state] ||
      "the I comparator is toggling: bursts of interference, or data on the link, spoil this slow reading";
