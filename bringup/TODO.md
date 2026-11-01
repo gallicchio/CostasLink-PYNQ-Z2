@@ -34,6 +34,14 @@ experiments; pictures, not one-word states, each with what led to it and how to 
    monitor and the PYNQ-Z2's LEDs in ID 8 (`lockmon.v`, building); 3's page v1 at http://192.168.8.142:8080/ (since
    11:07).  Next: `bringup/unattended.py` overnight (the B210 throwing random interference, nothing touching the
    board, linkd and the page doing the work); the page's eye, latency and history plots.
+   **Status 2026-10-31 23:00:** the board runs ID 0x434C0009 (REVB 22 fixed, the lock monitor blind to its own
+   symbols) and its own self-test beside linkd (`selftest.py`: the carrier's level, single symbols A3/A1/A2/A1w with
+   their decisions and latency, BPSK data at 2-50 Mbaud with every bit checked and the level read in a gap each
+   second); the page shows what the link and the B210 are doing, bit errors, symbols, latency, and the bench scope's
+   I/Q raw, aligned and as an eye; `soak.py` audits every random disturbance against the page's log, API and photos
+   (BRINGUP_LOG 4.20-4.23: about 200 disturbances, every loss recovered by linkd).  Monday's demonstration and the day's
+   plan: `MONDAY.md`; the lists of improvements: `IMPROVEMENTS.md`.  Open, for the demo: the holdover on or off
+   (Jason's call, 4.22); a fleet page for ten links (IMPROVEMENTS.md section 3).
    **Status 2026-10-31 14:50:** 1 and 2 done on the board (linkd in the boot service, ID 8's lock monitor and LEDs;
    BRINGUP_LOG 4.16-4.18: 58 random disturbances overnight-style, 18 losses, 18 recovered by linkd).  3 and 4: the
    page's third version (`gateware/driver/dashboard.html`, re-read at every request): the state from the gateware's
