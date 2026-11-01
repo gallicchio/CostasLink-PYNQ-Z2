@@ -31,7 +31,15 @@ activity, its signal, its bits and symbols and the scope's views first.  What to
    samples), wrong decisions appearing in the table (a corner passing through another's pattern).  Back with
    `{"plan": "cycle"}`.
 3. **Data**: 'Data: bit errors' (green ticks: seconds without an error), the timing recovery's 'comparator skew'
-   (judged against the bit), the scope's raw data and its eye.
+   (judged against the bit), the scope's raw data and its eye.  Three kinds in each round (firmware ID 12): **BPSK**
+   (each bit the carrier or the carrier inverted, 2-50 Mbaud), **OOK** (each bit the carrier or its null, read on the
+   I window, 2-25 Mbaud) and **QPSK** (A3's four corners with the idle carrier as a pilot between them, 2.5 M symbols a
+   second, every symbol decided against what was sent: the single symbols' counts).  The scope is at 50 ohm since
+   2026-11-01 (each monitor tap is 1 k into 50 ohm, scaled back by its probe factor of 21): the eye is open at 20
+   Mbaud and the fast constellation shows the QPSK corners.  **A point to make**: the corners come out at about 40
+   degrees and at the idle's own amplitude, not at 45 degrees and 1.41 times it: the board's transmitter is saturated
+   (the B210, listening to it, measured every state at the idle's amplitude: BRINGUP_LOG 4.26, REVB 35).  'The board's
+   own constellation, along each window' shows the same from the board's own comparators, no scope needed.
 4. **Interference** from the B210, one at a time, each shown on the page's B210 lane:
 
        python3 bringup/b210demo.py bursts --on-ms 1 --per-ms 20 --gain 85 --seconds 20   # bit errors, false symbols
