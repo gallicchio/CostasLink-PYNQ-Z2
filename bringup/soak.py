@@ -350,17 +350,18 @@ def audit(t0, t_end, t_back, note_id=None, kind=None, params=None, marks=None, t
     if kind == "release" or (kind == "carrier_off" and "unmuted" in marks):
         # where the loop came to rest: after a release, or once the carrier is back after an interruption
         t_rel = marks.get("released") or marks.get("unmuted") or t0
-        rest = [r for r in real if t_rel + 3 <= r["t"] <= t_last and r.get("state") in ("lost", "locked", "interfered", "unsettled")
-                and "recovering" not in (r.get("linkd") or {}).get("mode", "")]
-        # before linkd's first recovery (its looks are busy; the counts move after it)
-        L0 = (rest[0].get("linkd") or {}).get("recoveries", 0) if rest else 0
-        rest = [r for r in rest if (r.get("linkd") or {}).get("recoveries", 0) == L0][:20]
+        # where it rested before linkd's first recovery after it: linkd now recovers within 2 s when the carrier is
+        # there (it waits only while there is none), so look from 1 s on (the drifts take 0.05-0.5 s) and keep the looks
+        # with linkd's count as before the disturbance (from 3 s on, soak13 #33 saw only the recovered lock)
+        L0 = next(((r.get("linkd") or {}).get("recoveries", 0) for r in reversed(real) if r["t"] < t0), 0)
+        rest = [r for r in real if t_rel + 1 <= r["t"] <= t_last and r.get("state") in ("lost", "locked", "interfered", "unsettled")
+                and "recovering" not in (r.get("linkd") or {}).get("mode", "") and (r.get("linkd") or {}).get("recoveries", 0) == L0][:20]
         off_r = med([r.get("off_khz") for r in rest])
         vc_r = med([(r.get("adc") or {}).get("VC") for r in rest])
-        got = rest_class(off_r, vc_r)
-        out["rest"] = {"class": got, "off_khz": off_r, "vc": vc_r}
+        got = rest_class(off_r, vc_r) if rest else None
+        out["rest"] = {"class": got, "off_khz": off_r, "vc": vc_r, "looks": len(rest)}
         want = params.get("predicted")
-        if kind == "release":
+        if kind == "release" and got is not None:
             check("rest_as_map", want == "either" or got == want, "predicted %s, rested %s" % (want, got))
         if got == "lock":
             check("lock_no_loss", d["losses"] == 0, "came to the lock by itself but linkd counted %d" % d["losses"])
