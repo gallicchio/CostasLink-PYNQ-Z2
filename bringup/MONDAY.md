@@ -18,7 +18,10 @@ If the PYNQ does not answer (it hung once on a reboot, 2026-11-01: BRINGUP_LOG 4
 the board on output 1: `python3 bringup/bench.py --board A psu cycle --volts 5.3 --amps 1.5` takes the board to 0 V,
 switches both off, waits 10 s, and brings them back in order (the PYNQ, its server answering with our overlay, about
 90 s, then the board).  Stop the watchdog first and start it again after (`bench.py --board A --stage watch run watch
---hours 64 --pynq-misses 6 --amps-hi 1.5`).
+--hours 64 --pynq-misses 6 --amps-hi 1.5 --pynq-cycles 3`).  The watchdog does the same by itself when the PYNQ has
+not answered for a minute, at most 3 times; silent once more, or not back from a cycle, and it switches both off and
+leaves them off (Jason: 'If you need to reboot the PYNQ more than a few times and don't know why, just keep things
+powered off').  Before restarting the board's server on purpose: `bench.py pause --minutes 10`.
 
 Open the page full screen; with **http://192.168.8.142:8080/?controls=1** it has buttons for the self-test's plan
 (off, rounds, single symbols, data, carrier alone) and the holdover (on, off), in place of the `curl` commands below

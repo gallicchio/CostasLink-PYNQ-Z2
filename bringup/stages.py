@@ -174,16 +174,24 @@ def rails_walk(b, order=("+5V_IN", "+5V_RF", "+3V3_PLL_TX", "+3V3_PLL_RX", "+3V3
 
 
 def watch(b, hours=3.0, dt_s=10.0, amps_lo=0.6, amps_hi=1.2, pynq_misses=3, det_every=3, v5_lo=4.75, v5_hi=5.30,
-          temp_hi=85.0):
+          temp_hi=85.0, pynq_cycles=0):
     """Unattended: the supply read every dt_s and the PYNQ's server pinged; the board switched OFF on a current
     outside amps_lo-amps_hi, a mode other than CV, an OVP trip, or the PYNQ silent for pynq_misses pings in a row
     (this board powered into an unpowered Zynq drives its clamp diodes: REVB R3).  Every det_every readings the
-    board's own detectors too (I2C): OFF on +5V_RF outside v5_lo-v5_hi or the NTC above temp_hi.  All logged."""
+    board's own detectors too (I2C): OFF on +5V_RF outside v5_lo-v5_hi or the NTC above temp_hi.  All logged.
+    With the PYNQ on the supply (psu.pynq_out) and pynq_cycles > 0, a silent PYNQ is power-cycled (the board to 0 V,
+    both off 10 s, the PYNQ up, its overlay, the board back) at most pynq_cycles times; silent once more after that,
+    or not back from a cycle, and both outputs go off and stay off (Jason 2026-11-01: 'If you need to reboot the
+    PYNQ more than a few times and don't know why, just keep things powered off').  While B.WATCH_PAUSE holds a
+    time still to come (bench.py pause: a deliberate restart of the server) silence is not counted."""
     b.stage = b.stage or "watch"
     p = b.psu
     out = b.cfg["psu"].get("out", 1)
     t_end, misses, n, why = time.time() + hours * 3600, 0, 0, None
     psu_fails = 0
+    cycles, all_off = 0, False
+    pynq = b.cfg["psu"].get("pynq_out")
+    board_set = (p.setting(out)["volts"], p.setting(out)["amps"])     # what the board is brought back to
     while time.time() < t_end:
         try:
             r = b.psu_read("watch")
@@ -213,13 +221,42 @@ def watch(b, hours=3.0, dt_s=10.0, amps_lo=0.6, amps_hi=1.2, pynq_misses=3, det_
                         old.close()
                     except Exception:                            # noqa: BLE001
                         pass
-        misses = 0 if alive else misses + 1
+        misses = 0 if alive or B.watch_paused() else misses + 1
         if r["mode"] != "CV" or not amps_lo <= r["amps"] <= amps_hi:
             why = "%.3f V %.3f A %s: outside %.2f-%.2f A in CV" % (r["volts"], r["amps"], r["mode"], amps_lo, amps_hi)
         elif p.setting(out)["ovp_tripped"]:
             why = "OVP tripped"
+        elif misses >= pynq_misses and pynq and pynq_cycles and cycles < pynq_cycles:
+            cycles += 1
+            b.record("note", text="the PYNQ silent for %d pings: power cycle %d of %d" % (misses, cycles, pynq_cycles))
+            print("%s the PYNQ silent for %d pings: power cycle %d of %d" % (time.strftime("%H:%M:%S"), misses, cycles,
+                                                                           pynq_cycles), flush=True)
+            try:
+                b.psu_output(False)
+                b.psu_pynq(False)
+                time.sleep(10.0)
+                b.psu_pynq(True)
+                ident = b.pynq_ready()
+                if ident is not None:
+                    b.psu_setup(*board_set)
+                    b.psu_output(True)
+            except Exception as e:                               # noqa: BLE001 - the cycle itself failed: all off below
+                ident = None
+                b.record("note", text="the power cycle failed: %s" % str(e)[:200])
+            if ident is None:
+                why, all_off = "the PYNQ did not come back with our overlay after power cycle %d" % cycles, True
+            else:
+                misses = 0
+                b.record("note", text="power cycle %d: the PYNQ back with ID 0x%08X, the board on again" % (cycles, ident))
+                print("%s power cycle %d: the PYNQ back (ID 0x%08X), the board on again" % (time.strftime("%H:%M:%S"),
+                                                                                       cycles, ident), flush=True)
+                time.sleep(dt_s)
+                continue
         elif misses >= pynq_misses:
             why = "the PYNQ has not answered for %d pings" % misses
+            if pynq and pynq_cycles:
+                why += " after %d power cycles" % cycles
+                all_off = True
         elif alive and det_every and n % det_every == 1:
             try:
                 d = b.cl.detectors()
@@ -232,12 +269,15 @@ def watch(b, hours=3.0, dt_s=10.0, amps_lo=0.6, amps_hi=1.2, pynq_misses=3, det_
                 b.record("detectors", label="watch", error=str(e)[:200])
         if why:
             b.psu_output(False)
+            if all_off:
+                b.psu_pynq(False)
             break
         if n % 30 == 1:
             print("%s %.3f V %.4f A, PYNQ %s" % (time.strftime("%H:%M:%S"), r["volts"], r["amps"], "up" if alive else "silent"),
                   flush=True)
         time.sleep(dt_s)
-    off = "THE BOARD SWITCHED OFF (its output at 0 V, the PYNQ left on): " if b.cfg["psu"].get("pynq_out") else "OUTPUT SWITCHED OFF: "
+    off = ("BOTH OUTPUTS SWITCHED OFF (the board, then the PYNQ): " if all_off else
+           "THE BOARD SWITCHED OFF (its output at 0 V, the PYNQ left on): " if pynq else "OUTPUT SWITCHED OFF: ")
     text = (off + why) if why else "%.1f h watched, nothing out of bounds; the output left on" % hours
     print(text, flush=True)
     return b.record("verdict", test="watch", ok=why is None, text=text, readings=n)

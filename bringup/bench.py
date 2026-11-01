@@ -131,6 +131,18 @@ def reachable(host, port, timeout=2.0):
         return False
 
 
+WATCH_PAUSE = os.path.join(HERE, "data", "watch_pause")     # an epoch time: the watchdog counts no silence until then
+
+
+def watch_paused():
+    """the watchdog told to expect a silent server (bench.py pause --minutes N, before a deliberate restart)"""
+    try:
+        with open(WATCH_PAUSE) as f:
+            return time.time() < float(f.read().strip() or 0)
+    except (OSError, ValueError):
+        return False
+
+
 def _need(host, port, what):
     if not reachable(host, port):
         raise IOError("%s: nothing answers at %s:%d (off, unplugged, or another address: bench_config.json)" % (what, host, port))
@@ -539,6 +551,8 @@ def main():
     r = sub.add_parser("run", help="a procedure in stages.py (python3 bringup/stages.py lists them)")
     r.add_argument("proc")
     r.add_argument("opts", nargs=argparse.REMAINDER, help="--key value pairs for the procedure")
+    pz = sub.add_parser("pause", help="the watchdog counts no PYNQ silence for this long (a deliberate restart)")
+    pz.add_argument("--minutes", type=float, default=10.0)
     sh = sub.add_parser("show")
     sh.add_argument("--n", type=int, default=20)
     a = ap.parse_args()
@@ -607,6 +621,11 @@ def main():
                     pass
                 kw[k.lstrip("-").replace("-", "_")] = v
             print(json.dumps(stages.run(bench, a.proc, **kw), indent=1, default=repr))
+        elif a.cmd == "pause":
+            os.makedirs(os.path.dirname(WATCH_PAUSE), exist_ok=True)
+            with open(WATCH_PAUSE, "w") as f:
+                f.write("%.0f\n" % (time.time() + 60 * a.minutes))
+            print(_fmt(bench.note("the watchdog paused for %.0f min (no PYNQ silence counted)" % a.minutes)))
         elif a.cmd == "show":
             for e in bench.log.tail(a.n):
                 print(_fmt(e))
