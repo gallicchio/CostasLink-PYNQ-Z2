@@ -122,6 +122,8 @@ driver files beside it; since 2026-10-31 12:55 the boot service `costaslink-netb
 | 00:34 | `7630dbe` | a loss while linkd waits for the carrier says so ('no carrier arrives ... recovers it the moment one does'), not 'started to recover it' | soak13 #25: a 52.8 s cut, 53 looks waiting | restart, between soak13 and soak14 |
 | 00:59 | `62d8fcd` | the single symbols' counts: 'sent' the references (it was the events, false ones included), 'undecided', the whole matrix; the self-test reads the counts with the receiver stopped; the driver reads RX_UNDEC from ID 10 | the 00:53 photograph: '26 364 576 sent, 8 927 240 right, 6 109 841 wrong' in ten minutes | restart, between soak14 #11 and #12 |
 | 01:05 | `ae9f294`, `62d8fcd` | ID 10 (above), with the new `regmap.py` beside the driver | | new directory `~/costaslink_id10/`, the symlink repointed, restart between soak14 #13 and #14 |
+| 01:11 | `6bda9a2` | each symbol run's table of states sent and decided, on the page under the latency's spread | which A3 corner goes undecided | restart, between soak14 #17 and #18 |
+| 01:14 | `6bda9a2` | a self-test step's own decision delay; the plan 'a3delay' | one A3 corner 10 % undecided on one lock point | restart, between soak14 #18 and #19 |
 
 ## Before power (2026-10-28)
 

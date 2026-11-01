@@ -31,6 +31,7 @@ it (a BRINGUP_LOG row, a REVB row).  The version table in BRINGUP_LOG ('What run
 | linkd waits for the carrier when the lock monitor sees none (no tries holding the board, no back-off), and starts the moment it returns: a 52.8 s cut recovered 3 s after the carrier came back, where before 11 s of tries and a 5 s back-off made it 7 s | `linkd.py` | soak13 #12, #25 |
 | a dragged loop no longer called locked (20 kHz or more off), the offset from linkd's lock VC (the page learned a dragged VC and showed a false 10 kHz for a minute) | `dashboard.py` | soak12 #26 |
 | the page's history sent from the looks as already encoded (0.18 s, not 2.3 s, for 10 minutes; the looks fell late while it encoded), the scope API the latest capture of each kind, the scope's captures thinned in the log | `dashboard.py` | 2026-10-31 22:39 |
+| linkd moves the receiver's windows with the carrier's level (set at setup for the level then: 2-4 dB more attenuation lost 70-74 % of A2's and A3's symbols) | `linkd.py`, `dashboard.py` ('What happened' says so) | REVB 33, 4.24 |
 | the netbus client connects again after a server restart | `netbus.py` | soak12 #12 |
 | the latency's spread per symbol run (a histogram), the level read in gaps of the data, the demonstration's controls and order | `selftest.py`, `dashboard.*` | 2026-10-31 22:57-23:24 |
 
@@ -41,22 +42,27 @@ it (a BRINGUP_LOG row, a REVB row).  The version table in BRINGUP_LOG ('What run
    the data needs to carry its sign (item 2).
 2. **The 180-degree ambiguity in the data**: differential encoding of BPSK (and of A3's I bit), or a known preamble
    word the receiver checks after every gap; today a slip inverts every bit until software notices (REVB 24, 4.21).
-3. **The FPGA reads the ADS1115 itself** (REVB U3): VC, I, Q and the detectors round-robin into registers at the
+3. **Single symbols decided when their pattern settles** (REVB 32): today a fixed 16 samples (20 ns) after the first
+   comparator fires, which leaves one A3 corner of four undecided 0.02-3 % of the time while its second comparator is
+   still crossing, and 25-30 ns cures it for every corner at 5-10 ns of latency.  Instead: decide on the first vector
+   that is one state's and has held for a few samples (with RX_DELAY as the longest wait), so each corner is decided as
+   soon as it is settled.  `rx_engine.v`'s S_DECIDE; the self-test's plan 'a3delay' measures it.
+4. **The FPGA reads the ADS1115 itself** (REVB U3): VC, I, Q and the detectors round-robin into registers at the
    ADC's 860 S/s, so the lock monitor can use VC (REVB U1's 'the supervisor must see VC') and the page gets VC and the
    level at 100 S/s without contending for the I2C bus.  Then the level can be read between data bursts (a gated
    conversion while TX is idle) so the page shows the carrier's level during continuous data.
-4. **A fast constellation from the board itself**: the capture (`capture.v`) already records the five comparators at
+5. **A fast constellation from the board itself**: the capture (`capture.v`) already records the five comparators at
    800 Ms/s; a 1-bit-per-arm picture (I sign, I and Q windows: a 3 x 3 grid of where the signal spends its samples)
    from a capture taken each look, for the deployed page with no scope.
-5. **The re-acquisition in gateware** (REVB 18, 26, U4): linkd's recovery from above in milliseconds instead of 2-3 s
+6. **The re-acquisition in gateware** (REVB 18, 26, U4): linkd's recovery from above in milliseconds instead of 2-3 s
    (most of it is re-centring the integrator at 5.8 GHz over I2C).
-6. **The carrier null per carrier in firmware** (REVB 19, 23): VR_I / VR_Q from a table in `link.json` (today one
+7. **The carrier null per carrier in firmware** (REVB 19, 23): VR_I / VR_Q from a table in `link.json` (today one
    value for 5.2 GHz), and the arms' offsets (I_OFF_F) likewise (REVB 15).
-7. **The turnaround across two boards in the self-test**: board B answers, board A times the round trip (the fast
+8. **The turnaround across two boards in the self-test**: board B answers, board A times the round trip (the fast
    path and the reply), since 'ref_to_decision' times only this board's own TX.
-8. **Authentication on the page's actions** (`POST /api/selftest`, notes, scope captures) before the boards leave the
+9. **Authentication on the page's actions** (`POST /api/selftest`, notes, scope captures) before the boards leave the
    lab network; the page is read-only otherwise.
-9. **Time**: NTP on every PYNQ (today the PYNQ's clock is whatever it was set to; the page's logs and the PC's records
+10. **Time**: NTP on every PYNQ (today the PYNQ's clock is whatever it was set to; the page's logs and the PC's records
    are compared by time).
 
 ## 2. Rev A hardware: rework by hand

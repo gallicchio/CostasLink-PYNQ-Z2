@@ -648,7 +648,7 @@ const LD_WORDS = {locked: "standing by, the link locked", watching: "watching: i
   "parked: the loop is held by a program": "standing aside: a program holds the loop", "waiting for a first lock": "waiting for a first lock to learn from",
   "waiting for the carrier": "waiting for the carrier (none arrives: the path blocked, or the other board off); it starts the moment one is seen"};
 function dur(s) { return s < 90 ? Math.round(s) + " s" : s < 5400 ? Math.round(s / 60) + " min" : (s / 3600).toFixed(1) + " h"; }
-const EV = {"recovered": [C.good, "●"], "loss": [C.bad, "●"], "loss-expected": [C.note, "●"], "failed": [C.warn, "●"], "slip": [C.warn, "◐"],
+const EV = {"recovered": [C.good, "●"], "loss": [C.bad, "●"], "loss-expected": [C.note, "●"], "failed": [C.warn, "●"], "slip": [C.warn, "◐"], "windows": [C.ink2, "◆"],
             "note-intervention": [C.note, "■"], "note-explained": [C.note, "◆"], "note-info": [C.ink2, "◆"]};
 function spanWords() { return span >= 3600 ? (span / 3600) + " h" : (span / 60) + " min"; }
 async function events() { try { const ev = await (await fetch("/api/events?s=" + span)).json(); const el = document.getElementById("events");

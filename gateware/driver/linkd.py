@@ -62,13 +62,15 @@ class LinkD:
         self.vc_lock = self.leg = None
         self.i0, self.q0 = 1.6535, 1.628
         self.mid_t = None                                # when the arms' middles were measured (setup)
+        self.cen = None                                  # each window comparator's centre (setup)
+        self.leg_windows = None                          # the leg the windows were last set for
         self.mode = "starting"
         self.lost_since = None
         self.next_try = 0.0
         self.wait = backoff_s[0]
         self._loss_open = False                          # a loss counted and not yet recovered
         self.counts = {"losses": 0, "recoveries": 0, "failed": 0, "last_recovery_s": None, "t_last_loss": None,
-                       "t_last_recovery": None, "last_starts": None}
+                       "t_last_recovery": None, "last_starts": None, "window_moves": 0}
         self.enabled = True
 
     # ---- for the dashboard ----
@@ -135,6 +137,7 @@ class LinkD:
             self.vc_lock = o["vc"] if self.vc_lock is None else 0.9 * self.vc_lock + 0.1 * o["vc"]
             if o["e_i"] < 50:                                         # idle carrier: the leg is visible
                 self.leg = abs(o["di"]) if self.leg is None else 0.9 * self.leg + 0.1 * abs(o["di"])
+                self.track_windows(cl)
             self.mode = "locked"
             return
         if self.vc_lock is None:
@@ -245,8 +248,24 @@ class LinkD:
             cl.threshold(w, min(2.499, max(0.0, v0 + frac * a)))
         cl.dac(DAC2, V_T2=float(cfg.get("v_t2", 2.9)))
         self.vc_lock = cl.adc("VC")
-        self.leg = a
+        self.leg = self.leg_windows = a
         return True
+
+    def track_windows(self, cl):
+        """the windows follow the carrier's level.  Setup puts them at window_frac of the leg it found; a level that
+        changes after (an antenna moved or blocked, the attenuator) left the Q steps of A2 and A3 short of them or far
+        past them (2026-11-01 01:12: 148 055 of 199 999 A2 symbols missed while the attenuator was 4.25 dB up, A3 at
+        23:51 likewise; A1, the sign of I alone, untouched).  Set again when the leg learned on the idle carrier is
+        10 % from the one they were set for; link.json's "track_windows": false keeps them where setup put them"""
+        if not self.cfg or not self.cfg.get("track_windows", True) or not self.cen or not self.leg_windows or not self.leg:
+            return
+        if abs(self.leg - self.leg_windows) < 0.1 * self.leg_windows:
+            return
+        frac = float(self.cfg.get("window_frac", 0.5))
+        for w, v0 in self.cen.items():
+            cl.threshold(w, min(2.499, max(0.0, v0 + frac * self.leg)))
+        self.leg_windows = self.leg
+        self.counts["window_moves"] += 1
 
     # ---- the recovery (bringup/autolock.py's, on the driver alone) ----
     def recover(self):

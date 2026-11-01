@@ -315,7 +315,12 @@ class Dashboard:
                 if L["failed"] > self._lk["failed"]:
                     self.event({"t": r["t"], "kind": "failed",
                                         "text": "A recovery found no carrier; it will try again (is the other board on?)."})
-            self._lk = {k: L.get(k, 0) for k in ("losses", "recoveries", "failed")}
+                if (L.get("window_moves") or 0) > self._lk.get("window_moves", 0) and L.get("leg"):
+                    self.event({"t": r["t"], "kind": "windows",
+                                "text": "The carrier's level changed: the receiver's decision windows followed it (the "
+                                        "carrier now %.0f mV on the I arm, the windows at %.0f %% of that)." % (
+                                            1e3 * L["leg"], 100 * float((L.get("config") or {}).get("window_frac", 0.5)))})
+            self._lk = {k: L.get(k, 0) or 0 for k in ("losses", "recoveries", "failed", "window_moves")}
 
     def judge(self, r):
         """the state, its cause and what to do, in words for someone who does not know PLLs"""
