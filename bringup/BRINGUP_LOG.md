@@ -115,6 +115,7 @@ driver files beside it; since 2026-10-31 12:55 the boot service `costaslink-netb
 | 23:22-23:24 | `ae5a532` | the latency's spread (the self-test's histogram, a new panel); the B210 from its own announcements only | the demo | restart |
 | 23:27 | `fa554b7` | the bench scope's captures into the day log once a minute a kind, thinned (they were 55 MB of a 90 MB day) | the SD card's growth | restart |
 | 23:35 | `b57d17f` | the offset from linkd's lock VC; a 'locked' 20 kHz or more off called lost; the page's own lock VC learned only within 5 kHz | soak12 #26: a dragged loop read 'locked', then a false 10 kHz offset for a minute | restart |
+| 23:56 | `9e5da3c` | linkd waits for the carrier (no tries, no back-off) when the lock monitor sees none, and starts the moment it is back | soak13 #12: locked 7 s after the carrier returned | restart |
 
 ## Before power (2026-10-28)
 
