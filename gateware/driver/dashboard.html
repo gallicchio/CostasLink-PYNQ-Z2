@@ -242,13 +242,13 @@ function side(g, x, y, left, col) { g.fillStyle = col; g.beginPath(); g.moveTo(l
 function tri(g, x, y, up, col) { g.fillStyle = col; g.beginPath(); g.moveTo(x - 4, up ? y + 6 : y - 6); g.lineTo(x + 4, up ? y + 6 : y - 6); g.lineTo(x, y); g.fill(); }
 // the notes as purple spans on a time axis
 // what the link is asked to do (its registers) and what the B210 sends (the notes its programs post)
-const ACT = {recovering: ["#7f1d1d", "the automatic recovery at work"], carrier: ["#b8bec8", "the carrier alone"], symbols: ["#e07b00", "single symbols"], data: ["#1e3a8a", "data"],
+const ACT = {recovering: ["#7f1d1d", "the automatic recovery at work"], carrier: ["#b8bec8", "the carrier alone"], symbols: ["#e07b00", "single symbols"], pattern: ["#0891b2", "the QPSK pattern (states half the time)"], data: ["#1e3a8a", "data"],
              rotate: ["#8b5a2b", "rotating (FSK-like)"], off: ["#d4d7dd", "the carrier off"], held: ["#4b5563", "the loop held by a program"]};
 const B2 = {cw_far: ["#0e7490", "a CW MHz away"], cw_near: ["#be185d", "a CW near the carrier"], bursts: ["#a16207", "noise bursts"],
             b210: ["#6b7280", "the B210"]};
 function ownTx(r) { return !!(r && r.tx && r.tx.running && r.tx.mode != "hold"); }      // the board's own symbols or data
 function linkAct(r) { if (r && r.busy && r.linkd && r.linkd.mode == "recovering") return "recovering"; if (!r || !r.tx || !r.ctrl) return null; if (r.ctrl.tx_dis) return "off"; if (r.ctrl.loop_hold) return "held";
-  const m = r.tx.mode, run = r.tx.running; return run && (m == "events" || m == "trig_in") ? "symbols" : run && m == "prbs" ? "data" : run && m == "rotate" ? "rotate" : "carrier"; }
+  const m = r.tx.mode, run = r.tx.running; return run && m == "events" && r.tx.period && r.tx.period <= 100 ? "pattern" : run && (m == "events" || m == "trig_in") ? "symbols" : run && m == "prbs" ? "data" : run && m == "rotate" ? "rotate" : "carrier"; }
 function linkLabel(r) { const a = linkAct(r), s = r.selftest && r.selftest.on ? r.selftest.now : null;
   if (a == "symbols") return s && s.step == "symbols" ? s.scheme : "";
   if (a == "data") return fmt(100 / r.tx.period) + " Mb/s"; return ""; }
@@ -256,6 +256,8 @@ function linkText(r) { const a = linkAct(r); if (!a) return "is not known (no re
   if (a == "recovering") return "is being brought back by the board's automatic recovery";
   if (a == "symbols") return "is sending single symbols" + (s && s.step == "symbols" ? " of " + s.text.replace(/^single symbols of /, "") :
      ", each one of " + r.tx.n + " states, one every " + fmt(r.tx.period / 100) + " us") + (r.rx_on ? "; the receiver decides each and times it" : "");
+  if (a == "pattern") return "is sending " + (s && s.step == "pattern" ? s.text.replace(/^the states/, "the states") : "a scheme's states half the time, " + fmt(100 / r.tx.period) + " M a second") +
+     " (the board's own constellation along each window is swept from such a pattern too)";
   if (a == "data") return "is streaming BPSK data at " + fmt(100 / r.tx.period) + " Mbaud" + (r.ber_on ? ", every bit checked, the timing recovered" : "");
   if (a == "rotate") return "is rotating the carrier's phase (an FSK-like test)";
   if (a == "off") return "has its carrier switched off"; if (a == "held") return "carries the carrier, the loop held by a program";
@@ -517,7 +519,9 @@ function drawScope(p) {
   g.fillStyle = C.ink2; g.font = "12px system-ui"; g.fillText("I", w - 18, cy - 6); g.fillText("Q", cx + 6, 14);
   const ref = last && last.leg_ref_mv ? last.leg_ref_mv / 1000 : 0.16;
   for (const sgn of [-1, 1]) { g.strokeStyle = C.good; g.lineWidth = 2; g.beginPath(); g.arc(cx + sgn * ref * sc, cy, 0.035 * sc, 0, 7); g.stroke(); }
-  const c = scopes[scopes.length - 1], x = document.getElementById("x_" + p.id);
+  // the QPSK pattern's capture when there is a recent one (its corners fill the picture; single symbols are 1 % of a
+  // capture), else the latest of any kind
+  const pat = scopeOf("pattern"), c = pat && Date.now() / 1000 - pat.t < 120 ? pat : scopes[scopes.length - 1], x = document.getElementById("x_" + p.id);
   document.getElementById("v_" + p.id).textContent = "";
   if (!c) { x.textContent = "no capture yet: a bench test posts the scope's I MON and Q MON here while it sends data or symbols"; return; }
   const i0 = c.i0 != null ? c.i0 : (last && last.i0) || 1.6535, q0 = c.q0 != null ? c.q0 : (last && last.q0) || 1.628;
@@ -532,8 +536,10 @@ function drawScope(p) {
   const age = Date.now() / 1000 - c.t;
   x.textContent = (c.link ? scopeSays(c) : "The bench scope, " + dur(Math.max(0, age)) + " ago" + (c.text ? ", during " + c.text : "") + ".") +
     " " + c.i.length + " samples, " + (c.dt_ns ? fmt(c.dt_ns) + " ns apart" : "") + "; circles: the locked idle carrier; red squares: where " +
-    (c.kind == "data" ? "the data's two levels" : schemeWords(c.scheme) + "'s states") + " should land (nominal). Single symbols are about 1 % of the time, so few samples reach them; " +
-    "the scope sees I MON and Q MON through 1 k and its cable (about 0.1 us), so short symbols do not reach them either.";
+    (c.kind == "data" ? "the data's two levels" : schemeWords(c.scheme) + "'s states") + " should land (nominal: this board's Q swing is about 0.6 of its I, so the corners come out nearer the I axis). " +
+    (c.kind == "pattern" ? "The dots cluster where the signal sits in each state; the arcs between are its moves from one state to the next. " :
+     c.kind == "symbols" ? "Single symbols are about 1 % of the time, so few samples reach them (the QPSK pattern, in each round, fills the picture). " : "") +
+    (c.input && c.input.indexOf("50") >= 0 ? "The scope at 50 ohm sees the arm's own edge." : "The scope at 1 M saw I MON and Q MON through 1 k and its cable (about 0.1 us): short symbols did not reach their states.");
 }
 // the self-test's schemes (costaslink.SCHEMES): in words, and the TX's points (I, Q in units of the carrier's level), the
 // idle first; received on lock point `side` they come out as (side I, -side Q) (the I arm's mirror, REVB 9; selftest._Frame)

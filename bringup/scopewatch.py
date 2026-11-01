@@ -8,7 +8,10 @@ one of N' tests and from a PRBS burst, raw and with the timing recovered, each s
 
 It reads the page (HTTP) and the scope only: no request to the board, so linkd and the self-test go on.  The scope's
 timebase is set for each capture and put back after; its channels, offsets and trigger are left as they are (ch2 and
-ch3 at 0.1 V/div about 1.65 V: BRINGUP_LOG's bench).
+ch3 at 0.1 V/div about 1.65 V: BRINGUP_LOG's bench).  Since 2026-11-01 07:30 PST ch2 and ch3 are at 50 ohm with the
+probe factor 21 (each tap is 1 k into 50 ohm: /21; REVB 34), so the scope reads volts at the arm, fast (the 1 M input
+and the cable had smoothed it over 115 ns); the scope's DC at 50 ohm is a millivolt or so off at its input (20 mV at
+the arm), so each capture's mean is put on the board's own slow I and Q read with it.
 """
 import argparse
 import json
@@ -43,14 +46,27 @@ def b210_now():
     return "quiet"
 
 
-def capture(sc, tdiv):
+def capture(sc, tdiv, trig=None):
+    """trig: (channel, level, slope) for this capture, else the bench's (ch2, I, through its middle); put back after.
+    A2 moves only Q, so it triggers on Q's step up: on I the single shot waited out its 3 s and the capture came after
+    the symbols had ended (2026-11-01 07:32)"""
     old = sc.q(":TIMebase:SCALe?")
+    old_trig = (sc.q(":TRIGger:EDGE:SOURce?"), sc.q(":TRIGger:EDGE:LEVel?"), sc.q(":TRIGger:EDGE:SLOPe?"))
+    if trig:
+        sc.w(":TRIGger:EDGE:SOURce C%d" % trig[0])
+        sc.w(":TRIGger:EDGE:LEVel %.4f" % trig[1])
+        sc.w(":TRIGger:EDGE:SLOPe %s" % trig[2])
     sc.timebase(scale=tdiv)
     time.sleep(0.3)
     try:
-        sc.single(timeout=3.0)
+        sc.single(timeout=1.5)
     except TimeoutError:
         sc.acquire_now()
+    finally:
+        if trig:
+            sc.w(":TRIGger:EDGE:SOURce %s" % old_trig[0])
+            sc.w(":TRIGger:EDGE:LEVel %s" % old_trig[1])
+            sc.w(":TRIGger:EDGE:SLOPe %s" % old_trig[2])
     t2, v2, _ = sc.waveform(2)
     t3, v3, _ = sc.waveform(3)
     sc.run()
@@ -76,17 +92,25 @@ def main(argv):
             continue
         st = r.get("selftest") or {}
         now = st.get("now") or {}
-        if not st.get("on") or now.get("step") not in ("symbols", "data") or now.get("since") in done:
+        if not st.get("on") or now.get("step") not in ("symbols", "data", "pattern") or now.get("since") in done:
             continue
         if time.time() - now["since"] < 1.0 or time.time() - now["since"] > now.get("seconds", 10) - 1.0:
             continue
         done.add(now["since"])
         period_ns = now["period"] * 10.0
         # single symbols: about three across the screen (the aligned view wants the samples close); data: about forty bits
-        tdiv = max(1e-6, min(50e-6, 0.3 * period_ns * 1e-9)) if now["step"] == "symbols" else max(1e-7, 4 * period_ns * 1e-9)
+        # the pattern (states half the time, 400 ns apart): about fifty across the screen
+        tdiv = (max(1e-6, min(50e-6, 0.3 * period_ns * 1e-9)) if now["step"] == "symbols" else
+                5 * period_ns * 1e-9 if now["step"] == "pattern" else max(1e-7, 4 * period_ns * 1e-9))
         b2 = b210_now()
+        adc = r.get("adc") or {}
         try:
-            i, q, dt = capture(sc, tdiv)
+            leg = (r.get("leg_ref_mv") or 160) / 1000.0
+            trig = (3, (r.get("q0") or 1.63) + 0.3 * leg, "RISing") if now.get("scheme") == "A2" and now["step"] == "symbols" else None
+            i, q, dt = capture(sc, tdiv, trig)
+            if adc.get("I") is not None and adc.get("Q") is not None and i and q:
+                di, dq = adc["I"] - sum(i) / len(i), adc["Q"] - sum(q) / len(q)
+                i, q = [v + di for v in i], [v + dq for v in q]
         except Exception as e:                                   # noqa: BLE001 - the next step tries again
             print("%s capture failed: %s" % (time.strftime("%H:%M:%S"), e), flush=True)
             continue
@@ -95,7 +119,8 @@ def main(argv):
                                   "width_ns": now.get("width", 0) * 10.0 or None, "scheme": now.get("scheme", ""),
                                   "leg": (r.get("leg_ref_mv") or 160) / 1000.0, "i0": r.get("i0"), "q0": r.get("q0"),
                                   "link": now.get("text", ""), "b210": b2, "text": now.get("text", ""),
-                                  "source": "scopewatch.py", "dt_ns": dt, "i": i, "q": q})
+                                  "source": "scopewatch.py", "dt_ns": dt, "i": i, "q": q,
+                                  "input": "50 ohm, the 1 k taps /21 (the arm's own edge)"})
         except Exception as e:                                   # noqa: BLE001 - the server restarting: the next step
             out = "not posted: %s" % e
         print("%s %s: %d samples %.2f ns apart; the B210 %s -> %s" % (time.strftime("%H:%M:%S"), now.get("text", ""), len(i), dt, b2, out),

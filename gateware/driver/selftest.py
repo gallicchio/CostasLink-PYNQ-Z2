@@ -36,6 +36,7 @@ PLANS = {
     # among them for the bench scope, whose monitor taps smooth over about 0.1 us and close its eye above 5 Mbaud
     "cycle": [{"step": "idle", "seconds": 3.0},
               {"step": "symbols", "seconds": 4.0, "period": 2000, "width": 20},
+              {"step": "pattern", "scheme": "A3", "seconds": 3.0},
               {"step": "data", "seconds": 8.0, "periods": [50, 10, 5, 4, 2], "gap_every": 1.0}],
     # data nearly all the time (the bit errors every second), the level once a round, 25 Mbaud and 2 Mbaud in turn
     "data": [{"step": "idle", "seconds": 2.0}, {"step": "data", "seconds": 28.0, "periods": [4, 50], "gap_every": 1.0}],
@@ -218,6 +219,37 @@ class SelfTest:
                                 "centres_v": res["centres_v"], "before_v": res["thresholds_v"], "after_v": None,
                                 "sweeps": res["sweeps"], "b210": self._b210(time.time() - 10, time.time())}
         return res
+
+    def pattern(self, st):
+        """a scheme's states sent at random half the time, 2.5 M a second (40 clocks a symbol, 20 of them the state): the
+        QPSK pattern for A3, so the bench scope's constellation shows the corners (single symbols are 1 % of the time,
+        so a capture of them holds a few dozen samples off the idle; Jason, 2026-11-01).  Over A3's four corners the
+        loop's I x Q averages to nothing and the idle between holds the lock"""
+        name = st.get("scheme", "A3")
+        tx = SCHEMES[name]
+        seconds = float(st["seconds"])
+        L = getattr(self.server, "linkd", None)
+        losses0 = L.counts["losses"] if L else 0
+
+        def start(cl):
+            cl.rx_enable(False)
+            cl.tx_points(tx.tx_idle(), [point_code(i, q) for i, q in tx.msgs])
+            cl.events(period=40, width=20, count=0, n=tx.n, source="prbs" if tx.n > 1 else "count")
+            cl.tx_go()
+            self._busy = True
+
+        def stop(cl):
+            cl.tx_stop()
+            cl.hold_point(1, 0)
+            self._busy = False
+        self._do(start)
+        self._say("pattern", "the states of %s, %s, sent at random half the time, 2.5 M a second (for the scope's constellation)"
+                  % (name, SCHEME_TEXT.get(name, "")), scheme=name, period=40, width=20, seconds=seconds)
+        try:
+            ok = self._watch(seconds, losses0)
+        finally:
+            self._do(stop)
+        return {"step": "pattern", "scheme": name, "seconds": seconds, "interrupted": not ok}
 
     def _sweep_levels(self, name, span=0.30, step_v=0.004):
         tx = SCHEMES[name]
