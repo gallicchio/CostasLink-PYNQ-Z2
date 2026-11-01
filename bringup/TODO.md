@@ -34,7 +34,14 @@ experiments; pictures, not one-word states, each with what led to it and how to 
    monitor and the PYNQ-Z2's LEDs in ID 8 (`lockmon.v`, building); 3's page v1 at http://192.168.8.142:8080/ (since
    11:07).  Next: `bringup/unattended.py` overnight (the B210 throwing random interference, nothing touching the
    board, linkd and the page doing the work); the page's eye, latency and history plots.
-   **Status 2026-11-01 01:30:** the board runs ID 0x434C000A (`~/costaslink_id10/`: the single symbols' counts add
+   **Status 2026-11-01 01:50 PST** (the clocks went back at 02:00 PDT): the board runs ID 0x434C000B (`~/costaslink_id11/`):
+   single symbols decided once settled (A1 59-62 ns, A3 63 ns, where a fixed delay gave 76-90), the receiver's windows
+   calibrated from the states' own levels per lock point (margins 40-48 mV, were 2-12), linkd no longer learning from a
+   CW's capture (BRINGUP_LOG 4.25).  linkd takes link.json's tx_mhz / rx_mhz and the self-test has 'send' / 'check' for
+   two boards (untested across two).  Left running undisturbed: soak14, the self-test's rounds, the scope watcher, the
+   10-minute photographs.  To compare in the morning: symbols under the B210 settled and calibrated against the fixed
+   delay's record (false decisions with the lower windows).
+   **Status 2026-11-01 01:30 PDT:** the board runs ID 0x434C000A (`~/costaslink_id10/`: the single symbols' counts add
    up, sent = right + wrong + undecided + missed); linkd moves the receiver's windows with the level; the page shows each
    symbol run's table of states sent and decided.  The night's rehearsal (BRINGUP_LOG 4.24): 98 random disturbances
    through 01:25 beside the self-test, every loss recovered, 470 data runs with the B210 quiet and no bit error in
