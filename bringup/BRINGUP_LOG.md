@@ -99,7 +99,7 @@ driver files beside it; since 2026-10-31 12:55 the boot service `costaslink-netb
 | 19:46 | `6abc204` | a slip across a holdover listed too (a held loop loses its phase across a gap 30-60 % of the time, REVB 24) | the holdover's test | restart |
 | 20:05 | `ff25cee` | while the holdover holds: the map says held, not locked; the band's power said to include the carrier only while one is there unlocked | the page photographed holding | page |
 | 20:48 | `86567cc` | the holds' time-held rates across their 32-bit counters' wrap (42.9 s of holding) | a 35 s holdover in 4.22 | restart |
-| 21:25 | (below) | a holdover hold with the carrier still there (the lock monitor busy, not 'no carrier') is 'Interference: holding', not 'Carrier interrupted' | soak9: the holdover fired under a CW 70 kHz off | page |
+| 21:25 | `e13d35f` | a holdover hold with the carrier still there (the lock monitor busy, not 'no carrier') is 'Interference: holding', not 'Carrier interrupted' | soak9: the holdover fired under a CW 70 kHz off | page |
 
 ## Before power (2026-10-28)
 
