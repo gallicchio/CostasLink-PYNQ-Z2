@@ -36,9 +36,9 @@ PLANS = {
     # among them for the bench scope, whose monitor taps smooth over about 0.1 us and close its eye above 5 Mbaud
     "cycle": [{"step": "idle", "seconds": 3.0},
               {"step": "symbols", "seconds": 4.0, "period": 2000, "width": 20},
-              {"step": "data", "seconds": 8.0, "periods": [50, 10, 5, 4, 2]}],
+              {"step": "data", "seconds": 8.0, "periods": [50, 10, 5, 4, 2], "gap_every": 1.0}],
     # data nearly all the time (the bit errors every second), the level once a round, 25 Mbaud and 2 Mbaud in turn
-    "data": [{"step": "idle", "seconds": 2.0}, {"step": "data", "seconds": 28.0, "periods": [4, 50]}],
+    "data": [{"step": "idle", "seconds": 2.0}, {"step": "data", "seconds": 28.0, "periods": [4, 50], "gap_every": 1.0}],
     # single symbols nearly all the time, the schemes in turn
     "symbols": [{"step": "idle", "seconds": 2.0}, {"step": "symbols", "seconds": 13.0, "period": 2000, "width": 20}],
     # the carrier alone: the level every second
@@ -75,6 +75,7 @@ class SelfTest:
         self._k = {"scheme": 0, "period": 0}
         self._aborted = False
         self._busy = False                   # a step's TX, RX or bit check is set up on the board
+        self.level = None                    # the carrier's I in the data step's last gap: {t, i} (dashboard.py)
 
     # ---- for the page ----
     def state(self):
@@ -210,11 +211,15 @@ class SelfTest:
         period = int(ps[self._k["period"] % len(ps)])
         self._k["period"] += 1
         seconds = float(st["seconds"])
+        # every gap_every seconds a moment of the carrier alone, its level read: the slow I arm reads the level only
+        # off an idle carrier, so without the gaps the page has no signal strength while data runs
+        gap_every = float(st.get("gap_every") or 0.0)
         L = getattr(self.server, "linkd", None)
         losses0 = L.counts["losses"] if L else 0
+        side = None
 
         def start(cl):
-            side = self._side(cl)
+            sd = side if side is not None else self._side(cl)
             cl.tx_points(point_code(1, 0), [point_code(1, 0), point_code(-1, 0)])
             cl.tx_timing(period=period)
             cl.tx_prbs(15)
@@ -222,25 +227,43 @@ class SelfTest:
             cl.tx_go()
             self._busy = True
             time.sleep(0.005)
-            cl.ber_config(15, None, invert=side > 0, enable=True, cdr=True, period=period)
-            return side, cl.t_clk
-        side, t_clk = self._do(start)
-        self._say("data", "BPSK PRBS15 data at %.3g Mbaud, the bits checked with the timing recovered, %g s" % (
-            1e-6 / (period * t_clk), seconds), period=period, mbaud=1e-6 / (period * t_clk), seconds=seconds)
-        ok = self._watch(seconds, losses0)
+            cl.ber_config(15, None, invert=sd > 0, enable=True, cdr=True, period=period)
+            return sd, cl.t_clk
 
-        def finish(cl):
+        def stop(cl):
             cl.ber_config(15, None, invert=side > 0, enable=False, cdr=True, period=period)
             r = cl.ber()
             c = cl.cdr_state()
             cl.tx_stop()
             cl.hold_point(1, 0)
             self._busy = False
-            return {"bits": r.get("bits"), "errors": (r.get("mismatches") or 0) / 3.0, "ber": r.get("ber"),
-                    "skew_samples": c.get("skew_samples")}
-        res = self._do(finish) if not self._aborted else {}
-        return dict({"step": "data", "period": period, "mbaud": 1e-6 / (period * t_clk), "seconds": seconds, "side": side,
-                     "interrupted": not ok}, **res)
+            return r, c
+
+        def level(cl):
+            time.sleep(0.03)                                   # the arm settled on the idle carrier
+            return sum(cl.adc("I") for _ in range(3)) / 3.0
+        side, t_clk = self._do(start)
+        mbaud = 1e-6 / (period * t_clk)
+        self._say("data", "BPSK PRBS15 data at %.3g Mbaud, the bits checked with the timing recovered, %g s%s" % (
+            mbaud, seconds, ", the carrier's level read each second" if gap_every else ""), period=period, mbaud=mbaud,
+            seconds=seconds)
+        bits, errors, skew, ok = 0, 0.0, None, True
+        t_end = time.time() + seconds
+        while True:
+            ok = self._watch(min(gap_every, t_end - time.time()) if gap_every else seconds, losses0)
+            if self._aborted:
+                break
+            r, c = self._do(stop)
+            bits += r.get("bits") or 0
+            errors += (r.get("mismatches") or 0) / 3.0
+            skew = c.get("skew_samples", skew)
+            if not ok or time.time() > t_end - 0.2:
+                break
+            v = self._do(level)
+            self.level = {"t": time.time(), "i": v}
+            self._do(start)
+        return {"step": "data", "period": period, "mbaud": mbaud, "seconds": seconds, "side": side, "interrupted": not ok,
+                "bits": bits, "errors": errors, "ber": (errors / bits) if bits else None, "skew_samples": skew}
 
     # ---- the loop ----
     def run(self):

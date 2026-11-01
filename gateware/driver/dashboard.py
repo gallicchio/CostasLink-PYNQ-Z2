@@ -397,6 +397,16 @@ class Dashboard:
                     r["dem_dbm"] = DEM_REG_DBM + 20.0 * math.log10(a_diff / A_REG_V)
                     if r.get("dsa_db") is not None:
                         r["rx_ant_dbm"] = r["dem_dbm"] - RX_GAIN_DB + r["dsa_db"]
+                else:
+                    # data on the link: the level the self-test read in its last gap of carrier alone (each second)
+                    lv = getattr(getattr(self.server, "selftest", None), "level", None)
+                    if lv and time.time() - lv["t"] < 2.5:
+                        a_g = 2.0 * abs(lv["i"] - (self.i0 + (self.i_delta or 0.0)))
+                        if a_g > 0.004:
+                            r["dem_dbm"] = DEM_REG_DBM + 20.0 * math.log10(a_g / A_REG_V)
+                            r["level_from"] = "gap"
+                            if r.get("dsa_db") is not None:
+                                r["rx_ant_dbm"] = r["dem_dbm"] - RX_GAIN_DB + r["dsa_db"]
             except ImportError:
                 pass
         if st == "locked" and vc is not None:
