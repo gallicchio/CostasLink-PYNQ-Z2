@@ -111,7 +111,7 @@ def main(argv):
                 except Exception as e:                           # noqa: BLE001
                     print("%s offset capture failed: %s" % (time.strftime("%H:%M:%S"), e), flush=True)
             continue
-        if not st.get("on") or now.get("step") not in ("symbols", "data", "pattern") or now.get("since") in done:
+        if not st.get("on") or now.get("step") not in ("symbols", "data", "pattern", "qpsk") or now.get("since") in done:
             continue
         if time.time() - now["since"] < 1.0 or time.time() - now["since"] > now.get("seconds", 10) - 1.0:
             continue
@@ -124,7 +124,7 @@ def main(argv):
         # single symbols: about three across the screen (the aligned view wants the samples close); data: about forty bits
         # the pattern (states half the time, 400 ns apart): about fifty across the screen
         tdiv = (max(1e-6, min(50e-6, 0.3 * period_ns * 1e-9)) if now["step"] == "symbols" else
-                5 * period_ns * 1e-9 if now["step"] == "pattern" else max(1e-7, 4 * period_ns * 1e-9))
+                5 * period_ns * 1e-9 if now["step"] in ("pattern", "qpsk") else max(1e-7, 4 * period_ns * 1e-9))
         b2 = b210_now()
         try:
             leg = (r.get("leg_ref_mv") or 160) / 1000.0

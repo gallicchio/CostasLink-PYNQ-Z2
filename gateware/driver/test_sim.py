@@ -344,6 +344,26 @@ class TestOnRtl(unittest.TestCase):
             bus.knob("skew_q", 0)
             bus.knob("lat", LAT)
 
+    def test_ook_on_the_i_window(self):
+        # ID version 12: on-off keying (bit 0 the carrier, bit 1 its null) checked on CMP_IP with the timing recovered:
+        # clean; the same on CMP_QP (constant here) reads nearly every bit wrong
+        cl = self.cl
+        cl.tx_points(point_code(1, 0), [point_code(1, 0), point_code(0, 0)])
+        cl.tx_timing(period=4)
+        cl.tx_prbs(15)
+        cl.tx_mode("prbs", n=2)
+        cl.tx_go()
+        out = {}
+        for src in ("IP", "QP"):
+            cl.ber_config(15, None, invert=True, enable=True, cdr=True, period=4, src=src)
+            cl.wait_s(3000 * cl.t_clk)
+            cl.ber_config(15, None, invert=True, enable=False, cdr=True, period=4, src=src)
+            out[src] = cl.ber()
+        cl.tx_stop()
+        self.assertGreater(out["IP"]["bits"], 500)
+        self.assertEqual(out["IP"]["mismatches"], 0)
+        self.assertGreater(out["QP"]["mismatches"], out["QP"]["bits"] // 4)
+
     def test_capture_tx_event(self):
         cl = self.cl
         cl.scheme("A3")

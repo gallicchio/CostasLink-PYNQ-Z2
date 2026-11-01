@@ -36,8 +36,9 @@ PLANS = {
     # among them for the bench scope, whose monitor taps smooth over about 0.1 us and close its eye above 5 Mbaud
     "cycle": [{"step": "idle", "seconds": 3.0},
               {"step": "symbols", "seconds": 4.0, "period": 2000, "width": 20},
-              {"step": "pattern", "scheme": "A3", "seconds": 3.0},
-              {"step": "data", "seconds": 8.0, "periods": [50, 10, 5, 4, 2], "gap_every": 1.0}],
+              {"step": "qpsk", "seconds": 3.0},
+              {"step": "data", "seconds": 8.0, "periods": [50, 10, 5, 4, 2], "gap_every": 1.0},
+              {"step": "data", "mod": "ook", "seconds": 4.0, "periods": [50, 10, 4]}],
     # data nearly all the time (the bit errors every second), the level once a round, 25 Mbaud and 2 Mbaud in turn
     "data": [{"step": "idle", "seconds": 2.0}, {"step": "data", "seconds": 28.0, "periods": [4, 50], "gap_every": 1.0}],
     # single symbols nearly all the time, the schemes in turn
@@ -218,6 +219,17 @@ class SelfTest:
             self.last_levels = {"t": time.time(), "scheme": name, "side": res["side"], "leg_v": res["leg_v"],
                                 "centres_v": res["centres_v"], "before_v": res["thresholds_v"], "after_v": None,
                                 "sweeps": res["sweeps"], "b210": self._b210(time.time() - 10, time.time())}
+        return res
+
+    def qpsk(self, st):
+        """QPSK data with the idle as its pilot: A3's corners at random half the time, 2.5 M a second (2 bits each: 5
+        Mb/s), the receiver deciding every symbol against what was sent (the single symbols' engine at 40 clocks a
+        symbol: it re-arms in about 24), so right / wrong / undecided / missed are the symbol errors.  The loop needs the
+        idle between: over the four corners its I x Q averages to nothing (a QPSK loop is rev B's).  The scope's
+        constellation is taken in it (the corners)"""
+        res = self.symbols(dict(st, scheme="A3", period=int(st.get("period", 40)), width=int(st.get("width", 20)),
+                                label="QPSK data (the idle as pilot), every symbol checked"))
+        res["step"] = "qpsk"
         return res
 
     def pattern(self, st):
@@ -414,7 +426,9 @@ class SelfTest:
             self._busy = True
             return count, side, cl.t_clk, cl.t_sample
         count, side, t_clk, t_sample = self._do(start)
-        self._say("symbols", "single symbols of %s, %s: one every %.3g us, %d clocks long, %d of them, %s" % (
+        lab = st.get("label")                                 # the QPSK step's run of the same engine
+        self._say("qpsk" if lab else "symbols", (lab + " (%s, %s): one every %.3g us, %d clocks of it the state, %d of them, %s" if lab else
+                  "single symbols of %s, %s: one every %.3g us, %d clocks long, %d of them, %s") % (
             name, SCHEME_TEXT[name], period * t_clk * 1e6, width, count,
             ("each decided once its pattern has held %.3g ns (at most %.3g ns after it starts)" % (
                 settle * t_sample * 1e9, delay * t_sample * 1e9)) if settle else
@@ -459,8 +473,12 @@ class SelfTest:
 
     def data(self, st):
         ps = st.get("periods") or [st.get("period", 4)]
-        period = int(ps[self._k["period"] % len(ps)])
-        self._k["period"] += 1
+        key = "period_" + st.get("mod", "bpsk")
+        period = int(ps[self._k.get(key, 0) % len(ps)])
+        self._k[key] = self._k.get(key, 0) + 1
+        # the modulation: BPSK (the default: bit 0 the carrier, bit 1 it inverted, checked on the sign of I), or on-off
+        # keying (ID 12: bit 1 the carrier nulled, checked on the I window on the carrier's side, IP or IN)
+        ook = st.get("mod") == "ook"
         seconds = float(st["seconds"])
         # every gap_every seconds a moment of the carrier alone, its level read: the slow I arm reads the level only
         # off an idle carrier, so without the gaps the page has no signal strength while data runs
@@ -469,20 +487,23 @@ class SelfTest:
         losses0 = L.counts["losses"] if L else 0
         side = None
 
+        def check(sd):
+            return dict(invert=True, src="IP" if sd > 0 else "IN") if ook else dict(invert=sd > 0)
+
         def start(cl):
             sd = side if side is not None else self._side(cl)
-            cl.tx_points(point_code(1, 0), [point_code(1, 0), point_code(-1, 0)])
+            cl.tx_points(point_code(1, 0), [point_code(1, 0), point_code(0, 0) if ook else point_code(-1, 0)])
             cl.tx_timing(period=period)
             cl.tx_prbs(15)
             cl.tx_mode("prbs", n=2)
             cl.tx_go()
             self._busy = True
             time.sleep(0.005)
-            cl.ber_config(15, None, invert=sd > 0, enable=True, cdr=True, period=period)
+            cl.ber_config(15, None, enable=True, cdr=True, period=period, **check(sd))
             return sd, cl.t_clk
 
         def stop(cl):
-            cl.ber_config(15, None, invert=side > 0, enable=False, cdr=True, period=period)
+            cl.ber_config(15, None, enable=False, cdr=True, period=period, **check(side))
             r = cl.ber()
             c = cl.cdr_state()
             cl.tx_stop()
@@ -495,9 +516,10 @@ class SelfTest:
             return sum(cl.adc("I") for _ in range(3)) / 3.0
         side, t_clk = self._do(start)
         mbaud = 1e-6 / (period * t_clk)
-        self._say("data", "BPSK PRBS15 data at %.3g Mbaud, the bits checked with the timing recovered, %g s%s" % (
-            mbaud, seconds, ", the carrier's level read each second" if gap_every else ""), period=period, mbaud=mbaud,
-            seconds=seconds)
+        self._say("data", "%s PRBS15 data at %.3g Mbaud, the bits checked with the timing recovered, %g s%s" % (
+            "OOK (on-off keying: the carrier on or nulled)" if ook else "BPSK", mbaud, seconds,
+            ", the carrier's level read each second" if gap_every else ""), period=period, mbaud=mbaud,
+            seconds=seconds, mod="ook" if ook else "bpsk")
         bits, errors, skew, ok = 0, 0.0, None, True
         t_end = time.time() + seconds
         while True:
@@ -513,7 +535,8 @@ class SelfTest:
             v = self._do(level)
             self.level = {"t": time.time(), "i": v}
             self._do(start)
-        return {"step": "data", "period": period, "mbaud": mbaud, "seconds": seconds, "side": side, "interrupted": not ok,
+        return {"step": "data", "mod": "ook" if ook else "bpsk", "period": period, "mbaud": mbaud, "seconds": seconds,
+                "side": side, "interrupted": not ok,
                 "bits": bits, "errors": errors, "ber": (errors / bits) if bits else None, "skew_samples": skew}
 
     # ---- two boards (MONDAY.md 5): one sends, the other checks ----

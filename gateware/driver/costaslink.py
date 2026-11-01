@@ -44,15 +44,15 @@ from board_constants import (RX_GAIN_DB, DEM_REG_DBM, A_REG_V, DSA_POWER_UP_DB, 
                              NTC_B, NTC_R25, NTC_RTOP, NTC_VDD, VR_I_V, VR_Q_V)
 
 R = regmap.BY_NAME
-ID_EXPECTED = 0x434C000B
+ID_EXPECTED = 0x434C000C
 ID_ACCEPTED = (0x434C0003, 0x434C0004, 0x434C0005, 0x434C0006, 0x434C0007, 0x434C0008, 0x434C0009,
-               0x434C000A, 0x434C000B)                # 3: no timing recovery for the
+               0x434C000A, 0x434C000B, 0x434C000C)    # 3: no timing recovery for the
                                                       # BER check (the overlay of 2026-10-29); 4: no interference hold;
                                                       # 5: no one-polarity timing recovery; 6: no hold persistence; 7: no
                                                       # lock monitor, LEDs or scaled release; 8: the monitor reads this
                                                       # board's own symbols as lost; 9: the single symbols' counts do
                                                       # not add up (false decisions in the matrix, no RX_UNDEC);
-                                                      # 10: no settled decision
+                                                      # 10: no settled decision; 11: the bit check on CMP_I only
 BOARDS = {0: "simulation", 1: "PYNQ-Z2", 2: "Icepi Zero"}
 
 # the fast comparators: their bit in the receiver's vectors (RX_IDLE, RX_LUT, RX_LAST), as rx_engine.v
@@ -353,6 +353,7 @@ class CostasLink:
             self.lockmon_own = ident >= 0x434C0009      # it masks this board's own events' Q moves (lockmon.v)
             self.rx_exact = ident >= 0x434C000A         # RX_UNDEC, the matrix only for events with a reference
             self.rx_settle = ident >= 0x434C000B        # RX_TIMING[31:24]: the settled decision
+            self.ber_src = ident >= 0x434C000C          # RX_BER_CFG[31:30]: the comparator checked
         b = self.rd("BUILD")
         self.ser = bits(b, 7, 0) or 1
         self.board = bits(b, 11, 8)
@@ -763,8 +764,13 @@ class CostasLink:
         self.wr("RX_HIST_ADDR", 0)
         return [self.rd("RX_HIST_DATA") for _ in range(bins)]
 
-    def ber_config(self, poly=15, phase=None, invert=False, enable=True, cdr=False, gain=4, period=None, one_pol=None):
+    BER_SRC = {"I": 0, "IP": 1, "IN": 2, "QP": 3}
+
+    def ber_config(self, poly=15, phase=None, invert=False, enable=True, cdr=False, gain=4, period=None, one_pol=None,
+                   src="I"):
         """the PRBS check on CMP_I, sampled `phase` samples into each symbol (TX_PERIOD clocks long).
+        src (ID version 12): the comparator checked and timed: 'I' (the sign of I: BPSK), 'IP' or 'IN' (an I window:
+        on-off keying, the carrier there or nulled), 'QP' (a bit on Q).
         Enabling starts a new count; disabling keeps it, so stop the check before reading a snapshot.
         cdr: the symbol timing recovered from CMP_I's own edges (ID version 4: a transmitter on another clock),
         `phase` then the sampling point's distance from the edge, mid-symbol by default (period x SER / 2,
@@ -774,6 +780,8 @@ class CostasLink:
         between them (BRINGUP_LOG 4.9: random segments at 5.0 GHz)."""
         if cdr and not getattr(self, "cdr", False):
             raise IOError("this overlay has no timing recovery (ID version 4 has)")
+        if src != "I" and not getattr(self, "ber_src", False):
+            raise IOError("this overlay checks CMP_I only (ID version 12 chooses the comparator)")
         if one_pol is None:
             one_pol = bool(cdr) and getattr(self, "cdr_pol", False)
         if one_pol and not getattr(self, "cdr_pol", False):
@@ -785,7 +793,7 @@ class CostasLink:
             else:
                 phase = self.ser // 2
         self.wr("RX_BER_CFG", int(enable) | int(invert) << 1 | self.POLYS[poly] << 4 | (phase & 0xFFFF) << 8
-                | int(bool(cdr)) << 24 | (gain & 0xF) << 25 | int(bool(one_pol)) << 29)
+                | int(bool(cdr)) << 24 | (gain & 0xF) << 25 | int(bool(one_pol)) << 29 | self.BER_SRC[src] << 30)
 
     def ihold(self, on=True, mask=(CMP_QP, CMP_QN), window=256, thresh=8, hold_s=20e-3, max_s=5.0, persist_s=0.0, prop=0):
         """the interference hold (ID version 5, ihold.v): LOOP_HOLD while the comparators in `mask` change in `thresh`

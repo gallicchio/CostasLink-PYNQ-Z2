@@ -91,6 +91,7 @@ module rx_engine #(
     reg        ber_cdr;                         // RX_BER_CFG[24]: the timing recovered (ber_cdr.v)
     reg [3:0]  ber_gain;                        // [28:25]: its loop's gain, 2^-gain
     reg        ber_pol;                         // [29]: it tracks the rising edges and centres on the skew (one_pol)
+    reg [1:0]  ber_src;                         // [31:30], ID 12: the comparator checked: CMP_I, CMP_IP, CMP_IN, CMP_QP
     reg        ih_en;                           // RX_IHOLD_CFG: the interference hold (ihold.v)
     reg [2:0]  ih_wlog;
     reg [7:0]  ih_th;
@@ -342,16 +343,19 @@ module rx_engine #(
     wire [15:0] ph_clk = ber_phase >> LS;
     wire [3:0]  ph_s   = ber_phase[3:0] & SER_M1[3:0];
     /* verilator lint_off UNUSEDSIGNAL */
-    wire [5:0]  v_ph   = vec(fs, {5'd0, ph_s});    // the BER check reads CMP_I only
+    wire [5:0]  v_ph   = vec(fs, {5'd0, ph_s});
     /* verilator lint_on UNUSEDSIGNAL */
-    wire        ber_bit = v_ph[0] ^ ber_inv;
+    // the comparator checked (ID 12): CMP_I (BPSK), CMP_IP or CMP_IN (on-off keying: the carrier there or nulled),
+    // CMP_QP (a bit on Q); the vector is {CMP_IN, CMP_IP, CMP_QN, CMP_QP, CMP_I}
+    wire [2:0]  src_k  = (ber_src == 2'd1) ? 3'd3 : (ber_src == 2'd2) ? 3'd4 : (ber_src == 2'd3) ? 3'd1 : 3'd0;
+    wire        ber_bit = v_ph[src_k] ^ ber_inv;
 
-    // the timing recovery: CMP_I's samples this clock; restarted by every write of RX_BER_CFG
+    // the timing recovery: the checked comparator's samples this clock; restarted by every write of RX_BER_CFG
     wire [SER-1:0] cmp_i_s;
     genvar g;
     generate
         for (g = 0; g < SER; g = g + 1) begin : g_cmpi
-            assign cmp_i_s[g] = fs[6*g];
+            assign cmp_i_s[g] = fs[6*g + src_k];
         end
     endgenerate
     wire               cdr_v, cdr_raw;
@@ -401,7 +405,7 @@ module rx_engine #(
             kmask <= {2*SER{1'b0}}; lo_m <= {SER{1'b1}}; hi_m <= {SER{1'b1}}; window <= 32'd100;
             lut <= 128'd0; slow_exp <= 32'd0; hist_what <= 2'd1; hist_shift <= 4'd0; hist_addr <= 10'd0; cm_addr <= 6'd0;
             ber_en <= 1'b0; ber_inv <= 1'b0; ber_poly <= 3'd2; ber_phase <= 16'd0; clr <= 1'b0;
-            ber_cdr <= 1'b0; ber_gain <= 4'd4; ber_pol <= 1'b0;
+            ber_cdr <= 1'b0; ber_gain <= 4'd4; ber_pol <= 1'b0; ber_src <= 2'd0;
             ih_en <= 1'b0; ih_wlog <= 3'd5; ih_th <= 8'd8; ih_mask <= 5'b00110;
             ih_hold <= CLK_HZ / 50; ih_max <= 5 * CLK_HZ;  // released 20 ms after the last busy window (BRINGUP_LOG 4.8b, 4.9)
             ih_persist <= 16'd0;                           // the first busy window holds, as before ID version 7
@@ -452,7 +456,7 @@ module rx_engine #(
                 R_RX_HIST_ADDR: hist_addr <= bus_wdata[9:0];
                 R_RX_BER_CFG:  begin ber_en <= bus_wdata[0]; ber_inv <= bus_wdata[1]; ber_poly <= bus_wdata[6:4];
                                      ber_phase <= bus_wdata[23:8]; ber_cdr <= bus_wdata[24];
-                                     ber_gain <= bus_wdata[28:25]; ber_pol <= bus_wdata[29]; end
+                                     ber_gain <= bus_wdata[28:25]; ber_pol <= bus_wdata[29]; ber_src <= bus_wdata[31:30]; end
                 R_RX_IHOLD_CFG: begin ih_en <= bus_wdata[0]; ih_wlog <= bus_wdata[3:1]; ih_th <= bus_wdata[15:8];
                                       ih_mask <= bus_wdata[20:16]; end
                 R_RX_IHOLD_HOLD: ih_hold <= bus_wdata;
@@ -663,7 +667,7 @@ module rx_engine #(
         R_RX_HIST_ADDR: bus_rdata = {22'd0, hist_addr};
         R_RX_HIST_DATA: bus_rdata = h_rdata;
         R_RX_EVT_TS:   bus_rdata = evt_ts;
-        R_RX_BER_CFG:  bus_rdata = {2'd0, ber_pol, ber_gain, ber_cdr, ber_phase, 1'b0, ber_poly, 2'd0, ber_inv, ber_en};
+        R_RX_BER_CFG:  bus_rdata = {ber_src, ber_pol, ber_gain, ber_cdr, ber_phase, 1'b0, ber_poly, 2'd0, ber_inv, ber_en};
         R_RX_CDR_ERR:  bus_rdata = {{16{cdr_err[15]}}, cdr_err};
         R_RX_CDR_SUM:  bus_rdata = cdr_sum;
         R_RX_CDR_EDGES: bus_rdata = cdr_edges;

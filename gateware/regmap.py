@@ -122,7 +122,7 @@ REGS = [
                                      "mid-symbol), [28:25] the recovery's gain (2^-gain, 4 by default), [29] it tracks "
                                      "the rising edges alone and samples half RX_CDR_SKEW later (ID version 6: with "
                                      "the rising and falling edges apart, both together have a second, false lock "
-                                     "between them)"),
+                                     "between them), [31:30] ID 12: the comparator checked (0 CMP_I, 1 CMP_IP, 2 CMP_IN, 3 CMP_QP: on-off keying, a bit on Q)"),
     (0x5D, "RX_BER_BITS", "R", "rx", "bits checked"),
     (0x5E, "RX_BER_ERR", "R", "rx", "mismatches (a self-synchronising check counts each bit error three times)"),
     (0x5F, "RX_INFO", "R", "rx", "[7:0] samples a clock (SER), [15:8] fast inputs, [31:16] the clock in MHz"),

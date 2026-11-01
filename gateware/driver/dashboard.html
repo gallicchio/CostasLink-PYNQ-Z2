@@ -166,7 +166,7 @@ const PANELS = [
   zero:r=>r._ber && r._ber.errs === 0 && r._ber.bits > 0,
   fmtv:v=>v.toExponential(1), bands:[[1e-9,1e-6,"good"],[1e-6,1e-3,"warn"],[1e-3,0.5,"bad"]],
   absent:"measured only while a data check runs (a pseudo-random string of bits on the link); the link now carries only its idle carrier",
-  help:"<p>While a data check runs (a pseudo-random string of BPSK bits, PRBS15, sent and checked by the board itself): the share of bits received wrong, each second, on a log scale. A second with no error at all is a green tick along the bottom (its rate is below one in the bits counted that second).</p><p class='k'>Good: under one in a million (1e-6).</p><p><b>About 1/3 or 1/6</b> means not bit errors but a lost or slipped loop (every check fails). <b>Rising with interference:</b> the eye is closing; see the timing and the interference plots.</p>"},
+  help:"<p>While a data check runs (a pseudo-random string of bits, PRBS15, sent and checked by the board itself: BPSK, each bit the carrier or the carrier inverted, read on the sign of I; or on-off keying, each bit the carrier or its null, read on the I window; the line 'What is being done' says which): the share of bits received wrong, each second, on a log scale. A second with no error at all is a green tick along the bottom (its rate is below one in the bits counted that second).</p><p class='k'>Good: under one in a million (1e-6).</p><p><b>About 1/3 or 1/6</b> means not bit errors but a lost or slipped loop (every check fails). <b>Rising with interference:</b> the eye is closing; see the timing and the interference plots.</p>"},
  {id:"symbols", title:"Single symbols: how each was decided", kind:"multi", unit:"a second", lo:0.5, hi:1e7, log:true, ticks:[1, 1e2, 1e4, 1e6],
   series:[[r=>r._rx && r._rx.right || null, "right", "#1f9d6a"], [r=>r._rx && r._rx.wrong || null, "wrong", "#d64545"],
           [r=>r._rx && r._rx.undec || null, "undecided (sent; no state's pattern)", "#8b5a2b"],
@@ -242,7 +242,7 @@ function side(g, x, y, left, col) { g.fillStyle = col; g.beginPath(); g.moveTo(l
 function tri(g, x, y, up, col) { g.fillStyle = col; g.beginPath(); g.moveTo(x - 4, up ? y + 6 : y - 6); g.lineTo(x + 4, up ? y + 6 : y - 6); g.lineTo(x, y); g.fill(); }
 // the notes as purple spans on a time axis
 // what the link is asked to do (its registers) and what the B210 sends (the notes its programs post)
-const ACT = {recovering: ["#7f1d1d", "the automatic recovery at work"], carrier: ["#b8bec8", "the carrier alone"], symbols: ["#e07b00", "single symbols"], pattern: ["#0891b2", "the QPSK pattern (states half the time)"], data: ["#1e3a8a", "data"],
+const ACT = {recovering: ["#7f1d1d", "the automatic recovery at work"], carrier: ["#b8bec8", "the carrier alone"], symbols: ["#e07b00", "single symbols"], pattern: ["#0891b2", "QPSK (the corners, the idle as pilot between)"], data: ["#1e3a8a", "data"],
              rotate: ["#8b5a2b", "rotating (FSK-like)"], off: ["#d4d7dd", "the carrier off"], held: ["#4b5563", "the loop held by a program"]};
 const B2 = {cw_far: ["#0e7490", "a CW MHz away"], cw_near: ["#be185d", "a CW near the carrier"], bursts: ["#a16207", "noise bursts"],
             b210: ["#6b7280", "the B210"]};
@@ -256,9 +256,9 @@ function linkText(r) { const a = linkAct(r); if (!a) return "is not known (no re
   if (a == "recovering") return "is being brought back by the board's automatic recovery";
   if (a == "symbols") return "is sending single symbols" + (s && s.step == "symbols" ? " of " + s.text.replace(/^single symbols of /, "") :
      ", each one of " + r.tx.n + " states, one every " + fmt(r.tx.period / 100) + " us") + (r.rx_on ? "; the receiver decides each and times it" : "");
-  if (a == "pattern") return "is sending " + (s && s.step == "pattern" ? s.text.replace(/^the states/, "the states") : "a scheme's states half the time, " + fmt(100 / r.tx.period) + " M a second") +
-     " (the board's own constellation along each window is swept from such a pattern too)";
-  if (a == "data") return "is streaming BPSK data at " + fmt(100 / r.tx.period) + " Mbaud" + (r.ber_on ? ", every bit checked, the timing recovered" : "");
+  if (a == "pattern") return "is sending " + (s && (s.step == "pattern" || s.step == "qpsk") ? s.text : "a scheme's states half the time, " + fmt(100 / r.tx.period) + " M a second");
+  if (a == "data") return "is streaming " + (s && s.step == "data" ? s.text.replace(/ PRBS15 data/, " data (PRBS15)") :
+     "BPSK data at " + fmt(100 / r.tx.period) + " Mbaud" + (r.ber_on ? ", every bit checked, the timing recovered" : ""));
   if (a == "rotate") return "is rotating the carrier's phase (an FSK-like test)";
   if (a == "off") return "has its carrier switched off"; if (a == "held") return "carries the carrier, the loop held by a program";
   return "carries the carrier alone" + (s && s.step == "idle" ? " (the self-test reads its level)" : ""); }
@@ -521,7 +521,8 @@ function drawScope(p) {
   for (const sgn of [-1, 1]) { g.strokeStyle = C.good; g.lineWidth = 2; g.beginPath(); g.arc(cx + sgn * ref * sc, cy, 0.035 * sc, 0, 7); g.stroke(); }
   // the QPSK pattern's capture when there is a recent one (its corners fill the picture; single symbols are 1 % of a
   // capture), else the latest of any kind
-  const pat = scopeOf("pattern"), c = pat && Date.now() / 1000 - pat.t < 120 ? pat : scopes[scopes.length - 1], x = document.getElementById("x_" + p.id);
+  const qp = scopeOf("qpsk"), pt = scopeOf("pattern"), pat = qp && (!pt || qp.t > pt.t) ? qp : pt;
+  const c = pat && Date.now() / 1000 - pat.t < 120 ? pat : scopes[scopes.length - 1], x = document.getElementById("x_" + p.id);
   document.getElementById("v_" + p.id).textContent = "";
   if (!c) { x.textContent = "no capture yet: a bench test posts the scope's I MON and Q MON here while it sends data or symbols"; return; }
   const i0 = c.i0 != null ? c.i0 : (last && last.i0) || 1.6535, q0 = c.q0 != null ? c.q0 : (last && last.q0) || 1.628;
@@ -529,7 +530,7 @@ function drawScope(p) {
   for (let k = 0; k < c.i.length; k++) { const xx = cx + (c.i[k] - i0) * sc, yy = cy - (c.q[k] - q0) * sc;
     if (xx < 0 || xx > w || yy < 0 || yy > h) continue; g.fillRect(xx - 1.2, yy - 1.2, 2.4, 2.4); }
   // where the scheme's states should land (nominal: the carrier's level on each axis), on this capture's lock point
-  const sch = c.kind == "data" ? {idle: [1, 0], msgs: [[-1, 0]]} : SCHEMES[c.scheme], side = sideOf(c, i0), leg = legOf(c);
+  const sch = dataScheme(c) || SCHEMES[c.scheme], side = sideOf(c, i0), leg = legOf(c);
   if (sch) { g.strokeStyle = C.bad; g.lineWidth = 1.5; g.fillStyle = C.bad; g.font = "11px system-ui"; g.textAlign = "left";
     sch.msgs.forEach((m, k) => { const [a, b] = rxPt(m, side), xx = cx + a * leg * sc, yy = cy - b * leg * sc;
       g.strokeRect(xx - 4, yy - 4, 8, 8); g.fillText(c.kind == "data" ? "bit" : String(k), xx + 6, yy - 5); }); }
@@ -537,7 +538,7 @@ function drawScope(p) {
   x.textContent = (c.link ? scopeSays(c) : "The bench scope, " + dur(Math.max(0, age)) + " ago" + (c.text ? ", during " + c.text : "") + ".") +
     " " + c.i.length + " samples, " + (c.dt_ns ? fmt(c.dt_ns) + " ns apart" : "") + "; circles: the locked idle carrier; red squares: where " +
     (c.kind == "data" ? "the data's two levels" : schemeWords(c.scheme) + "'s states") + " should land: on the idle's circle at the scheme's angles (this board's TX is saturated, so the corners come out at the idle's amplitude, about 0.7 of it on each axis, within 10 degrees). " +
-    (c.kind == "pattern" ? "The dots cluster where the signal sits in each state; the arcs between are its moves from one state to the next. " :
+    (c.kind == "pattern" || c.kind == "qpsk" ? "The dots cluster where the signal sits in each state; the arcs between are its moves from one state to the next. " :
      c.kind == "symbols" ? "Single symbols are about 1 % of the time, so few samples reach them (the QPSK pattern, in each round, fills the picture). " : "") +
     (c.input && c.input.indexOf("50") >= 0 ? "The scope at 50 ohm sees the arm's own edge." : "The scope at 1 M saw I MON and Q MON through 1 k and its cable (about 0.1 us): short symbols did not reach their states.");
 }
@@ -587,7 +588,7 @@ function drawScopeWave(p) {
 // dashed: where I (blue) and Q (orange) should go for the capture's scheme (nominal, the carrier's level), labelled at
 // the right; for data, I's two levels
 function levelLines(g, c, mid, y, L, pw) {
-  const leg = legOf(c), side = sideOf(c, mid), sch = c.kind == "data" ? {idle: [1, 0], msgs: [[-1, 0]]} : SCHEMES[c.scheme];
+  const leg = legOf(c), side = sideOf(c, mid), sch = dataScheme(c) || SCHEMES[c.scheme];
   if (!sch) return;
   const lv = {i: new Map(), q: new Map()};
   [sch.idle, ...sch.msgs].forEach((m, k) => { const [a, b] = rxPt(m, side);
@@ -598,8 +599,11 @@ function levelLines(g, c, mid, y, L, pw) {
     g.fillStyle = col; g.fillText(ax.toUpperCase() + " " + (c.kind == "data" ? "" : names.join(",")), L + pw - 2, y(v * leg) + dy); }
   g.setLineDash([]);
 }
+// data's two states: BPSK the carrier and it inverted, on-off keying the carrier and its null
+function dataScheme(c) { return c.kind != "data" ? null : /OOK/.test(c.link || c.text || "") ? {idle: [1, 0], msgs: [[0, 0]]} : {idle: [1, 0], msgs: [[-1, 0]]}; }
 function levelWords(c) {
-  return c.kind == "data" ? "dashed: I's two levels for the bits (nominal, the carrier's level either side; Q stays at the middle)" :
+  return c.kind == "data" ? (/OOK/.test(c.link || "") ? "dashed: I's two levels for on-off keying (the carrier's level, and the middle for its null; Q stays at the middle)" :
+    "dashed: I's two levels for the bits (the carrier's level either side; Q stays at the middle)") :
     "dashed: where " + schemeWords(c.scheme) + " should put I (blue) and Q (orange) for the idle and each state (on the idle's circle: " +
     "the board's TX is saturated, so a corner reaches about 0.7 of the carrier's level on each axis; the board's own constellation shows the real levels)";
 }

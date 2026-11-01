@@ -174,7 +174,7 @@ module tb_engines;
         repeat (5) @(posedge clk);
 
         // ---- identification ----
-        rd(R_ID, v); expect("ID", v, 32'h434C000B);
+        rd(R_ID, v); expect("ID", v, 32'h434C000C);
         rd(R_BUILD, v); expect("BUILD", v, {16'd100, RP_REG != 0, 3'b111, 4'd0, 8'd4});   // early lane, read-back, fast path
         rd(R_RX_INFO, v); expect("RX_INFO", v, {16'd100, 8'd6, 8'd4});
 
@@ -445,6 +445,22 @@ module tb_engines;
             $display("FAIL CDR: skew %0d / 256 samples with ideal comparators", $signed(v)); errors = errors + 1;
         end else $display("ok   CDR skew with ideal comparators: %0d / 256 sample", $signed(v));
         rd(R_RX_BER_CFG, v); expect("RX_BER_CFG read back (one polarity)", v, {2'd0, 1'b1, 4'd4, 1'b1, 16'd4, 1'b0, 3'd2, 2'd0, 1'b0, 1'b1});
+        // ---- ID 12: the check's comparator chosen (RX_BER_CFG[31:30]).  The PRBS on Q alone, (+a, 0) / (+a, +a): on
+        // CMP_QP, timing recovered, it is clean; on the sign of I (constant here) every bit reads wrong ----
+        wr(R_TX_GO, 32'd2);
+        wr(R_TX_POINTS, {24'd0, 4'b1111, 4'b0111});                 // bit 0 -> (+a, 0), bit 1 -> (+a, +a)
+        wr(R_TX_GO, 32'd1);
+        wr(R_RX_BER_CFG, {2'd3, 1'b0, 4'd4, 1'b1, 16'd4, 1'b0, 3'd2, 2'd0, 1'b0, 1'b1});
+        idle_clocks(2000);
+        rd(R_RX_BER_BITS, v); rd(R_RX_BER_ERR, v2);
+        if (v < 900) begin $display("FAIL BER on CMP_QP: only %0d bits checked", v); errors = errors + 1; end
+        expect("BER on CMP_QP (a bit on Q)", v2, 0);
+        rd(R_RX_BER_CFG, v); expect("RX_BER_CFG read back (CMP_QP)", v[31:30], 2'd3);
+        wr(R_RX_BER_CFG, {2'd0, 1'b0, 4'd4, 1'b1, 16'd4, 1'b0, 3'd2, 2'd0, 1'b0, 1'b1});
+        idle_clocks(2000);
+        rd(R_RX_BER_BITS, v); rd(R_RX_BER_ERR, v2);
+        if (v2 < v / 4) begin $display("FAIL BER on the sign of I with the data on Q: %0d errors in %0d bits", v2, v); errors = errors + 1; end
+        else $display("ok   BER on the sign of I with the data on Q: %0d errors in %0d bits", v2, v);
         wr(R_TX_GO, 32'd2); wr(R_RX_BER_CFG, 32'd0);
 
         // ---- the interference hold (ihold.v): the loop released by CTRL, the PRBS put on Q, (+1, +1) / (+1, -1), so
