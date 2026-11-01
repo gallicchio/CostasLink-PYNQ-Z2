@@ -111,6 +111,8 @@ driver files beside it; since 2026-10-31 12:55 the boot service `costaslink-netb
 | 22:39 | `489d21e` | the history sent from the looks as already encoded (10 minutes 0.18 s, not 2.3 s; the looks fell 1-2 s late while it encoded), /api/scope the latest capture of each kind (0.1 s, not 1.8 s); the B210's notes ended when the radio stops | the page's 'busy: no readings for 3 s' with nothing driving; a capture of a CW's beat captioned 'quiet' | restart |
 | 22:46-22:55 | `2918d0d`, `d8a7a2d` | the demonstration's controls with ?controls=1, the demo order with ?view=demo, the band's power said to include the board's own symbols | Monday | page |
 | 22:57 | `9c106e0` | the self-test's data reads the carrier's level in a 0.1 s gap each second: signal strength and bit errors together | Jason: live strength and BER for the physical demo | restart |
+| 23:07 | `399577d` | 'Unwanted power in Q' and 'Comparator activity' not judged while the board's own symbols or data run | the 23:03 photograph | page |
+| 23:22-23:24 | `ae5a532` | the latency's spread (the self-test's histogram, a new panel); the B210 from its own announcements only | the demo | restart |
 
 ## Before power (2026-10-28)
 
