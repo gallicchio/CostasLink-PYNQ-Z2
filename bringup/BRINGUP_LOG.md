@@ -96,6 +96,8 @@ driver files beside it; since 2026-10-31 12:55 the boot service `costaslink-netb
 | 16:33 | `8e38159` | linkd's modes in words; why a level is not measurable while locked; what the lock monitor (the LEDs) counts | the same | page |
 | 17:32 | `8ffe3c9` | 'Recovering' red on the timeline; no '-0' phase | the same | page |
 | 17:45, 18:12 | `2b6dbac` | the carrier's level from linkd's measured middles and the two lock points' learned offset (it read 0.5-1.3 dB apart by side; 17:45); half-cycle slips listed in 'What happened' (18:12) | `soak.py`'s check 'as_before', 4.21 | restart |
+| 19:46 | `6abc204` | a slip across a holdover listed too (a held loop loses its phase across a gap 30-60 % of the time, REVB 24) | the holdover's test | restart |
+| 20:05 | `ff25cee` | while the holdover holds: the map says held, not locked; the band's power said to include the carrier only while one is there unlocked | the page photographed holding | page |
 
 ## Before power (2026-10-28)
 
