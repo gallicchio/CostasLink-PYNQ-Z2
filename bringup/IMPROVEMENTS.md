@@ -26,7 +26,12 @@ it (a BRINGUP_LOG row, a REVB row).  The version table in BRINGUP_LOG ('What run
 | the status page: state, cause, remedy in words; the levels; the pull-in map, S-curve, constellations; what the link and the B210 are doing; bit errors, single symbols' decisions and latency; the bench scope's I/Q raw, aligned and as an eye; notes; history across restarts; log pruning | `dashboard.py`, `dashboard.html` | 4.15, 4.18-4.21 and the version table's 20 deploys |
 | the link's own self-test: rounds of the carrier's level, single symbols (A3, A1, A2, A1w) and BPSK data at 2-50 Mbaud with the bits checked, beside linkd, which clears its data before recovering | `selftest.py` | 2026-10-31 22:02 |
 | the carrier's level independent of the lock point (the middles from linkd's measurement, the lock points' offset learned) | `dashboard.py` | 4.21 |
-| half-cycle slips detected and listed | `dashboard.py` | 4.21 |
+| half-cycle slips detected and listed (and a recovery between two looks not mistaken for one) | `dashboard.py` | 4.21; 2026-11-01 00:02 |
+| linkd waits for the carrier when the lock monitor sees none (no tries holding the board, no back-off), and starts the moment it returns: a 52.8 s cut recovered 3 s after the carrier came back, where before 11 s of tries and a 5 s back-off made it 7 s | `linkd.py` | soak13 #12, #25 |
+| a dragged loop no longer called locked (20 kHz or more off), the offset from linkd's lock VC (the page learned a dragged VC and showed a false 10 kHz for a minute) | `dashboard.py` | soak12 #26 |
+| the page's history sent from the looks as already encoded (0.18 s, not 2.3 s, for 10 minutes; the looks fell late while it encoded), the scope API the latest capture of each kind, the scope's captures thinned in the log | `dashboard.py` | 2026-10-31 22:39 |
+| the netbus client connects again after a server restart | `netbus.py` | soak12 #12 |
+| the latency's spread per symbol run (a histogram), the level read in gaps of the data, the demonstration's controls and order | `selftest.py`, `dashboard.*` | 2026-10-31 22:57-23:24 |
 
 ### Next (in order of what it would change)
 
