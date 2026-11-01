@@ -67,6 +67,7 @@ class LinkD:
         self.leg_windows = None                          # the leg the windows were last set for
         self.leg_setup = None                            # the leg setup set them for: the most they follow
         self.cal = None                                  # the windows from the states' levels: {side, leg, off, t}
+        self.cal_by_side = {}                            # each lock point's own, kept across the loop's changes of point
         self.mode = "starting"
         self.lost_since = None
         self.next_try = 0.0
@@ -224,6 +225,7 @@ class LinkD:
     def setup(self, cfg):
         cl = self.server.cl
         self.cal = None                                  # new centres: the self-test calibrates again
+        self.cal_by_side = {}
         # one carrier both ways (one board to itself), or two apart (two boards, each receiving the other's TX: the TX
         # synthesizer on tx_mhz, the RX one on rx_mhz; VR, the TX's carrier null, belongs to tx_mhz)
         tx_mhz = float(cfg.get("tx_mhz", cfg.get("mhz")))
@@ -290,6 +292,7 @@ class LinkD:
         self.leg_windows = self.leg_windows or self.leg
         self.cal = {"side": side, "leg": self.leg_windows, "off": {w: thr[w] - self.cen[w] for w in self.cen},
                     "t": time.time()}
+        self.cal_by_side[side] = self.cal
         for w, v in self.thresholds().items():
             cl.threshold(w, min(2.499, max(0.0, v)))
         self.counts["calibrations"] += 1
@@ -307,10 +310,17 @@ class LinkD:
         if not self.cfg or not self.cfg.get("track_windows", True) or not self.cen or not self.leg_windows or not self.leg:
             return
         if self.cal and side is not None and side != self.cal["side"]:
-            # the calibration belongs to the other lock point (the loop slipped or was recovered there): the plain
-            # windows until the self-test calibrates this one
-            self.cal = None
-            self.leg_windows = min(self.leg, self.leg_setup or self.leg)
+            # the calibration belongs to the other lock point (the loop slipped or was recovered there): this point's
+            # own, if it has one near this level, else the plain windows until the self-test calibrates it (the plain
+            # rule's Q sits past the corners' plateau: QPSK lost 4-11 % after each soak recovery that changed point,
+            # 2026-11-01 14:36-14:50, the calibration put off by the soak's announced trials)
+            own = self.cal_by_side.get(side)
+            if own is not None and abs(self.leg - own["leg"]) <= 0.15 * own["leg"]:
+                self.cal = own
+                self.leg_windows = min(self.leg, own["leg"])
+            else:
+                self.cal = None
+                self.leg_windows = min(self.leg, self.leg_setup or self.leg)
             for w, v in self.thresholds().items():
                 cl.threshold(w, min(2.499, max(0.0, v)))
             self.counts["window_moves"] += 1

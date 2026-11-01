@@ -490,9 +490,12 @@ class SelfTest:
             return lt if lt else rule
         return rule
 
-    def _profile_entry(self, kind, name):
-        """the profile's choice for `kind` ('symbols' or 'qpsk') and scheme `name`, if learned near this level"""
-        p = self.profile
+    def _profile_entry(self, kind, name, side):
+        """the profile's choice for `kind` ('symbols' or 'qpsk') and scheme `name` on lock point `side`, if learned there
+        near this level (each lock point keeps its own: learning on one leaves the other's)"""
+        p = ((self.profile or {}).get("by_side") or {}).get(str(side))
+        if p is None and (self.profile or {}).get("side") == side:
+            p = self.profile
         L = getattr(self.server, "linkd", None)
         if not p or L is None or not (L.leg or L.leg_windows):
             return None
@@ -657,6 +660,13 @@ class SelfTest:
         prof["seconds"] = round(time.time() - t_start, 1)
         prof["complete"] = bool(self.on and len(prof["symbols"]) == len(st.get("schemes") or ("A1", "A1w", "A2", "A3")))
         if prof["complete"]:
+            # kept per lock point: the other point's choices (learned when the loop sat there) stay
+            by_side = dict((self.profile or {}).get("by_side") or {})
+            if self.profile and self.profile.get("side") is not None and str(self.profile["side"]) not in by_side:
+                by_side[str(self.profile["side"])] = {k: v for k, v in self.profile.items() if k != "by_side"}
+            by_side[str(side)] = dict(prof)
+            prof["learned_tables"] = dict(((self.profile or {}).get("learned_tables") or {}), **prof["learned_tables"])
+            prof["by_side"] = by_side
             self.profile = prof
             try:
                 with open(LEARN_FILE, "w") as f:
@@ -698,8 +708,7 @@ class SelfTest:
         # the learned profile (the step 'learn') when the step asks for nothing of its own and it was learned on this
         # lock point near this level
         prof = None
-        if st.get("profile", True) and settle is None and delay is None and table is None:
-            prof = self._profile_entry(kind, name)
+        use_profile = st.get("profile", True) and settle is None and delay is None and table is None
         # "windows": "plain" (the A/B): the plain rule's windows for this run alone, the calibration kept and put back
         plain = st.get("windows") == "plain" and L is not None and L.cal is not None and bool(L.cen)
         cal_kept = L.cal if plain else None
@@ -709,8 +718,8 @@ class SelfTest:
         def start(cl):
             nonlocal settle, delay, table, prof
             side = self._side(cl)
-            if prof is not None and prof.get("side") != side:
-                prof = None
+            if use_profile:
+                prof = self._profile_entry(kind, name, side)
             if prof is not None:
                 settle, delay, table = prof["settle"], prof["delay"], prof["lut"]
             if settle is None:
