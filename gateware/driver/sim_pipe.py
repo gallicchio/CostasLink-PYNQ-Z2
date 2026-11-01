@@ -43,6 +43,10 @@ class PipeBus:
                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=self.dir)
         self.cmd = open(self.cmd_path, "w")
         self.rsp = open(self.rsp_path, "r")
+        # both ends open: the pipes need no names now, and a run killed later leaves none in the tree (a named
+        # pipe left behind hangs a backup that reads it)
+        os.unlink(self.cmd_path)
+        os.unlink(self.rsp_path)
 
     def _line(self, text):
         self.cmd.write(text + "\n")
