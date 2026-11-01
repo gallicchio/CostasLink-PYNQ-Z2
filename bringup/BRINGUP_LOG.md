@@ -117,6 +117,8 @@ driver files beside it; since 2026-10-31 12:55 the boot service `costaslink-netb
 | 23:35 | `b57d17f` | the offset from linkd's lock VC; a 'locked' 20 kHz or more off called lost; the page's own lock VC learned only within 5 kHz | soak12 #26: a dragged loop read 'locked', then a false 10 kHz offset for a minute | restart |
 | 23:56 | `9e5da3c` | linkd waits for the carrier (no tries, no back-off) when the lock monitor sees none, and starts the moment it is back | soak13 #12: locked 7 s after the carrier returned | restart |
 | 00:05 | `bb051e1` | a loss linkd mended between two looks breaks the slip detector's run | a recovery listed as a slip, 00:02 | restart |
+| 00:24 | `ee28fd7` | during a recovery the Now line and the lanes' caption say the board is bringing the link back (they gave the last full look's step) | the page photographed in soak13 | page |
+| 00:34 | `7630dbe` | a loss while linkd waits for the carrier says so ('no carrier arrives ... recovers it the moment one does'), not 'started to recover it' | soak13 #25: a 52.8 s cut, 53 looks waiting | restart, between soak13 and soak14 |
 
 ## Before power (2026-10-28)
 
