@@ -314,7 +314,9 @@ class Dashboard:
         # Only locked (a near interferer or a beat adds to it: a CW 20 kHz off read 8 dB high) and while CMP_I is quiet
         # (data averages I towards zero on this slow reading)
         idle = bool(adc) and rate.get("CMP_I", 1e9) < 2000
-        if st in ("lost", "nocarrier", "held", "holdover", "firmware", "starting"):    # not interference: a slip there counts
+        # not interference or the holdover: a slip across those counts (a held loop loses its phase across a gap of the
+        # carrier 30-60 % of the time, REVB 24, and nothing else would show it)
+        if st in ("lost", "nocarrier", "held", "firmware", "starting"):
             self._gap = True
         if st == "locked":
             self.rx_carrier = r.get("rx_mhz")

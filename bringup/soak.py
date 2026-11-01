@@ -4,7 +4,7 @@ against everything that records it (Jason, 2026-10-31: "As you keep doing interf
 else, randomize their parameters and check both the logs and the web dashboard to make sure that everything makes
 sense").
 
-    python3 bringup/soak.py run [--mhz 5200] [--hours 12] [--seed N] [--gap 20 90] [--shots 0.3] [--kinds K ...]
+    python3 bringup/soak.py run [--mhz 5200] [--hours 12] [--seed N] [--gap 20 90] [--shots 0.3] [--kinds K ...] [--holdover]
     python3 bringup/soak.py audit RUN.jsonl          the same checks on an earlier run (unattended.py's or soak.py's)
 
 Each disturbance is drawn at random, its parameters from continuous ranges (the seed in the record):
@@ -26,6 +26,8 @@ then checked:
     carrier's level shown only while locked; no offset while a program holds the loop; after it, the offset back
     within 3 kHz and the levels within 1 dB of before; and what the kind predicts (the rest point for a release,
     'No carrier' for a muted TX, the demodulator's level following the attenuator while RX ANT stays put).
+--holdover turns the signal holdover on for the run (`costaslink.shold`, its defaults; off at reset and in deployment
+so far) and off again at the end: the loop held while the windows see no carrier (BRINGUP_LOG 4.8, 4.21).
 Screenshots of the page (headless Chromium) during a random share of the disturbances and the first of each kind,
 and after any that fails a check.  bringup/data/board_A/soak/.  Only the page (HTTP) and its log (ssh) are read
 between disturbances: nothing touches the board but the disturbances that must.
@@ -268,7 +270,7 @@ def audit(t0, t_end, t_back, note_id=None, kind=None, params=None, marks=None, t
     aft = [s for t, s in sides if t > t_end][-1:]
     out["side"] = {"before": bef[0] if bef else None, "after": aft[0] if aft else None}
     flipped = bool(bef and aft and bef[0] != aft[0])
-    pure = flipped and d["losses"] == 0 and not any(r.get("state") in ("lost", "nocarrier", "held", "holdover")
+    pure = flipped and d["losses"] == 0 and not any(r.get("state") in ("lost", "nocarrier", "held")
                                                     for r in real if t0 - 1 <= r["t"] <= t_fetch)
     out["slip"] = pure
     if pure:
@@ -539,12 +541,31 @@ class Soak:
             "FLAGS: " + "; ".join("%s (%s)" % (c["name"], c["detail"]) for c in bad)) + (" ERROR " + err if err else ""), flush=True)
         return rec
 
-    def run(self, hours, gap, seed, p_shot, kinds):
+    def run(self, hours, gap, seed, p_shot, kinds, holdover=False):
+        if holdover:
+            note = post("/api/note", {"text": "the signal holdover switched on for a soak run (it holds the loop while no carrier is "
+                                      "seen; off in deployment so far)", "kind": "info", "source": "soak.py"})
+            self.board().cl.shold(True)
+            try:
+                return self._run(hours, gap, seed, p_shot, kinds, holdover)
+            finally:
+                try:
+                    self.board().cl.shold(False)
+                except Exception:                                # noqa: BLE001 - the server restarted: a fresh client
+                    self._A = None
+                    self.board().cl.shold(False)
+                print("%s the signal holdover off again" % time.strftime("%H:%M:%S"), flush=True)
+                if note.get("id"):
+                    post("/api/note", {"id": note["id"], "end": True})
+        return self._run(hours, gap, seed, p_shot, kinds, holdover)
+
+    def _run(self, hours, gap, seed, p_shot, kinds, holdover):
         rng = random.Random(seed)
         os.makedirs(OUT, exist_ok=True)
         path = os.path.join(OUT, "soak_%s.jsonl" % time.strftime("%Y%m%d_%H%M%S"))
         with open(path, "a") as f:
-            f.write(json.dumps({"start": time.time(), "mhz": self.mhz, "seed": seed, "gap": gap, "kinds": kinds}) + "\n")
+            f.write(json.dumps({"start": time.time(), "mhz": self.mhz, "seed": seed, "gap": gap, "kinds": kinds,
+                                "holdover": holdover}) + "\n")
         print("record %s, seed %d; waiting for the link locked with linkd active ..." % (path, seed), flush=True)
         t_stop = time.time() + hours * 3600
         n, seen, tally = 0, set(), {}
@@ -606,12 +627,13 @@ def main(argv):
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--shots", type=float, default=0.3)
     ap.add_argument("--kinds", nargs="*", default=list(KINDS))
+    ap.add_argument("--holdover", action="store_true")
     a = ap.parse_args(argv)
     if a.what == "audit":
         audit_file(a.file)
         return
     seed = a.seed if a.seed is not None else int(time.time()) % 100000
-    Soak(a.mhz).run(a.hours, tuple(a.gap), seed, a.shots, a.kinds)
+    Soak(a.mhz).run(a.hours, tuple(a.gap), seed, a.shots, a.kinds, a.holdover)
 
 
 if __name__ == "__main__":
