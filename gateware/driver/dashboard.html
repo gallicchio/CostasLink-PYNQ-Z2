@@ -223,6 +223,7 @@ function linkLabel(r) { const a = linkAct(r), s = r.selftest && r.selftest.on ? 
   if (a == "symbols") return s && s.step == "symbols" ? s.scheme : "";
   if (a == "data") return fmt(100 / r.tx.period) + " Mb/s"; return ""; }
 function linkText(r) { const a = linkAct(r); if (!a) return "is not known (no reading)"; const s = r.selftest && r.selftest.on ? r.selftest.now : null;
+  if (a == "recovering") return "is being brought back by the board's automatic recovery";
   if (a == "symbols") return "is sending single symbols" + (s && s.step == "symbols" ? " of " + s.text.replace(/^single symbols of /, "") :
      ", each one of " + r.tx.n + " states, one every " + fmt(r.tx.period / 100) + " us") + (r.rx_on ? "; the receiver decides each and times it" : "");
   if (a == "data") return "is streaming BPSK data at " + fmt(100 / r.tx.period) + " Mbaud" + (r.ber_on ? ", every bit checked, the timing recovered" : "");
@@ -257,7 +258,8 @@ function drawActivity(p) {
   const fl = fullLast(), bn = b210Now(), st = fl && fl.selftest;
   document.getElementById("v_" + p.id).textContent = "";
   const res = st && st.results ? st.results.filter(x => x.step != "idle" && !x.error).slice(-2) : [];
-  document.getElementById("x_" + p.id).innerHTML = "<b>Now</b>: the link " + linkText(fl) + "; the B210 " + (bn ? bn.text.replace(/^B210: /, "sends ") : "quiet") + "." +
+  const nowR = last && last.busy && last.linkd && last.linkd.mode == "recovering" ? last : fl;
+  document.getElementById("x_" + p.id).innerHTML = "<b>Now</b>: the link " + linkText(nowR) + "; the B210 " + (bn ? bn.text.replace(/^B210: /, "sends ") : "quiet") + "." +
     (res.length ? "<br>The self-test's last: " + res.map(x => x.step == "symbols" ? x.scheme + ": " + x.events + " symbols, " + x.right + " right, " + x.wrong + " wrong, " + x.false + " false, " + x.missed + " missed" + (x.lat_ns ? ", " + fmt(x.lat_ns[1]) + " ns" : "") :
        fmt(x.mbaud) + " Mbaud: " + (x.bits ? x.bits.toExponential(1) + " bits, " + Math.round(x.errors) + " errors" : "no count") + (x.interrupted ? " (interrupted)" : "") +
        (x.b210 && x.b210 != "quiet" ? " (the B210 meanwhile: " + x.b210.replace(/^B210: /, "") + ")" : x.b210 == "quiet" ? " (the B210 quiet)" : "")).join("; ") + "." : "") +
@@ -606,7 +608,8 @@ function status() {
   if (Ld && /setting up/.test(Ld.mode)) { word.textContent = "Setting up"; why.textContent = "The board has just started and is setting the link up by itself."; todo.textContent = "Wait about half a minute."; }
   if (Ld && Ld.mode == "backing off") todo.textContent = "The automatic recovery could not find the carrier and will try again. Check that the other board is on and transmitting, and that the antennas face each other.";
   const bn = b210Now(), stt = fk.selftest;
-  document.getElementById("nowline").innerHTML = "<b>Now:</b> the link " + linkText(fk) + (stt && stt.on ? " (the board's self-test, plan '" + stt.plan + "')" : "") +
+  const nowR = r.busy && r.linkd && r.linkd.mode == "recovering" ? r : fk;          // a recovery's looks are busy
+  document.getElementById("nowline").innerHTML = "<b>Now:</b> the link " + linkText(nowR) + (stt && stt.on ? " (the board's self-test, plan '" + stt.plan + "')" : "") +
     "; <b>the B210</b> " + (bn ? bn.text.replace(/^B210: /, "sends ") : "is quiet") + "." + (fk.own_activity ? " The comparators' activity now is the board's own symbols, not interference." : "");
   const f = fullLast() || r;                    // a busy look has no firmware, carrier or attenuator reading
   document.getElementById("meta").textContent = "firmware " + (f.id || "?") + (f.rx_mhz ? ", carrier " + f.rx_mhz + " MHz" : "") +
