@@ -108,6 +108,7 @@ driver files beside it; since 2026-10-31 12:55 the boot service `costaslink-netb
 | 22:24 | `5432a15` | a loss linkd mended between two looks shown and counted as 'Recovering' (the strip stayed green) | soak11 #7 | page |
 | 22:32 | `9c434e6` | ID 9's overlay with the driver accepting it; the self-test records what the B210 did during each step; the holdover from the page's API | ID 9 | new directory, restart |
 | 22:36 | `e2b1935` | from ID 9 the page no longer overrides the lock monitor during the board's own symbols (its 'lost' then is real interference) | a CW 0.43 MHz away read 'locked' during A2 | restart |
+| 22:39 | `489d21e` | the history sent from the looks as already encoded (10 minutes 0.18 s, not 2.3 s; the looks fell 1-2 s late while it encoded), /api/scope the latest capture of each kind (0.1 s, not 1.8 s); the B210's notes ended when the radio stops | the page's 'busy: no readings for 3 s' with nothing driving; a capture of a CW's beat captioned 'quiet' | restart |
 
 ## Before power (2026-10-28)
 
