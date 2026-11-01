@@ -174,7 +174,7 @@ module tb_engines;
         repeat (5) @(posedge clk);
 
         // ---- identification ----
-        rd(R_ID, v); expect("ID", v, 32'h434C000A);
+        rd(R_ID, v); expect("ID", v, 32'h434C000B);
         rd(R_BUILD, v); expect("BUILD", v, {16'd100, RP_REG != 0, 3'b111, 4'd0, 8'd4});   // early lane, read-back, fast path
         rd(R_RX_INFO, v); expect("RX_INFO", v, {16'd100, 8'd6, 8'd4});
 
@@ -302,6 +302,49 @@ module tb_engines;
             expect("references = paired + missed", n_rf, n_ev - n_fa + n_mi);
         end
         wr(R_RX_WINDOW, 32'd30);
+
+        // ---- ID 11: the settled decision.  The Q comparators 6 samples behind the I ones: messages 2 and 3 flip I
+        // first, and their vector until Q crosses is no state's ----
+        skew_q = 6;
+        wr(R_TX_COUNT, 32'd40);
+        // a fixed 2 samples after the event: messages 2 and 3 undecided (0 and 1 change only Q: decided)
+        wr(R_RX_TIMING, {8'd0, 8'd12, 8'd4, 8'd2});
+        wr(R_RX_CTRL, {12'd0, 1'b1, 3'd0, 11'd0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1});
+        idle_clocks(1100);
+        wr(R_TX_GO, 32'd1);
+        idle_clocks(40 * 60 + 200);
+        rd(R_RX_UNDEC, v); expect("skewed, fixed 2: undecided", v, 20);
+        rd(R_RX_DECIDED, v); expect("skewed, fixed 2: decided", v, 20);
+        // settled, 2 samples held, at most 16 after the event: every one decided, each 7 samples after its reference
+        wr(R_RX_TIMING, {8'd2, 8'd12, 8'd4, 8'd16});
+        rd(R_RX_TIMING, v); expect("RX_TIMING read back", v, {8'd2, 8'd12, 8'd4, 8'd16});
+        wr(R_RX_CTRL, {12'd0, 1'b1, 3'd0, 11'd0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1});
+        idle_clocks(1100);
+        wr(R_TX_GO, 32'd1);
+        idle_clocks(40 * 60 + 200);
+        rd(R_RX_UNDEC, v); expect("skewed, settled: undecided", v, 0);
+        rd(R_RX_DECIDED, v); expect("skewed, settled: decided", v, 40);
+        rd(R_RX_LAT_MIN, v); expect("skewed, settled: latency min", v, LAT + 7);
+        rd(R_RX_LAT_MAX, v); expect("skewed, settled: latency max", v, LAT + 7);
+        cm_sum(8, n_ev); expect("skewed, settled: the matrix", n_ev, 40);
+        // settled, but at most 4 samples: the longest wait comes before Q crosses, so 2 and 3 as the fixed 4
+        wr(R_RX_TIMING, {8'd2, 8'd12, 8'd4, 8'd4});
+        wr(R_RX_CTRL, {12'd0, 1'b1, 3'd0, 11'd0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1});
+        idle_clocks(1100);
+        wr(R_TX_GO, 32'd1);
+        idle_clocks(40 * 60 + 200);
+        rd(R_RX_UNDEC, v); expect("skewed, settled within 4: undecided", v, 20);
+        // no skew: decided on the event's sample's next (2 held), LAT + 1, sooner than the fixed delay
+        skew_q = 0;
+        wr(R_RX_TIMING, {8'd2, 8'd12, 8'd4, 8'd16});
+        wr(R_RX_CTRL, {12'd0, 1'b1, 3'd0, 11'd0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1});
+        idle_clocks(1100);
+        wr(R_TX_GO, 32'd1);
+        idle_clocks(40 * 60 + 200);
+        rd(R_RX_DECIDED, v); expect("settled: decided", v, 40);
+        rd(R_RX_LAT_MIN, v); expect("settled: latency min", v, LAT + 1);
+        rd(R_RX_LAT_MAX, v); expect("settled: latency max", v, LAT + 1);
+        wr(R_RX_TIMING, {8'd0, 8'd12, 8'd4, 8'd2});
 
         // ---- the capture buffer: trigger on a TX event, 64 words after ----
         wr(R_CAP_POST, 32'd64);

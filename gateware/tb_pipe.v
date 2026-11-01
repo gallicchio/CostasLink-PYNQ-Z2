@@ -9,7 +9,7 @@
 //   W aa dddddddd      write the register      -> OK
 //   R aa               read it                 -> dddddddd
 //   C n                run n clocks            -> OK
-//   M knob value       set a model knob (mute, flip, glitch, noise_mask, noise_ppm, lat, lat_slow) -> OK
+//   M knob value       set a model knob (mute, flip, glitch, noise_mask, noise_ppm, skew_q, lat, lat_slow) -> OK
 //   T s n              TRIG_IN rises at sample s of the next clock, high n clocks, then low -> OK (after them)
 //   Q                  end
 // The bus is driven as axil_bridge.v drives it: the data taken four clocks after bus_re.
@@ -111,6 +111,7 @@ module tb_pipe;
                 "glitch":     glitch = n[0];
                 "noise_mask": noise_mask = n[4:0];
                 "noise_ppm":  noise_ppm = n;
+                "skew_q":     skew_q = n;
                 "lat":        lat = n;
                 "lat_slow":   lat_slow = n;
                 default:      $display("tb_pipe: no knob %0s", knob);

@@ -47,6 +47,12 @@ PLANS = {
     # the arms are still crossing (2026-11-01: one corner of four lost 10 % to 'undecided' at the usual 16)
     "a3delay": [{"step": "symbols", "scheme": "A3", "seconds": 4.0, "period": 2000, "width": 20, "delay": d}
                 for d in (8, 12, 16, 20, 24, 32, 48)],
+    # ID 11's settled decision: A3 within 30 ns and A1 within 20 ns, decided once the vector has held k samples (k = 0:
+    # the fixed delay); a k shorter than the arms' skew decides a passing corner wrong, so the table's wrong ones count
+    "settle": [{"step": "symbols", "scheme": "A3", "seconds": 4.0, "period": 2000, "width": 20, "delay": 24, "settle": k}
+               for k in (0, 2, 4, 6, 8, 12, 16)] +
+              [{"step": "symbols", "scheme": "A1", "seconds": 4.0, "period": 2000, "width": 20, "delay": 16, "settle": k}
+               for k in (0, 2, 4, 8)],
 }
 SCHEME_ROTA = ("A3", "A1", "A2", "A1w")
 SCHEME_TEXT = {"A1": "the BPSK flip (1 of 1)", "A1w": "the BPSK flip seen beside the idle (1 of 1)",
@@ -179,6 +185,7 @@ class SelfTest:
         self._k["scheme"] += 1
         period, width, seconds = int(st["period"]), int(st["width"]), float(st["seconds"])
         delay = int(st.get("delay", 16))                     # samples from the first comparator to fire to the decision
+        settle = int(st.get("settle", 0))                    # ID 11: decided once settled this many samples, delay at most
         tx = SCHEMES[name]
         L = getattr(self.server, "linkd", None)
         losses0 = L.counts["losses"] if L else 0
@@ -190,7 +197,8 @@ class SelfTest:
             rx_s = Scheme(name, tx.text, rx.rx_point(tx.idle), [rx.rx_point(m) for m in tx.msgs], [], t=tx.t, t2=tx.t2)
             rx_s.mask, rx_s.use = tx.mask, tx.use
             cl.tx_points(tx.tx_idle(), [point_code(i, q) for i, q in tx.msgs])
-            cl.rx_config(rx_s.idle_vector(), rx_s.mask, rx_s.lut(False), rx_s.slow_exp(), delay=delay, quiet=4, confirm=10,
+            cl.rx_config(rx_s.idle_vector(), rx_s.mask, rx_s.lut(False), rx_s.slow_exp(), delay=delay, settle=settle,
+                         quiet=4, confirm=10,
                          window=max(4, min(100, period - 6)), first_edge=False)     # the window inside the period
             cl.hist_config("ref_to_decision", 0)
             cl.events(period=period, width=width, count=count, n=tx.n, source="prbs" if tx.n > 1 else "count")
@@ -237,7 +245,7 @@ class SelfTest:
                     "lat_hist": hist}
         res = self._do(finish) if not self._aborted else {}
         return dict({"step": "symbols", "scheme": name, "period": period, "width": width, "count": count, "side": side,
-                     "delay": delay, "interrupted": not ok}, **res)
+                     "delay": delay, "settle": settle, "interrupted": not ok}, **res)
 
     def data(self, st):
         ps = st.get("periods") or [st.get("period", 4)]

@@ -76,6 +76,8 @@ module rx_engine #(
     reg [4:0]  idle, mask;
     reg [7:0]  dly, quiet;
     reg [7:0]  cdly;
+    reg [7:0]  settle;                           // ID 11: decide once the vector is one state's and has held this
+                                                 // many samples (RX_TIMING[31:24]; 0: always RX_DELAY after the event)
     reg [31:0] window;
     reg [127:0] lut;                            // 32 entries x {valid, msg[2:0]}
     reg [31:0] slow_exp;
@@ -230,9 +232,41 @@ module rx_engine #(
     // The time stamps are in samples, so this moves no latency; only TRIG_B goes out a clock later.
     reg  [6*SER-1:0] fs_d;
     always @(posedge clk) fs_d <= fs1;
-    wire       dec_now = (st == S_DECIDE) && (remain < SER9);
+    // ID 11, the settled decision (settle = k > 0, the vector mode): the first sample from the event on, and no later
+    // than RX_DELAY after it, whose vector the table holds as one state's and which has held k samples (each corner
+    // decided as soon as it has settled; RX_DELAY the longest wait).  k must outlast the comparators' skew: a corner on
+    // its way can pass through another state's vector (Q crossed, I not yet: the corner that moves Q alone), and a k
+    // shorter than that decides it wrong (test_sim's test_settled_decision).  Sample j of fs_d lies RX_DELAY - remain +
+    // j samples after the event; the vectors' run length carries across clocks in sv_prev / sc_prev.
+    reg  [4:0] sv_prev;
+    reg  [7:0] sc_prev;
+    reg        set_found;
+    reg  [3:0] set_s;
+    reg  [7:0] sc_k, sc_last;
+    reg  [4:0] sv_k, sv_km1;
+    integer    m;                                     // its own loop variable (one per always @*)
+    always @* begin
+        set_found = 1'b0; set_s = 4'd0;
+        sc_k = sc_prev; sv_km1 = sv_prev;
+        for (m = 0; m < SER; m = m + 1) begin
+            sv_k = fs_d[6*m +: 5];
+            sc_k = (sv_k == sv_km1) ? ((sc_k == 8'hFF) ? sc_k : sc_k + 8'd1) : 8'd1;
+            if (!set_found && settle != 8'd0 && !first_mode && lut[{sv_k, 2'b11}] && sc_k >= settle &&
+                {1'b0, dly} + m[8:0] >= remain && m[8:0] <= remain) begin
+                set_found = 1'b1; set_s = m[3:0];
+            end
+            sv_km1 = sv_k;
+        end
+        sc_last = sc_k;
+    end
+    always @(posedge clk) begin
+        sv_prev <= fs_d[6*(SER-1) +: 5];
+        sc_prev <= sc_last;
+    end
+    wire       dec_now = (st == S_DECIDE) && (set_found || remain < SER9);
+    wire [8:0] dec_s   = set_found ? {5'd0, set_s} : remain;
     /* verilator lint_off UNUSEDSIGNAL */
-    wire [5:0] tv      = vec(fs_d, remain);      // bit 5 (TRIG_IN) is not a comparator
+    wire [5:0] tv      = vec(fs_d, dec_s);       // bit 5 (TRIG_IN) is not a comparator
     /* verilator lint_on UNUSEDSIGNAL */
     wire [4:0] dec_vec   = tv[4:0];
     wire [4:0] lut_idx   = first_mode ? fired : dec_vec;
@@ -240,6 +274,7 @@ module rx_engine #(
     // counters behind it closed at 87 MHz on the Icepi in one clock
     reg        dec1;
     reg [4:0]  li_q, dv_q;
+    reg [8:0]  d_q, p1_d, p2_d;                  // the samples from the event to the decision (RX_DELAY, or fewer settled)
     reg [2:0]  row_q;
     wire [3:0] lut_e     = lut[{li_q, 2'b00} +: 4];
 
@@ -335,7 +370,7 @@ module rx_engine #(
     always @(posedge clk) begin
         if (rst) begin
             en <= 1'b0; first_mode <= 1'b0; ref_trig <= 1'b0; single <= 1'b0; cm_row_reg <= 3'd0; cm_row_tx <= 1'b1;
-            idle <= 5'b00001; mask <= 5'b00001; dly <= 8'd4; quiet <= 8'd4; cdly <= 8'd6; window <= 32'd100;
+            idle <= 5'b00001; mask <= 5'b00001; dly <= 8'd4; quiet <= 8'd4; cdly <= 8'd6; settle <= 8'd0; window <= 32'd100;
             lut <= 128'd0; slow_exp <= 32'd0; hist_what <= 2'd1; hist_shift <= 4'd0; hist_addr <= 10'd0; cm_addr <= 6'd0;
             ber_en <= 1'b0; ber_inv <= 1'b0; ber_poly <= 3'd2; ber_phase <= 16'd0; clr <= 1'b0;
             ber_cdr <= 1'b0; ber_gain <= 4'd4; ber_pol <= 1'b0;
@@ -376,7 +411,8 @@ module rx_engine #(
                                      cm_row_reg <= bus_wdata[18:16]; cm_row_tx <= bus_wdata[19];
                                      stopped <= 1'b0; end
                 R_RX_IDLE:     begin idle <= bus_wdata[4:0]; mask <= bus_wdata[12:8]; end
-                R_RX_TIMING:   begin dly <= bus_wdata[7:0]; quiet <= bus_wdata[15:8]; cdly <= bus_wdata[23:16]; end
+                R_RX_TIMING:   begin dly <= bus_wdata[7:0]; quiet <= bus_wdata[15:8]; cdly <= bus_wdata[23:16];
+                                     settle <= bus_wdata[31:24]; end
                 R_RX_WINDOW:   window <= bus_wdata;
                 R_RX_LUT0:     lut[31:0]   <= bus_wdata;
                 R_RX_LUT1:     lut[63:32]  <= bus_wdata;
@@ -471,6 +507,7 @@ module rx_engine #(
             if (dec_now) begin
                 li_q  <= lut_idx;
                 dv_q  <= dec_vec;
+                d_q   <= {1'b0, dly} + dec_s - remain;
                 row_q <= cm_row_tx ? ref_msg : cm_row_reg;
                 ccnt <= cdly; st <= S_CONFIRM;
                 last_cv <= 2'b00;
@@ -490,16 +527,18 @@ module rx_engine #(
                 p1_vec   <= dv_q;
                 p1_fired <= fired;
                 p1_row   <= row_q;
+                p1_d     <= d_q;
             end else p1_v <= 1'b0;
 
             // p1 -> p2: the latencies
             p2_v <= p1_v; p2_hr <= p1_hr; p2_e <= p1_e; p2_vec <= p1_vec; p2_fired <= p1_fired; p2_row <= p1_row;
+            p2_d <= p1_d;
             p2_le <= sat16(p1_tev - p1_tref);
             p2_dt <= sat16(p1_tev - p1_tprev);
             // p2 -> pq: reference -> decision = reference -> event + the decision delay
             pq_v <= p2_v; pq_hr <= p2_hr; pq_e <= p2_e; pq_vec <= p2_vec; pq_fired <= p2_fired; pq_row <= p2_row;
             pq_le <= p2_le; pq_dt <= p2_dt;
-            pq_ld <= sat16({16'd0, p2_le} + {24'd0, dly});
+            pq_ld <= sat16({16'd0, p2_le} + {23'd0, p2_d});
             // pq -> p3: the record, the statistics, the confusion matrix
             p3_v <= pq_v && (pq_hr || hist_what == 2'd2);
             if (pq_v) begin : rec
@@ -563,7 +602,7 @@ module rx_engine #(
         R_RX_CTRL:     bus_rdata = {12'd0, cm_row_tx, cm_row_reg, 11'd0, single, ref_trig, first_mode,
                                     cm_clearing | h_clearing, en};
         R_RX_IDLE:     bus_rdata = {19'd0, mask, 3'd0, idle};
-        R_RX_TIMING:   bus_rdata = {8'd0, cdly, quiet, dly};
+        R_RX_TIMING:   bus_rdata = {settle, cdly, quiet, dly};
         R_RX_WINDOW:   bus_rdata = window;
         R_RX_LUT0:     bus_rdata = lut[31:0];
         R_RX_LUT1:     bus_rdata = lut[63:32];

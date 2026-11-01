@@ -79,7 +79,9 @@ REGS = [
                                   "[18:16] the confusion row when [19] is clear, [19] row = the message this board's TX sent"),
     (0x41, "RX_IDLE", "RW", "rx", "[4:0] the idle comparator vector {CMP_IN CMP_IP CMP_QN CMP_QP CMP_I}, [12:8] the event mask"),
     (0x42, "RX_TIMING", "RW", "rx", "[7:0] decision delay (samples after the event), [15:8] quiet clocks to re-arm, "
-                                    "[23:16] slow-comparator confirm delay (clocks after the decision)"),
+                                    "[23:16] slow-comparator confirm delay (clocks after the decision), [31:24] ID 11: "
+                                    "settle k: decide on the first vector one state's that has held k samples, [7:0] the "
+                                    "longest wait (0: always [7:0] after the event)"),
     (0x43, "RX_WINDOW", "RW", "rx", "clocks after a reference in which an event belongs to it (else false); a reference with "
                                     "no event in it is missed"),
     (0x44, "RX_LUT0", "RW", "rx", "the decoder table, vectors 0-7: entry v in [4v+3:4v] = {valid, message[2:0]}"),

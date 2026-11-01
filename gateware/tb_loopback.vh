@@ -4,7 +4,8 @@
 // `lat` samples later (CMP_I = I > 0; CMP_IP / CMP_IN = I at +a / -a; CMP_QP / CMP_QN = Q at +a / -a), and
 // on the three slow ones `lat_slow` samples later (CMP_I_S = I > 0, CMP_QP_S = Q > 0, CMP_QN_S = Q < 0).
 // Knobs: mute (the comparators stay at the idle vector), flip_next (CMP_I inverted), glitch (CMP_QP high),
-// trig_samp[] (TRIG_IN per sample), noise_mask / noise_ppm (random flips: false events).
+// trig_samp[] (TRIG_IN per sample), noise_mask / noise_ppm (random flips: false events), skew_q (the Q comparators
+// that many samples later than the I ones: a corner's second comparator still crossing, REVB 32).
 //
 // Sample by sample (Prompt 36), so the fast path's combinational loop runs in it: the pins are recorded
 // once a sample (mid-sample), the comparators are driven once a sample on `cmp_async` (a quarter sample in),
@@ -22,6 +23,7 @@
     reg  [4:0] noise_mask = 5'd0;          // comparators that flip at random, each sample with chance noise_ppm / 1e6
     integer    noise_ppm = 0;
     integer    noise_seed = 1;
+    integer    skew_q = 0;
     reg  [4:0] nz;
     integer    k;
     localparam real TS = 10.0 / SER;       // ns a sample (the 100 MHz clock)
@@ -58,7 +60,7 @@
     reg  [4:0] cmp_async;
     reg  [4:0] cmpw [0:SER-1];             // this clock's comparators, one a sample, for cmp_async
     reg  [2:0] slow;
-    reg  [3:0] ptmp;
+    reg  [3:0] ptmp, ptmq;
     integer    s, ks, kh;
 
     // the edge: this clock's words, worked out a quarter sample before it
@@ -89,6 +91,8 @@
             // hist_pt[j] holds the pins at sample (SER-1-j) of the clock now ending; sample s of the next
             // clock is SER + s samples later, so `lat` samples of delay is entry lat - 1 - s
             ptmp = hist_pt[lat - 1 - s];
+            ptmq = hist_pt[lat + skew_q - 1 - s];
+            ptmp = {ptmq[3:2], ptmp[1:0]};                   // Q from skew_q samples further back
             nz = 5'd0;
             if (noise_ppm > 0 && ($unsigned($random(noise_seed)) % 1000000) < noise_ppm) nz = noise_mask;
             fs_early[6*s +: 6] = {trig_samp[s], (mute ? 5'b01001 : (cmps(ptmp) ^ {4'd0, flip_next} | (glitch ? 5'b00010 : 5'd0))) ^ nz};

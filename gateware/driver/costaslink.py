@@ -44,14 +44,15 @@ from board_constants import (RX_GAIN_DB, DEM_REG_DBM, A_REG_V, DSA_POWER_UP_DB, 
                              NTC_B, NTC_R25, NTC_RTOP, NTC_VDD, VR_I_V, VR_Q_V)
 
 R = regmap.BY_NAME
-ID_EXPECTED = 0x434C000A
+ID_EXPECTED = 0x434C000B
 ID_ACCEPTED = (0x434C0003, 0x434C0004, 0x434C0005, 0x434C0006, 0x434C0007, 0x434C0008, 0x434C0009,
-               0x434C000A)                            # 3: no timing recovery for the
+               0x434C000A, 0x434C000B)                # 3: no timing recovery for the
                                                       # BER check (the overlay of 2026-10-29); 4: no interference hold;
                                                       # 5: no one-polarity timing recovery; 6: no hold persistence; 7: no
                                                       # lock monitor, LEDs or scaled release; 8: the monitor reads this
                                                       # board's own symbols as lost; 9: the single symbols' counts do
-                                                      # not add up (false decisions in the matrix, no RX_UNDEC)
+                                                      # not add up (false decisions in the matrix, no RX_UNDEC);
+                                                      # 10: no settled decision
 BOARDS = {0: "simulation", 1: "PYNQ-Z2", 2: "Icepi Zero"}
 
 # the fast comparators: their bit in the receiver's vectors (RX_IDLE, RX_LUT, RX_LAST), as rx_engine.v
@@ -351,6 +352,7 @@ class CostasLink:
             self.lockmon = ident >= 0x434C0008
             self.lockmon_own = ident >= 0x434C0009      # it masks this board's own events' Q moves (lockmon.v)
             self.rx_exact = ident >= 0x434C000A         # RX_UNDEC, the matrix only for events with a reference
+            self.rx_settle = ident >= 0x434C000B        # RX_TIMING[31:24]: the settled decision
         b = self.rd("BUILD")
         self.ser = bits(b, 7, 0) or 1
         self.board = bits(b, 11, 8)
@@ -693,10 +695,14 @@ class CostasLink:
 
     # ---- the receiver (rx_engine.v) ----
     def rx_config(self, idle, mask, lut, slow_exp=0, delay=4, quiet=4, confirm=6, window=100, first_edge=False,
-                  ref="tx", single=False, row="tx", enable=True):
+                  ref="tx", single=False, row="tx", enable=True, settle=0):
         """the decoder: idle vector and event mask (5 bits each, CMP_I ... CMP_IN), the 32-entry table,
         the slow comparators' expectations, the decision delay (samples after the event), the quiet clocks
-        before re-arming, the confirm delay (clocks after the decision), the reference window (clocks)"""
+        before re-arming, the confirm delay (clocks after the decision), the reference window (clocks).
+        settle (ID 11): decide on the first vector that is one state's and has held `settle` samples, `delay` the
+        longest wait (0: always `delay` after the event)"""
+        if settle and not getattr(self, "rx_settle", False):
+            raise IOError("this overlay has no settled decision (ID version 11 has)")
         self.wr("RX_IDLE", (idle & 0x1F) | (mask & 0x1F) << 8)
         w = 0
         for v, e in enumerate(lut):
@@ -704,7 +710,7 @@ class CostasLink:
         for k in range(4):
             self.wr("RX_LUT%d" % k, w >> (32 * k) & 0xFFFFFFFF)
         self.wr("RX_SLOW_EXP", slow_exp)
-        self.wr("RX_TIMING", (delay & 0xFF) | (quiet & 0xFF) << 8 | (confirm & 0xFF) << 16)
+        self.wr("RX_TIMING", (delay & 0xFF) | (quiet & 0xFF) << 8 | (confirm & 0xFF) << 16 | (int(settle) & 0xFF) << 24)
         self.wr("RX_WINDOW", int(window))
         self._rx_ctrl = (int(enable) | int(first_edge) << 2 | int(ref == "trig_in") << 3 | int(single) << 4
                          | ((row & 7) << 16 if row != "tx" else 1 << 19))
@@ -899,7 +905,7 @@ class CostasLink:
         b = self.rd("RX_BER_BITS")
         return {"bits": b, "mismatches": e, "ber": (e / 3.0) / b if b else None}
 
-    def scheme(self, s, first_edge=False, delay=None, quiet=4, confirm=6, window=100, n_tx=None):
+    def scheme(self, s, first_edge=False, delay=None, quiet=4, confirm=6, window=100, n_tx=None, settle=0):
         """the transmitter's points and the receiver's table for scheme s (a Scheme or a SCHEMES key)"""
         if isinstance(s, str):
             s = SCHEMES[s]
@@ -907,7 +913,7 @@ class CostasLink:
         if delay is None:
             delay = 2 * self.ser                     # two clocks of samples into the rise: a start
         self.rx_config(s.idle_vector(), s.mask, s.lut(first_edge), s.slow_exp(), delay=delay, quiet=quiet,
-                       confirm=confirm, window=window, first_edge=first_edge)
+                       confirm=confirm, window=window, first_edge=first_edge, settle=settle)
         self._scheme = s
         return s
 

@@ -233,9 +233,9 @@ class TestOnRtl(unittest.TestCase):
         # the testbench loops the I2C pins back: nothing acknowledges, and the driver says so without hanging
         self.assertFalse(self.cl.i2c_probe(0x48))
 
-    def run_events(self, scheme, count=40, period=100, first_edge=False):
+    def run_events(self, scheme, count=40, period=100, first_edge=False, delay=None, settle=0):
         cl = self.cl
-        cl.scheme(scheme, first_edge=first_edge, window=50)
+        cl.scheme(scheme, first_edge=first_edge, window=50, delay=delay, settle=settle)
         cl.hist_config("ref_to_decision", 0)
         cl.events(period=period, width=20, count=count)
         cl.rx_clear()
@@ -317,6 +317,32 @@ class TestOnRtl(unittest.TestCase):
         self.assertEqual(st["events"], in_cm + st["undec"] + st["false"])
         self.assertGreater(st["false"], 0)
         self.assertGreater(st["undec"] + st["missed"] + sum(cm[a][b] for a in range(8) for b in range(8) if a != b), 0)
+
+    def test_settled_decision(self):
+        # ID version 11.  The driver's A3 fires on its Q windows, and here Q crosses 6 samples before I (lat 20, the Q
+        # comparators at 14): a corner that flips I passes through the vector of the corner that does not, a state of
+        # its own.  Fixed 2 samples after the event: those decided wrong.  Settled on 2 held samples: wrong too (the
+        # passing vector holds 6).  Settled on 8: every one right, and sooner than fixed 16 (k must exceed the skew)
+        cl, bus = self.cl, self.bus
+        bus.knob("lat", 20)
+        bus.knob("skew_q", -6)
+        try:
+            out = {}
+            for name, delay, settle in (("fixed16", 16, 0), ("fixed2", 2, 0), ("settled2", 16, 2), ("settled8", 16, 8)):
+                st = self.run_events("A3", delay=delay, settle=settle)
+                cm = cl.confusion()
+                st["right"] = sum(cm[a][a] for a in range(8))
+                st["wrong"] = sum(cm[a][b] for a in range(8) for b in range(8) if a != b)
+                out[name] = st
+                self.assertEqual((st["refs"], st["events"]), (40, 40))
+            self.assertEqual((out["fixed16"]["right"], out["fixed16"]["wrong"]), (40, 0))
+            self.assertEqual(out["fixed2"]["wrong"], 20)
+            self.assertEqual(out["settled2"]["wrong"], 20)
+            self.assertEqual((out["settled8"]["right"], out["settled8"]["wrong"], out["settled8"]["undec"]), (40, 0, 0))
+            self.assertLess(out["settled8"]["lat_max"], out["fixed16"]["lat_min"])
+        finally:
+            bus.knob("skew_q", 0)
+            bus.knob("lat", LAT)
 
     def test_capture_tx_event(self):
         cl = self.cl
