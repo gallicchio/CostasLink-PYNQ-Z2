@@ -5,7 +5,8 @@
  "psu": {
   "serial": "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9PUYBUD-if00-port0",
   "gpib": null,
-  "out": 1
+  "out": 1,
+  "pynq_out": 2
  },
  "dmm": {
   "serial": "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A95AME9U-if00-port0"

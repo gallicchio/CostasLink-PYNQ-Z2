@@ -49,7 +49,7 @@ def smoke(b, volts=B.SUPPLY_V, amps=B.SMOKE_A, seconds=3.0):
     Cabled: the supply's output (bench_config psu.out) into the board's USB-C (the short USB-A-to-C lead), nothing
     on the header.  The output must start off: a board already powered has had its first power."""
     b.stage = b.stage or "1.1"
-    if b.psu.q("OUTPut?") == "1":
+    if b.board_on():
         raise IOError("the %s's output is already on: psu off first (and say what was connected)" % b.psu.model)
     b.psu_setup(volts, amps)
     rows = []
@@ -83,7 +83,7 @@ def ramp(b, volts=B.SUPPLY_V, limits=(0.10, 0.25, 0.50, 0.80, 1.10, B.SUPPLY_A),
     b.stage = b.stage or "1.1"
     p = b.psu
     out = b.cfg["psu"].get("out", 1)
-    if p.q("OUTPut?") == "1":
+    if b.board_on():
         raise IOError("the %s's output is already on: psu off first (and say what was connected)" % p.model)
     hi = CURRENT_BEFORE_PLL_A[1] * 1.10                       # 1.42 A: the budget's top plus 10 %
     b.psu_setup(volts, limits[0])
@@ -175,7 +175,7 @@ def rails_walk(b, order=("+5V_IN", "+5V_RF", "+3V3_PLL_TX", "+3V3_PLL_RX", "+3V3
 
 def watch(b, hours=3.0, dt_s=10.0, amps_lo=0.6, amps_hi=1.2, pynq_misses=3, det_every=3, v5_lo=4.75, v5_hi=5.30,
           temp_hi=85.0):
-    """Unattended: the supply read every dt_s and the PYNQ's server pinged; the output switched OFF on a current
+    """Unattended: the supply read every dt_s and the PYNQ's server pinged; the board switched OFF on a current
     outside amps_lo-amps_hi, a mode other than CV, an OVP trip, or the PYNQ silent for pynq_misses pings in a row
     (this board powered into an unpowered Zynq drives its clamp diodes: REVB R3).  Every det_every readings the
     board's own detectors too (I2C): OFF on +5V_RF outside v5_lo-v5_hi or the NTC above temp_hi.  All logged."""
@@ -237,7 +237,8 @@ def watch(b, hours=3.0, dt_s=10.0, amps_lo=0.6, amps_hi=1.2, pynq_misses=3, det_
             print("%s %.3f V %.4f A, PYNQ %s" % (time.strftime("%H:%M:%S"), r["volts"], r["amps"], "up" if alive else "silent"),
                   flush=True)
         time.sleep(dt_s)
-    text = ("OUTPUT SWITCHED OFF: " + why) if why else "%.1f h watched, nothing out of bounds; the output left on" % hours
+    off = "THE BOARD SWITCHED OFF (its output at 0 V, the PYNQ left on): " if b.cfg["psu"].get("pynq_out") else "OUTPUT SWITCHED OFF: "
+    text = (off + why) if why else "%.1f h watched, nothing out of bounds; the output left on" % hours
     print(text, flush=True)
     return b.record("verdict", test="watch", ok=why is None, text=text, readings=n)
 

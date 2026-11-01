@@ -45,7 +45,9 @@ DEFAULTS = {
     "pynq_port": 5800,
     # the board's 5 V: an E3632A (0-15 V, 7 A, OVP and OCP) or an E3646A (two outputs, 0-8 V 3 A, OVP only, one
     # output switch for both) on RS-232 (find the port: python3 scpi_link.py identify)
-    "psu": {"serial": None, "gpib": None, "out": 1},
+    # pynq_out: the E3646A's other output powers the PYNQ (since 2026-11-01): the one switch stays on for it, and the
+    # board is switched by its own output's voltage (psu_output); None while the PYNQ has its own adapter
+    "psu": {"serial": None, "gpib": None, "out": 1, "pynq_out": None},
     "dmm": {"serial": None},              # the Fluke 45 on RS-232
     "sa": {"host": "192.168.8.114", "usb": False},     # the Rigol DSA875 (9 kHz-7.5 GHz): N input, +30 dBm max
     "scope": {"host": "192.168.8.203"},  # the Siglent SDS2104X Plus
@@ -58,6 +60,10 @@ SUPPLY_A = 1.5           # the board draws 1.37 A with both synthesizers running
 SMOKE_A = 0.10           # stage 1.1's first limit
 OVP_V = 5.5              # the ADL5375's / ADL5380's VPOS absolute maximum (5.5 V); the E36xxA's OVP is a crowbar
 OTHER_A = 0.02           # an E3646A's other output, sharing the one switch: 0 V and this limit while ours is on
+PYNQ_V = 12.0            # the PYNQ-Z2's DC1 jack: 7-15 V, 12 V recommended, centre positive (when psu.pynq_out is set)
+PYNQ_A = 1.5             # the E3646A's 20 V range tops out at 1.5 A; the PYNQ draws 0.15-0.2 A
+PYNQ_OVP_V = 13.5
+PYNQ_BOOT_S = 240        # psu up: the PYNQ's boot, boot.py's base overlay, then ours (about 90 s on 2026-11-01)
 
 # stage 1.2's rails: their test pads (the bottom-right strip, TP308 GND) and U.FL monitors (through 1 k), from the board file
 RAIL_PADS = {"+5V_IN": ("TP301", "J390"), "+5V_RF": ("TP302", "J391"), "+3V3_PLL_TX": ("TP303", "J394"),
@@ -270,22 +276,32 @@ class Bench:
         return self.log.add(kind, self.stage, **kw)
 
     # ---- the supply ----
+    def board_on(self):
+        """The board's output live: the switch on and, when the PYNQ shares the supply, the board's setting above 0 V."""
+        p = self.psu
+        if p.q("OUTPut?") != "1":
+            return False
+        return not self.cfg["psu"].get("pynq_out") or p.setting(self.cfg["psu"].get("out", 1))["volts"] > 0.05
+
     def psu_setup(self, volts=SUPPLY_V, amps=SUPPLY_A, ovp=OVP_V):
         p = self.psu
         out = self.cfg["psu"].get("out", 1)
+        pynq = self.cfg["psu"].get("pynq_out")
         low = p.ranges[0]                            # E3632A P15V (7 A), E3646A P8V (3 A)
         if p.setting(out)["range"] != low:
-            if p.q("OUTPut?") == "1":                # a range change under load would glitch the board
+            if self.board_on():                      # a range change under load would glitch the board
                 raise IOError("%s output is on in range %s: turn it off (psu off) before setting it up"
                               % (p.model, p.setting(out)["range"]))
             p.set_range(low, out=out)
         for other in range(1, p.outputs + 1):        # the E3646A's one switch turns on both outputs
-            if other != out:
+            if other not in (out, pynq):
                 self.record("psu_other_output", out=other, setting=p.set(0.0, OTHER_A, out=other))
         s = p.set_ovp(ovp, on=True, out=out)
         if getattr(p, "has_ocp", False):
             s = p.set_ocp(on=False)                  # the current limit (CC) is the protection; OCP would trip at 0.1 A
-        s = p.set(volts, amps, out=out)
+        self._board_set = (volts, amps)
+        # with the PYNQ keeping the switch on, an unpowered board waits at 0 V for psu_output(True)
+        s = p.set(volts if not pynq or self.board_on() else 0.0, amps, out=out)
         self.record("psu_setting", model=p.model, idn=p.idn, setting=s)
         return s
 
@@ -297,9 +313,106 @@ class Bench:
         return self.record("psu", label=label, volts=v, amps=i, mode=mode, watts=v * i)
 
     def psu_output(self, on):
-        got = self.psu.output(on)
-        self.record("psu_output", on=bool(on), got=got)
+        """The board's power.  With the PYNQ on the E3646A's other output (psu.pynq_out) the one switch stays on for
+        it and the board's output is switched by its voltage: psu_setup's, or 0 V.  On only with the PYNQ's server
+        up: the board powered into an unpowered Zynq drives its clamp diodes (REVB R3), and the overlay is loaded
+        first so TX_EN is held low from the start (install_service.sh)."""
+        pynq = self.cfg["psu"].get("pynq_out")
+        if not pynq:
+            got = self.psu.output(on)
+            self.record("psu_output", on=bool(on), got=got)
+            return got
+        p, out = self.psu, self.cfg["psu"].get("out", 1)
+        if on:
+            if p.q("OUTPut?") != "1" or p.setting(pynq)["volts"] < PYNQ_V - 1:
+                raise IOError("the PYNQ (output %d) is unpowered: psu up (or psu pynq-on) first" % pynq)
+            if not reachable(self.cfg["pynq_host"], self.cfg["pynq_port"], timeout=3):
+                raise IOError("the PYNQ's server does not answer: the board is powered once its overlay is loaded")
+            if getattr(self, "_board_set", None) is None:
+                raise IOError("psu_setup first: the board's voltage is not set in this process")
+            p.set(*self._board_set, out=out)
+        else:
+            p.select(out)
+            p.w("VOLTage 0")
+        got = self.board_on()
+        self.record("psu_output", on=bool(on), got=got, out=out, pynq_left_on=True)
         return got
+
+    def psu_pynq(self, on, volts=PYNQ_V, amps=PYNQ_A, ovp=PYNQ_OVP_V):
+        """The PYNQ's output (psu.pynq_out).  On: the board's output at 0 V, the PYNQ's set up (20 V range, OVP) at
+        1.5 V and 0.1 A first (a plug reversed conducts there; the right way round draws about 1 mA), the switch on,
+        then 12 V, its draw checked (CV, 0.03-1.2 A).  Off: the board's output to 0 V first, then the switch (both).
+        Anything out of bounds switches both off and raises."""
+        p, out, pynq = self.psu, self.cfg["psu"].get("out", 1), self.cfg["psu"].get("pynq_out")
+        if not pynq:
+            raise IOError("bench_config.json: psu.pynq_out is not set (the PYNQ is on its own adapter)")
+
+        def check(label, ok):
+            v, i = p.measure(out=pynq)
+            m = p.mode(out=pynq)
+            r = self.record("psu", label=label, out=pynq, volts=v, amps=i, mode=m, watts=v * i)
+            if not ok(v, i, m):
+                self.psu_pynq(False)
+                raise IOError("the PYNQ's output %s: %.3f V %.4f A %s; both outputs switched off" % (label, v, i, m))
+            return r
+
+        if not on:
+            p.select(out)
+            p.w("VOLTage 0")
+            time.sleep(1.0)
+            got = p.output(False)
+            self.record("psu_pynq", on=False, got=got)
+            return got
+        if p.q("OUTPut?") == "1" and p.setting(pynq)["volts"] >= volts - 0.05:
+            return check("already on", lambda v, i, m: True)
+        p.select(out)
+        p.w("VOLTage 0")
+        p.set(0.0, 0.10, out=pynq)
+        if p.setting(pynq)["range"] != p.ranges[1]:
+            p.set_range(p.ranges[1], out=pynq)
+        p.set_ovp(ovp, on=True, out=pynq)
+        p.set(1.5, 0.10, out=pynq)
+        p.output(True)
+        time.sleep(1.5)
+        check("polarity, 1.5 V", lambda v, i, m: m == "CV" and i < 0.05)
+        p.set(volts, amps, out=pynq)
+        time.sleep(2.0)
+        r = check("on", lambda v, i, m: m == "CV" and 0.03 <= i <= 1.2 and abs(v - volts) < 0.2)
+        self.record("psu_pynq", on=True, setting=p.setting(pynq))
+        return r
+
+    def pynq_ready(self, timeout_s=PYNQ_BOOT_S):
+        """Wait for the PYNQ's server with our overlay loaded (its ID one the driver accepts), up to timeout_s."""
+        import costaslink
+        t_end = time.time() + timeout_s
+        while time.time() < t_end:
+            if reachable(self.cfg["pynq_host"], self.cfg["pynq_port"], timeout=3):
+                try:
+                    ident = self.cl.rd("ID")
+                    if ident in costaslink.ID_ACCEPTED:
+                        return ident
+                except Exception:                                       # noqa: BLE001 - the server still starting
+                    pass
+                old = self._open.pop("cl", None)
+                if old is not None:
+                    try:
+                        old.close()
+                    except Exception:                                   # noqa: BLE001
+                        pass
+            time.sleep(5)
+        return None
+
+    def psu_up(self, volts=SUPPLY_V, amps=SUPPLY_A):
+        """The cold start in its order: the PYNQ, its overlay (the server answering with our ID), then the board."""
+        self.psu_pynq(True)
+        ident = self.pynq_ready()
+        if ident is None:
+            raise IOError("the PYNQ's server did not answer with our overlay in %d s: the board left off" % PYNQ_BOOT_S)
+        self.note("the PYNQ's server up, ID 0x%08X: the board powered" % ident)
+        self.psu_setup(volts, amps)
+        self.psu_output(True)
+        time.sleep(1.0)
+        return self.psu_read("up")
 
     # ---- the meter ----
     def dmm_read(self, label, settle=2, n=3, supply_v=None):
@@ -401,7 +514,9 @@ def main():
     n = sub.add_parser("note")
     n.add_argument("text")
     p = sub.add_parser("psu")
-    p.add_argument("action", choices=["smoke", "on", "off", "read", "log", "setup"])
+    p.add_argument("action", choices=["smoke", "on", "off", "read", "log", "setup", "up", "pynq-on", "pynq-off", "cycle"],
+                   help="with the PYNQ on the supply (psu.pynq_out): up = the PYNQ, its overlay, then the board; "
+                        "pynq-off = the board, then both; cycle = pynq-off, 10 s, up; off = the board only")
     p.add_argument("--volts", type=float, default=SUPPLY_V)
     p.add_argument("--amps", type=float, default=SUPPLY_A)
     p.add_argument("--n", type=int, default=1)
@@ -447,7 +562,17 @@ def main():
                 print(_fmt(bench.psu_read("on")))
             elif a.action == "off":
                 bench.psu_output(False)
-                print("output off")
+                print("the board's output at 0 V (the PYNQ left on)" if bench.cfg["psu"].get("pynq_out") else "output off")
+            elif a.action == "pynq-on":
+                print(_fmt(bench.psu_pynq(True)))
+            elif a.action == "pynq-off":
+                bench.psu_pynq(False)
+                print("the board's output at 0 V, then the switch off: both off")
+            elif a.action in ("up", "cycle"):
+                if a.action == "cycle":
+                    bench.psu_pynq(False)
+                    time.sleep(10.0)
+                print(_fmt(bench.psu_up(a.volts, a.amps)))
             elif a.action == "read":
                 for k in range(a.n):
                     print(_fmt(bench.psu_read()))
