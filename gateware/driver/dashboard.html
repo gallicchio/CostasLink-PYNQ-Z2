@@ -84,6 +84,9 @@ const STATES = {
   // stretches): with the carrier still there the board's lock monitor reads busy, not 'no carrier' (soak9, 21:02)
   holdover_if: ["Interference: holding", "warn", "Something strong close to the carrier's frequency is in the band; the loop is held at the carrier's frequency until it goes, so the link picks up again at once.",
                 "If it lasts, look for a nearby transmitter (a WiFi access point, a phone, a microwave oven) and move it or the antennas."],
+  // a loss that linkd caught and mended between two of the page's looks: every look meanwhile was busy (soak11 #7, a
+  // CW 19 MHz away dragged the loop off and linkd had it back in 4 s: the strip stayed green, '0 losses')
+  recovering:  ["Recovering", "bad", "The link was lost; the board is bringing it back by itself.", "Wait a few seconds."],
   held:        ["Held by a test", "warn", "A test program, or a person, has frozen the loop on purpose.", "Nothing to do: it is part of a test."],
   unsettled:   ["Settling", "warn", "The readings disagree for the moment: the receiver may be acquiring the carrier, or interference is passing.", "Wait a few seconds."],
   starting:    ["Starting", "warn", "The status page has just started.", "Wait a moment."],
@@ -194,11 +197,11 @@ function side(g, x, y, left, col) { g.fillStyle = col; g.beginPath(); g.moveTo(l
 function tri(g, x, y, up, col) { g.fillStyle = col; g.beginPath(); g.moveTo(x - 4, up ? y + 6 : y - 6); g.lineTo(x + 4, up ? y + 6 : y - 6); g.lineTo(x, y); g.fill(); }
 // the notes as purple spans on a time axis
 // what the link is asked to do (its registers) and what the B210 sends (the notes its programs post)
-const ACT = {carrier: ["#b8bec8", "the carrier alone"], symbols: ["#e07b00", "single symbols"], data: ["#1e3a8a", "data"],
+const ACT = {recovering: ["#7f1d1d", "the automatic recovery at work"], carrier: ["#b8bec8", "the carrier alone"], symbols: ["#e07b00", "single symbols"], data: ["#1e3a8a", "data"],
              rotate: ["#8b5a2b", "rotating (FSK-like)"], off: ["#d4d7dd", "the carrier off"], held: ["#4b5563", "the loop held by a program"]};
 const B2 = {cw_far: ["#0e7490", "a CW MHz away"], cw_near: ["#be185d", "a CW near the carrier"], bursts: ["#a16207", "noise bursts"],
             b210: ["#6b7280", "the B210"]};
-function linkAct(r) { if (!r || !r.tx || !r.ctrl) return null; if (r.ctrl.tx_dis) return "off"; if (r.ctrl.loop_hold) return "held";
+function linkAct(r) { if (r && r.busy && r.linkd && r.linkd.mode == "recovering") return "recovering"; if (!r || !r.tx || !r.ctrl) return null; if (r.ctrl.tx_dis) return "off"; if (r.ctrl.loop_hold) return "held";
   const m = r.tx.mode, run = r.tx.running; return run && (m == "events" || m == "trig_in") ? "symbols" : run && m == "prbs" ? "data" : run && m == "rotate" ? "rotate" : "carrier"; }
 function linkLabel(r) { const a = linkAct(r), s = r.selftest && r.selftest.on ? r.selftest.now : null;
   if (a == "symbols") return s && s.step == "symbols" ? s.scheme : "1 of " + r.tx.n;
@@ -224,7 +227,7 @@ function drawActivity(p) {
   for (const [y0, hh] of lanes) { g.fillStyle = "#f4f5f7"; g.fillRect(L, y0, pw, hh); }
   // the link: one segment per look, labelled where a run starts
   let prev = null, lastLab = null, labX = -1e9;
-  for (const r of hist) { if (r.t < t0 - 2) { prev = r; continue; } const a = r.busy ? (prev && linkAct(prev)) : linkAct(r); if (!a) { prev = r; continue; }
+  for (const r of hist) { if (r.t < t0 - 2) { prev = r; continue; } const a = linkAct(r) == "recovering" ? "recovering" : r.busy ? (prev && linkAct(prev)) : linkAct(r); if (!a) { prev = r; continue; }
     const xa = prev ? Math.max(x(prev.t), L) : x(r.t); if (prev && r.t - prev.t > Math.max(10, span / 150)) { prev = r; continue; }
     g.fillStyle = ACT[a][0]; g.fillRect(xa, lanes[0][0], Math.max(1, x(r.t) - xa + 0.5), lanes[0][1]);
     const lab = r.busy ? null : linkLabel(r); if (lab && lab != lastLab && x(r.t) - labX > 46) { g.fillStyle = a == "data" ? "#fff" : "#16181d"; g.font = "11px system-ui"; g.fillText(lab, xa + 2, lanes[0][0] + lanes[0][1] / 2 + 4); labX = x(r.t); g.font = "12px system-ui"; }
@@ -325,13 +328,14 @@ function drawTimeline(p) {
     g.fillStyle = n.kind == "intervention" ? C.note : "rgba(124,58,237,.45)"; g.fillRect(xa, 22, Math.max(3, x(b) - xa), 12); }
   g.fillStyle = C.ink2; g.font = "11px system-ui"; g.textAlign = "left"; g.fillText("announced", 2, 32); g.fillText("state", 2, 40 + (h - 80) / 2 + 4);
   let prev = null;
-  for (const r of hist) { if (r.t < t0) { prev = r; continue; } const s = r.busy ? (prev && prev.state) : r.state;
+  const recov = r => r.busy && r.linkd && r.linkd.mode == "recovering";
+  for (const r of hist) { if (r.t < t0) { prev = r; continue; } const s = recov(r) ? "recovering" : r.busy ? (prev && prev.state) : r.state;
     const a = prev ? Math.max(x(prev.t), L) : x(r.t);
     if (prev && r.t - prev.t > Math.max(10, span / 150)) { prev = r; continue; }      // no reading: leave the grey
     g.fillStyle = C[stateColour(s || "unsettled")]; g.fillRect(a, 40, Math.max(1, x(r.t) - a + 0.5), h - 80);
     prev = r.busy ? Object.assign({}, prev || r, {t: r.t}) : r; }
   g.fillStyle = C.ink2; g.font = "12px system-ui"; g.textAlign = "left"; g.fillText(spanLabel(), L + 2, h - 22); g.textAlign = "right"; g.fillText("now", w - R, h - 22);
-  let lost = 0, said = 0, run = null; for (const r of hist) { if (r.t < t0 || r.busy) continue; const bad = r.state == "lost" || r.state == "nocarrier";
+  let lost = 0, said = 0, run = null; for (const r of hist) { if (r.t < t0 || (r.busy && !recov(r))) continue; const bad = r.state == "lost" || r.state == "nocarrier" || recov(r);
     if (bad && !run) { lost++; if (notes.some(n => n.kind == "intervention" && n.t_start - 2 <= r.t && r.t <= (n.t_end || now) + 10)) said++; } run = bad; }
   const s = last && !last.busy ? last.state : null, e = document.getElementById("v_" + p.id);
   const rec = !s && last && last.linkd && last.linkd.mode == "recovering";
