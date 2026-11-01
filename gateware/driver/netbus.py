@@ -211,22 +211,40 @@ class NetBus:
     """the connection: request() for any op, and read / write so it is a bus as well"""
 
     def __init__(self, host, port=PORT, timeout=120.0):
-        self.host, self.port = host, port
-        self.sock = socket.create_connection((host, port), timeout=timeout)
-        self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        self.f = self.sock.makefile("rwb")
+        self.host, self.port, self.timeout = host, port, timeout
         self.lock = threading.Lock()
         self.nodrive = False             # True: these requests stand in for the world and do not pause linkd
+        self._connect()
+
+    def _connect(self):
+        self.sock = socket.create_connection((self.host, self.port), timeout=self.timeout)
+        self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        self.f = self.sock.makefile("rwb")
+
+    def _exchange(self, req, timeout):
+        if timeout is not None:
+            self.sock.settimeout(timeout)
+        self.f.write((json.dumps(req, default=_jsonable) + "\n").encode())
+        self.f.flush()
+        return self.f.readline()
 
     def request(self, req, timeout=None):
         if self.nodrive:
             req = dict(req, nodrive=True)
         with self.lock:
-            if timeout is not None:
-                self.sock.settimeout(timeout)
-            self.f.write((json.dumps(req, default=_jsonable) + "\n").encode())
-            self.f.flush()
-            line = self.f.readline()
+            # a server restarted since the last request (a new driver, a new overlay) closed this connection: once,
+            # connect again and send it again (soak.py lost a trial to it, 2026-10-31 23:08)
+            try:
+                line = self._exchange(req, timeout)
+            except (OSError, ValueError):
+                line = b""
+            if not line:
+                try:
+                    self.close()
+                except OSError:
+                    pass
+                self._connect()
+                line = self._exchange(req, timeout)
         if not line:
             raise IOError("the board's server closed the connection")
         rep = json.loads(line)
