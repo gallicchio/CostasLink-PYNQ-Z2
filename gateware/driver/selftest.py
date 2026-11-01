@@ -84,13 +84,15 @@ class _Frame(Scheme):
 class SelfTest:
     def __init__(self, server, poll_s=0.2):
         self.server, self.poll_s = server, poll_s
-        self.on, self.plan_name = False, "cycle"
+        self.on, self.plan_name, self.calibrate_on = False, "cycle", True
         try:
             with open(STATE_FILE) as f:
                 d = json.load(f)
             self.on, self.plan_name = bool(d.get("on")), d.get("plan", "cycle")
+            self.calibrate_on = bool(d.get("calibrate", True))
         except (OSError, ValueError):
             pass
+        self._cal_tried = 0.0
         self.now = {"step": "off", "since": time.time(), "text": "off"}
         self.results = collections.deque(maxlen=30)
         self._k = {"scheme": 0, "period": 0}
@@ -111,7 +113,7 @@ class SelfTest:
         return out
 
     def set(self, d):
-        """POST /api/selftest: {"on": bool, "plan": name, "holdover": bool}"""
+        """POST /api/selftest: {"on": bool, "plan": name, "holdover": bool, "calibrate": bool}"""
         if "holdover" in d:                              # from inside the server: linkd is not paused by it
             self._do(lambda cl: cl.shold(bool(d["holdover"])))
         if "plan" in d:
@@ -120,9 +122,11 @@ class SelfTest:
             self.plan_name = d["plan"]
         if "on" in d:
             self.on = bool(d["on"])
+        if "calibrate" in d:                             # the windows from the states' levels (on by default)
+            self.calibrate_on = bool(d["calibrate"])
         try:
             with open(STATE_FILE, "w") as f:
-                json.dump({"on": self.on, "plan": self.plan_name}, f)
+                json.dump({"on": self.on, "plan": self.plan_name, "calibrate": self.calibrate_on}, f)
         except OSError:
             pass
         return self.state(full=True)
@@ -202,16 +206,18 @@ class SelfTest:
         while it was held, and its readings were rotated.)  The sweep a few dozen steps at a time under the lock, so
         the page's looks go on; linkd's windows put back after"""
         name = st.get("scheme", "A3")
+        res = self._sweep_levels(name, float(st.get("span_v", 0.30)), float(st.get("step_v", 0.004)))
+        res["step"] = "levels"
+        return res
+
+    def _sweep_levels(self, name, span=0.30, step_v=0.004):
         tx = SCHEMES[name]
         L = getattr(self.server, "linkd", None)
         if L is None or not L.cen or not L.leg_windows:
-            return {"step": "levels", "scheme": name, "error": "linkd has not set the windows up"}
-        frac = float((L.cfg or {}).get("window_frac", 0.5))
-        thr = {w: L.cen[w] + frac * L.leg_windows for w in L.cen}
+            return {"scheme": name, "error": "linkd has not set the windows up"}
+        thr = L.thresholds()
         names = {"QP": "CMP_QP", "QN": "CMP_QN", "IP": "CMP_IP", "IN": "CMP_IN"}
-        span, step_v = float(st.get("span_v", 0.30)), float(st.get("step_v", 0.004))
-        L_ = getattr(self.server, "linkd", None)
-        losses0 = L_.counts["losses"] if L_ else 0
+        losses0 = L.counts["losses"]
 
         def start(cl):
             side = self._side(cl)
@@ -240,7 +246,7 @@ class SelfTest:
         side = self._do(start)
         self._say("levels", "the states of %s sent at random half the time, each window's threshold swept: where every state "
                   "sits against every threshold" % name, scheme=name)
-        res = {"step": "levels", "scheme": name, "side": side, "leg_v": round(L.leg_windows, 4),
+        res = {"scheme": name, "side": side, "leg_v": round(L.leg_windows, 4),
                "thresholds_v": {w: round(v, 4) for w, v in thr.items()}, "centres_v": {w: round(v, 4) for w, v in L.cen.items()},
                "sweeps": {}}
         ok = True
@@ -250,7 +256,7 @@ class SelfTest:
                 vs = [L.cen[w] - span + k * step_v for k in range(n)]
                 pts = []
                 for k in range(0, n, 25):
-                    if self._aborted or (L_ is not None and L_.counts["losses"] != losses0):
+                    if self._aborted or L.counts["losses"] != losses0:
                         ok = False
                         break
                     pts += self._do(lambda cl: sweep(cl, w, vs[k:k + 25]))
@@ -261,6 +267,70 @@ class SelfTest:
             self._do(finish)
         res["interrupted"] = not ok
         return res
+
+    def calibrate(self, st=None):
+        """the windows from the states' own levels (2026-11-01: on one lock point an A3 corner sat 2 mV past its window
+        and the Q states 12 mV, the rule 'half the I leg from each comparator's centre' assuming a square constellation
+        the TX does not make: its Q excursion about 0.6 of its I, one I-flipping corner 85 mV where the other is 150).
+        A3's corners and A1's flip swept (`_sweep_levels`); for each window, the share of time its comparator should be
+        high (the receiver's own model of each state, this lock point's frame) marks the plateau of the duty between the
+        states that should read low and those that should read high, and the threshold goes in its middle, at least a
+        quarter of the leg out from the centre (with no carrier the windows stay dark: the lock monitor's 'no carrier').
+        linkd keeps them, scaled down with a weaker carrier; done again on the other lock point or a level 15 % away"""
+        L = getattr(self.server, "linkd", None)
+        if L is None or not L.cen or not L.leg_windows:
+            return {"step": "calibrate", "error": "linkd has not set the windows up"}
+        before = {w: round(v, 4) for w, v in L.thresholds().items()}
+        sw = {name: self._sweep_levels(name) for name in ("A3", "A1")}
+        if any(r.get("interrupted") or r.get("error") for r in sw.values()):
+            return {"step": "calibrate", "interrupted": True, "before_v": before}
+        side, leg = sw["A3"]["side"], L.leg_windows
+        k_of = {"QP": 1, "QN": 2, "IP": 3, "IN": 4}
+        new, plateaus = {}, {}
+        for w in ("QP", "QN", "IP", "IN"):
+            lo, hi = -1e9, 1e9
+            for name, r in sw.items():
+                tx = SCHEMES[name]
+                fr = _Frame(tx, side)
+                hs = [fr.fast(fr.rx_point(tx.idle))[k_of[w]]] + [fr.fast(fr.rx_point(m))[k_of[w]] for m in tx.msgs]
+                if None in hs:
+                    continue
+                share = 0.5 * hs[0] + 0.5 * sum(hs[1:]) / float(len(hs) - 1)
+                pts = r["sweeps"].get(w) or []
+                best, run = None, []
+                for v, d in pts + [[None, None]]:
+                    if v is not None and abs(d - share) < 0.04:
+                        run.append(v)
+                        continue
+                    if len(run) >= 3 and (best is None or run[-1] - run[0] > best[1] - best[0]):
+                        best = (run[0], run[-1])
+                    run = []
+                if best is None:
+                    lo, hi = None, None
+                    break
+                plateaus["%s %s" % (name, w)] = [round(best[0], 4), round(best[1], 4), round(share, 3)]
+                lo, hi = max(lo, best[0]), min(hi, best[1])
+            if lo is None or hi - lo < 0.010:
+                continue
+            new[w] = max(0.5 * (lo + hi), L.cen[w] + 0.25 * leg)
+        res = {"step": "calibrate", "side": side, "leg_v": round(leg, 4), "before_v": before, "plateaus_v": plateaus,
+               "after_v": {w: round(v, 4) for w, v in new.items()}}
+        if len(new) == 4:
+            self._do(lambda cl: L.set_windows(cl, new, side))
+        else:
+            res["error"] = "no plateau for %s: the windows left as they were" % ", ".join(w for w in k_of if w not in new)
+        return res
+
+    def _need_calibration(self):
+        """the windows calibrated on this lock point and near this level (and not tried within the last minute)"""
+        L = getattr(self.server, "linkd", None)
+        if L is None or not L.cen or not L.leg_windows or not self.calibrate_on:
+            return False
+        if time.time() - self._cal_tried < 60.0:
+            return False
+        side = self._do(self._side)
+        return (L.cal is None or L.cal["side"] != side or
+                abs((L.leg or L.leg_windows) - L.cal["leg"]) > 0.15 * L.cal["leg"])
 
     def symbols(self, st):
         name = st.get("scheme") or SCHEME_ROTA[self._k["scheme"] % len(SCHEME_ROTA)]
@@ -493,8 +563,12 @@ class SelfTest:
                 time.sleep(0.5)
                 continue
             plan = PLANS.get(self.plan_name, PLANS["cycle"])
-            st = plan[k % len(plan)]
-            k += 1
+            if self._need_calibration():                             # the windows from the states' levels first
+                st = {"step": "calibrate"}
+                self._cal_tried = time.time()
+            else:
+                st = plan[k % len(plan)]
+                k += 1
             self._aborted = False
             t0 = time.time()
             try:

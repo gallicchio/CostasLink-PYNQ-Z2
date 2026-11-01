@@ -66,18 +66,22 @@ class LinkD:
         self.cen = None                                  # each window comparator's centre (setup)
         self.leg_windows = None                          # the leg the windows were last set for
         self.leg_setup = None                            # the leg setup set them for: the most they follow
+        self.cal = None                                  # the windows from the states' levels: {side, leg, off, t}
         self.mode = "starting"
         self.lost_since = None
         self.next_try = 0.0
         self.wait = backoff_s[0]
         self._loss_open = False                          # a loss counted and not yet recovered
         self.counts = {"losses": 0, "recoveries": 0, "failed": 0, "last_recovery_s": None, "t_last_loss": None,
-                       "t_last_recovery": None, "last_starts": None, "window_moves": 0}
+                       "t_last_recovery": None, "last_starts": None, "window_moves": 0, "calibrations": 0}
         self.enabled = True
 
     # ---- for the dashboard ----
     def state(self):
-        return {"mode": self.mode, "enabled": self.enabled, "vc_lock": self.vc_lock, "leg": self.leg, "leg_windows": self.leg_windows, "leg_setup": self.leg_setup, "config": self.cfg, "idle_s": self.idle_s,
+        return {"mode": self.mode, "enabled": self.enabled, "vc_lock": self.vc_lock, "leg": self.leg, "leg_windows": self.leg_windows, "leg_setup": self.leg_setup,
+                "cal": ({"side": self.cal["side"], "leg": self.cal["leg"], "t": self.cal["t"],
+                         "thresholds_mv": {w: round(1e3 * (v - self.cen[w]), 1) for w, v in self.thresholds().items()}}
+                        if self.cal else None), "config": self.cfg, "idle_s": self.idle_s,
                 "lost_for_s": (time.time() - self.lost_since) if self.lost_since else None,
                 "i0": self.i0, "q0": self.q0, "mid_t": self.mid_t,
                 "next_try_in_s": max(0.0, self.next_try - time.time()) if self.mode == "backing off" else None,
@@ -139,7 +143,7 @@ class LinkD:
             self.vc_lock = o["vc"] if self.vc_lock is None else 0.9 * self.vc_lock + 0.1 * o["vc"]
             if o["e_i"] < 50:                                         # idle carrier: the leg is visible
                 self.leg = abs(o["di"]) if self.leg is None else 0.9 * self.leg + 0.1 * abs(o["di"])
-                self.track_windows(cl)
+                self.track_windows(cl, 1 if o["di"] > 0 else -1)
             self.mode = "locked"
             return
         if self.vc_lock is None:
@@ -205,6 +209,7 @@ class LinkD:
     # ---- the link from nothing ----
     def setup(self, cfg):
         cl = self.server.cl
+        self.cal = None                                  # new centres: the self-test calibrates again
         # one carrier both ways (one board to itself), or two apart (two boards, each receiving the other's TX: the TX
         # synthesizer on tx_mhz, the RX one on rx_mhz; VR, the TX's carrier null, belongs to tx_mhz)
         tx_mhz = float(cfg.get("tx_mhz", cfg.get("mhz")))
@@ -257,7 +262,25 @@ class LinkD:
         self.leg = self.leg_windows = self.leg_setup = a
         return True
 
-    def track_windows(self, cl):
+    def thresholds(self):
+        """the window thresholds as linkd sets them: calibrated (the self-test's 'calibrate': each between its states'
+        levels) scaled with the leg, or else window_frac of the leg from each comparator's centre"""
+        if self.cal:
+            f = (self.leg_windows or self.cal["leg"]) / self.cal["leg"]
+            return {w: self.cen[w] + self.cal["off"][w] * f for w in self.cen}
+        frac = float((self.cfg or {}).get("window_frac", 0.5))
+        return {w: self.cen[w] + frac * (self.leg_windows or 0.1) for w in self.cen}
+
+    def set_windows(self, cl, thr, side):
+        """the self-test's calibration (selftest.calibrate) on lock point `side`: kept as offsets from the centres"""
+        self.leg_windows = self.leg_windows or self.leg
+        self.cal = {"side": side, "leg": self.leg_windows, "off": {w: thr[w] - self.cen[w] for w in self.cen},
+                    "t": time.time()}
+        for w, v in self.thresholds().items():
+            cl.threshold(w, min(2.499, max(0.0, v)))
+        self.counts["calibrations"] += 1
+
+    def track_windows(self, cl, side=None):
         """the windows follow the carrier's level.  Setup puts them at window_frac of the leg it found; a level that
         changes after (an antenna moved or blocked, the attenuator) left the Q steps of A2 and A3 short of them or far
         past them (2026-11-01 01:12: 148 055 of 199 999 A2 symbols missed while the attenuator was 4.25 dB up, A3 at
@@ -269,13 +292,21 @@ class LinkD:
         right only for a weaker carrier.  The windows from the states' own levels (the self-test's 'corners') next"""
         if not self.cfg or not self.cfg.get("track_windows", True) or not self.cen or not self.leg_windows or not self.leg:
             return
-        leg = min(self.leg, self.leg_setup or self.leg)
+        if self.cal and side is not None and side != self.cal["side"]:
+            # the calibration belongs to the other lock point (the loop slipped or was recovered there): the plain
+            # windows until the self-test calibrates this one
+            self.cal = None
+            self.leg_windows = min(self.leg, self.leg_setup or self.leg)
+            for w, v in self.thresholds().items():
+                cl.threshold(w, min(2.499, max(0.0, v)))
+            self.counts["window_moves"] += 1
+            return
+        leg = min(self.leg, self.cal["leg"] if self.cal else (self.leg_setup or self.leg))
         if abs(leg - self.leg_windows) < 0.1 * self.leg_windows:
             return
-        frac = float(self.cfg.get("window_frac", 0.5))
-        for w, v0 in self.cen.items():
-            cl.threshold(w, min(2.499, max(0.0, v0 + frac * leg)))
         self.leg_windows = leg
+        for w, v in self.thresholds().items():
+            cl.threshold(w, min(2.499, max(0.0, v)))
         self.counts["window_moves"] += 1
 
     # ---- the recovery (bringup/autolock.py's, on the driver alone) ----

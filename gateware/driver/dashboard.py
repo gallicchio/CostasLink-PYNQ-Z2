@@ -323,7 +323,14 @@ class Dashboard:
                                         "windows moved to %.0f mV%s." % (
                                             1e3 * L["leg"], 1e3 * lw * float((L.get("config") or {}).get("window_frac", 0.5)),
                                             " (no higher than at setup)" if lw < 0.95 * L["leg"] else "")})
-            self._lk = {k: L.get(k, 0) or 0 for k in ("losses", "recoveries", "failed", "window_moves")}
+                if (L.get("calibrations") or 0) > self._lk.get("calibrations", 0) and L.get("cal"):
+                    t = L["cal"].get("thresholds_mv") or {}
+                    self.event({"t": r["t"], "kind": "windows",
+                                "text": "The receiver's decision windows set from the states' own levels on this lock point "
+                                        "(the board's self-test swept them): %s mV out from their centres, for a carrier of "
+                                        "%.0f mV." % (", ".join("%s %.0f" % (w, t[w]) for w in ("QP", "QN", "IP", "IN") if w in t),
+                                                     1e3 * L["cal"]["leg"])})
+            self._lk = {k: L.get(k, 0) or 0 for k in ("losses", "recoveries", "failed", "window_moves", "calibrations")}
 
     def judge(self, r):
         """the state, its cause and what to do, in words for someone who does not know PLLs"""
