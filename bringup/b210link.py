@@ -21,6 +21,17 @@ the B210 to the Costas board and also vice versa").  The bench of weekend.py (fo
                                                           the phase scan and short segments show the drift; then the
                                                           B210's rate trimmed by the measured ppm (pre-compensated)
 
+    python3 bringup/b210link.py self     [--mhz 5400]    B210 -> B210 (Jason, 2026-11-01: every link for every test):
+                                                          its TX/RX antenna to its RX2, BPSK, OOK and QPSK PRBS15 with its
+                                                          rate trimmed 25 ppm (one chip's TX and RX share a clock), 200
+                                                          MHz from the board's link (at 5240 the self-test's own data,
+                                                          BPSK up to 50 Mbaud: +-50 MHz, swamped it)
+    --mods bpsk,ook,qpsk                                  'from' and 'self': the modulations (ID 12's OOK; QPSK the TX's
+                                                          mode 3 on A3's corners, two PRBS bits a symbol)
+    --rate 20e6                                           'to': the B210's stream rate; at 10 Ms/s or more 'to' also sends
+                                                          A3's corners at the self-test's QPSK rate (2.5 M a second, the
+                                                          idle between), one corner a run, every symbol decided
+
 Data go to bringup/data/board_A/b210link/.  The board is left muted and held, the B210 silent.
 """
 import argparse
@@ -49,6 +60,81 @@ def save(name, obj):
     with open(path, "w") as f:
         json.dump(obj, f, indent=1, default=float)
     return os.path.relpath(path, HERE)
+
+
+def data_buffer(mod, baud, rate, cyc, trim_ppm=0.0, reps=4):
+    """PRBS15 at baud as BPSK (+-1), OOK (bit 1 nothing) or QPSK (two bits a symbol, I first; two periods so the
+    pairs run on across the buffer's repeat), sampled at rate (trimmed by trim_ppm), a whole number of park cycles"""
+    bits = prbs_bits(15)
+    if mod == "qpsk":
+        b2 = np.concatenate([bits, bits])
+        sym = ((1.0 - 2.0 * b2[0::2]) + 1j * (1.0 - 2.0 * b2[1::2])) / np.sqrt(2)
+    else:
+        sym = (1.0 - bits) if mod == "ook" else (1.0 - 2.0 * bits)
+    sps = rate / baud * (1 + (trim_ppm or 0.0) * 1e-6)
+    n = int(round(len(sym) * reps * sps / cyc)) * cyc
+    idx = np.minimum((np.arange(n) / sps).astype(int), len(sym) * reps - 1) % len(sym)
+    return sym[idx].astype(np.complex128)
+
+
+def _quality(mod, r):
+    return ("Q %.1f" % r["q"]) if mod == "ook" else ("EVM %.2f" % r["evm"])
+
+
+def b210_self(mhz=5400, mods=("bpsk", "ook", "qpsk"), bauds=(0.25e6, 1e6, 2e6), rate=16e6, park_hz=-4e6, tx_gain=60,
+              rx_gain=45, trim_ppm=25.0, n=2000000, caps=3, bb=None):
+    """B210 -> B210 over the air: its TX/RX antenna to its RX2 (30-40 cm); the stream at rate with its LO park_hz off,
+    the capture at the same rate with the RX LO rate / 5 below the carrier; each modulation's PRBS15 trimmed by
+    trim_ppm, recovered by sdr_rx (the recovered clocks' offset should read the trim).  A note on the board's page
+    for the while (the self-test records the B210's activity from it)."""
+    import b210 as BB
+    import soak
+    bb = bb or BB.B210()
+    out = {"mhz": mhz, "rate": rate, "trim_ppm": trim_ppm, "tx_gain": tx_gain, "rx_gain": rx_gain, "runs": []}
+    t = time.time()
+    note = soak.post("/api/note", {"text": "B210 -> B210 at %d MHz (%.0f MHz from the carrier), TX gain %.0f: the B210 tested "
+                                           "on its own (b210link.py self)" % (mhz, mhz - 5200, tx_gain),
+                                   "kind": "intervention", "source": "b210link.py", "t_start": t, "t_end": t + 600,
+                                   "b210": {"kind": "selfloop", "mhz": mhz, "gain": tx_gain}})
+    st = BB.Stream(bb, mhz, tx_gain, rate=rate, park_hz=park_hz, amp=0.5)
+    st.start(np.ones(int(rate * 1e-3) // st.cyc * st.cyc))
+    prev = st._buf.shape[1]
+    try:
+        for mod in mods:
+            for baud in bauds:
+                st.set(data_buffer(mod, baud, rate, st.cyc, trim_ppm=trim_ppm))
+                time.sleep(0.3 + prev / rate)        # the buffer before goes out to its end first (0.25 Mbaud's: 0.52 s)
+                prev = st._buf.shape[1]
+                u0 = st.underflows
+                res = []
+                for _ in range(caps):
+                    x, ovf, errs = bb.rx(mhz - rate / 5 / 1e6, n, rate, rx_gain, bw=rate)
+                    x = x[2000:]
+                    if ovf:
+                        res.append({"error": "overflow", "ovf": ovf})
+                        continue
+                    try:
+                        r = sdr_rx.DEMOD[mod](x, rate, baud, block=512 if baud < 5e6 else 1024, f_exp=rate / 5)
+                        r.pop("symbols")
+                        r.pop("timing_cycles")
+                        r["rms"] = float(np.sqrt(np.mean(np.abs(x) ** 2)))
+                    except Exception as e:                       # noqa: BLE001
+                        r = {"error": str(e)[:200]}
+                    res.append(r)
+                ok = [r for r in res if "ber" in r]
+                row = {"mod": mod, "baud": baud, "caps": res, "underflows": st.underflows - u0,
+                       "bits": sum(r["bits"] for r in ok), "fails": sum(r["fails"] for r in ok)}
+                row["ber"] = row["fails"] / 3.0 / row["bits"] if row["bits"] else None
+                out["runs"].append(row)
+                print("%d B210 -> B210 %s %.2f Mbaud: %d bits, BER %s; clocks %s ppm (the trim %+.0f); %s; rms %s; underflows %d" % (
+                    mhz, mod.upper(), baud / 1e6, row["bits"], row["ber"] if row["ber"] is None else "%.2e" % row["ber"],
+                    ["%+.2f" % r["ppm"] for r in ok], trim_ppm, [_quality(mod, r) for r in ok],
+                    ["%.3f" % r["rms"] for r in ok], row["underflows"]), flush=True)
+    finally:
+        st.stop()
+        if note.get("id"):
+            soak.post("/api/note", {"id": note["id"], "end": True})
+    return out
 
 
 class Link(W.Weekend):
@@ -91,22 +177,25 @@ class Link(W.Weekend):
     # ---- board -> B210 ----
     MCR = {4e6: 32e6, 10e6: 40e6, 20e6: 40e6, 40e6: 40e6}      # even decimations: the halfband filters kept
 
-    def from_board(self, mhz, runs=((1000, 1e6), (100, 4e6), (40, 10e6), (20, 20e6), (10, 40e6)), caps=4, gain=45):
-        """the board's BPSK PRBS15 at 100 / p Mbaud (the carrier nulled, the windows irrelevant); the B210 at fs, its
-        LO a fifth of fs below the carrier (off its own DC), `caps` captures of 0.1 s or 2 M samples, every packet's
-        overflow counted (a capture with one is dropped)"""
+    def from_board(self, mhz, runs=((1000, 1e6), (100, 4e6), (40, 10e6), (20, 20e6), (10, 40e6)), caps=4, gain=45,
+                   mod="bpsk"):
+        """the board's PRBS15 at 100 / p Mbaud (the carrier nulled, the windows irrelevant) as BPSK, OOK (ID 12: bit 1
+        the null) or QPSK (mode 3 on A3's corners, two bits a symbol); the B210 at fs, its LO a fifth of fs below the
+        carrier (off its own DC), `caps` captures of 0.1 s or 2 M samples, every packet's overflow counted (a capture
+        with one is dropped)"""
         self.ext = False
-        out = {"mhz": mhz, "runs": []}
+        points = {"bpsk": [(1, 0), (-1, 0)], "ook": [(1, 0), (0, 0)], "qpsk": list(C.SCHEMES["A3"].msgs)}[mod]
+        out = {"mhz": mhz, "mod": mod, "runs": []}
         self.tune(mhz)
         self.set_null(mhz)
         cl = self.cl
         try:
             for p, fs in runs:
                 baud = 100e6 / p
-                cl.tx_points(C.point_code(1, 0), [C.point_code(1, 0), C.point_code(-1, 0)])
+                cl.tx_points(C.point_code(1, 0), [C.point_code(*q) for q in points])
                 cl.tx_timing(period=p)
                 cl.tx_prbs(15)
-                cl.tx_mode("prbs", n=2)
+                cl.tx_mode("prbs", n=len(points))
                 cl.ctrl(tx_dis=0)
                 cl.tx_go()
                 time.sleep(0.2)
@@ -120,7 +209,7 @@ class Link(W.Weekend):
                         res.append({"error": "overflow", "ovf": ovf})
                         continue
                     try:
-                        r = sdr_rx.demod(x, fs, baud, block=512 if baud < 5e6 else 1024, f_exp=fs / 5)
+                        r = sdr_rx.DEMOD[mod](x, fs, baud, block=512 if baud < 5e6 else 1024, f_exp=fs / 5)
                         r.pop("symbols")
                         r.pop("timing_cycles")
                         r["rms"] = float(np.sqrt(np.mean(np.abs(x) ** 2)))
@@ -134,10 +223,10 @@ class Link(W.Weekend):
                        "bits": sum(r["bits"] for r in ok), "fails": sum(r["fails"] for r in ok)}
                 row["ber"] = row["fails"] / 3.0 / row["bits"] if row["bits"] else None
                 out["runs"].append(row)
-                print("%d board -> B210 %5.1f Mbaud (fs %.0f Ms/s): %d bits, BER %s; carrier %s kHz; clocks %s ppm; EVM %s" % (
-                    mhz, baud / 1e6, fs / 1e6, row["bits"], row["ber"] if row["ber"] is None else "%.2e" % row["ber"],
+                print("%d board -> B210 %s %5.1f Mbaud (fs %.0f Ms/s): %d bits, BER %s; carrier %s kHz; clocks %s ppm; %s" % (
+                    mhz, mod.upper(), baud / 1e6, fs / 1e6, row["bits"], row["ber"] if row["ber"] is None else "%.2e" % row["ber"],
                     ["%.2f" % ((r["f0_hz"] + fs / 5) / 1e3) for r in ok], ["%+.3f" % r["ppm"] for r in ok],
-                    ["%.2f" % r["evm"] for r in ok]), flush=True)
+                    [_quality(mod, r) for r in ok]), flush=True)
         finally:
             cl.tx_stop()
             cl.ctrl(tx_dis=1)
@@ -265,7 +354,8 @@ class Link(W.Weekend):
             mhz, dsa, a, o["vc"], (o["vc"] - LT.VC_LOCK) * self.kv(mhz) / 1e3), flush=True)
         return {"cen": cen, "dsa": dsa, "a": a, "side": o["side"], "vc": o["vc"]}
 
-    def events_ext(self, mhz, st, names=("A1", "A3"), period_s=20e-6, width_s=0.5e-6, seconds=0.5, delay=200):
+    def events_ext(self, mhz, st, names=("A1", "A3"), period_s=20e-6, width_s=0.5e-6, seconds=0.5, delay=200, settle=0,
+                   label=""):
         """the B210 sends one message's events (every period_s, width_s long, from the idle) for a while; the board's
         decoder in this lock's frame, its confusion row fixed at that message: the decisions by message"""
         out = []
@@ -284,7 +374,7 @@ class Link(W.Weekend):
                         base[k * P: k * P + Wd] = complex(i, q)
                     self.stream.set(base)
                     self.cl.rx_config(rx_s.idle_vector(), rx_s.mask, rx_s.lut(False), rx_s.slow_exp(), delay=delay, quiet=4,
-                                      confirm=10, window=100, row=m)
+                                      confirm=10, window=100, row=m, settle=settle)
                     time.sleep(0.05)
                     self.cl.rx_clear()
                     time.sleep(seconds)
@@ -299,9 +389,10 @@ class Link(W.Weekend):
                     time.sleep(0.1)
                 right = sum(r["decoded"][r["msg"]] for r in rows)
                 total = sum(r["decided"] for r in rows)
-                out.append({"scheme": name, "mirror": mirror, "rows": rows, "right": right, "decided": total})
-                print("%d B210 -> board %s (Q %s): %s; right %d of %d decided" % (
-                    mhz, name, "mirrored" if mirror else "as is", "; ".join(
+                out.append({"scheme": name, "label": label, "period_s": period_s, "width_s": width_s, "mirror": mirror,
+                            "rows": rows, "right": right, "decided": total})
+                print("%d B210 -> board %s%s (Q %s): %s; right %d of %d decided" % (
+                    mhz, name, label, "mirrored" if mirror else "as is", "; ".join(
                         "m%d: %d events, decoded %s" % (r["msg"], r["events"], r["decoded"]) for r in rows), right, total), flush=True)
                 if right >= 0.95 * total and total:
                     break
@@ -397,9 +488,9 @@ class Link(W.Weekend):
                   sum(1 for r in runs if r["mismatches"] == 0), nseg, [r["underflows"] for r in runs]), flush=True)
         return res
 
-    def to_board(self, mhz, delta_hz, ppm_clk=None, gain=80, fixed=True, events=True):
-        out = {"mhz": mhz, "delta_hz": delta_hz}
-        st = self.lock_ext(mhz, delta_hz, gain=gain)
+    def to_board(self, mhz, delta_hz, ppm_clk=None, gain=80, fixed=True, events=True, rate=4e6):
+        out = {"mhz": mhz, "delta_hz": delta_hz, "rate": rate}
+        st = self.lock_ext(mhz, delta_hz, gain=gain, rate=rate)
         try:
             if st is None:
                 out["error"] = "no lock to the B210"
@@ -408,6 +499,9 @@ class Link(W.Weekend):
             out["lock"] = st
             if events:
                 out["events"] = self.events_ext(mhz, st, names=("A1", "A1w", "A2", "A3"))
+                if self.stream.rate >= 10e6:          # the self-test's QPSK rate: 40 clocks a symbol, 20 of them the corner
+                    out["events"] += self.events_ext(mhz, st, names=("A3",), period_s=0.4e-6, width_s=0.2e-6, seconds=0.2,
+                                                     delay=96, settle=6, label=" at 2.5 M a second")
             out["ber"] = [self.ber_ext(mhz, st, baud=1e6)] if fixed else []
             if fixed and ppm_clk is not None:
                 out["ber"].append(self.ber_ext(mhz, st, baud=1e6, trim_ppm=-ppm_clk))
@@ -425,29 +519,39 @@ class Link(W.Weekend):
 
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("what", nargs="+", choices=["offset", "from", "to", "pattern"])
-    ap.add_argument("--mhz", type=float, default=5200)
+    ap.add_argument("what", nargs="+", choices=["offset", "from", "to", "pattern", "self"])
+    ap.add_argument("--mhz", type=float, default=None, help="5200 (5400 for 'self' alone: 200 MHz from the board's link)")
     ap.add_argument("--gain", type=float, default=80)
     ap.add_argument("--no-fixed", action="store_true", help="skip the fixed-phase BER runs")
     ap.add_argument("--no-events", action="store_true")
+    ap.add_argument("--mods", default="bpsk,ook,qpsk", help="'from' and 'self': the modulations")
+    ap.add_argument("--rate", type=float, default=4e6, help="'to': the B210's stream rate (10e6 or more: A3 at 2.5 M/s too)")
     a = ap.parse_args(argv)
+    mods = [m for m in a.mods.split(",") if m]
+    if a.what == ["self"]:
+        mhz = int(a.mhz or 5400)
+        out = {"self": b210_self(mhz, mods=mods)}
+        print(save("b210self_%d" % mhz, out))
+        return
     L = Link()
     out = {}
-    mhz = int(a.mhz)
+    mhz = int(a.mhz or 5200)
     try:
         if "offset" in a.what or "to" in a.what:
             out["offset"] = L.offset(mhz)
         if "from" in a.what:
-            out["from"] = L.from_board(mhz)
+            out["from"] = {m: L.from_board(mhz, mod=m) for m in mods}
         if "pattern" in a.what:
             out["pattern"] = L.pattern(mhz)
         if "to" in a.what:
             ppm = None
             if out.get("from"):
-                pp = [c["ppm"] for r in out["from"]["runs"] for c in r["caps"] if "ppm" in c]
+                pp = [c["ppm"] for f in out["from"].values() for r in f["runs"] for c in r["caps"] if "ppm" in c]
                 ppm = float(np.median(pp)) if pp else None
             out["to"] = L.to_board(mhz, out["offset"]["delta_hz"], ppm_clk=ppm, gain=a.gain, fixed=not a.no_fixed,
-                                   events=not a.no_events)
+                                   events=not a.no_events, rate=a.rate)
+        if "self" in a.what:
+            out["self"] = b210_self(mhz + 200, mods=mods, bb=L.bb)
     finally:
         try:
             L.cl.dac(S.DAC2, V_T2=S.V_MID)
