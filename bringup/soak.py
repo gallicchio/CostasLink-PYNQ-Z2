@@ -534,7 +534,7 @@ class Soak:
         try:
             time.sleep(min(1.0, 0.3 * p["seconds"]))
             old = sc.q(":TIMebase:SCALe?")
-            tdiv = max(1e-7, 4 * p["period"] * 1e-8) if kind == "data" else max(1e-6, min(50e-6, p["period"] * 1e-8))
+            tdiv = max(1e-7, 4 * p["period"] * 1e-8) if kind == "data" else max(1e-6, min(50e-6, 0.3 * p["period"] * 1e-8))
             sc.timebase(scale=tdiv)
             time.sleep(0.3)
             try:
@@ -605,7 +605,10 @@ class Soak:
                 if kind == "symbols":
                     count = max(10, int(p["seconds"] / (p["period"] * 1e-8)))
                     p["count"] = count
-                    st = B.scheme_run(p["scheme"], side, count=count, period=p["period"], width=p["width"])
+                    # the receiver's decision window inside the symbol period (100 clocks over a 64-clock period made
+                    # the counts inconsistent, soak10 #10; campaign.rate's rule)
+                    st = B.scheme_run(p["scheme"], side, count=count, period=p["period"], width=p["width"],
+                                      window=max(4, min(100, p["period"] - 6)))
                     time.sleep(1.5)                              # a look of the page's with the counts final
                     marks["result"] = {k: st.get(k) for k in ("events", "decided", "right", "symbol_errors", "false", "missed",
                                                               "confirm", "veto", "lat_n", "lat_min", "lat_max", "lat_mean", "sample_ns")}

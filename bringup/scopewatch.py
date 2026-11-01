@@ -82,8 +82,8 @@ def main(argv):
             continue
         done.add(now["since"])
         period_ns = now["period"] * 10.0
-        # single symbols: about ten across the screen; data: about forty bits
-        tdiv = max(1e-6, min(50e-6, period_ns * 1e-9)) if now["step"] == "symbols" else max(1e-7, 4 * period_ns * 1e-9)
+        # single symbols: about three across the screen (the aligned view wants the samples close); data: about forty bits
+        tdiv = max(1e-6, min(50e-6, 0.3 * period_ns * 1e-9)) if now["step"] == "symbols" else max(1e-7, 4 * period_ns * 1e-9)
         b2 = b210_now()
         try:
             i, q, dt = capture(sc, tdiv)

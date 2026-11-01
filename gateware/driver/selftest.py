@@ -30,12 +30,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 STATE_FILE = os.path.join(HERE, "selftest.json")
 
 PLANS = {
-    # a demonstration's round: the level, single symbols, data at a rate that changes each round (about 16 s)
+    # a demonstration's round: the level, single symbols, data at a rate that changes each round (about 16 s); 2 Mbaud
+    # among them for the bench scope, whose monitor taps smooth over about 0.1 us and close its eye above 5 Mbaud
     "cycle": [{"step": "idle", "seconds": 3.0},
               {"step": "symbols", "seconds": 4.0, "period": 2000, "width": 20},
-              {"step": "data", "seconds": 8.0, "periods": [10, 5, 4, 2]}],
-    # data nearly all the time (the bit errors every second), the level once a round
-    "data": [{"step": "idle", "seconds": 2.0}, {"step": "data", "seconds": 28.0, "periods": [4]}],
+              {"step": "data", "seconds": 8.0, "periods": [50, 10, 5, 4, 2]}],
+    # data nearly all the time (the bit errors every second), the level once a round, 25 Mbaud and 2 Mbaud in turn
+    "data": [{"step": "idle", "seconds": 2.0}, {"step": "data", "seconds": 28.0, "periods": [4, 50]}],
     # single symbols nearly all the time, the schemes in turn
     "symbols": [{"step": "idle", "seconds": 2.0}, {"step": "symbols", "seconds": 13.0, "period": 2000, "width": 20}],
     # the carrier alone: the level every second
@@ -160,7 +161,7 @@ class SelfTest:
             rx_s.mask, rx_s.use = tx.mask, tx.use
             cl.tx_points(tx.tx_idle(), [point_code(i, q) for i, q in tx.msgs])
             cl.rx_config(rx_s.idle_vector(), rx_s.mask, rx_s.lut(False), rx_s.slow_exp(), delay=16, quiet=4, confirm=10,
-                         window=100, first_edge=False)
+                         window=max(4, min(100, period - 6)), first_edge=False)     # the window inside the period
             cl.hist_config("ref_to_decision", 0)
             cl.events(period=period, width=width, count=count, n=tx.n, source="prbs" if tx.n > 1 else "count")
             cl.rx_clear()

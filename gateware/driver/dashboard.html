@@ -14,7 +14,7 @@ h1 { font-size:18px; margin:0 12px 0 0; }
 .meta { color:var(--ink2); font-size:13px; }
 #status { margin:0 16px 12px; padding:14px 16px; border-radius:10px; background:var(--card); border-left:10px solid var(--line);
           display:grid; grid-template-columns:auto 1fr; gap:4px 16px; }
-#status .word { font-size:26px; font-weight:700; grid-row:span 3; align-self:center; }
+#status .word { font-size:26px; font-weight:700; grid-row:span 4; align-self:center; }
 #status .todo { font-weight:600; }
 #status .small { font-size:13px; color:var(--ink2); }
 #status .now { font-size:15px; }
@@ -116,7 +116,8 @@ const PANELS = [
   bands:[[-40,-30,"bad"],[-30,-23,"warn"],[-23,-15,"good"],[-15,-10,"warn"],[-10,0,"bad"]],
   help:"<p>The carrier's power at the demodulator's input, after the LNA, the step attenuator (set by the FPGA) and the gain blocks: what the receiver itself works with. The attenuator's setting is in the line below the plot.</p><p class='k'>Good: near -20 dBm, the design's working level (green -23 to -15).</p><p><b>Low with the attenuator at 0 dB:</b> the signal at the antenna is too weak for the chain to bring up. <b>High with the attenuator at 31.75 dB:</b> too strong for the chain to bring down. Either way, look at the antenna plot. In between, the attenuator should be able to put it right.</p><p>Hatched grey: not measurable just then (interference, or not locked); a blank gap: no reading at all.</p>"},
  {id:"gwlock", title:"The board's own lock judgement", unit:"of 64", get:r=>r.gw_lock&&r.gw_lock.busy, lo:0, hi:64,
-  judge:r=>r&&r.gw_lock ? ({locked:"good", unsure:"warn", lost:"bad", "no carrier":"bad"})[r.gw_lock.state] : null,
+  // not judged while the board's own symbols keep the Q windows busy (A2, A3): that is the link working
+  judge:r=>r&&r.gw_lock&&!r.own_activity ? ({locked:"good", unsure:"warn", lost:"bad", "no carrier":"bad"})[r.gw_lock.state] : null,
   ticks:[0,24,48,64], bands:[[0,24,"good"],[24,48,"warn"],[48,64,"bad"]],
   help:"<p>The FPGA's own lock monitor (lockmon.v), which drives the board's LEDs: every 10 ms it counts in how many of 64 slices both Q window comparators toggled. A beat (not locked) toggles them all the time; bursts of noise only now and then.</p><p class='k'>Good: under 24 (green; it calls that locked).</p><p><b>48 or more</b> (red): lost, a beat. In between: unsure, usually a dense train of interference bursts. <b>No carrier</b> reads 0 (nothing toggles) and is judged bad by its own state, not by the count. The text below gives its state and its own count of losses since the firmware was loaded (the server loads it when it starts).</p>"},
  {id:"vc", title:"Loop control voltage (VC)", unit:"V", get:r=>r.adc&&r.adc.VC, lo:0, hi:3.3,
@@ -133,7 +134,8 @@ const PANELS = [
   help:"<p>The share of the last second the interference hold kept the loop frozen (when it is switched on).</p><p class='k'>Good: under 1 %.</p><p>The hold keeps a strong interferer from dragging the loop off, but while held the link's decisions slowly lose their phase, so long holds cost data. <b>Often high:</b> a persistent interferer nearby.</p>"},
  {id:"skew", title:"Timing: comparator skew", unit:"ns", get:r=>r.skew_ns, lo:0, hi:6, absent:"measured only while a data check runs; the link now carries only its idle carrier",
   // judged against the bit, not in ns: 3.5 ns is 17 % of a bit at 50 Mbaud and under 1 % at 2 Mbaud
-  judge:r=>{ const T = r && r.tx && r.tx.period ? r.tx.period * 10 : null; if (r.skew_ns == null || !T) return null; const f = r.skew_ns / T; return f < 0.1 ? "good" : f < 0.25 ? "warn" : "bad"; },
+  judge:()=>{ const r = lastValue(x => x.skew_ns != null && x.tx && x.tx.mode == "prbs" ? x : null);   // the look the value came from
+    if (!r) return null; const f = r.skew_ns / (r.tx.period * 10); return f < 0.1 ? "good" : f < 0.25 ? "warn" : "bad"; },
   help:"<p>When a timing-recovered data check runs: how much later the receiver's sign comparator switches one way than the other (its duty-cycle distortion). It eats into the eye.</p><p class='k'>Good: under a tenth of a bit (the judgement is against the bit's length at the rate running: 2 ns is good at 25 Mbaud, 3.5 ns at 50 Mbaud is marginal).</p><p>Shown only while data is being checked: the link left alone carries only its idle carrier, so this plot is empty then, and that is fine. Large values come from the comparator's threshold sitting off the signal's middle (REVB 30).</p>"},
  {id:"ber", title:"Data: bit errors", unit:"", get:r=>r._ber && r._ber.errs > 0 ? r._ber.ber : null, lo:1e-9, hi:0.5, log:true, ticks:[1e-9, 1e-6, 1e-3, 0.5],
   zero:r=>r._ber && r._ber.errs === 0 && r._ber.bits > 0,
@@ -193,7 +195,7 @@ function tri(g, x, y, up, col) { g.fillStyle = col; g.beginPath(); g.moveTo(x - 
 // the notes as purple spans on a time axis
 // what the link is asked to do (its registers) and what the B210 sends (the notes its programs post)
 const ACT = {carrier: ["#b8bec8", "the carrier alone"], symbols: ["#e07b00", "single symbols"], data: ["#1e3a8a", "data"],
-             rotate: ["#8b5a2b", "rotating (FSK-like)"], off: ["#eceef1", "the carrier off"], held: ["#4b5563", "the loop held by a program"]};
+             rotate: ["#8b5a2b", "rotating (FSK-like)"], off: ["#d4d7dd", "the carrier off"], held: ["#4b5563", "the loop held by a program"]};
 const B2 = {cw_far: ["#0e7490", "a CW MHz away"], cw_near: ["#be185d", "a CW near the carrier"], bursts: ["#a16207", "noise bursts"],
             b210: ["#6b7280", "the B210"]};
 function linkAct(r) { if (!r || !r.tx || !r.ctrl) return null; if (r.ctrl.tx_dis) return "off"; if (r.ctrl.loop_hold) return "held";
@@ -201,13 +203,13 @@ function linkAct(r) { if (!r || !r.tx || !r.ctrl) return null; if (r.ctrl.tx_dis
 function linkLabel(r) { const a = linkAct(r), s = r.selftest && r.selftest.on ? r.selftest.now : null;
   if (a == "symbols") return s && s.step == "symbols" ? s.scheme : "1 of " + r.tx.n;
   if (a == "data") return fmt(100 / r.tx.period) + " Mb/s"; return ""; }
-function linkText(r) { const a = linkAct(r); if (!a) return "not known (no reading)"; const s = r.selftest && r.selftest.on ? r.selftest.now : null;
-  if (a == "symbols") return "sending single symbols" + (s && s.step == "symbols" ? " of " + s.text.replace(/^single symbols of /, "") :
+function linkText(r) { const a = linkAct(r); if (!a) return "is not known (no reading)"; const s = r.selftest && r.selftest.on ? r.selftest.now : null;
+  if (a == "symbols") return "is sending single symbols" + (s && s.step == "symbols" ? " of " + s.text.replace(/^single symbols of /, "") :
      ", each one of " + r.tx.n + " states, one every " + fmt(r.tx.period / 100) + " us") + (r.rx_on ? "; the receiver decides each and times it" : "");
-  if (a == "data") return "streaming BPSK data at " + fmt(100 / r.tx.period) + " Mbaud" + (r.ber_on ? ", every bit checked, the timing recovered" : "");
-  if (a == "rotate") return "rotating the carrier's phase (an FSK-like test)";
-  if (a == "off") return "the carrier switched off"; if (a == "held") return "the carrier, with the loop held by a program";
-  return "the carrier alone" + (s && s.step == "idle" ? " (the self-test reads its level)" : ""); }
+  if (a == "data") return "is streaming BPSK data at " + fmt(100 / r.tx.period) + " Mbaud" + (r.ber_on ? ", every bit checked, the timing recovered" : "");
+  if (a == "rotate") return "is rotating the carrier's phase (an FSK-like test)";
+  if (a == "off") return "has its carrier switched off"; if (a == "held") return "carries the carrier, the loop held by a program";
+  return "carries the carrier alone" + (s && s.step == "idle" ? " (the self-test reads its level)" : ""); }
 function b210Kind(n) { return n.b210 && B2[n.b210.kind] ? n.b210.kind : "b210"; }
 function b210Notes() { return notes.filter(n => n.b210 || /^B210/.test(n.text)); }
 function b210Label(n) { const b = n.b210 || {}; return b.kind == "cw_far" ? (b.off_mhz > 0 ? "+" : "") + fmt(b.off_mhz) + " MHz" :
@@ -301,6 +303,7 @@ function drawSeries(p) {
   let extra = "";
   if (p.id == "dem" && fl.dsa_db != null) extra = " (attenuator " + fl.dsa_db + " dB of 0-31.75)";
   if (p.id == "gwlock" && fl.gw_lock) extra = " (it says: " + fl.gw_lock.state + "; " + fl.gw_lock.losses + " losses since the firmware was loaded)" +
+     (fl.own_activity ? ". The board's own single symbols keep the Q windows busy now, so it reads them as a loss: not judged" : "") +
      (fl.gw_lock.state == "lost" && fl.state == "interfered" ? ". It judges from the comparators alone; the oscillator is still on the carrier, so the page calls this interference, not a loss" : "");
   if (lv == null && p.absent) extra = " (" + p.absent + ")";
   if (p.id == "ber") { const b = lastValue(r => r._ber); if (b) extra = " (the last second: " + Math.round(b.errs) + " errors in " + b.bits.toExponential(1) + " bits" + (b.errs ? "" : ": the rate is below one in that many") + "; green ticks along the bottom: seconds with no error)"; }
@@ -465,8 +468,9 @@ function drawScope(p) {
     " " + c.i.length + " samples, " + (c.dt_ns ? fmt(c.dt_ns) + " ns apart" : "") + "; circles: the locked idle carrier";
 }
 function scopeOf(kind) { for (let k = scopes.length - 1; k >= 0; k--) if (scopes[k].kind == kind) return scopes[k]; return null; }
-function scopeSays(c) { return "The bench scope, " + dur(Math.max(0, Date.now() / 1000 - c.t)) + " ago: the link " + (c.link || c.text || "?") +
-  "; the B210 " + (c.b210 || "quiet") + "."; }
+function scopeSays(c) { const b = c.b210 || "quiet";
+  return "The bench scope, " + dur(Math.max(0, Date.now() / 1000 - c.t)) + " ago, while the link sent " + (c.link || c.text || "?") +
+    "; the B210 " + (b == "quiet" ? "was quiet" : b) + "."; }
 function scopeFrame(p, top, x0, x1, xunit) {
   const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv), L = 46, R = 10, T = 8, Bt = 22, pw = w - L - R, ph = h - T - Bt;
   g.clearRect(0, 0, w, h); g.strokeStyle = "#c9ccd2"; g.lineWidth = 1; g.strokeRect(L, T, pw, ph);
@@ -545,7 +549,9 @@ function status() {
   const Ld = r.linkd, paused = Ld && /^paused/.test(Ld.mode), idle = (Ld && Ld.idle_s) || 60;
   const rec = !Ld ? "Automatic recovery: not running on this board." :
      "Automatic recovery: " + (paused ? "waiting, as it does until no program has driven the board for " + Math.round(idle) + " s" +
-       (ago != null ? " (about " + Math.max(0, Math.round(idle - ago)) + " s more)" : "") : LD_WORDS[Ld.mode] || Ld.mode) + ". " + Ld.losses + " loss" + (Ld.losses == 1 ? "" : "es") + ", " + Ld.recoveries + " recovered" +
+       (ago != null ? " (about " + Math.max(0, Math.round(idle - ago)) + " s more)" : "") :
+       Ld.mode == "watching" && r.tx && r.tx.running ? "standing by (the board's own symbols or data keep its check from reading locked; the oscillator is on the carrier)" :
+       LD_WORDS[Ld.mode] || Ld.mode) + ". " + Ld.losses + " loss" + (Ld.losses == 1 ? "" : "es") + ", " + Ld.recoveries + " recovered" +
      (Ld.failed ? ", " + Ld.failed + " failed tries" : "") + (Ld.last_recovery_s != null ? " (the last in " + Ld.last_recovery_s.toFixed(1) + " s)" : "") +
      (Ld.next_try_in_s != null ? "; trying again in " + Math.round(Ld.next_try_in_s) + " s" : "") + ".";
   document.getElementById("small").textContent = (since != null ? "In this state for " + dur(since) + ". " : "") +
