@@ -44,9 +44,9 @@ from board_constants import (RX_GAIN_DB, DEM_REG_DBM, A_REG_V, DSA_POWER_UP_DB, 
                              NTC_B, NTC_R25, NTC_RTOP, NTC_VDD, VR_I_V, VR_Q_V)
 
 R = regmap.BY_NAME
-ID_EXPECTED = 0x434C000C
+ID_EXPECTED = 0x434C000D
 ID_ACCEPTED = (0x434C0003, 0x434C0004, 0x434C0005, 0x434C0006, 0x434C0007, 0x434C0008, 0x434C0009,
-               0x434C000A, 0x434C000B, 0x434C000C)    # 3: no timing recovery for the
+               0x434C000A, 0x434C000B, 0x434C000C, 0x434C000D)    # 3: no timing recovery for the
                                                       # BER check (the overlay of 2026-10-29); 4: no interference hold;
                                                       # 5: no one-polarity timing recovery; 6: no hold persistence; 7: no
                                                       # lock monitor, LEDs or scaled release; 8: the monitor reads this
@@ -354,6 +354,7 @@ class CostasLink:
             self.rx_exact = ident >= 0x434C000A         # RX_UNDEC, the matrix only for events with a reference
             self.rx_settle = ident >= 0x434C000B        # RX_TIMING[31:24]: the settled decision
             self.ber_src = ident >= 0x434C000C          # RX_BER_CFG[31:30]: the comparator checked
+            self.fsk = ident >= 0x434C000D              # TX mode 4 with the PRBS as source: FSK data
         b = self.rd("BUILD")
         self.ser = bits(b, 7, 0) or 1
         self.board = bits(b, 11, 8)

@@ -59,8 +59,10 @@ REGS = [
     # ---- the transmitter: tx_engine.v --------------------------------------------------------------------
     (0x30, "TX_MODE", "RW", "tx", "[2:0] 0 TXSYM / BPSK pattern (the first firmware), 1 events, 2 events on TRIG_IN, "
                                   "3 PRBS symbols, 4 rotate (FSK), 5 hold one message point; [5:4] message source "
-                                  "(0 TX_MSG, 1 count 0..N-1, 2 PRBS); [10:8] N-1, the number of messages (1-8) less one; "
-                                  "[11] FSK direction (rotate backwards); [12] events only while the sequencer's TX gate is high"),
+                                  "(0 TX_MSG, 1 count 0..N-1, 2 PRBS; in mode 4, 2: FSK data, each turn of N steps "
+                                  "backwards when its PRBS bit is 1, from ID 13); [10:8] N-1, the number of messages (1-8) "
+                                  "less one; [11] FSK direction (rotate backwards; not with the PRBS); [12] events only while "
+                                  "the sequencer's TX gate is high"),
     (0x31, "TX_IDLE", "RW", "tx", "[3:0] the idle point {Q1 Q0 I1 I0} (reset 0x7: I +a, Q 0)"),
     (0x32, "TX_POINTS", "RW", "tx", "the eight message points, message k in [4k+3:4k] (reset: 0, the BPSK flip I -a, Q 0)"),
     (0x33, "TX_MSG", "RW", "tx", "[2:0] the message in source 0; also the row of the RX confusion matrix when RX_CTRL[19] is clear"),

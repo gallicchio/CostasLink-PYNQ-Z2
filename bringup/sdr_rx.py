@@ -83,6 +83,13 @@ def _symbols(x, fs, baud, power=2, block=512, max_hz=None, f_exp=None, f_win=200
     x = x * np.exp(-2j * np.pi * f0 * t)
     L = max(1, int(round(sps)))
     y = np.convolve(x, np.ones(L) / L, mode="same")
+    return dict(_om(y, fs, baud, block), f0=f0)
+
+
+def _om(y, fs, baud, block=512):
+    """steps 3-4 on a matched filter's output y (complex, or real: FSK's discriminator): the timing by Oerder and Meyr
+    per block, the clocks' offset, the symbols read at the recovered instants"""
+    sps = fs / baud
     # Oerder and Meyr per block of symbols: the line at the symbol rate in |y|^2
     p = np.abs(y) ** 2
     nb = int(len(y) // (block * sps))
@@ -109,7 +116,7 @@ def _symbols(x, fs, baud, power=2, block=512, max_hz=None, f_exp=None, f_win=200
     pos = pos[(pos >= 0) & (pos < len(y) - 1)]
     i = np.floor(pos).astype(int)
     fr = pos - i
-    return {"s": y[i] * (1 - fr) + y[i + 1] * fr, "f0": f0, "ppm": ppm, "sps": sps, "ph": ph, "nb": nb}
+    return {"s": y[i] * (1 - fr) + y[i + 1] * fr, "ppm": ppm, "sps": sps, "ph": ph, "nb": nb}
 
 
 def demod(x, fs, baud, poly=15, block=512, max_hz=None, f_exp=None, f_win=200e3):
@@ -184,11 +191,48 @@ def demod_qpsk(x, fs, baud, poly=15, block=512, max_hz=None, f_exp=None, f_win=2
             "blocks": r["nb"], "timing_cycles": (r["ph"] / (2 * np.pi)).tolist()[:400], "symbols": zz}
 
 
-DEMOD = {"bpsk": demod, "ook": demod_ook, "qpsk": demod_qpsk}
+def demod_fsk(x, fs, baud, poly=15, block=512, max_hz=None, f_exp=None, f_win=200e3):
+    """binary FSK (the board's, ID 13: TX mode 4 turning the four axis points, a turn a bit, its tones +-baud from
+    the carrier): the instantaneous frequency (the phase step between samples), the carrier's offset taken off as its
+    mean, then a real NRZ signal: the matched filter, the timing as BPSK's, the bit the tone's sign"""
+    x = np.asarray(x, dtype=np.complex128)
+    x = x - np.mean(x)
+    if f_exp is not None:
+        x = x * np.exp(-2j * np.pi * f_exp * np.arange(len(x)) / fs)
+        # the receiver's own DC, now at -f_exp, off the discriminator: a low-pass over a quarter symbol
+        Lq = max(1, int(round(fs / baud / 4)))
+        x = np.convolve(x, np.ones(Lq) / Lq, mode="same")
+    d = np.angle(x[1:] * np.conj(x[:-1])) * fs / (2 * np.pi)       # Hz
+    f0 = float(np.mean(d))
+    d = d - f0
+    L = max(1, int(round(fs / baud)))
+    y = np.convolve(d, np.ones(L) / L, mode="same")
+    r = _om(y, fs, baud, block)
+    sv = np.real(r["s"])
+    bits = (sv < 0).astype(np.uint8)                                # the lower tone (backwards) 1
+    f1, f2 = check(bits, poly), check(1 - bits, poly)
+    fails = int(min(f1.sum(), f2.sum()))
+    a = np.abs(sv)
+    nbits = len(f1)
+    return {"f0_hz": f0 + (f_exp or 0.0), "ppm": r["ppm"], "sps": r["sps"], "bits": nbits, "fails": fails,
+            "ber": fails / 3.0 / nbits if nbits else None, "dev_hz": float(np.mean(a)),
+            "q": float(np.mean(a) / np.std(a)) if np.std(a) > 0 else None, "blocks": r["nb"],
+            "timing_cycles": (r["ph"] / (2 * np.pi)).tolist()[:400], "symbols": r["s"]}
+
+
+DEMOD = {"bpsk": demod, "ook": demod_ook, "qpsk": demod_qpsk, "fsk": demod_fsk}
 
 
 def synth(baud=1e6, fs=20e6, n_sym=40000, f_off=12e3, ppm=30.0, snr_db=20.0, feed=0.2, poly=15, seed=3, mod="bpsk"):
     rng = np.random.default_rng(seed)
+    if mod == "fsk":                                        # continuous phase, the tones +-baud (the board's turns)
+        bits = np.resize(prbs_bits(poly), n_sym)
+        rate = baud * (1 + ppm * 1e-6)
+        t = np.arange(int(n_sym / rate * fs) - 10) / fs
+        k = np.minimum((t * rate + 0.37).astype(int), n_sym - 1)
+        fi = np.where(bits[k] == 1, -baud, baud)
+        x = np.exp(1j * (2 * np.pi * np.cumsum(fi) / fs + 2 * np.pi * f_off * t + 0.7)) + feed
+        return x + (rng.normal(size=len(x)) + 1j * rng.normal(size=len(x))) * 10 ** (-snr_db / 20) / np.sqrt(2) * np.sqrt(sps_of(fs, baud))
     if mod == "qpsk":
         b2 = np.resize(prbs_bits(poly), 2 * n_sym)
         a = ((1.0 - 2.0 * b2[0::2]) + 1j * (1.0 - 2.0 * b2[1::2])) / np.sqrt(2)
@@ -209,11 +253,11 @@ def sps_of(fs, baud):
 
 
 if __name__ == "__main__":
-    for mod in ("bpsk", "ook", "qpsk"):
+    for mod in ("bpsk", "ook", "qpsk", "fsk"):
         for ppm in (0.0, 30.0, -55.0):
             for snr in (20.0, 8.0):
                 x = synth(ppm=ppm, snr_db=snr, mod=mod, f_off=4e6 + 12e3, feed=0.0 if mod == "ook" else 0.2)
                 r = DEMOD[mod](x, 20e6, 1e6, f_exp=4e6)
                 print("synthetic %s: ppm %+5.1f snr %4.1f dB -> f0 %.1f Hz, ppm %+.2f, %d bits, BER %.2e, %s" % (
                     mod, ppm, snr, r["f0_hz"], r["ppm"], r["bits"], r["ber"],
-                    "Q %.1f" % r["q"] if mod == "ook" else "EVM %.2f" % r["evm"]))
+                    "Q %.1f" % r["q"] if mod in ("ook", "fsk") else "EVM %.2f" % r["evm"]))

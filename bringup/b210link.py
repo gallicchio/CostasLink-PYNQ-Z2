@@ -66,6 +66,12 @@ def data_buffer(mod, baud, rate, cyc, trim_ppm=0.0, reps=4):
     """PRBS15 at baud as BPSK (+-1), OOK (bit 1 nothing) or QPSK (two bits a symbol, I first; two periods so the
     pairs run on across the buffer's repeat), sampled at rate (trimmed by trim_ppm), a whole number of park cycles"""
     bits = prbs_bits(15)
+    if mod == "fsk":                                 # continuous phase, the tones +-baud (as the board's turns)
+        sps = rate / baud * (1 + (trim_ppm or 0.0) * 1e-6)
+        n = int(round(len(bits) * reps * sps / cyc)) * cyc
+        idx = np.minimum((np.arange(n) / sps).astype(int), len(bits) * reps - 1) % len(bits)
+        f = np.where(bits[idx] == 1, -baud, baud)
+        return np.exp(2j * np.pi * np.cumsum(f) / rate)
     if mod == "qpsk":
         b2 = np.concatenate([bits, bits])
         sym = ((1.0 - 2.0 * b2[0::2]) + 1j * (1.0 - 2.0 * b2[1::2])) / np.sqrt(2)
@@ -78,10 +84,12 @@ def data_buffer(mod, baud, rate, cyc, trim_ppm=0.0, reps=4):
 
 
 def _quality(mod, r):
+    if mod == "fsk":
+        return "tones +-%.0f kHz, Q %.1f" % (r["dev_hz"] / 1e3, r["q"])
     return ("Q %.1f" % r["q"]) if mod == "ook" else ("EVM %.2f" % r["evm"])
 
 
-def b210_self(mhz=5400, mods=("bpsk", "ook", "qpsk"), bauds=(0.25e6, 1e6, 2e6), rate=16e6, park_hz=-4e6, tx_gain=60,
+def b210_self(mhz=5400, mods=("bpsk", "ook", "qpsk", "fsk"), bauds=(0.25e6, 1e6, 2e6), rate=16e6, park_hz=-4e6, tx_gain=60,
               rx_gain=45, trim_ppm=25.0, n=2000000, caps=3, bb=None):
     """B210 -> B210 over the air: its TX/RX antenna to its RX2 (30-40 cm); the stream at rate with its LO park_hz off,
     the capture at the same rate with the RX LO rate / 5 below the carrier; each modulation's PRBS15 trimmed by
@@ -184,18 +192,26 @@ class Link(W.Weekend):
         carrier (off its own DC), `caps` captures of 0.1 s or 2 M samples, every packet's overflow counted (a capture
         with one is dropped)"""
         self.ext = False
-        points = {"bpsk": [(1, 0), (-1, 0)], "ook": [(1, 0), (0, 0)], "qpsk": list(C.SCHEMES["A3"].msgs)}[mod]
+        # FSK (ID 13): the four axis points turned, a turn a bit (its direction the PRBS's), the tones +-baud
+        points = {"bpsk": [(1, 0), (-1, 0)], "ook": [(1, 0), (0, 0)], "qpsk": list(C.SCHEMES["A3"].msgs),
+                  "fsk": [(1, 0), (0, 1), (-1, 0), (0, -1)]}[mod]
         out = {"mhz": mhz, "mod": mod, "runs": []}
+        if mod == "fsk" and not getattr(self.cl, "fsk", False):
+            print("%d board -> B210 FSK: the overlay has no FSK data (ID 13)" % mhz, flush=True)
+            return dict(out, error="no FSK data before ID 13")
         self.tune(mhz)
         self.set_null(mhz)
         cl = self.cl
         try:
             for p, fs in runs:
-                baud = 100e6 / p
+                baud = 100e6 / p / (len(points) if mod == "fsk" else 1)
                 cl.tx_points(C.point_code(1, 0), [C.point_code(*q) for q in points])
                 cl.tx_timing(period=p)
                 cl.tx_prbs(15)
-                cl.tx_mode("prbs", n=len(points))
+                if mod == "fsk":
+                    cl.tx_mode("rotate", n=len(points), source="prbs")
+                else:
+                    cl.tx_mode("prbs", n=len(points))
                 cl.ctrl(tx_dis=0)
                 cl.tx_go()
                 time.sleep(0.2)
@@ -559,7 +575,7 @@ def main(argv):
     ap.add_argument("--gain", type=float, default=80)
     ap.add_argument("--no-fixed", action="store_true", help="skip the fixed-phase BER runs")
     ap.add_argument("--no-events", action="store_true")
-    ap.add_argument("--mods", default="bpsk,ook,qpsk", help="'from' and 'self': the modulations")
+    ap.add_argument("--mods", default="bpsk,ook,qpsk,fsk", help="'from' and 'self': the modulations (fsk: ID 13)")
     ap.add_argument("--rate", type=float, default=4e6, help="'to': the B210's stream rate (10e6 or more: A3 at 2.5 M/s too)")
     a = ap.parse_args(argv)
     mods = [m for m in a.mods.split(",") if m]
@@ -571,6 +587,14 @@ def main(argv):
     L = Link()
     out = {}
     mhz = int(a.mhz or 5200)
+    import soak
+    t = time.time()
+    # announced on the board's page: the loop held, the TX muted and the board locked to the B210 are this test's, not
+    # losses of the link's own (35 'unannounced losses' in ten minutes on the page, 2026-11-01 11:14-11:22)
+    note = soak.post("/api/note", {"text": "B210 link test (b210link.py %s): the board's loop held, its TX muted and the "
+                                           "board locked to the B210 in turn; linkd and the self-test stand by" % " ".join(a.what),
+                                   "kind": "intervention", "source": "b210link.py", "t_start": t, "t_end": t + 3600,
+                                   "b210": {"kind": "link", "what": a.what}})
     try:
         if "offset" in a.what or "to" in a.what:
             out["offset"] = L.offset(mhz)
@@ -594,6 +618,8 @@ def main(argv):
             L.cleanup()
         except Exception:                                    # noqa: BLE001
             pass
+        if note.get("id"):
+            soak.post("/api/note", {"id": note["id"], "end": True})
         path = save("b210link_%d" % mhz, out)
         L.b.record("verdict", test="b210link", ok=None, file=path,
                    text="the B210 as the other end: board -> B210 with software carrier and timing recovery; B210 -> "

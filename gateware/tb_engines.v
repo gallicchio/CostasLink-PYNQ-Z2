@@ -107,6 +107,10 @@ module tb_engines;
 
     reg [31:0] v, v2;
     integer w, n_ev, n_fa, n_mi, n_rf;
+    // FSK data (ID 13)
+    reg [255:0] fsk_dirs;
+    reg [3:0]  fsk_pt, fsk_last;
+    integer fsk_n, fsk_bad, fsk_fail, fsk_ones, fsk_dir, fsk_idx, fsk_lidx, fsk_step, fsk_k;
 
     // the confusion matrix's count: row r alone (r < 8) or all of it (r = 8)
     task cm_sum;
@@ -174,7 +178,7 @@ module tb_engines;
         repeat (5) @(posedge clk);
 
         // ---- identification ----
-        rd(R_ID, v); expect("ID", v, 32'h434C000C);
+        rd(R_ID, v); expect("ID", v, 32'h434C000D);
         rd(R_BUILD, v); expect("BUILD", v, {16'd100, RP_REG != 0, 3'b111, 4'd0, 8'd4});   // early lane, read-back, fast path
         rd(R_RX_INFO, v); expect("RX_INFO", v, {16'd100, 8'd6, 8'd4});
 
@@ -404,6 +408,63 @@ module tb_engines;
         rd(R_GATE_EDGES, v); expect("gate: CMP_I edges", v, 100);
         rd(R_GATE_HIGH, v); expect("gate: CMP_I high samples", v, 2000);
         wr(R_TX_GO, 32'd2);
+
+        // ---- FSK data (ID 13: TX mode 4 with the PRBS as source): each turn of the four axis points goes the way
+        // its PRBS bit says (1 backwards), a step every period; every step one point round, a turn's steps all one
+        // way, and the turns' directions a PRBS15 (b_n ^ b_n-14 ^ b_n-15 = 0) with both ways in it ----
+        wr(R_TX_POINTS, {16'd0, 4'b0001, 4'b0100, 4'b1101, 4'b0111});   // (+a, 0), (0, +a), (-a, 0), (0, -a)
+        wr(R_TX_PRBS, {23'd0, 1'b1, 5'd0, 3'd2});
+        wr(R_TX_MODE, {21'd0, 3'd3, 2'd0, 2'd2, 1'b0, 3'd4});       // N = 4, the PRBS, rotate: FSK data
+        wr(R_TX_PERIOD, 32'd3); wr(R_TX_GO, 32'd1);
+        fsk_n = 0; fsk_bad = 0; fsk_lidx = -1; fsk_dir = 0; fsk_last = 4'hF; fsk_dirs = 256'd0;
+        for (i = 0; i < 4 * 3 * 100; i = i + 1) begin
+            @(posedge clk);
+            fsk_pt = {tx_q1, tx_q0, tx_i1, tx_i0};
+            if (fsk_pt != fsk_last) begin
+                fsk_idx = (fsk_pt == 4'b0111) ? 0 : (fsk_pt == 4'b1101) ? 1 : (fsk_pt == 4'b0100) ? 2 :
+                          (fsk_pt == 4'b0001) ? 3 : -1;
+                if (fsk_idx < 0) fsk_bad = fsk_bad + 1;
+                else if (fsk_lidx >= 0) begin
+                    fsk_step = (fsk_idx - fsk_lidx + 4) % 4;
+                    if (fsk_step != 1 && fsk_step != 3) fsk_bad = fsk_bad + 1;
+                    else if (fsk_lidx == 0) begin                     // a turn starts: its direction
+                        fsk_dir = (fsk_step == 3);
+                        if (fsk_n < 256) fsk_dirs[fsk_n] = fsk_dir;
+                        fsk_n = fsk_n + 1;
+                    end else if ((fsk_step == 3) != fsk_dir) fsk_bad = fsk_bad + 1;
+                end
+                fsk_lidx = fsk_idx; fsk_last = fsk_pt;
+            end
+        end
+        wr(R_TX_GO, 32'd2);
+        fsk_fail = 0; fsk_ones = 0;
+        for (fsk_k = 0; fsk_k < fsk_n && fsk_k < 256; fsk_k = fsk_k + 1) begin
+            fsk_ones = fsk_ones + fsk_dirs[fsk_k];
+            if (fsk_k >= 15 && (fsk_dirs[fsk_k] ^ fsk_dirs[fsk_k - 14] ^ fsk_dirs[fsk_k - 15])) fsk_fail = fsk_fail + 1;
+        end
+        if (fsk_n < 90) begin $display("FAIL FSK: only %0d turns", fsk_n); errors = errors + 1; end
+        expect("FSK: steps not one point round, or against their turn", fsk_bad, 0);
+        expect("FSK: turns' directions failing the PRBS15 check", fsk_fail, 0);
+        // both ways (from an all-ones seed the first hundred bits of PRBS15 are mostly zeros: 16 of 100 backwards)
+        if (fsk_ones < 5 || fsk_ones > fsk_n - 5) begin
+            $display("FAIL FSK: %0d of %0d turns backwards", fsk_ones, fsk_n); errors = errors + 1;
+        end
+        // the plain rotation (the register's direction) as before: backwards, every step one point back
+        wr(R_TX_MODE, {20'd0, 1'b1, 3'd3, 2'd0, 2'd0, 1'b0, 3'd4});
+        wr(R_TX_GO, 32'd1);
+        fsk_bad = 0; fsk_lidx = -1; fsk_last = 4'hF;
+        for (i = 0; i < 4 * 3 * 20; i = i + 1) begin
+            @(posedge clk);
+            fsk_pt = {tx_q1, tx_q0, tx_i1, tx_i0};
+            if (fsk_pt != fsk_last) begin
+                fsk_idx = (fsk_pt == 4'b0111) ? 0 : (fsk_pt == 4'b1101) ? 1 : (fsk_pt == 4'b0100) ? 2 : 3;
+                if (fsk_lidx >= 0 && (fsk_idx - fsk_lidx + 4) % 4 != 3) fsk_bad = fsk_bad + 1;
+                fsk_lidx = fsk_idx; fsk_last = fsk_pt;
+            end
+        end
+        wr(R_TX_GO, 32'd2);
+        expect("rotation backwards: steps not one point back", fsk_bad, 0);
+        idle_clocks(20);
 
         // ---- a PRBS15 BPSK through the loop: 2 clocks a symbol, sampled mid-symbol ----
         wr(R_TX_POINTS, {24'd0, 4'b0111, 4'b0100});                 // bit 0 -> I -a, bit 1 -> I +a

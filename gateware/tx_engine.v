@@ -12,7 +12,9 @@
 //   3  PRBS symbols: every TX_PERIOD clocks the next log2(N) bits of the PRBS choose message point
 //      0..N-1: N = 2 with points (-a, 0), (+a, 0) is BPSK for the BER (stage 4.3), N = 4 the corners.
 //   4  rotation: points 0..N-1 in turn every TX_PERIOD clocks (backwards with TX_MODE[11]): with the four
-//      quadrant points, FSK at +-1 / (4 TX_PERIOD) of the clock.
+//      quadrant points, FSK at +-1 / (4 TX_PERIOD) of the clock.  With the PRBS as the source (TX_MODE[5:4] = 2,
+//      ID version 13) each turn's direction is the next PRBS bit (1 backwards): binary FSK data, continuous in
+//      phase, one bit a turn of N steps, its tones +-1 / (N TX_PERIOD) of the clock.
 //   5  one message point, TX_MSG's, held: a constellation point for the arms' offsets and the scope.
 // `tx_event` is high for the clock in which an event's point reaches the pins' registers: the time
 // reference of the receiver's latency (rx_engine.v, RX_CTRL[3] clear).  A synchronous reply
@@ -67,6 +69,7 @@ module tx_engine (
     reg [31:0] left, pcnt, wcnt;
     reg [23:0] sent;
     reg [2:0]  rot_idx, ctr;
+    reg        fsk_back;                   // FSK data: this turn's direction, from the PRBS at its start
     reg        go_start, go_stop, go_one, reseed;
     reg        ev_int;                    // an event's point chosen this clock: on the pins the next
 
@@ -131,9 +134,15 @@ module tx_engine (
     wire ev_go  = go_one || (mode == 3'd1 && running && pz && gate_ok) ||
                   (mode == 3'd2 && running && trig_in_rise && hz && gate_ok);
     wire sym_go = (mode == 3'd3) && running && !go_start && pz;
+    // FSK data (mode 4, the PRBS as source): a turn starts at point 0 and takes one PRBS bit for its direction
+    wire fsk      = (mode == 3'd4) && (src == 2'd2);
+    wire rot_turn = (rot_idx == 3'd0);
+    wire fsk_go   = fsk && running && !go_start && pz && rot_turn;
+    wire rot_dir  = fsk ? (rot_turn ? rnd3[0] : fsk_back) : rot_back;
     always @* begin
         if ((mode == 3'd1 || mode == 3'd2) && ev_go && src == 2'd2) adv = 2'd3;
         else if (sym_go) adv = kbits;
+        else if (fsk_go) adv = 2'd1;
         else adv = 2'd0;
     end
 
@@ -144,7 +153,7 @@ module tx_engine (
             idle <= 4'b0111; points <= 32'd0; msg_fixed <= 3'd0;
             period <= 32'd1000; width <= 32'd10; count <= 32'd0; poly <= 3'd2;
             running <= 1'b0; forever_ <= 1'b0; left <= 32'd0; pcnt <= 32'd0; wcnt <= 32'd0;
-            sent <= 24'd0; rot_idx <= 3'd0; ctr <= 3'd0;
+            sent <= 24'd0; rot_idx <= 3'd0; ctr <= 3'd0; fsk_back <= 1'b0;
             go_start <= 1'b0; go_stop <= 1'b0; go_one <= 1'b0; reseed <= 1'b0;
             p_idle <= 1'b1; p_msg <= 3'd0; ev_int <= 1'b0; tx_msg <= 3'd0; tx_busy <= 1'b0; hold <= 32'd0;
             pz <= 1'b1; hz <= 1'b1;
@@ -216,8 +225,9 @@ module tx_engine (
                         end else begin
                             p_idle  <= 1'b0; p_msg <= rot_idx;
                             tx_msg  <= rot_idx;
-                            rot_idx <= rot_back ? ((rot_idx == 3'd0) ? nm1 : rot_idx - 1'b1)
-                                                : ((rot_idx == nm1) ? 3'd0 : rot_idx + 1'b1);
+                            if (fsk && rot_turn) fsk_back <= rnd3[0];
+                            rot_idx <= rot_dir ? ((rot_idx == 3'd0) ? nm1 : rot_idx - 1'b1)
+                                               : ((rot_idx == nm1) ? 3'd0 : rot_idx + 1'b1);
                         end
                     end else begin pcnt <= pcnt - 1'b1; pz <= (pcnt == 32'd1); end
                 end else if (!running) p_idle <= 1'b1;

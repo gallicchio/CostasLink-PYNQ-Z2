@@ -147,7 +147,11 @@ class LinkD:
             self.lost_since = None
             self.wait = self.backoff_s[0]
             self.vc_lock = o["vc"] if self.vc_lock is None else 0.9 * self.vc_lock + 0.1 * o["vc"]
-            if o["e_i"] < 50:                                         # idle carrier: the leg is visible
+            # idle carrier: the leg is visible.  Not while the self-test sends: OOK's nulls leave the sign of I quiet,
+            # so its data passed for the idle and the leg read 107-165 mV for a 173 mV carrier, the windows moved six
+            # times in 15 s and the calibration was dropped (2026-11-01 11:23)
+            st = getattr(self.server, "selftest", None)
+            if o["e_i"] < 50 and not (st is not None and getattr(st, "_busy", False)):
                 self.leg = abs(o["di"]) if self.leg is None else 0.9 * self.leg + 0.1 * abs(o["di"])
                 self.track_windows(cl, 1 if o["di"] > 0 else -1)
             self.mode = "locked"
