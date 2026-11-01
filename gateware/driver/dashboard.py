@@ -337,8 +337,13 @@ class Dashboard:
         held_sw = r["ctrl"]["loop_hold"]
         vc = adc.get("VC")
         off = None
-        if vc is not None and self.vc_lock is not None and r.get("rx_mhz"):
-            off = (vc - self.vc_lock) * KV_HZ_PER_V_5800 * r["rx_mhz"] / 5800.0 / 1e3
+        # the lock's VC: linkd's when it has one (it learns only from its own locked readings, I leg and comparators),
+        # else the page's own; a CW 9 MHz away dragged VC 214 kHz off while the lock monitor still read 'locked', the
+        # page learned that VC, and its offset read 10 kHz for a minute after the recovery (soak12 #26, 23:32)
+        L = r.get("linkd") or {}
+        ref = L.get("vc_lock") if L.get("vc_lock") is not None else self.vc_lock
+        if vc is not None and ref is not None and r.get("rx_mhz"):
+            off = (vc - ref) * KV_HZ_PER_V_5800 * r["rx_mhz"] / 5800.0 / 1e3
         gw = r.get("gw_lock")
         if not rate:
             st = "starting"
@@ -363,6 +368,10 @@ class Dashboard:
             # within 8 kHz of the lock: BRINGUP_LOG 4.12, 4.15; the first live page called beacon bursts 'lost')
             if st in ("lost", "unsettled") and off is not None and abs(off) < 8.0:
                 st = "interfered"
+            # and a 'locked' with the oscillator 20 kHz or more from the lock is a loop dragged off (the capture window
+            # is -10..+20..+60 kHz: REVB 26), not a lock
+            if st == "locked" and off is not None and abs(off) >= 20.0:
+                st = "lost"
             # the board's own symbols move the Q windows (A2, A3), which the lock monitor before ID 9 reads as busy:
             # with the oscillator at the lock that is the link working, not interference.  From ID 9 it masks them
             # itself, so its 'lost' during the board's own symbols is real interference (a CW 0.43 MHz away, 22:34)
@@ -416,7 +425,7 @@ class Dashboard:
                                 r["rx_ant_dbm"] = r["dem_dbm"] - RX_GAIN_DB + r["dsa_db"]
             except ImportError:
                 pass
-        if st == "locked" and vc is not None:
+        if st == "locked" and vc is not None and (self.vc_lock is None or off is None or abs(off) < 5.0):
             self.vc_lock = vc if self.vc_lock is None else 0.95 * self.vc_lock + 0.05 * vc
             if abs(di) > 0.05 and r.get("ber") is None:
                 self.leg_ref = abs(di) if self.leg_ref is None else 0.9 * self.leg_ref + 0.1 * abs(di)
