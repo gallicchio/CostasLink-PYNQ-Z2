@@ -78,8 +78,16 @@ class SelfTest:
         self.level = None                    # the carrier's I in the data step's last gap: {t, i} (dashboard.py)
 
     # ---- for the page ----
-    def state(self):
-        return {"on": self.on, "plan": self.plan_name, "now": dict(self.now), "results": list(self.results)[-3:]}
+    def state(self, full=False):
+        """for each look (small: the histograms stay out of the log) or, full, for /api/selftest (the last symbol run's
+        latency histogram with its scheme and what the B210 did)"""
+        res = [{k: v for k, v in r.items() if k != "lat_hist"} for r in list(self.results)[-3:]]
+        out = {"on": self.on, "plan": self.plan_name, "now": dict(self.now), "results": res}
+        if full:
+            last = next((r for r in reversed(self.results) if r.get("lat_hist")), None)
+            out["last_hist"] = {k: last.get(k) for k in ("scheme", "events", "right", "wrong", "false", "missed", "lat_ns", "lat_hist",
+                                                         "b210", "t1", "period", "width")} if last else None
+        return out
 
     def set(self, d):
         """POST /api/selftest: {"on": bool, "plan": name, "holdover": bool}"""
@@ -96,7 +104,7 @@ class SelfTest:
                 json.dump({"on": self.on, "plan": self.plan_name}, f)
         except OSError:
             pass
-        return self.state()
+        return self.state(full=True)
 
     # ---- the board ----
     def _do(self, fn):
@@ -145,8 +153,11 @@ class SelfTest:
         d = getattr(self.server, "dashboard", None)
         if d is None:
             return None
-        said = [n["text"] for n in list(d.notes) if (n.get("b210") or n.get("text", "").startswith("B210"))
-                and n["t_start"] <= t1 and (n.get("t_end") or t1) >= t0]
+        # the B210's own announcements (they carry 'b210'); a test's note that only names the B210 counts only when no
+        # announcement does (the same burst was listed twice, 23:24)
+        ns = [n for n in list(d.notes) if n["t_start"] <= t1 and (n.get("t_end") or t1) >= t0]
+        said = [n["text"] for n in ns if n.get("b210")] or [n["text"] for n in ns if n.get("text", "").startswith("B210")]
+        said = list(dict.fromkeys(said))
         return "; ".join(said)[:300] if said else "quiet"
 
     def _say(self, step, text, **kw):
@@ -193,6 +204,13 @@ class SelfTest:
         def finish(cl):
             s = cl.rx_stats()
             cm = cl.confusion()
+            # the latency's spread, not only its mean: the histogram's bins (one sample each) up to the slowest
+            # decision, kept as [ns, count] where counted (the page's 'latency, the last run's spread')
+            hist = None
+            if s.get("lat_n"):
+                n_b = min(1024, int(s["lat_max"]) + 2)
+                h = cl.histogram(n_b)
+                hist = [[round(k * t_sample * 1e9, 2), c] for k, c in enumerate(h) if c]
             cl.rx_enable(False)
             cl.tx_stop()
             cl.hold_point(1, 0)
@@ -201,7 +219,8 @@ class SelfTest:
             return {"events": s.get("events"), "right": sum(cm[a][a] for a in range(n)),
                     "wrong": sum(cm[a][b] for a in range(n) for b in range(n) if a != b), "false": s.get("false"),
                     "missed": s.get("missed"), "lat_ns": [s[k] * t_sample * 1e9 if s.get(k) is not None else None
-                                                         for k in ("lat_min", "lat_mean", "lat_max")] if s.get("lat_n") else None}
+                                                         for k in ("lat_min", "lat_mean", "lat_max")] if s.get("lat_n") else None,
+                    "lat_hist": hist}
         res = self._do(finish) if not self._aborted else {}
         return dict({"step": "symbols", "scheme": name, "period": period, "width": width, "count": count, "side": side,
                      "interrupted": not ok}, **res)

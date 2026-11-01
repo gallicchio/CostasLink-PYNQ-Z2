@@ -35,9 +35,9 @@ def b210_now():
     """the B210's announced activity now, in words, or 'quiet'"""
     t = time.time()
     try:
-        for n in reversed(get("/api/notes?s=600")):
-            if (n.get("b210") or n.get("text", "").startswith("B210")) and n["t_start"] <= t <= (n.get("t_end") or t + 1):
-                return n["text"].replace("B210: ", "sent ", 1)
+        now = [n for n in get("/api/notes?s=600") if n["t_start"] <= t <= (n.get("t_end") or t + 1)]
+        for n in [m for m in now if m.get("b210")] or [m for m in now if m.get("text", "").startswith("B210")]:
+            return n["text"].replace("B210: ", "sent ", 1)
     except Exception:                                            # noqa: BLE001
         pass
     return "quiet"

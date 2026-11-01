@@ -514,7 +514,7 @@ class Dashboard:
                         self.send(200, "{}", "application/json")
                 elif u.path == "/api/selftest":
                     st = getattr(dash.server, "selftest", None)
-                    self.send(200, json.dumps(st.state() if st else {"on": False, "absent": True}, default=str), "application/json")
+                    self.send(200, json.dumps(st.state(full=True) if st else {"on": False, "absent": True}, default=str), "application/json")
                 elif u.path == "/api/scope":
                     # the latest capture of each kind (symbols, data, other): the page draws no more (all 40 were 2.8 MB)
                     q = parse_qs(u.query)

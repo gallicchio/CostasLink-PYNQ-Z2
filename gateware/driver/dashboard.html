@@ -159,6 +159,8 @@ const PANELS = [
  {id:"latency", title:"Single symbols: latency", unit:"ns", get:r=>r._rx ? r._rx.lat_ns : null, lo:0, hi:400,
   absent:"measured only while a test sends single symbols",
   help:"<p>While a test sends single symbols: the mean time from each symbol leaving the transmitter to the receiver's decision, in nanoseconds (the receiver's settling delay included). No judgement: it is set by the scheme and the receiver's settings.</p>"},
+ {id:"lathist", title:"Single symbols: latency, the last run's spread", kind:"lathist",
+  help:"<p>The last self-test run of single symbols: how many decisions came after each latency, from the symbol leaving the transmitter to the receiver's decision (one bar per receiver sample, 1.25 ns; counts on a log scale). Without interference they fall in a narrow spike (the receiver's settling and the path); interference spreads them out, and a stray decision long after shows a symbol decided late or a false one.</p><p class='k'>Good: one narrow spike.</p>"},
  {id:"fastconst", title:"Constellation (fast: the bench scope)", kind:"scope",
   help:"<p>The received I and Q as the bench oscilloscope saw them on I MON and Q MON (thousands of samples, a few nanoseconds apart), posted here by a bench test while it sends data or symbols: the real constellation, which the slow plot cannot show (its readings average a millisecond). Denser blue where the signal spends more time; the circles mark the locked idle carrier.</p><p>BPSK data: two clusters, left and right. Single symbols (A3): the idle cluster, and dots toward the four corners. Noise spreads the clusters; a CW near the carrier draws circles; a lost loop smears a ring.</p><p>Only on the bench: the deployed board has no scope (rev B: a dual ADC on I and Q, REVB U2).</p>"},
  {id:"sym_raw", title:"Single symbols, raw: I and Q (the bench scope)", kind:"scopewave", which:"symbols",
@@ -180,7 +182,7 @@ let span = 600, hist = [], last = null, notes = [], pullin = null;
 const grid = document.getElementById("grid");
 // ?view=demo: what a demonstration shows first (the link at work, its signal, its bits and symbols, the scope), the
 // loop's physics after (the order only: every panel is still there)
-const DEMO = ["activity_lanes", "state", "rxant", "ber", "symbols", "latency", "fastconst", "data_eye", "sym_fold", "data_raw", "sym_raw",
+const DEMO = ["activity_lanes", "state", "rxant", "ber", "symbols", "latency", "lathist", "fastconst", "data_eye", "sym_fold", "data_raw", "sym_raw",
               "offset", "scurve", "pullin", "constellation", "dem", "gwlock", "vc", "activity", "interference", "hold", "skew", "temp", "supply"];
 if (new URLSearchParams(location.search).get("view") == "demo")
   PANELS.sort((a, b) => (DEMO.indexOf(a.id) + 1 || 99) - (DEMO.indexOf(b.id) + 1 || 99));
@@ -228,7 +230,8 @@ function linkText(r) { const a = linkAct(r); if (!a) return "is not known (no re
   if (a == "off") return "has its carrier switched off"; if (a == "held") return "carries the carrier, the loop held by a program";
   return "carries the carrier alone" + (s && s.step == "idle" ? " (the self-test reads its level)" : ""); }
 function b210Kind(n) { return n.b210 && B2[n.b210.kind] ? n.b210.kind : "b210"; }
-function b210Notes() { return notes.filter(n => n.b210 || /^B210/.test(n.text)); }
+// the B210's own announcements; a test's note that only names it counts only while none carry 'b210' (older records)
+function b210Notes() { const own = notes.filter(n => n.b210); return own.length ? own : notes.filter(n => /^B210/.test(n.text)); }
 function b210Label(n) { const b = n.b210 || {}; return b.kind == "cw_far" ? (b.off_mhz > 0 ? "+" : "") + fmt(b.off_mhz) + " MHz" :
   b.kind == "cw_near" ? (b.off_khz > 0 ? "+" : "") + fmt(b.off_khz) + " kHz" : b.kind == "bursts" ? fmt(b.on_ms) + "/" + fmt(b.per_ms) + " ms" : ""; }
 function b210Now() { const now = Date.now() / 1000; return b210Notes().find(n => n.t_start <= now && now <= (n.t_end || now + 1)); }
@@ -553,7 +556,25 @@ function drawScopeFold(p) {
       "<span style='color:" + C.data + "'>&#9632;</span> I &nbsp; <span style='color:" + SERIES[1] + "'>&#9632;</span> Q";
   }
 }
-function drawAll() { for (const p of PANELS) { try { ({timeline: drawTimeline, scatter: drawScatter, pullin: drawPullin, scurve: drawSCurve, scope: drawScope, activity: drawActivity, scopewave: drawScopeWave, scopefold: drawScopeFold}[p.kind] || drawSeries)(p); } catch (e) { console.log(p.id, e); } } }
+let stFull = null;
+async function loadSelftest() { try { stFull = await (await fetch("/api/selftest")).json(); } catch (e) {} }
+function drawLatHist(p) {
+  const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv), L = 46, R = 10, T = 8, Bt = 22, pw = w - L - R, ph = h - T - Bt;
+  g.clearRect(0, 0, w, h); g.strokeStyle = "#c9ccd2"; g.lineWidth = 1; g.strokeRect(L, T, pw, ph);
+  const lh = stFull && stFull.last_hist, xv = document.getElementById("x_" + p.id);
+  document.getElementById("v_" + p.id).textContent = "";
+  if (!lh || !lh.lat_hist || !lh.lat_hist.length) { xv.textContent = "No run yet: the self-test's single symbols fill it (its plan 'rounds' or 'single symbols')."; return; }
+  const bins = lh.lat_hist, x0 = Math.max(0, bins[0][0] - 10), x1 = bins[bins.length - 1][0] + 10, cmax = Math.max(...bins.map(b => b[1]));
+  const x = v => L + pw * (v - x0) / (x1 - x0), y = c => T + ph * (1 - Math.log10(c + 1) / Math.log10(cmax + 1));
+  g.fillStyle = C.data; const bw = Math.max(1.5, pw / Math.max(40, (x1 - x0) / 1.25));
+  for (const [ns, c] of bins) g.fillRect(x(ns) - bw / 2, y(c), bw, T + ph - y(c));
+  g.fillStyle = C.ink2; g.font = "12px system-ui"; g.textAlign = "left"; g.fillText(fmt(x0) + " ns", L + 2, h - 6); g.textAlign = "right"; g.fillText(fmt(x1) + " ns", w - R, h - 6);
+  g.fillText(cmax.toExponential(0), L - 4, T + 10); g.fillText("1", L - 4, T + ph);
+  const age = Date.now() / 1000 - (lh.t1 || 0);
+  xv.textContent = lh.scheme + ", " + dur(Math.max(0, age)) + " ago: " + lh.events + " sent, " + lh.right + " right, " + lh.wrong + " wrong, " + lh.false + " false, " + lh.missed + " missed; " +
+    (lh.lat_ns ? "from " + fmt(lh.lat_ns[0]) + " to " + fmt(lh.lat_ns[2]) + " ns, mean " + fmt(lh.lat_ns[1]) + " ns" : "") + "; the B210 " + (lh.b210 && lh.b210 != "quiet" ? lh.b210.replace(/^B210: /, "sent ") : "was quiet") + ".";
+}
+function drawAll() { for (const p of PANELS) { try { ({timeline: drawTimeline, scatter: drawScatter, pullin: drawPullin, scurve: drawSCurve, scope: drawScope, activity: drawActivity, scopewave: drawScopeWave, scopefold: drawScopeFold, lathist: drawLatHist}[p.kind] || drawSeries)(p); } catch (e) { console.log(p.id, e); } } }
 function status() {
   const st = document.getElementById("status"), r = last;
   if (!r) return;
@@ -632,5 +653,5 @@ if (new URLSearchParams(location.search).get("controls") == "1") {
     post(b.dataset.plan == "off" ? {on: false} : {on: true, plan: b.dataset.plan}));
   document.querySelectorAll("#controls button[data-hold]").forEach(b => b.onclick = () => post({holdover: b.dataset.hold == "1"}));
 }
-window.onresize = drawAll; load(); events(); setInterval(tick, 1000); setInterval(events, 5000); setInterval(loadNotes, 5000); setInterval(loadScopes, 10000);
+window.onresize = drawAll; load(); events(); setInterval(tick, 1000); setInterval(events, 5000); setInterval(loadNotes, 5000); setInterval(loadScopes, 10000); setInterval(loadSelftest, 10000); loadSelftest();
 </script></body></html>
