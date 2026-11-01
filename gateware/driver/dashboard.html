@@ -564,8 +564,9 @@ function scopeOf(kind) { for (let k = scopes.length - 1; k >= 0; k--) if (scopes
 function scopeSays(c) { const b = c.b210 || "quiet";
   return "The bench scope, " + dur(Math.max(0, Date.now() / 1000 - c.t)) + " ago, while the link sent " + (c.link || c.text || "?") +
     "; the B210 " + (b == "quiet" ? "was quiet" : b) + "."; }
-function scopeFrame(p, top, x0, x1, xunit) {
-  const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv), L = 46, R = 10, T = 8, Bt = 22, pw = w - L - R, ph = h - T - Bt;
+function scopeFrame(p, top, x0, x1, xunit, R = 10) {
+  // R: the right margin (the level lines' labels sit there, off the traces: Jason, 2026-11-01)
+  const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv), L = 46, T = 8, Bt = 22, pw = w - L - R, ph = h - T - Bt;
   g.clearRect(0, 0, w, h); g.strokeStyle = "#c9ccd2"; g.lineWidth = 1; g.strokeRect(L, T, pw, ph);
   const x = t => L + pw * (t - x0) / (x1 - x0), y = v => T + ph * (1 - (Math.max(-top, Math.min(top, v)) + top) / (2 * top));
   g.beginPath(); g.moveTo(L, y(0)); g.lineTo(L + pw, y(0)); g.stroke();
@@ -581,7 +582,7 @@ function noCapture(p) { document.getElementById("v_" + p.id).textContent = "";
 function drawScopeWave(p) {
   const c = scopeOf(p.which); if (!c) return noCapture(p);
   const n = c.i.length, dt = c.dt_ns || 1, mid = c.i0 != null ? c.i0 : 1.65, qm = c.q0 != null ? c.q0 : 1.63, leg = legOf(c);
-  const [g, x, y, L, pw] = scopeFrame(p, 0.32, 0, n * dt / 1000, "us");
+  const [g, x, y, L, pw] = scopeFrame(p, 0.32, 0, n * dt / 1000, "us", LABEL_R);
   levelLines(g, c, mid, y, L, pw);
   for (const [arr, m, col] of [[c.q, qm, SERIES[1]], [c.i, mid, C.data]]) { g.strokeStyle = col; g.lineWidth = 1.2; g.beginPath();
     for (let k = 0; k < n; k++) { const xx = x(k * dt / 1000), yy = y(arr[k] - m); k ? g.lineTo(xx, yy) : g.moveTo(xx, yy); } g.stroke(); }
@@ -591,17 +592,25 @@ function drawScopeWave(p) {
 }
 // dashed: where I (blue) and Q (orange) should go for the capture's scheme (nominal, the carrier's level), labelled at
 // the right; for data, I's two levels
+const LABEL_R = 64;          // the scope plots' right margin for the level lines' labels
 function levelLines(g, c, mid, y, L, pw) {
   const leg = legOf(c), side = sideOf(c, mid), sch = dataScheme(c) || SCHEMES[c.scheme];
   if (!sch) return;
   const lv = {i: new Map(), q: new Map()};
   [sch.idle, ...sch.msgs].forEach((m, k) => { const [a, b] = rxPt(m, side);
     lv.i.set(a, (lv.i.get(a) || []).concat(k ? String(k - 1) : "idle")); lv.q.set(b, (lv.q.get(b) || []).concat(k ? String(k - 1) : "idle")); });
-  g.font = "10px system-ui"; g.textAlign = "right"; g.setLineDash([4, 3]); g.lineWidth = 1;
-  for (const [ax, col, dy] of [["i", C.data, -2], ["q", SERIES[1], 10]]) for (const [v, names] of lv[ax]) {
+  g.setLineDash([4, 3]); g.lineWidth = 1;
+  const labs = [];
+  for (const [ax, col] of [["i", C.data], ["q", SERIES[1]]]) for (const [v, names] of lv[ax]) {
     g.strokeStyle = col; g.beginPath(); g.moveTo(L, y(v * leg)); g.lineTo(L + pw, y(v * leg)); g.stroke();
-    g.fillStyle = col; g.fillText(ax.toUpperCase() + " " + (c.kind == "data" ? "" : names.join(",")), L + pw - 2, y(v * leg) + dy); }
+    // data: bit 0 the carrier, bit 1 its inverse (BPSK) or its null (OOK); Q stays at the middle
+    labs.push({y: y(v * leg), col, text: c.kind == "data" ? (ax == "q" ? "Q" : "I bit " + (names[0] == "idle" ? "0" : "1")) :
+      ax.toUpperCase() + " " + names.join(",")}); }
   g.setLineDash([]);
+  // in the right margin beside their lines, left-aligned, pushed apart where two would touch (A2's and A3's Q levels)
+  labs.sort((a, b) => a.y - b.y); let prev = -1e9;
+  g.font = "10px system-ui"; g.textAlign = "left";
+  for (const l of labs) { const yy = Math.max(l.y + 3, prev + 11); prev = yy; g.fillStyle = l.col; g.fillText(l.text, L + pw + 4, yy); }
 }
 // data's two states: BPSK the carrier and it inverted, on-off keying the carrier and its null
 function dataScheme(c) { return c.kind != "data" ? null : /OOK/.test(c.link || c.text || "") ? {idle: [1, 0], msgs: [[0, 0]]} : {idle: [1, 0], msgs: [[-1, 0]]}; }
@@ -638,7 +647,7 @@ function drawScopeFold(p) {
     const quietN = Math.max(3, Math.round(0.5 * W / dt)), pre = Math.max(50, 0.3 * W), post = W + Math.max(300, W), on = [];
     let quiet = 0;
     for (let k = 0; k < n; k++) { const d = Math.hypot(c.i[k] - Ii, c.q[k] - Qi); if (d > thr && quiet >= quietN) on.push(k); quiet = d > thr ? 0 : quiet + 1; }
-    const [g, x, y] = scopeFrame(p, 0.32, -pre, post, "ns");
+    const [g, x, y] = scopeFrame(p, 0.32, -pre, post, "ns", LABEL_R);
     for (const [arr, m, col] of [[c.q, qm, "rgba(224,123,0,0.35)"], [c.i, mid, "rgba(30,58,138,0.35)"]]) { g.strokeStyle = col; g.lineWidth = 1;
       for (const k0 of on.slice(0, 60)) { g.beginPath(); let first = true;
         for (let k = Math.max(0, k0 - Math.round(pre / dt)); k < Math.min(n, k0 + Math.round(post / dt)); k++) { const xx = x((k - k0) * dt), yy = y(arr[k] - m);
