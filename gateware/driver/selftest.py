@@ -324,8 +324,10 @@ class SelfTest:
             new[w] = max(0.5 * (lo + hi), L.cen[w] + 0.25 * leg)
         res = {"step": "calibrate", "side": side, "leg_v": round(leg, 4), "before_v": before, "plateaus_v": plateaus,
                "after_v": {w: round(v, 4) for w, v in new.items()}}
+        frac = float((L.cfg or {}).get("window_frac", 0.5))
+        plain = {w: round(L.cen[w] + frac * leg, 4) for w in L.cen}      # the page's dashed lines: the plain rule's
         self.last_levels = {"t": time.time(), "scheme": "A3", "side": side, "leg_v": round(leg, 4),
-                            "centres_v": sw["A3"]["centres_v"], "before_v": before, "after_v": res["after_v"],
+                            "centres_v": sw["A3"]["centres_v"], "before_v": plain, "after_v": res["after_v"],
                             "sweeps": sw["A3"]["sweeps"], "b210": self._b210(time.time() - 10, time.time())}
         if len(new) == 4:
             self._do(lambda cl: L.set_windows(cl, new, side))
