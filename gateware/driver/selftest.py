@@ -99,15 +99,17 @@ class SelfTest:
         self.on, self.plan_name, self.calibrate_on = False, "cycle", True
         # where in each window's plateau its threshold goes, from the idle's side: 0.5 its middle (best against noise);
         # more, away from the idle (fewer false events from an interferer riding on it, less margin for the states).
-        # 0.7 since the A/B of 2026-11-01 12:46 (BRINGUP_LOG 4.30): quiet, every A3 corner right as at 0.5; under a CW
-        # 10 dB down 150 times fewer false events, A1 80-86 % right where 0.5 gave 69-74 %, A3's wrong 4-25 % not 37-48 %
-        self.window_bias = 0.7
+        # 0.7 at the A/B of 2026-11-01 12:46 (BRINGUP_LOG 4.30): quiet, every slow A3 corner right as at 0.5; under a CW
+        # 10 dB down 150 times fewer false events, A1 80-86 % right where 0.5 gave 69-74 %, A3's wrong 4-25 % not 37-48 %.
+        # But the round's QPSK (the corners at 2.5 M a second) then lost 3e-5 undecided or missed, quiet (the corners on
+        # the idle's side of I, whose Q the receiver reads short: 4.31): 0.6 since 13:24, 1.3e8 of them all right
+        self.window_bias = 0.6
         try:
             with open(STATE_FILE) as f:
                 d = json.load(f)
             self.on, self.plan_name = bool(d.get("on")), d.get("plan", "cycle")
             self.calibrate_on = bool(d.get("calibrate", True))
-            self.window_bias = float(d.get("window_bias", 0.7))
+            self.window_bias = float(d.get("window_bias", 0.6))
         except (OSError, ValueError):
             pass
         self._cal_tried = 0.0
