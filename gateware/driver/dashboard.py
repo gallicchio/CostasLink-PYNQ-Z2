@@ -125,10 +125,13 @@ class Dashboard:
             dt = t - t0
             if dt > 0:
                 r["rate"] = {n: ((e - p) % (1 << 32)) / dt for n, e, p in zip(EDGES, edges, e0)}
-                d = ih["seconds"] - ih0
-                r["hold_pct"] = 100.0 * d / dt if d >= 0 else None
-                d = sh["seconds"] - sh0
-                r["holdover_pct"] = 100.0 * d / dt if d >= 0 else None
+                # the holds' clock counters are 32 bits at the fabric clock: they wrap every 42.9 s of holding (a 35 s
+                # holdover crossed it, soak7); a reset (new firmware) reads as more than the look's own length
+                wrap = (1 << 32) / (cl.clk_mhz * 1e6)
+                d = (ih["seconds"] - ih0) % wrap
+                r["hold_pct"] = 100.0 * d / dt if d <= dt * 1.05 else None
+                d = (sh["seconds"] - sh0) % wrap
+                r["holdover_pct"] = 100.0 * d / dt if d <= dt * 1.05 else None
         self._prev = (t, edges, ih["seconds"], sh["seconds"])
         if self.n % self.slow_every == 0:
             s = {"adc": {k: cl.adc(k) for k in ("I", "Q", "VC", "ERR")}}
