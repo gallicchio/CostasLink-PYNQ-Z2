@@ -31,7 +31,7 @@ it (a BRINGUP_LOG row, a REVB row).  The version table in BRINGUP_LOG ('What run
 | linkd waits for the carrier when the lock monitor sees none (no tries holding the board, no back-off), and starts the moment it returns: a 52.8 s cut recovered 3 s after the carrier came back, where before 11 s of tries and a 5 s back-off made it 7 s | `linkd.py` | soak13 #12, #25 |
 | a dragged loop no longer called locked (20 kHz or more off), the offset from linkd's lock VC (the page learned a dragged VC and showed a false 10 kHz for a minute) | `dashboard.py` | soak12 #26 |
 | the page's history sent from the looks as already encoded (0.18 s, not 2.3 s, for 10 minutes; the looks fell late while it encoded), the scope API the latest capture of each kind, the scope's captures thinned in the log | `dashboard.py` | 2026-10-31 22:39 |
-| linkd moves the receiver's windows with the carrier's level (set at setup for the level then: 2-4 dB more attenuation lost 70-74 % of A2's and A3's symbols) | `linkd.py`, `dashboard.py` ('What happened' says so) | REVB 33, 4.24 |
+| linkd lowers the receiver's windows with a weaker carrier (set at setup for the level then: 2-4 dB more attenuation lost 70-74 % of A2's and A3's symbols), never above setup's (raised with a stronger one they lost A3's corners) | `linkd.py`, `dashboard.py` ('What happened' says so) | REVB 33, 4.24 |
 | the netbus client connects again after a server restart | `netbus.py` | soak12 #12 |
 | the latency's spread per symbol run (a histogram), the level read in gaps of the data, the demonstration's controls and order | `selftest.py`, `dashboard.*` | 2026-10-31 22:57-23:24 |
 
