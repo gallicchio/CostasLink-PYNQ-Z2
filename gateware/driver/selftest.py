@@ -163,6 +163,13 @@ class SelfTest:
         i0 = L.i0 if L is not None else 1.65
         return 1 if cl.adc("I") > i0 else -1
 
+    def _restore_ook(self, cl):
+        """the I window an OOK step moved, back where linkd keeps it"""
+        w, self._ook_thr = getattr(self, "_ook_thr", None), None
+        L = getattr(self.server, "linkd", None)
+        if w and L is not None and L.cen:
+            cl.threshold(w, min(2.499, max(0.0, L.thresholds()[w])))
+
     def abort(self, cl):
         """the idle carrier back at once, under the caller's lock (linkd.recover())"""
         if not self._busy:
@@ -173,6 +180,7 @@ class SelfTest:
             cl.rx_enable(False)
             cl.tx_stop()
             cl.hold_point(1, 0)
+            self._restore_ook(cl)
         finally:
             self._busy = False
 
@@ -513,6 +521,13 @@ class SelfTest:
 
         def start(cl):
             sd = side if side is not None else self._side(cl)
+            # OOK is read on the I window on the carrier's side, whose threshold the calibration puts a quarter of the
+            # leg out (right for single symbols' corners); OOK's two levels are the carrier and its null, so for the
+            # step it goes half way between them (2026-11-01: 25 Mbaud OOK 4e-7 with the quarter, the B210 quiet)
+            if ook and L is not None and L.cen and (L.leg or L.leg_windows):
+                w = "IP" if sd > 0 else "IN"
+                self._ook_thr = w
+                cl.threshold(w, min(2.499, max(0.0, L.cen[w] + 0.5 * (L.leg or L.leg_windows))))
             cl.tx_points(point_code(1, 0), [point_code(1, 0), point_code(0, 0) if ook else point_code(-1, 0)])
             cl.tx_timing(period=period)
             cl.tx_prbs(15)
@@ -529,6 +544,7 @@ class SelfTest:
             c = cl.cdr_state()
             cl.tx_stop()
             cl.hold_point(1, 0)
+            self._restore_ook(cl)
             self._busy = False
             return r, c
 
