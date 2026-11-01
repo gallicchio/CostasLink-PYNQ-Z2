@@ -131,6 +131,12 @@ class LinkD:
             return
         o = self.observe()
         now = time.time()
+        # locked by the comparators but far from the learned lock: locked to something else (a strong CW captured the
+        # loop: soak14 #50, a CW 9.7 MHz away at gain 87 held it 600 kHz off with I up and Q quiet), so not learned
+        # from (one such look pulled the learned VC 70 kHz down, the recovery then started there and took 7.9 s, and
+        # the page's offset crept back for 20 s) and judged by VC below like any other drag
+        if o["locked"] and self.vc_lock is not None and abs(o["vc"] - self.vc_lock) * self.kv() / 1e3 > self.off_khz_min:
+            o["locked"] = False
         if o["locked"]:
             if self._loss_open:                                     # back by itself (the carrier returned near the lock)
                 self._loss_open = False
@@ -177,6 +183,10 @@ class LinkD:
                 self.led(recovering=False)
             self.counts["last_starts"] = starts
             if ok:
+                # the lock the recovery came down into from above is the carrier's: learn its VC afresh (a learned VC
+                # gone wrong would otherwise make every true lock look 'far' and be recovered again)
+                time.sleep(0.2)
+                self.vc_lock = self.server.cl.adc("VC")
                 self.counts["recoveries"] += 1
                 self.counts["last_recovery_s"] = time.time() - self.lost_since
                 self.counts["t_last_recovery"] = time.time()
