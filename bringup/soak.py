@@ -344,6 +344,20 @@ def audit(t0, t_end, t_back, note_id=None, kind=None, params=None, marks=None, t
         check("as_before", ok, "after: offset %s kHz, RX ANT %s, demodulator %s dBm (before %s, %s)" % (
             *("%.1f" % a[k] if a[k] is not None else "-" for k in ("off_khz", "rx_ant_dbm", "dem_dbm")),
             *("%.1f" % base[k] if base[k] is not None else "-" for k in ("rx_ant_dbm", "dem_dbm"))))
+    # the self-test's own single symbols and QPSK started once the link was back, quiet: each lost under 1 % (2026-11-01
+    # 13:41: a calibration taken during an attenuator step left A2, A3 and QPSK 60 % missed, and every check passed)
+    runs = {}
+    for r in looks:
+        for x in ((r.get("selftest") or {}).get("results") or []):
+            if (x.get("t0") and t_back is not None and x["t0"] > t_back + 1.0 and x.get("step") in ("symbols", "qpsk")
+                    and x.get("sent") and not x.get("interrupted") and (x.get("b210") or "quiet") == "quiet"):
+                runs[x["t0"]] = x
+    if runs:
+        bad = [x for x in runs.values()
+               if (x.get("missed") or 0) + (x.get("undecided") or 0) + (x.get("wrong") or 0) > 0.01 * x["sent"]]
+        check("symbols_after", not bad, "%d of the self-test's runs after it, %d losing over 1 %%%s" % (
+            len(runs), len(bad), "".join("; %s %s: %s of %s right" % (x.get("step"), x.get("scheme"), x.get("right"), x.get("sent"))
+                                         for x in bad[:3])))
 
     # what the kind predicts
     params, marks = params or {}, marks or {}
