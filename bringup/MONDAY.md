@@ -21,12 +21,15 @@ activity, its signal, its bits and symbols and the scope's views first.  What to
 1. **The status card's 'Now' line and the lanes 'What is being done'**: the link alternates the carrier alone, single
    symbols (orange: 'idle to one of N', N = 1, 2, 4: A1, A1w, A2, A3) and data (blue: BPSK PRBS15, every bit checked).
 2. **Single symbols**: 'how each was decided' (each symbol sent is right, wrong, undecided or missed; false decisions
-   besides: from firmware ID 10 they add up exactly), 'latency' (about 70-80 ns, the receiver's settling included), the
+   besides: from firmware ID 10 they add up exactly), 'latency' (about 56-63 ns since firmware ID 11 decides each symbol once its pattern has settled; 76-80 ns at a fixed delay), the
    last run's spread with its table of states sent against states decided, and the scope's raw and aligned views of the
    symbols' I and Q.  **Latency against certainty** (a minute, the B210 quiet): `{"plan": "a3delay"}` decides A3 at
    10, 15, 20, 25, 30, 40, 60 ns after its first comparator fires: the latency panel climbs a staircase 69-119 ns, and
    below 25 ns one corner of the four goes 'undecided' (its second comparator has not crossed yet; which corner depends
-   on which of its two lock points the loop sits on: REVB 32).  Back with `{"plan": "cycle"}`.
+   on which of its two lock points the loop sits on: REVB 32).  `{"plan": "settle"}` shows ID 11's settled decision
+   instead: A3 decided once its pattern has held 0-20 ns, the latency falling to 57 ns and, held too briefly (2 or 4
+   samples), wrong decisions appearing in the table (a corner passing through another's pattern).  Back with
+   `{"plan": "cycle"}`.
 3. **Data**: 'Data: bit errors' (green ticks: seconds without an error), the timing recovery's 'comparator skew'
    (judged against the bit), the scope's raw data and its eye.
 4. **Interference** from the B210, one at a time, each shown on the page's B210 lane:
