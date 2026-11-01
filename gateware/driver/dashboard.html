@@ -32,6 +32,7 @@ table.cmt tr:first-child td, table.cmt td:first-child { color:var(--ink2); }
 .help { border:1px solid var(--ink2); color:var(--ink2); background:none; border-radius:50%; width:22px; height:22px;
         font-weight:700; cursor:pointer; padding:0; flex:none; }
 canvas { width:100%; height:190px; display:block; margin-top:6px; }
+#c_levels { height:260px; }
 .verdict { font-size:13px; color:var(--ink2); margin-top:4px; min-height:1.4em; }
 #events div { padding:2px 0; }
 #events { max-height:360px; overflow-y:auto; }
@@ -172,6 +173,8 @@ const PANELS = [
   help:"<p>While a test sends single symbols: the mean time from each symbol leaving the transmitter to the receiver's decision, in nanoseconds (the receiver's settling delay included). No judgement: it is set by the scheme and the receiver's settings.</p>"},
  {id:"lathist", title:"Single symbols: latency, the last run's spread", kind:"lathist",
   help:"<p>The last self-test run of single symbols: how many decisions came after each latency, from the symbol leaving the transmitter to the receiver's decision (one bar per receiver sample, 1.25 ns; counts on a log scale). Without interference they fall in a narrow spike (the receiver's settling and the path); interference spreads them out, and a stray decision long after shows a symbol decided late or a false one.</p><p>Below it, for schemes of 2 or 4 states, the run's table: a row for each state sent, a column for each state decided (green the right ones, red the wrong).  A row that totals less than the others lost its symbols to 'undecided' or 'missed': that state's pattern sits near a comparator's threshold.</p><p class='k'>Good: one narrow spike; the table's counts on its diagonal.</p>"},
+ {id:"levels", title:"The board's own constellation, along each window", kind:"levels",
+  help:"<p>The board measuring its own received states with its comparators, no scope: the self-test sends the single symbols' states (A3's four corners) at random half the time and sweeps each window comparator's threshold across its arm, reading how much of the time the comparator is on. Each bar is how much time the input spent at that level (from the comparator's centre, mV): a tall bar for the idle carrier (half the time), smaller ones for each state.</p><p>Each threshold (red) must sit in a gap, clear of every bar on both sides: then every symbol is decided right however noise moves it. The board places them there itself, in the middle of the gap, on each of its two lock points (dashed: where the plain rule, half the carrier's level, put them).</p><p class='k'>Good: the red lines well clear of the bars. A bar touching a line: that state is decided only some of the time ('undecided' in the symbols' counts).</p>"},
  {id:"fastconst", title:"Constellation (fast: the bench scope)", kind:"scope",
   help:"<p>The received I and Q as the bench oscilloscope saw them on I MON and Q MON (thousands of samples, a few nanoseconds apart), posted here by a bench test while it sends data or symbols: the real constellation, which the slow plot cannot show (its readings average a millisecond). Denser blue where the signal spends more time; the circles mark the locked idle carrier.</p><p>BPSK data: two clusters, left and right. Single symbols (A3): the idle cluster, and dots toward the four corners. Noise spreads the clusters; a CW near the carrier draws circles; a lost loop smears a ring.</p><p>Only on the bench: the deployed board has no scope (rev B: a dual ADC on I and Q, REVB U2).</p>"},
  {id:"sym_raw", title:"Single symbols, raw: I and Q (the bench scope)", kind:"scopewave", which:"symbols",
@@ -193,7 +196,7 @@ let span = 600, hist = [], last = null, notes = [], pullin = null;
 const grid = document.getElementById("grid");
 // ?view=demo: what a demonstration shows first (the link at work, its signal, its bits and symbols, the scope), the
 // loop's physics after (the order only: every panel is still there)
-const DEMO = ["activity_lanes", "state", "rxant", "ber", "symbols", "latency", "lathist", "fastconst", "data_eye", "sym_fold", "data_raw", "sym_raw",
+const DEMO = ["activity_lanes", "state", "rxant", "ber", "symbols", "latency", "lathist", "levels", "fastconst", "data_eye", "sym_fold", "data_raw", "sym_raw",
               "offset", "scurve", "pullin", "constellation", "dem", "gwlock", "vc", "activity", "interference", "hold", "skew", "temp", "supply"];
 if (new URLSearchParams(location.search).get("view") == "demo")
   PANELS.sort((a, b) => (DEMO.indexOf(a.id) + 1 || 99) - (DEMO.indexOf(b.id) + 1 || 99));
@@ -603,7 +606,41 @@ function drawLatHist(p) {
     xv.appendChild(t);
   }
 }
-function drawAll() { for (const p of PANELS) { try { ({timeline: drawTimeline, scatter: drawScatter, pullin: drawPullin, scurve: drawSCurve, scope: drawScope, activity: drawActivity, scopewave: drawScopeWave, scopefold: drawScopeFold, lathist: drawLatHist}[p.kind] || drawSeries)(p); } catch (e) { console.log(p.id, e); } } }
+// the self-test's last sweep of the windows (selftest.py 'calibrate' / 'levels'): each comparator's input distribution
+// (the duty's drop step by step), the thresholds before and after
+function drawLevels(p) {
+  const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv);
+  g.clearRect(0, 0, w, h);
+  const lv = stFull && stFull.last_levels, xv = document.getElementById("x_" + p.id);
+  document.getElementById("v_" + p.id).textContent = "";
+  if (!lv || !lv.sweeps) { xv.textContent = "No sweep yet: the self-test sweeps the windows when it calibrates them (on each lock point) or with its plan 'levels'."; return; }
+  const ws = ["QP", "QN", "IP", "IN"], names = {QP: "Q window, + side", QN: "Q window, - side", IP: "I window, + side", IN: "I window, - side"};
+  const cw = w / 2, ch = h / 2, spanmv = 300;
+  ws.forEach((wn, k) => {
+    const pts = lv.sweeps[wn] || [], x0 = (k % 2) * cw, y0 = Math.floor(k / 2) * ch;
+    const L = x0 + 10, R = x0 + cw - 10, T = y0 + 18, B = y0 + ch - 18, cen = lv.centres_v[wn];
+    const X = mv => L + (R - L) * (mv + spanmv) / (2 * spanmv);
+    const bars = [];
+    for (let i = 0; i + 1 < pts.length; i++) bars.push([1e3 * ((pts[i][0] + pts[i + 1][0]) / 2 - cen), Math.max(0, pts[i][1] - pts[i + 1][1])]);
+    const mx = Math.max(0.01, ...bars.map(b => b[1])), bw = Math.max(1, (R - L) / Math.max(1, bars.length));
+    g.strokeStyle = "#c9ccd2"; g.lineWidth = 1; g.strokeRect(L, T, R - L, B - T);
+    g.fillStyle = C.data;
+    for (const [mv, d] of bars) { if (mv < -spanmv || mv > spanmv) continue; const hh = (B - T) * Math.sqrt(d / mx); g.fillRect(X(mv) - bw / 2, B - hh, bw, hh); }
+    const line = (v, col, dash) => { if (v == null) return; const xx = X(1e3 * (v - cen)); g.strokeStyle = col; g.lineWidth = 1.5; g.setLineDash(dash);
+      g.beginPath(); g.moveTo(xx, T); g.lineTo(xx, B); g.stroke(); g.setLineDash([]); };
+    line(lv.before_v && lv.before_v[wn], C.ink2, [4, 3]);
+    line(lv.after_v && lv.after_v[wn], C.bad, []);
+    g.fillStyle = C.ink2; g.font = "11px system-ui"; g.textAlign = "left"; g.fillText(names[wn], L + 2, y0 + 13);
+    g.textAlign = "center"; g.fillText("0", X(0), B + 12); g.textAlign = "left"; g.fillText("-" + spanmv + " mV", L, B + 12);
+    g.textAlign = "right"; g.fillText("+" + spanmv, R, B + 12);
+  });
+  const age = Date.now() / 1000 - (lv.t || 0);
+  xv.textContent = lv.scheme + "'s states sent at random, " + dur(Math.max(0, age)) + " ago, on lock point " + (lv.side > 0 ? "+" : "-") +
+    " (the carrier " + Math.round(1e3 * lv.leg_v) + " mV on the I arm); the B210 " + (lv.b210 && lv.b210 != "quiet" ? lv.b210.replace(/^B210: /, "sent ") : "was quiet") +
+    ". Bars: where each comparator's input spent its time (taller: longer; the idle carrier half of it); " +
+    (lv.after_v ? "red: its threshold as the board calibrated it, dashed: the plain rule's." : "dashed: its threshold.");
+}
+function drawAll() { for (const p of PANELS) { try { ({timeline: drawTimeline, scatter: drawScatter, pullin: drawPullin, scurve: drawSCurve, scope: drawScope, activity: drawActivity, scopewave: drawScopeWave, scopefold: drawScopeFold, lathist: drawLatHist, levels: drawLevels}[p.kind] || drawSeries)(p); } catch (e) { console.log(p.id, e); } } }
 function status() {
   const st = document.getElementById("status"), r = last;
   if (!r) return;

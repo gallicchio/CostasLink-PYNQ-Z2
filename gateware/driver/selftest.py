@@ -96,6 +96,7 @@ class SelfTest:
         except (OSError, ValueError):
             pass
         self._cal_tried = 0.0
+        self.last_levels = None              # the last sweep of the windows' levels (the page's 'own constellation')
         self.now = {"step": "off", "since": time.time(), "text": "off"}
         self.results = collections.deque(maxlen=30)
         self._k = {"scheme": 0, "period": 0}
@@ -111,6 +112,7 @@ class SelfTest:
         out = {"on": self.on, "plan": self.plan_name, "now": dict(self.now), "results": res}
         if full:
             last = next((r for r in reversed(self.results) if r.get("lat_hist")), None)
+            out["last_levels"] = self.last_levels
             out["last_hist"] = {k: last.get(k) for k in ("scheme", "sent", "events", "right", "wrong", "undecided", "false", "missed",
                                                          "exact", "cm", "lat_ns", "lat_hist", "b210", "t1", "period", "width")} if last else None
         return out
@@ -211,6 +213,10 @@ class SelfTest:
         name = st.get("scheme", "A3")
         res = self._sweep_levels(name, float(st.get("span_v", 0.30)), float(st.get("step_v", 0.004)))
         res["step"] = "levels"
+        if not res.get("error") and not res.get("interrupted"):
+            self.last_levels = {"t": time.time(), "scheme": name, "side": res["side"], "leg_v": res["leg_v"],
+                                "centres_v": res["centres_v"], "before_v": res["thresholds_v"], "after_v": None,
+                                "sweeps": res["sweeps"], "b210": self._b210(time.time() - 10, time.time())}
         return res
 
     def _sweep_levels(self, name, span=0.30, step_v=0.004):
@@ -318,6 +324,9 @@ class SelfTest:
             new[w] = max(0.5 * (lo + hi), L.cen[w] + 0.25 * leg)
         res = {"step": "calibrate", "side": side, "leg_v": round(leg, 4), "before_v": before, "plateaus_v": plateaus,
                "after_v": {w: round(v, 4) for w, v in new.items()}}
+        self.last_levels = {"t": time.time(), "scheme": "A3", "side": side, "leg_v": round(leg, 4),
+                            "centres_v": sw["A3"]["centres_v"], "before_v": before, "after_v": res["after_v"],
+                            "sweeps": sw["A3"]["sweeps"], "b210": self._b210(time.time() - 10, time.time())}
         if len(new) == 4:
             self._do(lambda cl: L.set_windows(cl, new, side))
         else:
