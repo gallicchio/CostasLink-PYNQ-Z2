@@ -90,11 +90,14 @@ def main(argv):
         except Exception as e:                                   # noqa: BLE001 - the next step tries again
             print("%s capture failed: %s" % (time.strftime("%H:%M:%S"), e), flush=True)
             continue
-        out = post("/api/scope", {"t": time.time(), "kind": now["step"], "period_ns": period_ns,
+        try:
+            out = post("/api/scope", {"t": time.time(), "kind": now["step"], "period_ns": period_ns,
                                   "width_ns": now.get("width", 0) * 10.0 or None, "scheme": now.get("scheme", ""),
                                   "leg": (r.get("leg_ref_mv") or 160) / 1000.0, "i0": r.get("i0"), "q0": r.get("q0"),
                                   "link": now.get("text", ""), "b210": b2, "text": now.get("text", ""),
                                   "source": "scopewatch.py", "dt_ns": dt, "i": i, "q": q})
+        except Exception as e:                                   # noqa: BLE001 - the server restarting: the next step
+            out = "not posted: %s" % e
         print("%s %s: %d samples %.2f ns apart; the B210 %s -> %s" % (time.strftime("%H:%M:%S"), now.get("text", ""), len(i), dt, b2, out),
               flush=True)
 

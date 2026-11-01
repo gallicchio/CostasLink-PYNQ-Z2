@@ -346,6 +346,7 @@ class CostasLink:
             self.cdr_pol = ident >= 0x434C0006
             self.ihold_persist = ident >= 0x434C0007
             self.lockmon = ident >= 0x434C0008
+            self.lockmon_own = ident >= 0x434C0009      # it masks this board's own events' Q moves (lockmon.v)
         b = self.rd("BUILD")
         self.ser = bits(b, 7, 0) or 1
         self.board = bits(b, 11, 8)

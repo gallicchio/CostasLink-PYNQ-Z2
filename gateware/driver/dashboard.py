@@ -301,6 +301,7 @@ class Dashboard:
 
     def judge(self, r):
         """the state, its cause and what to do, in words for someone who does not know PLLs"""
+        cl = self.server.cl
         rate = r.get("rate") or {}
         adc = r.get("adc") or {}
         # no carrier reaches the arms: their middles.  Only at the carrier's own frequency: while a program re-centres
@@ -351,10 +352,12 @@ class Dashboard:
             # within 8 kHz of the lock: BRINGUP_LOG 4.12, 4.15; the first live page called beacon bursts 'lost')
             if st in ("lost", "unsettled") and off is not None and abs(off) < 8.0:
                 st = "interfered"
-            # the board's own symbols or data move the Q windows (A2, A3) or I (BPSK), which the lock monitor reads
-            # as busy: with the oscillator at the lock that is the link working, not interference
+            # the board's own symbols move the Q windows (A2, A3), which the lock monitor before ID 9 reads as busy:
+            # with the oscillator at the lock that is the link working, not interference.  From ID 9 it masks them
+            # itself, so its 'lost' during the board's own symbols is real interference (a CW 0.43 MHz away, 22:34)
             tx = r.get("tx") or {}
-            if st == "interfered" and tx.get("running") and tx.get("mode") in ("events", "prbs", "rotate", "trig_in"):
+            if st == "interfered" and not getattr(cl, "lockmon_own", False) and tx.get("running") and \
+                    tx.get("mode") in ("events", "prbs", "rotate", "trig_in"):
                 st = "locked"
                 r["own_activity"] = True
         r["state"] = st
