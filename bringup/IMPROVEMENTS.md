@@ -2,8 +2,10 @@
 
 Jason (2026-10-31): keep lists of the improvements made (and to make) in the gateware and firmware, of those he might
 easily make to this board's hardware, and of those for rev B: for latency and bit errors, and the instrumentation that
-lets ten of these links be run remotely in the quantum position verification experiments.  Each item says what showed
-it (a BRINGUP_LOG row, a REVB row).  The version table in BRINGUP_LOG ('What runs on the board') has every deploy.
+lets ten of these links be run remotely in the quantum position verification experiments.  Jason (2026-11-01): the
+plans must include the best that gateware and firmware can do on rev A, and everything rev B should do, with its
+options and their trade-offs.  Each item says what showed it (a BRINGUP_LOG row, a REVB row).  The version table in
+BRINGUP_LOG ('What runs on the board') has every deploy; REVB.md is the list of defects these answer.
 
 ## 1. Gateware and firmware on rev A
 
@@ -44,31 +46,64 @@ it (a BRINGUP_LOG row, a REVB row).  The version table in BRINGUP_LOG ('What run
 | linkd learns the carrier's level only while the self-test is not sending (OOK's nulls passed for the idle: the windows moved and the calibration was dropped, a quarter of a 103 mV leg for a 173 mV carrier) | `linkd.py` | 4.29's day log, 11:23 and 11:41 |
 | the page: the live counts read with the matrix first (never more right than sent), the eye's caption from the capture's own levels | `dashboard.*` | the photographs of 11:44 and 11:54 |
 | the B210 as a full link partner: BPSK, OOK, QPSK and FSK received in software (`sdr_rx.py`), its own loop (`b210link.py self`), its stream's buffers long enough not to underflow | `bringup/` | 4.29 |
+| the calibration's place in each window's plateau a setting (`window_bias`, 0.6: under a CW 10 dB down far fewer false events and wrong decisions than the plateau's middle, every symbol right when quiet) | `selftest.py` | 4.30 |
+| the calibration not while an intervention is announced and only at the level the windows are kept for (one taken during an attenuator step left A2, A3 and QPSK 60 % missed); a quiet run that loses over 1 % calls for a new one; the soak checks the self-test's symbols after each disturbance | `selftest.py`, `soak.py` | 2026-11-01 13:41-13:44 |
+| **the learning step before physics runs** (plan 'learn'): the decision table learned from the vectors each state makes, every table and timing tried for A1, A1w, A2, A3 and the QPSK rate, the lowest-latency choice that decides every symbol right kept with its `rx_config`; the data's timing recovery per rate; `learned.json`, `GET /api/learned` | `selftest.py`, `dashboard.py` | 4.32 |
 
-### Next (in order of what it would change)
+### Next: the best rev A can do in gateware and firmware
 
-1. **Turn the signal holdover on in deployment** (Jason's call): every carrier gap up to about 100 s rides through
+Grouped by what each buys; within a group, in order.  None needs new hardware.
+
+**Before every physics run (QPV)**
+1. **Run the learning step** (`{"plan": "learn"}`, about 10 minutes quiet): the windows, each scheme's table and timing,
+   the data's timing recovery, all on this lock point at this level; the run's code reads `GET /api/learned` and applies
+   each scheme's `rx_config` as it stands.  Learn again after any change of carrier, antenna, attenuator or lock point
+   (the profile is used only on the lock point and within 15 % of the level it was learned at).
+2. **Learn the latency floor per scheme with the windows lower on the edge** (LATENCY.md row 1: 0.2 of the leg where
+   0.4 gave 3 ns more on the fast path): the learning step could also try lower thresholds where the quiet false rate
+   allows it (the trade: false events against latency).
+3. **The turnaround learned too**: the fast path's and the clocked reply's latency and errors across the two boards
+   (board B answers, board A times the round trip), with the same table-and-timing search.
+
+**Latency (gateware)**
+4. **The reply lane at 200 MHz** (ISERDES 4:1, the rest of the core at 100 MHz): the clocked reply 51 to about 37 ns
+   (LATENCY.md row 3).  Or, at 100 MHz, the decision's two clocks merged into one (row 3b: 10 ns).
+5. **The fast path's tables placed by its pins** (a pblock: up to 1 ns on hops through CMP_IP or TX_I1; row 4) and the
+   ladder pins at DRIVE 16 (row 5, 0.2 ns).
+
+**Sensitivity at range (gateware)**
+6. **An integrating decision as an option**: the sampler sees each comparator 8 times a clock; counting each window's
+   high samples over a set time (a majority vote, the hard-limited matched filter) gains up to about 10 log(B T) on
+   noise (about 13 dB over a 200 ns symbol in the arms' 100 MHz) at the cost of that time in latency.  A mode per run:
+   'fast' (today's settled decision) or 'sensitive' (integrated), chosen by the physics' needs; the learning step can
+   find each scheme's shortest integration that decides every symbol right at the link's level.
+7. **The learned table under the run's own conditions** (done for quiet): learned again with the interference the run
+   expects (a B210 setting, or the lab's own), since 'info' and 'learned' differ only when the vectors are disturbed.
+
+**Robustness (gateware and firmware)**
+8. **Turn the signal holdover on in deployment** (Jason's call): every carrier gap up to about 100 s rides through
    instead of costing a 2-3 s recovery after 44 ms (4.21-4.22).  With it, half the gaps come back half a cycle over:
-   the data needs to carry its sign (item 2).
-2. **The 180-degree ambiguity in the data**: differential encoding of BPSK (and of A3's I bit), or a known preamble
+   the data needs to carry its sign (item 9).
+9. **The 180-degree ambiguity in the data**: differential encoding of BPSK (and of A3's I bit), or a known preamble
    word the receiver checks after every gap; today a slip inverts every bit until software notices (REVB 24, 4.21).
-3. **The FPGA reads the ADS1115 itself** (REVB U3): VC, I, Q and the detectors round-robin into registers at the
-   ADC's 860 S/s, so the lock monitor can use VC (REVB U1's 'the supervisor must see VC') and the page gets VC and the
-   level at 100 S/s without contending for the I2C bus.  Then the level can be read between data bursts (a gated
-   conversion while TX is idle) so the page shows the carrier's level during continuous data.
-4. **A fast constellation from the board itself**: the capture (`capture.v`) already records the five comparators at
-   800 Ms/s; a 1-bit-per-arm picture (I sign, I and Q windows: a 3 x 3 grid of where the signal spends its samples)
-   from a capture taken each look, for the deployed page with no scope.
-5. **The re-acquisition in gateware** (REVB 18, 26, U4): linkd's recovery from above in milliseconds instead of 2-3 s
-   (most of it is re-centring the integrator at 5.8 GHz over I2C).
-6. **The carrier null per carrier in firmware** (REVB 19, 23): VR_I / VR_Q from a table in `link.json` (today one
-   value for 5.2 GHz), and the arms' offsets (I_OFF_F) likewise (REVB 15).
-7. **The turnaround across two boards in the self-test**: board B answers, board A times the round trip (the fast
-   path and the reply), since 'ref_to_decision' times only this board's own TX.
-8. **Authentication on the page's actions** (`POST /api/selftest`, notes, scope captures) before the boards leave the
-   lab network; the page is read-only otherwise.
-9. **Time**: NTP on every PYNQ (today the PYNQ's clock is whatever it was set to; the page's logs and the PC's records
-   are compared by time).
+10. **The re-acquisition in gateware** (REVB 18, 26, U4): linkd's recovery from above in milliseconds instead of 2-3 s
+    (most of it is re-centring the integrator at 5.8 GHz over I2C).
+11. **The FPGA reads the ADS1115 itself** (REVB U3): VC, I, Q and the detectors round-robin into registers at the
+    ADC's 860 S/s, so the lock monitor can use VC and the page gets VC and the level at 100 S/s without contending for
+    the I2C bus; the level read in the data's gaps by gateware.
+12. **The carrier null per carrier** (REVB 19, 23): VR_I / VR_Q from a table in `link.json`, and the arms' offsets
+    (I_OFF_F) likewise (REVB 15).
+13. **The TX's I and Q swing trimmed against the receiver's measured corners**: not possible on rev A (the ladders' swing
+    is fixed by the logic levels and resistors; VR_I / VR_Q set the null), so the calibration's per-window thresholds
+    stay the compensation for the TX's saturation (REVB 35) and the receiver's corner error (REVB 38).
+
+**Visibility and operations (firmware)**
+14. **A fast constellation from the board itself**: the capture (`capture.v`) records the five comparators at 800 Ms/s;
+    a 3 x 3 grid of where the signal spends its samples from a capture each look, for a deployed page with no scope.
+15. **The learning step's choices on the page** (each scheme's table, timing, latency, and when it was learned).
+16. **Authentication on the page's actions** (`POST /api/selftest`, notes, scope captures) before the boards leave the
+    lab network; the page is read-only otherwise.
+17. **Time**: NTP on every PYNQ (the page's logs and the PC's records are compared by time).
 
 ## 2. Rev A hardware: rework by hand
 
@@ -80,28 +115,103 @@ it (a BRINGUP_LOG row, a REVB row).  The version table in BRINGUP_LOG ('What run
 | 4 | the TCXO's supply on the scope while TX_DIS toggles; if it moves, a separate filter for it | fewer half-cycle slips across our own TX gaps | `soak.py --kinds carrier_off --holdover` (14 of 33 slipped) | 24 |
 | 5 | a few pF (series-resonant near 5.8 GHz) and 68 pF on the RX chokes' cold pads, only if test F puts the TX leak on the board | the leak under the DSA's floor | RX MON with both ports terminated (REVB 10's test) | 10, R2 |
 | 6 | bias-choke bodge capacitors at the RF ICs' supply pins (modelled first, `sim/aslaid`) | only if the chain still falls short after C102 | the map | 13, R2 |
+| 7 | **Bypass the PYNQ-Z2's 200 ohm on the nine fast lines** (the PYNQ's own series resistors; 0 ohm) | about 2.7 ns off the fast path, more if the edges are slow | the A3r ring's hop | LATENCY row 6, REVB 20 |
+| 8 | the ladder's series resistors up (a 3-6 dB smaller swing at the modulator) | the TX out of saturation: the corners at 1.41 and 45 degrees (REVB 35), at the cost of 3-6 dB of TX level that is already 6 dB short | the B210's `b210link.py pattern` | 35, 6 |
 | done | the loop's sign jumpers moved (JP101 Q+, JP102 Q-) | the lock at 0 / 180 degrees | 3.6 | 9 |
 
-## 3. Rev B
+## 3. Rev B: everything, with its options
 
-### Latency
-* All five fast comparators and the four ladder pins in one bank of the host (REVB 16): the fast path's skew between
-  banks is a large part of its 23.5 ns (LATENCY.md).
-* The ladder buffered on the board (LVC drivers beside it), a faster or lower-noise-gain FDA in the arms (REVB 20: the
-  end-to-end edge is 10-13 ns, BPSK at 100 Mbaud closed, 50 Mbaud open at 13 of 16 phases).
-* The delays from the arms to the loop's detector matched between sign(I) and Q (REVB 27), and CMP_I's duty-cycle
-  distortion removed at its source (REVB 30: 2.2-3.5 samples of skew).
-* An integrator reset switch (REVB U4) and a fast, FPGA-driven VC_OFF (REVB 29): re-acquisition in microseconds.
+Each part lists what rev A showed, the change, and where there is a choice, the options and what each costs.  The
+last table ranks them for what the experiments need most: range, a low signal to noise ratio, and latency.
 
-### Bit errors and robustness
-* One mid-point for the integrator and every arm's common mode (REVB 17, 18, 31): no drift with no carrier or a beat.
-* The LNA's input as Skyworks lays it (REVB 8, 13), the RF passives' pads voided under (REVB 11), the TX chain's level
-  at 5.8 GHz (REVB 6), the TX leak (REVB 10), the 25 MHz sidebands (REVB 5).
-* The loop's detector fed from a narrower I / Q low-pass so a strong CW 5-20 MHz away cannot drag the VCO (REVB 27:
-  the drags were the soak's only losses under interference, 4.18, 4.20).
-* The TCXO and the synthesizers' supplies isolated from the TX's switched load (REVB 24), and the 180-degree
-  ambiguity carried in the protocol.
-* The ladders' references divided down at the DAC (REVB 1), the window comparators' thresholds filtered (REVB R5).
+### The receive chain (sensitivity)
+* **The LNA's input as Skyworks lays it** (REVB 8, 13): no C102 branch, the VCC pin decoupled at the pin; rev A is
+  28-32 dB under plan at 5.7-5.8 GHz and 10-20 dB at 5.0-5.35.  The single largest gain anywhere.
+* **The RF passives' pads voided underneath** (REVB 11: 2 dB at 5.8 GHz, 8 at 5.0 through the gain blocks' poor match),
+  the CPWG drawn at 50 ohm by a field solve (REVB 14), anti-pads and mitred corners (R4).
+* **The TX's leak into the receiver** found and blocked (REVB 10: about -53 dBm at RX MON, capping the DSA at 23 dB).
+* Options: **a second LNA stage** (more gain at the cost of power and a little noise figure; no latency to speak of);
+  **a band filter** (SAW / BAW at the band: rejects the WiFi channels the self-test found at 5.2-5.25 GHz, but adds
+  1-2 dB of loss and a few ns of group delay); **the DSA kept** (it is the bench's level control and the only AGC).
+
+### The transmitter
+* **The level** (REVB 6: +3.8 dBm at TX ANT at 5.8 GHz against +9.8 planned): find the stage, then the gain blocks and
+  their match.
+* **Linear, or PSK on purpose** (REVB 35): rev A's TX is saturated, every state at the idle's amplitude and turned by
+  AM-PM (the flip at 190 degrees, the corners at 40).  Options: **(a) linear**: the baseband swing and gain chosen so
+  the corners sit 3 dB or more under the first compression point; the corners at 1.41 and 45 degrees, square windows,
+  ASK possible; costs 3 dB of peak power or a bigger final stage.  **(b) PSK by design**: keep the constant envelope (the
+  most power per peak), place the states on the circle at the angles wanted (the ladders' points chosen for it), and
+  the windows for a circle; no ASK, no OOK at full depth.  **(c) an I / Q DAC** (two channels at 1 GS/s or more) with
+  digital correction of gain, quadrature and AM-PM, any constellation: costs a DAC's pipeline (about 5-10 ns) in
+  every transmitted symbol, against the ladders' none, and the fast path would bypass it.
+* **The ladders' references divided down at the DAC** (REVB 1: a reference above 1.6 V takes the modulator's inputs
+  past their maximum), the ladder buffered beside the modulator (REVB 20).
+* **The 25 MHz sidebands** (REVB 5: the TCXO on the modulator's baseband) and **the LO's routing** (REVB 4, 12).
+* **The carrier null**: a per-frequency trim kept, or a modulator with a better native null (REVB 19, 23).
+
+### The demodulator and the arms
+* **One mid-point** for the integrator and every arm's common mode (REVB 17, 18, 31): no drift with no carrier or a
+  beat, no static Q error at the lock.
+* **The receiver's corner error** (REVB 38: Q 7-15 % short on the idle's side, an I x Q term of about 14 mV, the board's
+  own): find the stage on rev A first (the demodulator fed alone, the arms fed alone); then the operating points
+  (LO level, common modes, baseband swing) set for second-order linearity.  The quadrature (1 degree) and gain match
+  (2 %) need nothing.
+* **Faster, matched arms** (REVB 20: the end-to-end edge 10-13 ns; REVB 27, 30: sign(I) and Q's delays, CMP_I's
+  duty-cycle distortion): the corners settle together, so the settled decision needs fewer samples (5-10 ns on A3).
+  Options: a faster FDA (a little noise and power); the gain of 4 kept (lower gain moves the window out at range).
+* **Real I and Q monitors** (REVB 34): a 50 ohm back-terminated buffer per arm, as fast as the arms.
+* **A data slicer of its own** (REVB 36): a comparator and a DAC channel per arm for the data, the four windows left to
+  the symbols, so OOK and the corners stop sharing thresholds.
+* **The thresholds filtered** (R5: an RC at each comparator's threshold pin).
+
+### Carrier recovery (the loop)
+Rev A's loop is a hard-limited Costas loop (sign of I times Q, 4.31): simple and fast, but it is a BPSK loop, and
+states with I near zero or a corner sent alone at a high duty pull it (-48 and 27 degrees).
+* **Options**: **(a) keep it**, with the idle as a pilot between states (today's QPSK) and the patterns balanced;
+  **(b) a QPSK (fourth-power or decision-directed) loop** for dense QPSK data, at more parts and a slower pull-in;
+  **(c) a digital loop**: the arms digitised (U2) and the phase detector in the FPGA, the VCXO steered by a fast DAC:
+  any modulation, and the holdover, lock detection and re-acquisition in gateware, at an ADC's latency in the loop
+  (not in the symbols' path, which stays on the comparators).
+* **The loop's detector behind a narrower low-pass** (REVB 27): a CW 5-20 MHz away no longer drags the VCO (the soaks'
+  only losses under interference).
+* **An integrator reset and a fast, FPGA-driven VC** (REVB U4, 29): re-acquisition in microseconds; a capture range wider
+  and not one-sided (REVB 26).
+* **The TCXO and the synthesizers' supplies isolated from the TX's switched load** (REVB 24): no half-cycle slips across
+  our own TX gaps; the 180-degree ambiguity carried in the protocol all the same.
+
+### Decisions and latency
+* **All fast comparators and ladder pins in one bank** (REVB 16: the fast path's crossing of the die, 3.5-4 ns).
+* **No series resistors on the fast lines** (the PYNQ's 200 ohm: 2.7 ns; LATENCY row 6), or a host without them.
+* **Faster comparators** (TLV3604, LVDS: about 3 ns; row 9): pairs to the FPGA, a re-spin.
+* **The fast path out of the FPGA** (row 13: CML comparators into an answer gate on the modulator's baseband, the FPGA
+  only arming and time-stamping): about 20 ns off the turnaround, at the cost of the table's flexibility (the answer
+  wired, not programmed).
+* **Decisions from an ADC** (U2, options): every scheme and a matched filter (several dB at range), at the ADC's
+  pipeline (10-20 ns) in the decision; or the comparators kept for the fast path and the ADC beside them for
+  monitoring, calibration and the 'sensitive' mode.
+* **The host**: the PYNQ-Z2 (today; its 200 ohm and its banks), the Icepi Zero (2-3 ns faster on the fast path with a
+  one-level table; LATENCY section 4), or an FPGA on the board (the shortest paths, the most work).
+
+### The board as a deployed instrument
+* **The PYNQ's power under the board's control** (REVB 37): a load switch on its 12 V with a hardware watchdog it must
+  kick, so a hung PYNQ is cycled without a person; R3's output enables, so the order of power-up stops mattering.
+* **The 5 V path** (REVB 2: 0.26 V dropped at 1.37 A), **the hot spot near U104** (REVB 3), **the LEDs** (REVB 7).
+* The instrumentation list below.
+
+### What matters most, for range, signal to noise and latency
+| change | range / low SNR | latency | effort |
+|---|---|---|---|
+| the LNA's input (C102, layout, decoupling) | **+10-30 dB** in band | none | rev A: lift C102; rev B: the layout |
+| the TX's level | **+6 dB** | none | find the stage |
+| an integrating decision (gateware, rev A) or an ADC's matched filter (rev B) | **+3-13 dB** (rate-dependent) | adds the integration time | gateware; rev B parts |
+| the loop: narrower detector, reset, one mid-point, a QPSK or digital loop | fewer losses at low SNR and under interference (loss of lock is the failure mode, REVB 21) | re-acquisition from seconds to microseconds | rev B |
+| the fast path out of the FPGA | none | **about -20 ns** | rev B, less flexible |
+| the reply lane at 200 MHz | none | **-13-15 ns** (clocked reply) | gateware, rev A |
+| comparators, one bank, no 200 ohm, faster arms | none | **-3 to -9 ns** together | rev A (resistors), rev B |
+| linear or PSK-by-design TX | about +1 dB on QPSK corners | none | rev B |
+| the receiver's I / Q errors (1 degree, 2 %, the corner term) | under 1 dB (absorbed by the calibration) | none | rev B, after finding the stage |
+| antenna cables | the cable's loss | 4.8 ns a metre | the box behind the antennas |
 
 ### Instrumentation for ten links in the field
 Each link is a pair of boards, left alone for weeks, judged remotely by people who do not know PLLs.  What the bench
