@@ -121,6 +121,14 @@ def wait(cond, timeout, poll=0.5):
     return None
 
 
+def now_or_none():
+    """the page's latest look, or None while its server restarts (a refused connection ended a run, 2026-10-31)"""
+    try:
+        return get("/api/now", timeout=5)
+    except Exception:                                            # noqa: BLE001
+        return None
+
+
 def ready_(r):
     return r.get("state") == "locked" and (r.get("linkd") or {}).get("mode") == "locked"
 
@@ -488,7 +496,9 @@ class Soak:
         return marks
 
     def trial(self, n, kind, p, shots_at, path):
-        r0 = get("/api/now")
+        r0 = now_or_none()
+        if r0 is None:
+            return None
         # an end 10 min on, in case this program dies before it ends the note (an open one would read 'under way' for ever)
         note = post("/api/note", {"text": describe(kind, p) + " (soak #%d)" % n, "kind": "intervention", "source": "soak.py",
                                   "t_end": time.time() + 600})
@@ -498,6 +508,8 @@ class Soak:
             marks = self.disturb(kind, p, r0, shots_at)
         except Exception as e:                                   # noqa: BLE001 - the B210 or the board: recorded, go on
             marks, err = {}, "%s: %s" % (type(e).__name__, e)
+            if kind in DRIVES:
+                self._A = None                                   # a fresh client next time (the server may have restarted)
         t_end = time.time()
         back = wait(lambda r: ready_(r) and time.time() - t_end > 3, 400)
         t_back = time.time() if back else None
@@ -541,14 +553,21 @@ class Soak:
                 print("%s the link not locked with linkd active for 15 min: stopping" % time.strftime("%H:%M:%S"), flush=True)
                 break
             time.sleep(rng.uniform(*gap))
-            if not ready_(get("/api/now")):
+            r = now_or_none()
+            if r is None or not ready_(r):
                 continue
             kind = rng.choices(list(kinds), [KINDS[k] for k in kinds])[0]
-            p = draw(kind, rng, float(get("/api/now").get("dsa_db") or 20.0))
+            p = draw(kind, rng, float(r.get("dsa_db") or 20.0))
             n += 1
             sa = rng.uniform(0.3, 0.8) if (kind not in seen or rng.random() < p_shot) else None
             seen.add(kind)
-            rec = self.trial(n, kind, p, sa, path)
+            try:
+                rec = self.trial(n, kind, p, sa, path)
+            except Exception as e:                               # noqa: BLE001 - recorded, and the run goes on
+                print("%s #%d %s: the trial failed: %s: %s" % (time.strftime("%H:%M:%S"), n, kind, type(e).__name__, e), flush=True)
+                continue
+            if rec is None:
+                continue
             for c in rec["checks"]:
                 t = tally.setdefault(c["name"], [0, 0])
                 t[0 if c["ok"] is not False else 1] += 1
