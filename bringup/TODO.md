@@ -47,10 +47,17 @@ experiments; pictures, not one-word states, each with what led to it and how to 
      low-duty data check for them
    * an S-curve measured, not modelled: a slow beat (the loop held, the B210 locked to the board's reference, or the
      SDS2104X on I, Q and ERR at once)
-   * the page's log on the PYNQ's SD card grows about 150 MB a day (`~/costaslink_current/dashboard/`): rotate it (a
-     week) before the boards are left
-   * the carrier gone with the holdover off sends VC to its rail in 2 s (4.19), so every interruption costs a recovery
-     when the carrier returns; measure the signal holdover (shold) with linkd and decide whether deployment turns it on
+   * ~~the page's log on the PYNQ's SD card grows about 150 MB a day: rotate it~~ done 16:13: the day logs older than
+     14 days are deleted (and the oldest while under 1 GB is free)
+   * the carrier gone with the holdover off costs the lock after 40-60 ms (4.21: off 57 ms the loop came back in the
+     false lock; REVB 31), so every interruption costs a recovery; measure the signal holdover (shold) with linkd and
+     the carrier interrupted at random (`soak.py --kinds carrier_off` with the holdover on), and decide whether
+     deployment turns it on
+   * the board's lock monitor (`lockmon.v`, the LEDs) judges from the comparators alone and calls strong interference
+     'lost' while the oscillator sits on the carrier (4.20): give it VC (REVB U3, the FPGA reading the ADC itself) or
+     say on the LEDs 'interference', not 'lost'
+   * the standing test: `soak.py run` (randomized disturbances, every one checked against the page's log, its API,
+     linkd's counts and its photographs, 4.20); run it after every change to the board's firmware or server
 1. The recovery algorithm proven from the PC first: a lock detector from the comparators, and on a loss the downward
    VC_OFF search from above the carrier (3.9j: 52 of 52); then every failure the bench can make, unattended and
    repeated: parked in the false lock and on the rail, dragged by full-power CWs above and below, the carrier blocked

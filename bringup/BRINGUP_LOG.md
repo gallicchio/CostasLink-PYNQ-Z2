@@ -57,6 +57,46 @@ mid stage 1.5 (the EEPROM writes were simply redone), and the PYNQ drove its pin
 The scope, the generator and the analyser are used over the LAN for now. Their USB links need lab-instrument-control's
 udev rule (`99-bench-instruments.rules`), which the reinstalled PC does not have yet.
 
+## What runs on the board: every firmware and server version
+
+Kept as they change (Jason, 2026-10-31: log the changes made to the gateware and firmware).  The PYNQ's own image
+(PYNQ 3.0.1) is unchanged throughout.  Each overlay lives in its own `~/costaslink_<name>/` on the PYNQ with the
+driver files beside it; since 2026-10-31 12:55 the boot service `costaslink-netbus` runs the server from the symlink
+`~/costaslink_current` (now `~/costaslink_lockmon/`).  The firmware's ID register says which overlay is loaded.
+
+**The gateware (the overlay)**, all Vivado 2022.1 but ID 3:
+
+| ID | from | deployed | what it added or changed | why, and where measured |
+|---|---|---|---|---|
+| (first) | `9561e5d` + the I2C fix (`aeec561`) | 10-29 12:20, `~/costaslink/` | the I2C pins' tristates kept (every earlier overlay drove SDA and SCL), a stuck SCL abandoned after 10 ms | no I2C transaction could work before: the software header above |
+| 0x434C0003 | `461fe02` (Vivado 2024.1) | 10-29 21:48, `~/costaslink/` | the receive-to-transmit paths, the turnaround counter (Prompt 36) | 3.4g |
+| 0x434C0004 | `8d75126` | 10-30 17:31, `~/costaslink_cdr/` | `ber_cdr.v`: the BER check's timing recovery | the frame lottery, 4.6; 4.7 |
+| 0x434C0005 | `801780a` (the hold's rules changed under the same ID: `1283f89`, `eadd8ae`) | 10-30 19:24, `~/costaslink_holds/` | `ihold.v`: the signal holdover and the interference hold, off at reset; a hold only after a quiet window, max 5 s; two Q comparators busy | Jason 10-30 18:10 (someone walking through the beam); 4.8-4.10 |
+| 0x434C0006 | `8521517` | 10-31 02:36, `~/costaslink_cdrpol/` | the timing recovery on one edge polarity, centred on the measured skew | its false lock between CMP_I's edges, 4.10 |
+| 0x434C0007 | `3c76423` | 10-31 10:05, `~/costaslink_persist/` | the hold's persistence (RX_IHOLD_PERSIST) | holds under bursts, 4.13-4.14 |
+| 0x434C0008 | `816347c` + `97a9d8f` | 10-31 12:52, `~/costaslink_lockmon/` (now) | `lockmon.v`, the lock judged every 10 ms from 64 sub-windows, on the PYNQ-Z2's LEDs; the hold's release scaled to the busy time, registered in three steps | the board judging its own lock, 4.17 |
+
+**The board's server software** (the driver `costaslink.py`, `netbus.py`, the recovery `linkd.py`, the status page
+`dashboard.py` and `dashboard.html`), 2026-10-31.  A `.py` change takes `sudo systemctl restart costaslink-netbus`
+(announced on the page first; linkd sets the link up again in about 25 s); the page alone is read at every request:
+
+| time | commit | what changed | found by | deploy |
+|---|---|---|---|---|
+| 10:47 | `809a5d2` | the status page, read-only, looking between the server's requests | Jason 10:15 | restart |
+| 11:36 | `35a42d4` | `linkd.py`, the automatic recovery in the server | 4.15 | restart |
+| 11:42 | `f59e380` | requests that only look no longer count as driving the board | the watchdog's reads kept linkd paused, 4.16 | restart |
+| 12:39 | `d732fca` | linkd sets the link up from `link.json` at start | 4.17 | restart |
+| 12:41 | `f604037` | 'What happened', losses and recoveries in words | | restart |
+| 12:55 | `b2ca736` | the server as the boot service `costaslink-netbus` | unattended operation | install |
+| 14:03 | `0eb209e` | page v2: notes from experiments, the levels in dBm, the offset from the carrier, off-scale markers, the pull-in map, the S-curve, VC, the comparators, the board's own judgement | Jason's list of page changes | restart |
+| 14:24 | `67b338e` | page v3: 'Interference' apart from 'Lost' (VC within 8 kHz); slow readings every look; levels only while locked, hatched when not measurable; history restored at start; `lock_state` an observing call | Jason's questions (the S-curve against the map, RX ANT stopping in bursts, the empty skew plot); 4.18 | restart |
+| 14:46 | `393eedf` | levels shown as the last reading in grey when not measurable; the lock monitor judged by its state; no phase without a vector; the false lock and the rail named; no offset while held | `pagecheck.py`'s photographs, 4.19 | restart |
+| 15:58 | `a452943` | 'What happened' over the whole span (the API gave the last 50); the recovery's minute of waiting in words; `linkd.state()` gives its idle time | `soak.py`'s audit, 4.20 | restart |
+| 16:13 | `b538bed` | panels grey while the board is too busy to read; a loop held off the lock said to be held by something; the S-curve's points while not locked open; no drift advice with no carrier; temperature good to 70 C; logs pruned at 14 days; notes never ended expire after an hour | `soak.py`'s photographs, 4.20 | restart |
+| 16:33 | `8e38159` | linkd's modes in words; why a level is not measurable while locked; what the lock monitor (the LEDs) counts | the same | page |
+| 17:32 | `8ffe3c9` | 'Recovering' red on the timeline; no '-0' phase | the same | page |
+| 17:45 | `2b6dbac` | the carrier's level from linkd's measured middles and the two lock points' learned offset (it read 0.5-1.3 dB apart by side); half-cycle slips listed in 'What happened' | `soak.py`'s check 'as_before', 4.21 | restart |
+
 ## Before power (2026-10-28)
 
 Read before any board was powered; both are driver fixes, made and tested in the RTL simulation:
