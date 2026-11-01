@@ -14,7 +14,9 @@ Before they arrive (5 min, from the bench PC):
     # the bench scope photographed in each symbols and data step, posted to the page
     python3 bringup/scopewatch.py &
 
-Open the page full screen.  What to show, in order:
+Open the page full screen; with **http://192.168.8.142:8080/?controls=1** it has buttons for the self-test's plan
+(off, rounds, single symbols, data, carrier alone) and the holdover (on, off), in place of the `curl` commands below
+(the plain address stays read-only for anyone else watching).  What to show, in order:
 1. **The status card's 'Now' line and the lanes 'What is being done'**: the link alternates the carrier alone, single
    symbols (orange: 'idle to one of N', N = 1, 2, 4: A1, A1w, A2, A3) and data (blue: BPSK PRBS15, every bit checked).
 2. **Single symbols**: 'how each was decided' (right / wrong / false / missed each second), 'latency' (about 70-80 ns,

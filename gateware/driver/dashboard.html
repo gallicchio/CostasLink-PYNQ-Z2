@@ -42,6 +42,11 @@ dialog .k { font-weight:700; }
 <header><h1>CostasLink link status</h1><span class="meta" id="meta">connecting...</span></header>
 <div id="status"><div class="word" id="word">...</div><div id="why"></div><div class="todo" id="todo"></div>
 <div class="now" id="nowline"></div><div class="small" id="small"></div></div>
+<div class="ranges" id="controls" style="display:none"><span class="meta" style="align-self:center">demonstration: the self-test</span>
+<button data-plan="off">off</button><button data-plan="cycle">rounds (level, symbols, data)</button><button data-plan="symbols">single symbols</button>
+<button data-plan="data">data (bit errors)</button><button data-plan="carrier">carrier alone (level)</button>
+<span class="meta" style="align-self:center;margin-left:12px">the holdover</span><button data-hold="1">on</button><button data-hold="0">off</button>
+<span class="meta" id="ctlsay" style="align-self:center;margin-left:12px"></span></div>
 <div class="ranges"><span class="meta" style="align-self:center">show the last</span>
 <button data-s="600" class="on">10 min</button><button data-s="3600">1 hour</button><button data-s="7200">2 hours</button>
 <span class="meta" style="align-self:center;margin-left:12px"><span style="color:var(--note)">&#9632;</span> purple spans: an
@@ -179,8 +184,8 @@ for (const p of PANELS) {
   grid.appendChild(d);
 }
 function showHelp(t, h) { document.getElementById("dlgt").textContent = t; document.getElementById("dlgb").innerHTML = h; dlg.showModal(); }
-document.querySelectorAll(".ranges button").forEach(b => b.onclick = () => {
-  document.querySelectorAll(".ranges button").forEach(x => x.classList.remove("on")); b.classList.add("on");
+document.querySelectorAll(".ranges button[data-s]").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".ranges button[data-s]").forEach(x => x.classList.remove("on")); b.classList.add("on");
   span = +b.dataset.s; load(); events(); });
 function band(p, v) { if (v == null || !p.bands) return null; for (const [a, b, k] of p.bands) if (v >= a && v <= b) return k;
   return v < p.bands[0][0] ? p.bands[0][2] : p.bands[p.bands.length - 1][2]; }
@@ -204,7 +209,7 @@ const B2 = {cw_far: ["#0e7490", "a CW MHz away"], cw_near: ["#be185d", "a CW nea
 function linkAct(r) { if (r && r.busy && r.linkd && r.linkd.mode == "recovering") return "recovering"; if (!r || !r.tx || !r.ctrl) return null; if (r.ctrl.tx_dis) return "off"; if (r.ctrl.loop_hold) return "held";
   const m = r.tx.mode, run = r.tx.running; return run && (m == "events" || m == "trig_in") ? "symbols" : run && m == "prbs" ? "data" : run && m == "rotate" ? "rotate" : "carrier"; }
 function linkLabel(r) { const a = linkAct(r), s = r.selftest && r.selftest.on ? r.selftest.now : null;
-  if (a == "symbols") return s && s.step == "symbols" ? s.scheme : "1 of " + r.tx.n;
+  if (a == "symbols") return s && s.step == "symbols" ? s.scheme : "";
   if (a == "data") return fmt(100 / r.tx.period) + " Mb/s"; return ""; }
 function linkText(r) { const a = linkAct(r); if (!a) return "is not known (no reading)"; const s = r.selftest && r.selftest.on ? r.selftest.now : null;
   if (a == "symbols") return "is sending single symbols" + (s && s.step == "symbols" ? " of " + s.text.replace(/^single symbols of /, "") :
@@ -605,5 +610,15 @@ async function tick() { try { const r = await (await fetch("/api/now")).json(); 
     const t0 = Date.now() / 1000 - span; while (hist.length && hist[0].t < t0) hist.shift(); } status(); drawAll(); }
   catch (e) { document.getElementById("meta").textContent = "cannot reach the board's server (restarting, or the network?)"; } }
 (async () => { try { pullin = await (await fetch("/api/pullin")).json(); } catch (e) {} })();
+// the demonstration's controls, only with ?controls=1 in the page's address (the page is otherwise read-only)
+if (new URLSearchParams(location.search).get("controls") == "1") {
+  document.getElementById("controls").style.display = "flex";
+  const say = t => { document.getElementById("ctlsay").textContent = t; };
+  const post = async b => { try { const r = await (await fetch("/api/selftest", {method: "POST", body: JSON.stringify(b)})).json();
+    say("self-test " + (r.on ? "on, plan '" + r.plan + "'" : "off") + (b.holdover != null ? "; the holdover " + (b.holdover ? "on" : "off") : "")); } catch (e) { say("not taken: " + e); } };
+  document.querySelectorAll("#controls button[data-plan]").forEach(b => b.onclick = () =>
+    post(b.dataset.plan == "off" ? {on: false} : {on: true, plan: b.dataset.plan}));
+  document.querySelectorAll("#controls button[data-hold]").forEach(b => b.onclick = () => post({holdover: b.dataset.hold == "1"}));
+}
 window.onresize = drawAll; load(); events(); setInterval(tick, 1000); setInterval(events, 5000); setInterval(loadNotes, 5000); setInterval(loadScopes, 10000);
 </script></body></html>
