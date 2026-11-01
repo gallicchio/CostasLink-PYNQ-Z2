@@ -66,6 +66,7 @@ class LinkD:
         self.lost_since = None
         self.next_try = 0.0
         self.wait = backoff_s[0]
+        self._loss_open = False                          # a loss counted and not yet recovered
         self.counts = {"losses": 0, "recoveries": 0, "failed": 0, "last_recovery_s": None, "t_last_loss": None,
                        "t_last_recovery": None, "last_starts": None}
         self.enabled = True
@@ -123,6 +124,12 @@ class LinkD:
         o = self.observe()
         now = time.time()
         if o["locked"]:
+            if self._loss_open:                                     # back by itself (the carrier returned near the lock)
+                self._loss_open = False
+                self.counts["recoveries"] += 1
+                self.counts["last_recovery_s"] = (now - self.lost_since) if self.lost_since else None
+                self.counts["t_last_recovery"] = now
+                self.counts["last_starts"] = 0
             self.lost_since = None
             self.wait = self.backoff_s[0]
             self.vc_lock = o["vc"] if self.vc_lock is None else 0.9 * self.vc_lock + 0.1 * o["vc"]
@@ -139,10 +146,19 @@ class LinkD:
         if off_khz <= self.off_khz_min or now - self.lost_since < self.t_lost:
             self.mode = "watching"
             return
+        if not self._loss_open:                               # one loss, however many tries it takes
+            self.counts["losses"] += 1
+            self.counts["t_last_loss"] = now
+            self._loss_open = True
+        # no carrier at all (the board's lock monitor: nothing arrives): a recovery cannot find one, so do not try,
+        # and do not back off: start the moment one is seen again.  Trying held the board 11 s for four starts with the
+        # carrier gone, then waited out 5 s of back-off after it came back (soak13 #12: locked 7 s after the carrier
+        # returned, 18 s after the loss)
+        if self.no_carrier():
+            self.mode = "waiting for the carrier"
+            self.next_try = 0.0
+            return
         if self.mode != "backing off" or now >= self.next_try:
-            if self.mode not in ("backing off",):
-                self.counts["losses"] += 1
-                self.counts["t_last_loss"] = now
             self.mode = "recovering"
             t0 = time.time()
             self.led(recovering=True)
@@ -156,6 +172,7 @@ class LinkD:
                 self.counts["last_recovery_s"] = time.time() - self.lost_since
                 self.counts["t_last_recovery"] = time.time()
                 self.lost_since = None
+                self._loss_open = False
                 self.mode = "locked"
                 self.wait = self.backoff_s[0]
             else:
@@ -163,6 +180,16 @@ class LinkD:
                 self.mode = "backing off"
                 self.next_try = time.time() + self.wait
                 self.wait = min(self.backoff_s[1], 2 * self.wait)
+
+    def no_carrier(self):
+        """the lock monitor's 'no carrier' (ID 8 on: the I windows dark and Q still), else unknown: False"""
+        cl = self.server.cl
+        if not getattr(cl, "lockmon", False):
+            return False
+        try:
+            return cl.lock_state().get("state") == "no carrier"
+        except Exception:                                        # noqa: BLE001
+            return False
 
     def led(self, recovering):
         """LD5 blue while recovering (ID version 8's LEDs; nothing on older overlays)"""

@@ -615,7 +615,8 @@ function status() {
 }
 const LD_WORDS = {locked: "standing by, the link locked", watching: "watching: its own check sees the lock disturbed but the oscillator still on the carrier, so nothing to do yet",
   recovering: "bringing the link back now", "backing off": "waiting to try again (its last try found no carrier)", off: "switched off",
-  "parked: the loop is held by a program": "standing aside: a program holds the loop", "waiting for a first lock": "waiting for a first lock to learn from"};
+  "parked: the loop is held by a program": "standing aside: a program holds the loop", "waiting for a first lock": "waiting for a first lock to learn from",
+  "waiting for the carrier": "waiting for the carrier (none arrives: the path blocked, or the other board off); it starts the moment one is seen"};
 function dur(s) { return s < 90 ? Math.round(s) + " s" : s < 5400 ? Math.round(s / 60) + " min" : (s / 3600).toFixed(1) + " h"; }
 const EV = {"recovered": [C.good, "●"], "loss": [C.bad, "●"], "loss-expected": [C.note, "●"], "failed": [C.warn, "●"], "slip": [C.warn, "◐"],
             "note-intervention": [C.note, "■"], "note-explained": [C.note, "◆"], "note-info": [C.ink2, "◆"]};
