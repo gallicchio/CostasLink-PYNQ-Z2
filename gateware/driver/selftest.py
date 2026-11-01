@@ -51,7 +51,7 @@ PLANS = {
                {"step": "idle", "seconds": 3.0}],
     # A3 decided 8-48 samples (10-60 ns) after its first comparator fired: how many of each corner stay undecided while
     # the arms are still crossing (2026-11-01: one corner of four lost 10 % to 'undecided' at the usual 16)
-    "a3delay": [{"step": "symbols", "scheme": "A3", "seconds": 4.0, "period": 2000, "width": 20, "delay": d}
+    "a3delay": [{"step": "symbols", "scheme": "A3", "seconds": 4.0, "period": 2000, "width": 20, "delay": d, "settle": 0}
                 for d in (8, 12, 16, 20, 24, 32, 48)],
     # ID 11's settled decision: A3 within 30 ns and A1 within 20 ns, decided once the vector has held k samples (k = 0:
     # the fixed delay); a k shorter than the arms' skew decides a passing corner wrong, so the table's wrong ones count
@@ -61,6 +61,11 @@ PLANS = {
                for k in (0, 2, 4, 8)],
 }
 SCHEME_ROTA = ("A3", "A1", "A2", "A1w")
+# ID 11's settled decision by default (a step's "settle" not given): samples a vector must hold, and the longest wait.
+# The plan 'settle' (2026-11-01, 01:10-01:20 PST, the B210 quiet): A1 62.4 ns at k = 2 against 76.2 fixed, all right; A3
+# 66-67 ns at k = 4 against 80 fixed at 16 (90 at 24), no wrong decision and fewer undecided; A3 at k = 2 decided 0.8-1.3 %
+# wrong (a corner passing through another's vector), so 4 for the corners; A1, A1w and A2 have no state between
+SETTLE = {"A1": (2, 16), "A1w": (2, 16), "A2": (2, 16), "A3": (4, 24)}
 SCHEME_TEXT = {"A1": "the BPSK flip (1 of 1)", "A1w": "the BPSK flip seen beside the idle (1 of 1)",
                "A2": "1 bit: the Q step (1 of 2)", "A3": "2 bits: the QPSK corners (1 of 4)"}
 
@@ -261,13 +266,22 @@ class SelfTest:
         name = st.get("scheme") or SCHEME_ROTA[self._k["scheme"] % len(SCHEME_ROTA)]
         self._k["scheme"] += 1
         period, width, seconds = int(st["period"]), int(st["width"]), float(st["seconds"])
-        delay = int(st.get("delay", 16))                     # samples from the first comparator to fire to the decision
-        settle = int(st.get("settle", 0))                    # ID 11: decided once settled this many samples, delay at most
+        # settle: ID 11's settled decision, k samples held (SETTLE's by default where the overlay has it); delay the
+        # samples from the first comparator to fire to the decision, with settle the longest wait
+        settle = st.get("settle")
+        delay = st.get("delay")
         tx = SCHEMES[name]
         L = getattr(self.server, "linkd", None)
         losses0 = L.counts["losses"] if L else 0
 
         def start(cl):
+            nonlocal settle, delay
+            if settle is None:
+                settle = SETTLE[name][0] if getattr(cl, "rx_settle", False) else 0
+            settle = int(settle)
+            if delay is None:
+                delay = SETTLE[name][1] if settle else 16
+            delay = int(delay)
             count = max(10, int(seconds / (period * cl.t_clk)))
             side = self._side(cl)
             rx = _Frame(tx, side)
@@ -284,9 +298,12 @@ class SelfTest:
             self._busy = True
             return count, side, cl.t_clk, cl.t_sample
         count, side, t_clk, t_sample = self._do(start)
-        self._say("symbols", "single symbols of %s, %s: one every %.3g us, %d clocks long, %d of them" % (
-            name, SCHEME_TEXT[name], period * t_clk * 1e6, width, count), scheme=name, period=period, width=width,
-            count=count, seconds=seconds)
+        self._say("symbols", "single symbols of %s, %s: one every %.3g us, %d clocks long, %d of them, %s" % (
+            name, SCHEME_TEXT[name], period * t_clk * 1e6, width, count,
+            ("each decided once its pattern has held %.3g ns (at most %.3g ns after it starts)" % (
+                settle * t_sample * 1e9, delay * t_sample * 1e9)) if settle else
+            "each decided %.3g ns after it starts" % (delay * t_sample * 1e9)),
+            scheme=name, period=period, width=width, count=count, seconds=seconds, settle=settle, delay=delay)
         ok = self._watch(count * period * t_clk + 0.2, losses0)
         if ok:
             ok = self._watch(1.3, losses0)                      # a look of the page's with the counts final
