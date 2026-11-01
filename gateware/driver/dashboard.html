@@ -55,6 +55,19 @@ const C = {good:"#1f9d6a", warn:"#c79200", bad:"#d64545", data:"#1e3a8a", note:"
 const B = {good:"rgba(31,157,106,.15)", warn:"rgba(217,164,0,.18)", bad:"rgba(214,69,69,.14)"};
 const V_REF = 1.6339;          // the integrator's reference on the ADC's scale (BRINGUP_LOG 4.12)
 const SERIES = ["#1e3a8a", "#e07b00", "#7c3aed", "#8b5a2b", "#6b7280"];     // no judgement: not green, not red
+// per-look counts from the board's running totals (the BER check's, the receive engine's): the change since the look
+// before; a fresh count when a run restarted them
+function derive(r, p) {
+  if (r.ber && r.ber.bits != null) { const pb = p && p.ber && p.ber.bits != null && p.ber.bits <= r.ber.bits ? p.ber : {bits: 0, mismatches: 0};
+    const bits = r.ber.bits - pb.bits, errs = (r.ber.mismatches - pb.mismatches) / 3;
+    r._ber = bits > 0 ? {bits, errs, ber: errs / bits, plot: errs > 0 ? errs / bits : 1 / bits} : null; }
+  if (r.rx) { const q = p && p.rx && (p.rx.events || 0) <= (r.rx.events || 0) ? p.rx : {};
+    const d = k => Math.max(0, (r.rx[k] || 0) - (q[k] || 0)), ns = r.rx.sample_ns || 1;
+    r._rx = {events: d("events"), right: d("right"), wrong: d("wrong"), false: d("false"), missed: d("missed"),
+             lat_ns: r.rx.lat_mean != null ? r.rx.lat_mean * ns : null, lat_min_ns: r.rx.lat_n ? r.rx.lat_min * ns : null,
+             lat_max_ns: r.rx.lat_n ? r.rx.lat_max * ns : null}; }
+}
+function deriveAll() { let p = null; for (const r of hist) { if (r.busy) continue; derive(r, p); p = r; } }
 const STATES = {
   locked:      ["Locked", "good", "The receiver is locked to the other board's carrier: the link is working.", "Nothing to do."],
   lost:        ["Lost", "bad", "The receiver's oscillator is not on the carrier (see 'Frequency offset from the carrier' and the pull-in map). Usually a strong interferer dragged it off, or the carrier was blocked for a while.",
@@ -118,6 +131,19 @@ const PANELS = [
  {id:"skew", title:"Timing: comparator skew", unit:"ns", get:r=>r.skew_ns, lo:0, hi:6, absent:"measured only while a data check runs; the link now carries only its idle carrier",
   bands:[[0,1.5,"good"],[1.5,3.5,"warn"],[3.5,6,"bad"]],
   help:"<p>When a timing-recovered data check runs: how much later the receiver's sign comparator switches one way than the other (its duty-cycle distortion). It eats into the eye.</p><p class='k'>Good: under 1.5 ns.</p><p>Shown only while data is being checked: the link left alone carries only its idle carrier, so this plot is empty then, and that is fine. Large values come from the comparator's threshold sitting off the signal's middle (REVB 30).</p>"},
+ {id:"ber", title:"Data: bit errors", unit:"", get:r=>r._ber ? r._ber.plot : null, lo:1e-9, hi:0.5, log:true, ticks:[1e-9, 1e-6, 1e-3, 0.5],
+  fmtv:v=>v.toExponential(1), bands:[[1e-9,1e-6,"good"],[1e-6,1e-3,"warn"],[1e-3,0.5,"bad"]],
+  absent:"measured only while a data check runs (a pseudo-random string of bits on the link); the link now carries only its idle carrier",
+  help:"<p>While a data check runs (a pseudo-random string of BPSK bits, PRBS15, sent and checked by the board itself): the share of bits received wrong, each second, on a log scale. A second with no error is drawn at 1 / (the bits that second): the rate is below that.</p><p class='k'>Good: under one in a million (1e-6).</p><p><b>About 1/3 or 1/6</b> means not bit errors but a lost or slipped loop (every check fails). <b>Rising with interference:</b> the eye is closing; see the timing and the interference plots.</p>"},
+ {id:"symbols", title:"Single symbols: how each was decided", kind:"multi", unit:"a second", lo:0.5, hi:1e7, log:true, ticks:[1, 1e2, 1e4, 1e6],
+  series:[[r=>r._rx && r._rx.right || null, "right", "#1f9d6a"], [r=>r._rx && r._rx.wrong || null, "wrong", "#d64545"],
+          [r=>r._rx && r._rx.false || null, "false (decided, none sent)", "#c79200"], [r=>r._rx && r._rx.missed || null, "missed", "#7c3aed"]],
+  help:"<p>While a test sends single symbols (the link idle, then one of 2 or 4 states for a moment, then idle again: schemes A1, A1w, A2, A3), how the board's receiver decided them, each second: right, wrong (another state), false (a decision with nothing sent) and missed (sent, nothing decided).</p><p class='k'>Good: only green.</p><p>Wrong and false decisions come with interference and a weak signal; missed ones with a lost loop.</p>"},
+ {id:"latency", title:"Single symbols: latency", unit:"ns", get:r=>r._rx ? r._rx.lat_ns : null, lo:0, hi:400,
+  absent:"measured only while a test sends single symbols",
+  help:"<p>While a test sends single symbols: the mean time from each symbol leaving the transmitter to the receiver's decision, in nanoseconds (the receiver's settling delay included). No judgement: it is set by the scheme and the receiver's settings.</p>"},
+ {id:"fastconst", title:"Constellation (fast: the bench scope)", kind:"scope",
+  help:"<p>The received I and Q as the bench oscilloscope saw them on I MON and Q MON (thousands of samples, a few nanoseconds apart), posted here by a bench test while it sends data or symbols: the real constellation, which the slow plot cannot show (its readings average a millisecond). Denser blue where the signal spends more time; the circles mark the locked idle carrier.</p><p>BPSK data: two clusters, left and right. Single symbols (A3): the idle cluster, and dots toward the four corners. Noise spreads the clusters; a CW near the carrier draws circles; a lost loop smears a ring.</p><p>Only on the bench: the deployed board has no scope (rev B: a dual ADC on I and Q, REVB U2).</p>"},
  {id:"temp", title:"Board temperature", unit:"°C", get:r=>r.det&&r.det.temp_c, lo:0, hi:90,
   bands:[[0,5,"bad"],[5,15,"warn"],[15,70,"good"],[70,80,"warn"],[80,90,"bad"]],
   help:"<p>The board's thermistor, near the RF chain. Board A runs at 59-60 °C on the bench (all of 2026-10-31).</p><p class='k'>Good: 15-70 °C.</p><p><b>Hot</b> (yellow from 70 °C, 10 above its usual; red from 80, short of the 85 °C top of the RF chips' operating range): shade the board, give it airflow. Its frequencies drift with temperature; the loop follows slow drift.</p>"},
@@ -182,7 +208,7 @@ function drawSeries(p) {
   for (const v of ticks) g.fillText(p.log ? "1e" + Math.round(Math.log10(v)) : (+v.toFixed(2)) + "", L - 5, y(v) + 4);
   g.textAlign = "left"; g.fillText(spanLabel(), L + 2, h - 5); g.textAlign = "right"; g.fillText("now", w - R, h - 5);
   if (p.id == "vc") { const vl = lastValue(r => r.vc_lock); if (vl) { g.strokeStyle = C.ink2; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(L, y(vl)); g.lineTo(L + pw, y(vl)); g.stroke(); g.setLineDash([]); } }
-  const series = p.kind == "multi" ? p.series.map(([k, lab], i) => [r => r.rate ? r.rate[k] : null, SERIES[i], lab]) : [[p.get, C.data, null]];
+  const series = p.kind == "multi" ? p.series.map(([k, lab, col], i) => [typeof k == "function" ? k : r => r.rate ? r.rate[k] : null, col || SERIES[i], lab]) : [[p.get, C.data, null]];
   if (p.also) series.unshift([p.also[0], SERIES[p.also[1]], p.also[2]]);
   for (const [get, col] of series) {
     g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); let pen = false, prevT = null;
@@ -195,17 +221,23 @@ function drawSeries(p) {
       if (v > p.hi) tri(g, x(r.t), T + 1, true, col); else if (v < p.lo) tri(g, x(r.t), T + ph - 1, false, col); }
   }
   const el = document.getElementById("v_" + p.id), xv = document.getElementById("x_" + p.id);
-  if (p.kind == "multi") { el.textContent = ""; xv.innerHTML = p.series.map(([k, lab], i) => "<span style='color:" + SERIES[i] + "'>&#9632;</span> " + lab).join(" &nbsp; "); return; }
+  if (p.kind == "multi") { el.textContent = ""; xv.innerHTML = p.series.map(([k, lab, col], i) => "<span style='color:" + (col || SERIES[i]) + "'>&#9632;</span> " + lab).join(" &nbsp; ");
+    if (p.id == "symbols") { const tot = {events: 0, right: 0, wrong: 0, false: 0, missed: 0}; for (const r of hist) if (r.t >= t0 && r._rx) for (const k in tot) tot[k] += r._rx[k];
+      xv.innerHTML = (tot.events ? "In this window: " + tot.events + " sent, " + tot.right + " right, " + tot.wrong + " wrong, " + tot.false + " false, " + tot.missed + " missed.<br>" :
+        "No single symbols in this window (only while a test sends them).<br>") + xv.innerHTML; }
+    return; }
   const stale = busyNow(), fl = fullLast() || last || {};
   const lv = lastValue(p.get), nowNull = stale || (p.nm && last && !last.busy && p.get(last) == null);
   const k = nowNull ? null : p.judge ? p.judge(fl) : band(p, lv);
-  el.textContent = lv == null ? "-" : fmt(lv) + " " + p.unit + (lv > p.hi ? " ▲" : lv < p.lo ? " ▼" : "") + (nowNull ? " (last)" : "");
+  el.textContent = lv == null ? "-" : (p.fmtv || fmt)(lv) + " " + p.unit + (lv > p.hi ? " ▲" : lv < p.lo ? " ▼" : "") + (nowNull ? " (last)" : "");
   el.style.color = k ? C[k] : C.ink2;
   let extra = "";
   if (p.id == "dem" && fl.dsa_db != null) extra = " (attenuator " + fl.dsa_db + " dB of 0-31.75)";
   if (p.id == "gwlock" && fl.gw_lock) extra = " (it says: " + fl.gw_lock.state + "; " + fl.gw_lock.losses + " losses since the firmware was loaded)" +
      (fl.gw_lock.state == "lost" && fl.state == "interfered" ? ". It judges from the comparators alone; the oscillator is still on the carrier, so the page calls this interference, not a loss" : "");
   if (lv == null && p.absent) extra = " (" + p.absent + ")";
+  if (p.id == "ber") { const b = lastValue(r => r._ber); if (b) extra = " (the last second: " + Math.round(b.errs) + " errors in " + b.bits.toExponential(1) + " bits" + (b.errs ? "" : ": the rate is below the value shown") + ")"; }
+  if (p.id == "latency") { const x = lastValue(r => r._rx && r._rx.lat_ns != null ? r._rx : null); if (x) extra = " (from " + fmt(x.lat_min_ns) + " to " + fmt(x.lat_max_ns) + " ns in this run)"; }
   const why = stale ? busyWhy() : {lost: "not locked", nocarrier: "no carrier", interfered: "interference", held: "a program holds the loop", holdover: last && last.gw_lock && last.gw_lock.state != "no carrier" ? "held through interference" : "the carrier interrupted"}[last && last.state] ||
      "the I comparator is toggling: bursts of interference, or data on the link, spoil this slow reading";
   xv.textContent = (lv == null ? "no reading yet" : nowNull ? "not measurable now (" + why + "); the last reading shown, in grey" : ({good:"good", warn:"marginal", bad:"bad"}[k] || "")) + (nowNull ? "" : extra);
@@ -247,7 +279,9 @@ function drawScatter(p) {
     const age = (Date.now() / 1000 - r.t) / win, lum = Math.round(30 + 55 * Math.min(1, age));
     g.fillStyle = "hsl(222, 75%, " + lum + "%)"; g.beginPath(); g.arc(cx + i * sc, cy - q * sc, 3.5, 0, 7); g.fill(); }
   document.getElementById("v_" + p.id).textContent = "";
-  document.getElementById("x_" + p.id).textContent = "circles: where a good, locked, idle carrier sits";
+  const fl1 = fullLast();
+  document.getElementById("x_" + p.id).textContent = "circles: where a good, locked, idle carrier sits" +
+    (fl1 && (fl1.ber || fl1.rx) ? "; data on the link now, which these slow readings average toward the middle (the fast constellation shows the symbols)" : "");
 }
 function drawPullin(p) {
   const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv);
@@ -337,12 +371,33 @@ function drawSCurve(p) {
     g.beginPath(); g.arc(x(th), y(err), 3.5, 0, 7); if (other) { g.strokeStyle = col; g.lineWidth = 1.5; g.stroke(); } else { g.fillStyle = col; g.fill(); }
     lastPt = [th, err, other ? r.off_khz : null, other]; }
   document.getElementById("v_" + p.id).textContent = "";
+  const fl0 = fullLast();
   document.getElementById("x_" + p.id).textContent = busyNow() ? "no phase to show now: " + busyWhy() :
     lastPt && lastPt[3] && lastPt[2] != null && lastPt[2] <= -35 && lastPt[2] >= -55 ? "now: resting in the false lock, " + fmt(-lastPt[2]) + " kHz below the carrier, not locked to it; the open circles are not its phase to the carrier" :
     lastPt && lastPt[3] ? "now: the loop follows something" + (lastPt[2] != null ? " " + fmt(Math.abs(lastPt[2])) + " kHz " + (lastPt[2] < 0 ? "below" : "above") + " the carrier" : " other than the carrier") +
-      " (an interferer stronger than the carrier has captured it); the open circles are its phase to that, not to the carrier" : !lastPt && skipped ? "no phase to show now: not locked or no carrier (these slow readings average a beat away)" : lastPt ? "grey: model; blue: live; now: phase " + (Math.round(lastPt[0]) || 0) + "°, error " + (Math.round(lastPt[1]) || 0) + " mV from the loop's reference" : "no reading yet";
+      " (an interferer stronger than the carrier has captured it); the open circles are its phase to that, not to the carrier" : !lastPt && skipped ? (fl0 && (fl0.ber || fl0.rx) ? "no phase to show now: data on the link, which these slow readings average away (the fast constellation shows the symbols)" :
+      "no phase to show now: not locked or no carrier (these slow readings average a beat away)") : lastPt ? "grey: model; blue: live; now: phase " + (Math.round(lastPt[0]) || 0) + "°, error " + (Math.round(lastPt[1]) || 0) + " mV from the loop's reference" : "no reading yet";
 }
-function drawAll() { for (const p of PANELS) { try { ({timeline: drawTimeline, scatter: drawScatter, pullin: drawPullin, scurve: drawSCurve}[p.kind] || drawSeries)(p); } catch (e) { console.log(p.id, e); } } }
+let scopes = [];
+async function loadScopes() { try { scopes = await (await fetch("/api/scope?s=" + Math.max(span, 3600))).json(); } catch (e) {} }
+function drawScope(p) {
+  const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv), cx = w / 2, cy = h / 2, sc = Math.min(w, h) / 2 / 0.32;
+  g.clearRect(0, 0, w, h); g.strokeStyle = "#c9ccd2"; g.beginPath(); g.moveTo(10, cy); g.lineTo(w - 10, cy); g.moveTo(cx, 5); g.lineTo(cx, h - 5); g.stroke();
+  g.fillStyle = C.ink2; g.font = "12px system-ui"; g.fillText("I", w - 18, cy - 6); g.fillText("Q", cx + 6, 14);
+  const ref = last && last.leg_ref_mv ? last.leg_ref_mv / 1000 : 0.16;
+  for (const sgn of [-1, 1]) { g.strokeStyle = C.good; g.lineWidth = 2; g.beginPath(); g.arc(cx + sgn * ref * sc, cy, 0.035 * sc, 0, 7); g.stroke(); }
+  const c = scopes[scopes.length - 1], x = document.getElementById("x_" + p.id);
+  document.getElementById("v_" + p.id).textContent = "";
+  if (!c) { x.textContent = "no capture yet: a bench test posts the scope's I MON and Q MON here while it sends data or symbols"; return; }
+  const i0 = c.i0 != null ? c.i0 : (last && last.i0) || 1.6535, q0 = c.q0 != null ? c.q0 : (last && last.q0) || 1.628;
+  g.fillStyle = "rgba(30, 58, 138, 0.18)";
+  for (let k = 0; k < c.i.length; k++) { const xx = cx + (c.i[k] - i0) * sc, yy = cy - (c.q[k] - q0) * sc;
+    if (xx < 0 || xx > w || yy < 0 || yy > h) continue; g.fillRect(xx - 1.2, yy - 1.2, 2.4, 2.4); }
+  const age = Date.now() / 1000 - c.t;
+  x.textContent = "the bench scope, " + dur(Math.max(0, age)) + " ago" + (c.text ? ", during " + c.text : "") + " (" + c.i.length + " samples, " +
+    (c.dt_ns ? fmt(c.dt_ns) + " ns apart" : "") + "); circles: the locked idle carrier";
+}
+function drawAll() { for (const p of PANELS) { try { ({timeline: drawTimeline, scatter: drawScatter, pullin: drawPullin, scurve: drawSCurve, scope: drawScope}[p.kind] || drawSeries)(p); } catch (e) { console.log(p.id, e); } } }
 function status() {
   const st = document.getElementById("status"), r = last;
   if (!r) return;
@@ -401,10 +456,10 @@ document.getElementById("evhelp").onclick = () => showHelp("What happened",
   "<p><b>Many unexplained losses:</b> strong interference or a weak signal (see the plots). <b>A loss without a recovery, or repeated 'found no carrier':</b> check that the other board is on and that the antennas face each other.</p>" +
   "<p>To post a note (any program on the lab network): <code>curl -X POST -d '{\"text\":\"B210 interference test\",\"kind\":\"intervention\",\"source\":\"me\",\"t_end\":" + Math.round(Date.now() / 1000 + 60) + "}' http://" + location.host + "/api/note</code>.</p>");
 async function loadNotes() { try { notes = await (await fetch("/api/notes?s=" + span)).json(); } catch (e) {} }
-async function load() { try { hist = await (await fetch("/api/history?s=" + span)).json(); last = hist[hist.length - 1]; await loadNotes(); status(); drawAll(); } catch (e) {} }
-async function tick() { try { const r = await (await fetch("/api/now")).json(); if (r && r.t && (!last || r.t > last.t)) { hist.push(r); last = r;
+async function load() { try { hist = await (await fetch("/api/history?s=" + span)).json(); deriveAll(); last = hist[hist.length - 1]; await loadNotes(); await loadScopes(); status(); drawAll(); } catch (e) {} }
+async function tick() { try { const r = await (await fetch("/api/now")).json(); if (r && r.t && (!last || r.t > last.t)) { if (!r.busy) derive(r, fullLast()); hist.push(r); last = r;
     const t0 = Date.now() / 1000 - span; while (hist.length && hist[0].t < t0) hist.shift(); } status(); drawAll(); }
   catch (e) { document.getElementById("meta").textContent = "cannot reach the board's server (restarting, or the network?)"; } }
 (async () => { try { pullin = await (await fetch("/api/pullin")).json(); } catch (e) {} })();
-window.onresize = drawAll; load(); events(); setInterval(tick, 1000); setInterval(events, 5000); setInterval(loadNotes, 5000);
+window.onresize = drawAll; load(); events(); setInterval(tick, 1000); setInterval(events, 5000); setInterval(loadNotes, 5000); setInterval(loadScopes, 10000);
 </script></body></html>

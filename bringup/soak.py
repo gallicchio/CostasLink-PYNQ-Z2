@@ -17,6 +17,15 @@ Each disturbance is drawn at random, its parameters from continuous ranges (the 
                  watersheds at -16 and -94 kHz, the rail below -129 kHz; between those, either)
     carrier_off  the TX muted for 10 ms - 60 s (log-uniform; soak2 found 0.3 s enough to lose the lock, into the false lock)
     attn         the attenuator stepped -6..+6 dB (kept within 6-31.75 dB) for 5-30 s
+    symbols      single symbols from the idle to one of 2 or 4 states and back (A1, A1w, A2, A3; the board's receiver
+                 decides each, `campaign.scheme_run`): one every 32-4000 clocks (log-uniform), 2-40 clocks long, for
+                 0.5-6 s; right, wrong, false and missed, and the latency
+    data         a BPSK PRBS15 string at 1-50 Mbaud (2-100 clocks a bit, log-uniform) for 3-15 s in segments of about
+                 1.5 s, checked by the board with its timing recovered (`campaign.segs`): bit errors, and each segment
+                 clean, inverted (a slip), beating (lost) or partial
+                 Each of the two with a B210 interferer drawn as above running across it (3 in 5), or none; the bench
+                 scope's I MON and Q MON captured during it and posted to the page's fast constellation (the MON taps
+                 smooth over about 0.1 us, so only symbols and bits slower than that show as clean clusters)
 Each is announced on the status page (a note from soak.py, open until the link is locked again with linkd active), and
 then checked:
     the page's own log on the PYNQ (dashboard.py writes every look, note and event) against its API: the same looks and
@@ -48,8 +57,10 @@ sys.path.insert(0, HERE)
 OUT = os.path.join(HERE, "data", "board_A", "soak")
 DASH = "http://192.168.8.142:8080"
 PYNQ = "xilinx@192.168.8.142"
-KINDS = {"cw_far": 0.2, "cw_near": 0.18, "bursts": 0.2, "release": 0.2, "carrier_off": 0.12, "attn": 0.1}
-DRIVES = ("release", "carrier_off", "attn")          # these make requests to the board: linkd waits a minute after
+KINDS = {"cw_far": 0.2, "cw_near": 0.18, "bursts": 0.2, "release": 0.2, "carrier_off": 0.12, "attn": 0.1, "symbols": 0.3, "data": 0.3}
+DRIVES = ("release", "carrier_off", "attn", "symbols", "data")   # requests to the board: linkd waits a minute after
+SCHEME_TEXT = {"A1": "A1, the BPSK flip", "A1w": "A1w, the BPSK flip seen beside the idle", "A2": "A2, 1 bit: the Q step",
+               "A3": "A3, 2 bits: the QPSK corners"}
 WATERSHEDS_KHZ = ((-16.0, -13.0), (-129.0, -94.0))   # 5.2 GHz, where a release can go either way (BRINGUP_LOG 4.12)
 NOT_LOCKED = ("lost", "nocarrier", "interfered", "unsettled", "held", "holdover", "interference")
 
@@ -149,6 +160,8 @@ def pynq_log(t0, t1):
             notes[d["note"]["id"]] = d["note"]
         elif "event" in d:
             events.append(d["event"])
+        elif "scope" in d:
+            pass                                                 # a bench capture posted to the page, not a look
         else:
             looks.append(d)
     return looks, notes, events
@@ -371,6 +384,26 @@ def audit(t0, t_end, t_back, note_id=None, kind=None, params=None, marks=None, t
             check("ant_stays", ant is not None and abs(ant) < 1.0 + 0.1 * abs(dd), "RX ANT %s dB" % ("%+.2f" % ant if ant is not None else "-"))
         else:
             check("attn_levels", None, "not locked during the step (%d looks with a level)" % len(stp))
+    if kind == "symbols" and marks.get("result"):
+        res, ds, de = marks["result"], marks.get("data_start", t0), marks.get("data_end", t_end)
+        rxl = [r["rx"] for r in real if r.get("rx") and ds <= r["t"] <= de + 1]
+        check("symbols_on_page", bool(rxl), "the page read no decisions while the symbols ran")
+        if rxl:
+            pr, keys = rxl[-1], ("events", "right", "false", "missed")
+            check("symbols_page_vs_run", all(pr.get(k) == res.get(k) for k in keys),
+                  "the page's last look %s, the run's %s" % ({k: pr.get(k) for k in keys}, {k: res.get(k) for k in keys}))
+        if not params.get("with") and res.get("events"):
+            check("symbols_clean", res["right"] >= 0.999 * res["events"] and (res.get("false") or 0) <= max(2, 1e-4 * res["events"]),
+                  "no interference: %s sent, %s right, %s wrong, %s false, %s missed" % tuple(res.get(k) for k in ("events", "right", "symbol_errors", "false", "missed")))
+    if kind == "data" and marks.get("result"):
+        res, ds, de = marks["result"], marks.get("data_start", t0), marks.get("data_end", t_end)
+        bl = [r for r in real if r.get("ber") and ds <= r["t"] <= de + 1]
+        check("data_on_page", bool(bl), "the page read no bit counts while the data ran")
+        if bl and res["clean"] == params["segments"]:
+            check("data_clean_on_page", all((r["ber"].get("mismatches") or 0) == 0 for r in bl), "the run saw no error and the page did")
+        if not params.get("with") and params["period"] >= 5:
+            check("data_clean", res["clean"] == params["segments"], "no interference at %.3g Mbaud: %d of %d segments clean" % (
+                100.0 / params["period"], res["clean"], params["segments"]))
     if kind in ("cw_far", "cw_near", "bursts"):
         lost_near = [r for r in during if r.get("state") == "lost" and r.get("off_khz") is not None and abs(r["off_khz"]) < 8]
         check("interference_not_lost", not lost_near, "%d looks 'Lost' with the oscillator at the lock" % len(lost_near))
@@ -413,6 +446,20 @@ def draw(kind, rng, d0):
         return {"off_khz": k, "predicted": predict_release(k)}
     if kind == "carrier_off":
         return {"seconds": round(lu(0.01, 60.0), 3)}
+    if kind in ("symbols", "data"):
+        if kind == "symbols":
+            period = int(round(lu(32, 4000)))
+            p = {"scheme": rng.choice(("A1", "A1w", "A2", "A3")), "period": period,
+                 "width": int(rng.uniform(2, max(3, min(40, period // 2)))), "seconds": round(rng.uniform(0.5, 6), 2)}
+        else:
+            p = {"period": int(round(lu(2, 100))), "seconds": round(rng.uniform(3, 15), 1)}
+            p["segments"] = max(2, int(p["seconds"] // 1.5))
+        w = rng.choice(("none", "none", "cw_far", "cw_near", "bursts"))
+        if w != "none":
+            q = draw(w, rng, d0)
+            q["seconds"] = round(p["seconds"] + 1.5, 2)          # it starts first and covers the run
+            p["with"] = dict(q, kind=w)
+        return p
     if kind == "attn":
         dd = 0.0
         while abs(dd) < 0.5 or not 6.0 <= d0 + dd <= 31.75:
@@ -435,6 +482,13 @@ def describe(kind, p):
         return "the carrier switched off for " + (("%.0f ms" % (p["seconds"] * 1e3)) if p["seconds"] < 1 else ("%.1f s" % p["seconds"]))
     if kind == "attn":
         return "the attenuator %+.2f dB for %.0f s" % (p["db"], p["seconds"])
+    if kind in ("symbols", "data"):
+        w = p.get("with")
+        tail = (", with the " + describe(w["kind"], w).replace("B210: ", "B210's ", 1)) if w else ", no interference"
+        if kind == "symbols":
+            return "single symbols of %s, one every %.3g us, %d clocks long, for %.1f s%s" % (
+                SCHEME_TEXT[p["scheme"]], p["period"] * 1e-2, p["width"], p["seconds"], tail)
+        return "BPSK PRBS15 data at %.3g Mbaud for %.0f s%s" % (100.0 / p["period"], p["seconds"], tail)
     return kind
 
 
@@ -452,6 +506,41 @@ class Soak:
             self._A = A.LinkdTest(b210=False)
             self._A.bb = self.bb
         return self._A
+
+    def b210(self, kind, p):
+        """one of the B210's interferers, as the kinds of the same name send it"""
+        mhz = self.mhz
+        if kind == "cw_far":
+            self.bb.tone(mhz + p["off_mhz"], gain=p["gain"], seconds=p["seconds"])
+        elif kind == "cw_near":
+            self.bb.tone(mhz + 2.0, gain=p["gain"], seconds=p["seconds"], offset_hz=p["off_khz"] * 1e3 - 2e6, rate=5e6)
+        elif kind == "bursts":
+            self.bb.bursts(mhz + p["off_mhz"], gain=p["gain"], bw_mhz=p["bw_mhz"], on_ms=p["on_ms"], off_ms=p["per_ms"] - p["on_ms"],
+                           seconds=p["seconds"], seed=p["seed"])
+
+    def scope_capture(self, B, kind, p, out):
+        """the bench scope's I MON (ch2) and Q MON (ch3) during a data run, its timebase put back after: about ten symbols
+        across the screen, or 10 us of data"""
+        sc = B.s
+        try:
+            time.sleep(min(1.0, 0.3 * p["seconds"]))
+            old = sc.q(":TIMebase:SCALe?")
+            tdiv = 1e-6 if kind == "data" else max(1e-6, min(50e-6, p["period"] * 1e-8))
+            sc.timebase(scale=tdiv)
+            time.sleep(0.3)
+            try:
+                sc.single(timeout=3.0)
+            except TimeoutError:
+                sc.acquire_now()
+            t2, v2, _ = sc.waveform(2)
+            t3, v3, _ = sc.waveform(3)
+            sc.run()
+            sc.timebase(scale=float(old))
+            k = max(1, len(v2) // 6000)
+            out.update(t=time.time(), i=[float(v) for v in v2[::k]], q=[float(v) for v in v3[::k]],
+                       dt_ns=float(t2[1] - t2[0]) * 1e9 * k if len(t2) > 1 else 0.0)
+        except Exception as e:                                   # noqa: BLE001 - the run goes on without a picture
+            out["error"] = "%s: %s" % (type(e).__name__, str(e)[:200])
 
     def disturb(self, kind, p, r0, shots_at):
         """does it; returns the marks (times) of its steps"""
@@ -488,6 +577,45 @@ class Soak:
             B.cl.wr("CTRL", v & ~1 & ~0x80)
             marks["unmuted"] = time.time()
             p["actual_s"] = round(marks["unmuted"] - marks["muted"], 4)
+        elif kind in ("symbols", "data"):
+            B = self.board()
+            side = 1 if (r0.get("adc") or {}).get("I", 0) > (r0.get("i0") or 1.65) else -1
+            w = p.get("with")
+            th = None
+            if w:
+                th = threading.Thread(target=self.b210, args=(w["kind"], w), daemon=True)
+                th.start()
+                time.sleep(0.8)                                  # the B210's stream running before the data starts
+                marks["interference"] = time.time()
+            cap = {}
+            ct = threading.Thread(target=self.scope_capture, args=(B, kind, p, cap), daemon=True)
+            later(shots_at and 0.5 + shots_at * p["seconds"], kind)
+            marks["data_start"] = time.time()
+            ct.start()
+            try:
+                if kind == "symbols":
+                    count = max(10, int(p["seconds"] / (p["period"] * 1e-8)))
+                    p["count"] = count
+                    st = B.scheme_run(p["scheme"], side, count=count, period=p["period"], width=p["width"])
+                    time.sleep(1.5)                              # a look of the page's with the counts final
+                    marks["result"] = {k: st.get(k) for k in ("events", "decided", "right", "symbol_errors", "false", "missed",
+                                                              "confirm", "veto", "lat_n", "lat_min", "lat_max", "lat_mean", "sample_ns")}
+                else:
+                    seg = B.segs(side, p["period"], 0, n=p["segments"], seconds=p["seconds"] / p["segments"])
+                    marks["result"] = {k: seg[k] for k in ("clean", "inverted", "beating", "partial", "bits", "err_bits_partial", "rates")}
+            finally:
+                if kind == "symbols":
+                    B.cl.rx_enable(False)
+            marks["data_end"] = time.time()
+            ct.join(timeout=30)
+            if th:
+                th.join(timeout=p["seconds"] + 30)
+            if cap.get("i"):
+                q = post("/api/scope", {"t": cap["t"], "text": describe(kind, p) + " (soak #%d)" % getattr(self, "_n", 0), "source": "soak.py",
+                                        "dt_ns": cap["dt_ns"], "i0": r0.get("i0"), "q0": r0.get("q0"), "i": cap["i"], "q": cap["q"]})
+                marks["scope"] = {"t": cap["t"], "n": len(cap["i"]), "posted": bool(q)}
+            elif cap.get("error"):
+                marks["scope"] = {"error": cap["error"]}
         elif kind == "attn":
             B = self.board()
             d0 = float(r0["dsa_db"])
@@ -500,6 +628,7 @@ class Soak:
         return marks
 
     def trial(self, n, kind, p, shots_at, path):
+        self._n = n
         r0 = now_or_none()
         if r0 is None:
             return None
@@ -533,6 +662,15 @@ class Soak:
             extra = " rest %s" % (a.get("rest") or {}).get("class")
         elif kind == "carrier_off":
             extra = " (off %.3f s) rest %s" % (p.get("actual_s", p["seconds"]), (a.get("rest") or {}).get("class"))
+        elif kind == "symbols" and marks.get("result"):
+            x = marks["result"]
+            extra = " | %s sent: %s right, %s wrong, %s false, %s missed; latency %s ns" % (
+                x.get("events"), x.get("right"), x.get("symbol_errors"), x.get("false"), x.get("missed"),
+                ("%.0f-%.0f" % (x["lat_min"] * x["sample_ns"], x["lat_max"] * x["sample_ns"])) if x.get("lat_n") and x.get("sample_ns") else "-")
+        elif kind == "data" and marks.get("result"):
+            x = marks["result"]
+            extra = " | %d segments: %d clean, %d inverted, %d beating, %d partial; %.3g bits, %.0f bit errors in the partial ones" % (
+                p["segments"], x["clean"], x["inverted"], x["beating"], x["partial"], x["bits"], x["err_bits_partial"])
         elif kind == "attn" and a.get("attn") and a["attn"]["ant_db"] is not None:
             extra = " dem %+.1f, RX ANT %+.1f dB" % (a["attn"]["dem_db"], a["attn"]["ant_db"])
         print("%s #%-3d %-11s %s | %s%s, back %s | %s" % (

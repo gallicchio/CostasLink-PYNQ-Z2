@@ -70,6 +70,7 @@ class Dashboard:
         self._gap = False                # a look not locked since then
         self.events = collections.deque(maxlen=5000)   # what happened, in words, for the page's list (2 h of a busy test)
         self.notes = collections.deque(maxlen=500)     # notes posted by experiments: interventions, explanations
+        self.scopes = collections.deque(maxlen=40)     # I MON / Q MON captures a bench test posted (POST /api/scope)
         self._lk = None                                 # linkd's counts at the last look
 
     # ---- the looks ----
@@ -120,6 +121,14 @@ class Dashboard:
                 r["cdr"] = c
                 if c.get("skew_samples") is not None:
                     r["skew_ns"] = abs(c["skew_samples"]) * 1e3 / (cl.clk_mhz * cl.ser)
+        if cl.rd("RX_CTRL") & 1:                       # the receive engine on: single symbols decided (rx_engine.v)
+            st = cl.rx_stats()
+            cm = cl.confusion()
+            r["rx"] = {k: st.get(k) for k in ("events", "decided", "false", "missed", "confirm", "veto", "lat_n", "lat_min",
+                                              "lat_max", "lat_mean")}
+            r["rx"]["right"] = sum(cm[a][a] for a in range(8))
+            r["rx"]["wrong"] = sum(cm[a][b] for a in range(8) for b in range(8) if a != b)
+            r["rx"]["sample_ns"] = cl.t_sample * 1e9
         if self._prev is not None:
             t0, e0, ih0, sh0 = self._prev
             dt = t - t0
@@ -182,6 +191,17 @@ class Dashboard:
         self.write({"t": t, "note": n})
         return n
 
+    def scope(self, d):
+        """a capture of I MON and Q MON from a bench oscilloscope (POST /api/scope {i, q, dt_ns, text, source, i0, q0}):
+        the constellation at the scope's rate, which the slow readings cannot show (they average 1.2 ms)"""
+        n = min(len(d["i"]), len(d["q"]), 6000)
+        c = {"t": float(d.get("t", time.time())), "text": str(d.get("text", ""))[:300], "source": str(d.get("source", ""))[:80],
+             "dt_ns": float(d.get("dt_ns", 0)), "i0": d.get("i0"), "q0": d.get("q0"),
+             "i": [round(float(v), 4) for v in d["i"][:n]], "q": [round(float(v), 4) for v in d["q"][:n]]}
+        self.scopes.append(c)
+        self.write({"t": c["t"], "scope": c})
+        return {"t": c["t"], "n": n}
+
     def event(self, e):
         """one line of 'What happened', kept in the day's log too (restore() reads it back after a restart)"""
         self.events.append(e)
@@ -210,6 +230,8 @@ class Dashboard:
                             notes[d["note"]["id"]] = d["note"]
                         elif "event" in d:
                             self.events.append(d["event"])
+                        elif "scope" in d:
+                            self.scopes.append(d["scope"])
                         else:
                             self.hist.append(d)
                             n_looks += 1
@@ -443,6 +465,10 @@ class Dashboard:
                             self.send(200, f.read(), "application/json")
                     except OSError:
                         self.send(200, "{}", "application/json")
+                elif u.path == "/api/scope":
+                    s = float(parse_qs(u.query).get("s", ["7200"])[0])
+                    t0 = time.time() - s
+                    self.send(200, json.dumps([c for c in dash.scopes if c.get("t", 0) >= t0], default=str), "application/json")
                 elif u.path == "/api/notes":
                     s = float(parse_qs(u.query).get("s", ["7200"])[0])
                     t0 = time.time() - s
@@ -462,15 +488,15 @@ class Dashboard:
 
             def do_POST(self):
                 u = urlparse(self.path)
-                if u.path != "/api/note":
+                if u.path not in ("/api/note", "/api/scope"):
                     self.send(404, "not here", "text/plain")
                     return
                 try:
                     n = int(self.headers.get("Content-Length", "0"))
-                    d = json.loads(self.rfile.read(min(n, 65536)) or b"{}")
-                    self.send(200, json.dumps(dash.note(d)), "application/json")
-                except (ValueError, TypeError) as e:
-                    self.send(400, "bad note: %s" % e, "text/plain")
+                    d = json.loads(self.rfile.read(min(n, 1 << 20 if u.path == "/api/scope" else 65536)) or b"{}")
+                    self.send(200, json.dumps(dash.scope(d) if u.path == "/api/scope" else dash.note(d)), "application/json")
+                except (ValueError, TypeError, KeyError) as e:
+                    self.send(400, "bad %s: %s" % (u.path, e), "text/plain")
 
         return ThreadingHTTPServer(("0.0.0.0", self.port), H)
 
