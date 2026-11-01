@@ -386,6 +386,8 @@ def outcome(a):
         return "slipped to the other lock point"
     if s.get("lost"):
         return "lost, back by itself"
+    if s.get("holdover") and not s.get("nocarrier"):
+        return "held through it (the holdover)"
     if s.get("nocarrier") or s.get("holdover"):
         return "no carrier"
     if s.get("interfered") or s.get("unsettled"):
