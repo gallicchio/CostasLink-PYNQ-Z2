@@ -370,21 +370,22 @@ const LD_WORDS = {locked: "standing by, the link locked", watching: "watching: i
   recovering: "bringing the link back now", "backing off": "waiting to try again (its last try found no carrier)", off: "switched off",
   "parked: the loop is held by a program": "standing aside: a program holds the loop", "waiting for a first lock": "waiting for a first lock to learn from"};
 function dur(s) { return s < 90 ? Math.round(s) + " s" : s < 5400 ? Math.round(s / 60) + " min" : (s / 3600).toFixed(1) + " h"; }
-const EV = {"recovered": [C.good, "●"], "loss": [C.bad, "●"], "loss-expected": [C.note, "●"], "failed": [C.warn, "●"],
+const EV = {"recovered": [C.good, "●"], "loss": [C.bad, "●"], "loss-expected": [C.note, "●"], "failed": [C.warn, "●"], "slip": [C.warn, "◐"],
             "note-intervention": [C.note, "■"], "note-explained": [C.note, "◆"], "note-info": [C.ink2, "◆"]};
 function spanWords() { return span >= 3600 ? (span / 3600) + " h" : (span / 60) + " min"; }
 async function events() { try { const ev = await (await fetch("/api/events?s=" + span)).json(); const el = document.getElementById("events");
   const n = k => ev.filter(e => e.kind == k).length, lost = n("loss") + n("loss-expected");
   document.getElementById("evsum").textContent = "In the last " + spanWords() + ": " + lost + " loss" + (lost == 1 ? "" : "es") +
      (lost ? " (" + (n("loss-expected") == lost ? "all" : n("loss-expected")) + " during announced interventions)" : "") + ", " + n("recovered") +
-     " locked again by the board itself" + (n("failed") ? ", " + n("failed") + " recoveries that found no carrier" : "") + ", " +
+     " locked again by the board itself" + (n("failed") ? ", " + n("failed") + " recoveries that found no carrier" : "") +
+     (n("slip") ? ", " + n("slip") + " phase slip" + (n("slip") == 1 ? "" : "s") + " (the data inverted)" : "") + ", " +
      n("note-intervention") + " announced intervention" + (n("note-intervention") == 1 ? "" : "s") + "." + (ev.length > 12 ? " Newest first; scroll for more." : "");
   el.innerHTML = ev.length ? ev.slice().reverse().map(e => { const [c, m] = EV[e.kind] || [C.ink2, "●"];
      return "<div><span style='color:" + c + "'>" + m + "</span> " + new Date(e.t * 1000).toLocaleString() + ": " + e.text.replace(/</g, "&lt;") + "</div>"; }).join("")
      : "Nothing in the last " + spanWords() + "."; } catch (e) {} }
 document.getElementById("evhelp").onclick = () => showHelp("What happened",
   "<p>The board's own record, newest first: <span style='color:" + C.bad + "'>&#9679;</span> a loss of lock, <span style='color:" + C.good + "'>&#9679;</span> the board locking again by itself (and how long it took), " +
-  "<span style='color:" + C.warn + "'>&#9679;</span> a recovery that found no carrier, and in purple the notes that experiments post: <span style='color:" + C.note + "'>&#9632;</span> an announced intervention (an interference test, the carrier switched off on purpose), " +
+  "<span style='color:" + C.warn + "'>&#9679;</span> a recovery that found no carrier, <span style='color:" + C.warn + "'>&#9680;</span> a phase slip (the loop jumped to its other lock point without losing the lock, as a carrier interrupted for some milliseconds does: the link's data comes out inverted until the receiver resolves it), and in purple the notes that experiments post: <span style='color:" + C.note + "'>&#9632;</span> an announced intervention (an interference test, the carrier switched off on purpose), " +
   "<span style='color:" + C.note + "'>&#9670;</span> an explanation of something seen. A loss during an announced intervention is shown in purple and called expected.</p>" +
   "<p class='k'>Good: few unexplained red entries, each followed by a green one within seconds.</p>" +
   "<p><b>Many unexplained losses:</b> strong interference or a weak signal (see the plots). <b>A loss without a recovery, or repeated 'found no carrier':</b> check that the other board is on and that the antennas face each other.</p>" +

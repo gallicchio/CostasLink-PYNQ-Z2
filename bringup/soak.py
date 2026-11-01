@@ -252,6 +252,20 @@ def audit(t0, t_end, t_back, note_id=None, kind=None, params=None, marks=None, t
                 for k, ks in (("losses", ("loss", "loss-expected")), ("recoveries", ("recovered",)), ("failed", ("failed",)))}
     out["events"] = n_ev_all
     check("events_vs_linkd", n_ev_all == d, "linkd %s, the page's events %s" % (d, n_ev_all))
+    # a jump to the other lock point with no unlocked look between: a slip, which the page must list
+    lk = [r for r in real if r.get("state") == "locked" and r.get("adc") and r.get("i0") is not None
+          and abs(r["adc"]["I"] - r["i0"]) > 0.05 and (r.get("rate") or {}).get("CMP_I", 1e9) < 2000]
+    sides = [(r["t"], 1 if r["adc"]["I"] > r["i0"] else -1) for r in lk]
+    bef = [s for t, s in sides if t < t0][-1:]
+    aft = [s for t, s in sides if t > t_end][-1:]
+    out["side"] = {"before": bef[0] if bef else None, "after": aft[0] if aft else None}
+    flipped = bool(bef and aft and bef[0] != aft[0])
+    pure = flipped and d["losses"] == 0 and not any(r.get("state") in ("lost", "nocarrier", "held", "holdover")
+                                                    for r in real if t0 - 1 <= r["t"] <= t_fetch)
+    out["slip"] = pure
+    if pure:
+        check("slip_shown", any(e["kind"] == "slip" and t0 - 1 <= e["t"] <= t_fetch for e in ev_log),
+              "the loop moved to its other lock point without a loss, and 'What happened' says nothing")
     unexp = [e for e in ev_log if e["kind"] == "loss" and t0 <= e["t"] <= t_fetch]
     check("losses_announced", not unexp, "; ".join(e["text"][:120] for e in unexp))
 
@@ -358,6 +372,8 @@ def outcome(a):
     s = a.get("states") or {}
     if a["linkd"]["losses"]:
         return "lost, %d recovered by linkd" % a["linkd"]["recoveries"]
+    if a.get("slip"):
+        return "slipped to the other lock point"
     if s.get("lost"):
         return "lost, back by itself"
     if s.get("nocarrier") or s.get("holdover"):

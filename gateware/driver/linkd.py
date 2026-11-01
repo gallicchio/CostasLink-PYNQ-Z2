@@ -61,6 +61,7 @@ class LinkD:
         self.backoff_s = backoff_s
         self.vc_lock = self.leg = None
         self.i0, self.q0 = 1.6535, 1.628
+        self.mid_t = None                                # when the arms' middles were measured (setup)
         self.mode = "starting"
         self.lost_since = None
         self.next_try = 0.0
@@ -73,6 +74,7 @@ class LinkD:
     def state(self):
         return {"mode": self.mode, "enabled": self.enabled, "vc_lock": self.vc_lock, "leg": self.leg, "config": self.cfg, "idle_s": self.idle_s,
                 "lost_for_s": (time.time() - self.lost_since) if self.lost_since else None,
+                "i0": self.i0, "q0": self.q0, "mid_t": self.mid_t,
                 "next_try_in_s": max(0.0, self.next_try - time.time()) if self.mode == "backing off" else None,
                 **self.counts}
 
@@ -185,6 +187,7 @@ class LinkD:
         time.sleep(0.1)
         self.i0 = sum(cl.adc("I") for _ in range(8)) / 8.0
         self.q0 = sum(cl.adc("Q") for _ in range(8)) / 8.0
+        self.mid_t = time.time()
         cen = {}
         for w in ("QP", "QN", "IP", "IN"):
             vs = [V_MID - 0.06 + 0.002 * k for k in range(61)]

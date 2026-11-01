@@ -62,6 +62,12 @@ class Dashboard:
         self.leg_ref = None              # the I leg at lock, learned (the constellation's targets)
         self.t_state = (None, time.time())
         self.i0, self.q0 = I0_V, Q0_V
+        self.rx_carrier = None           # the carrier's frequency (from the locked looks): the middles are learned there
+        self.side_i = {1: None, -1: None}   # the locked idle I on each lock point: (I, attenuator, t)
+        self.i_delta = None              # the two lock points' mean less the muted middle
+        self._mid_t = None               # linkd's measurement of the middles last taken
+        self.side = None                 # the lock point (the sign of I) of the last locked idle look
+        self._gap = False                # a look not locked since then
         self.events = collections.deque(maxlen=5000)   # what happened, in words, for the page's list (2 h of a busy test)
         self.notes = collections.deque(maxlen=500)     # notes posted by experiments: interventions, explanations
         self._lk = None                                 # linkd's counts at the last look
@@ -213,10 +219,20 @@ class Dashboard:
         self.events = collections.deque(sorted(self.events, key=lambda e: e["t"]), maxlen=self.events.maxlen)
         if self.hist and time.time() - self.hist[-1]["t"] < 600:
             self.vc_lock = self.hist[-1].get("vc_lock")                  # the lock learned before (it adapts again)
+            self.i_delta = self.hist[-1].get("i_delta")                 # (the middles themselves: linkd's setup)
+            for r in reversed(self.hist):
+                if r.get("state") == "locked" and r.get("rx_mhz"):
+                    self.rx_carrier = r["rx_mhz"]
+                    break
         return n_looks, len(notes)
 
     def note_events(self, r):
         """losses and recoveries as linkd counted them, and the state's changes, for 'What happened'"""
+        if r.get("slip"):
+            act = self.active_note(r["t"])
+            self.event({"t": r["t"], "kind": "slip", "text": "The loop slipped to its other lock point (half a cycle) without "
+                        "losing the lock: the link's data would arrive inverted until the receiver resolves it." +
+                        (" During '%s'." % act["text"] if act else "")})
         L = r.get("linkd")
         if L:
             if self._lk is not None:
@@ -244,25 +260,23 @@ class Dashboard:
         """the state, its cause and what to do, in words for someone who does not know PLLs"""
         rate = r.get("rate") or {}
         adc = r.get("adc") or {}
-        if adc and r.get("slow_now") and r["ctrl"]["tx_dis"] and r.get("dsa_db") == 31.75:
-            self.i0 = 0.8 * self.i0 + 0.2 * adc["I"]                  # no carrier reaches the arms: their middles
+        # no carrier reaches the arms: their middles.  Only at the carrier's own frequency: while a program re-centres
+        # the integrator at 5.8 GHz its trims push I by +-25 mV, which the page learned as the middle (1.637-1.658 V
+        # in one afternoon, the carrier's level 1.3 dB off after it; soak.py, 2026-10-31)
+        L = r.get("linkd") or {}
+        if L.get("mid_t") and L["mid_t"] != self._mid_t:          # linkd measured them at its setup, at the carrier
+            self.i0, self.q0, self._mid_t = L["i0"], L["q0"], L["mid_t"]
+        elif adc and r.get("slow_now") and r["ctrl"]["tx_dis"] and r.get("dsa_db") == 31.75 and r.get("rx_mhz") is not None \
+                and r.get("rx_mhz") == self.rx_carrier:
+            self.i0 = 0.8 * self.i0 + 0.2 * adc["I"]
             self.q0 = 0.8 * self.q0 + 0.2 * adc["Q"]
-        r["i0"], r["q0"] = self.i0, self.q0
-        di = adc.get("I", self.i0) - self.i0
+        # the two lock points sit asymmetrically about the muted middle (on board A by 4.5 mV, which read the carrier
+        # 0.5 dB apart on the two sides): their middle is the muted one plus the learned offset
+        i_mid = self.i0 + (self.i_delta or 0.0)
+        r["i0"], r["q0"], r["i_delta"] = i_mid, self.q0, self.i_delta
+        di = adc.get("I", i_mid) - i_mid
         dq = adc.get("Q", self.q0) - self.q0
         r["leg_mv"] = abs(di) * 1e3 if adc else None
-        # the carrier's level, from the locked idle I arm (I_P = V_MID + I / 2: a = 2 |di|, the differential peak at the
-        # comparators) and the attenuator: at the demodulator's input, and at RX ANT (costaslink.received_dBm's sums).
-        # Only while CMP_I is quiet (data averages I towards zero on this slow reading)
-        try:
-            from board_constants import RX_GAIN_DB, DEM_REG_DBM, A_REG_V
-            a_diff = 2.0 * abs(di)
-            if adc and (r.get("rate") or {}).get("CMP_I", 1e9) < 2000 and a_diff > 0.004:
-                r["dem_dbm"] = DEM_REG_DBM + 20.0 * math.log10(a_diff / A_REG_V)
-                if r.get("dsa_db") is not None:
-                    r["rx_ant_dbm"] = r["dem_dbm"] - RX_GAIN_DB + r["dsa_db"]
-        except ImportError:
-            pass
         qp, qn = rate.get("CMP_QP", 0), rate.get("CMP_QN", 0)
         ip, inn = rate.get("CMP_IP", 0), rate.get("CMP_IN", 0)
         held_sw = r["ctrl"]["loop_hold"]
@@ -295,9 +309,38 @@ class Dashboard:
             if st in ("lost", "unsettled") and off is not None and abs(off) < 8.0:
                 st = "interfered"
         r["state"] = st
-        if st != "locked":                            # the carrier's level comes from the locked idle I arm: a near
-            r.pop("dem_dbm", None)                    # interferer or a beat adds to it (a CW 20 kHz off read 8 dB high)
-            r.pop("rx_ant_dbm", None)
+        # the carrier's level, from the locked idle I arm (I_P = V_MID + I / 2: a = 2 |di|, the differential peak at the
+        # comparators) and the attenuator: at the demodulator's input, and at RX ANT (costaslink.received_dBm's sums).
+        # Only locked (a near interferer or a beat adds to it: a CW 20 kHz off read 8 dB high) and while CMP_I is quiet
+        # (data averages I towards zero on this slow reading)
+        idle = bool(adc) and rate.get("CMP_I", 1e9) < 2000
+        if st in ("lost", "nocarrier", "held", "holdover", "firmware", "starting"):    # not interference: a slip there counts
+            self._gap = True
+        if st == "locked":
+            self.rx_carrier = r.get("rx_mhz")
+            if idle and abs(adc["I"] - self.i0) > 0.05:
+                sd = 1 if adc["I"] > self.i0 else -1
+                # the other lock point with no look unlocked between: a half-cycle slip (a carrier interruption of
+                # 16 ms did it, soak.py 2026-10-31), which inverts BPSK data; after a loss either point is as likely
+                if self.side is not None and sd != self.side and not self._gap:
+                    r["slip"] = True
+                self.side, self._gap = sd, False
+                self.side_i[sd] = (adc["I"], r.get("dsa_db"), r["t"])
+                o = self.side_i[-sd]                  # the other side's latest, at the same attenuator, comparable
+                if o and o[1] == r.get("dsa_db") and r["t"] - o[2] < 1800:
+                    a1, a2 = abs(adc["I"] - self.i0), abs(o[0] - self.i0)
+                    if abs(a1 - a2) < 0.15 * max(a1, a2):
+                        dlt = (adc["I"] + o[0]) / 2.0 - self.i0
+                        self.i_delta = dlt if self.i_delta is None else 0.8 * self.i_delta + 0.2 * dlt
+            try:
+                from board_constants import RX_GAIN_DB, DEM_REG_DBM, A_REG_V
+                a_diff = 2.0 * abs(di)
+                if idle and a_diff > 0.004:
+                    r["dem_dbm"] = DEM_REG_DBM + 20.0 * math.log10(a_diff / A_REG_V)
+                    if r.get("dsa_db") is not None:
+                        r["rx_ant_dbm"] = r["dem_dbm"] - RX_GAIN_DB + r["dsa_db"]
+            except ImportError:
+                pass
         if st == "locked" and vc is not None:
             self.vc_lock = vc if self.vc_lock is None else 0.95 * self.vc_lock + 0.05 * vc
             if abs(di) > 0.05 and r.get("ber") is None:
