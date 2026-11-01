@@ -519,12 +519,14 @@ function drawScope(p) {
   const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv), cx = w / 2, cy = h / 2, sc = Math.min(w, h) / 2 / 0.32;
   g.clearRect(0, 0, w, h); g.strokeStyle = "#c9ccd2"; g.beginPath(); g.moveTo(10, cy); g.lineTo(w - 10, cy); g.moveTo(cx, 5); g.lineTo(cx, h - 5); g.stroke();
   g.fillStyle = C.ink2; g.font = "12px system-ui"; g.fillText("I", w - 18, cy - 6); g.fillText("Q", cx + 6, 14);
-  const ref = last && last.leg_ref_mv ? last.leg_ref_mv / 1000 : 0.16;
-  for (const sgn of [-1, 1]) { g.strokeStyle = C.good; g.lineWidth = 2; g.beginPath(); g.arc(cx + sgn * ref * sc, cy, 0.035 * sc, 0, 7); g.stroke(); }
   // the QPSK pattern's capture when there is a recent one (its corners fill the picture; single symbols are 1 % of a
   // capture), else the latest of any kind
   const qp = scopeOf("qpsk"), pt = scopeOf("pattern"), pat = qp && (!pt || qp.t > pt.t) ? qp : pt;
   const c = pat && Date.now() / 1000 - pat.t < 120 ? pat : scopes[scopes.length - 1], x = document.getElementById("x_" + p.id);
+  // the idle's circles at the capture's own level, as its dots and squares: from the page's live reference they slid a
+  // few mV each look (it settles over minutes after a restart) while the capture stood still (Jason, 2026-11-01 12:31)
+  const ref = c ? legOf(c) : (last && last.leg_ref_mv ? last.leg_ref_mv / 1000 : 0.16);
+  for (const sgn of [-1, 1]) { g.strokeStyle = C.good; g.lineWidth = 2; g.beginPath(); g.arc(cx + sgn * ref * sc, cy, 0.035 * sc, 0, 7); g.stroke(); }
   document.getElementById("v_" + p.id).textContent = "";
   if (!c) { x.textContent = "no capture yet: a bench test posts the scope's I MON and Q MON here while it sends data or symbols"; return; }
   const i0 = c.i0 != null ? c.i0 : (last && last.i0) || 1.6535, q0 = c.q0 != null ? c.q0 : (last && last.q0) || 1.628;

@@ -459,7 +459,10 @@ class Dashboard:
                 pass
         if st == "locked" and vc is not None and (self.vc_lock is None or off is None or abs(off) < 5.0):
             self.vc_lock = vc if self.vc_lock is None else 0.95 * self.vc_lock + 0.05 * vc
-            if abs(di) > 0.05 and r.get("ber") is None:
+            # learned off the idle carrier alone: the self-test's QPSK and A3 steps (the corners at 0.77 of the leg on
+            # I, half the time) pulled it to 145-167 mV for a 176 mV carrier, and the scope's captures took it with them
+            own = getattr(getattr(self.server, "selftest", None), "_busy", False)
+            if abs(di) > 0.05 and r.get("ber") is None and idle and not own:
                 self.leg_ref = abs(di) if self.leg_ref is None else 0.9 * self.leg_ref + 0.1 * abs(di)
         if off is not None and st != "held":        # held, a program sets VC (and re-centres it at 5.8 GHz): no offset
             r["off_khz"] = off
