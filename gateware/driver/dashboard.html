@@ -228,7 +228,7 @@ function drawTimeline(p) {
     if (bad && !run) { lost++; if (notes.some(n => n.kind == "intervention" && n.t_start - 2 <= r.t && r.t <= (n.t_end || now) + 10)) said++; } run = bad; }
   const s = last && !last.busy ? last.state : null, e = document.getElementById("v_" + p.id);
   const rec = !s && last && last.linkd && last.linkd.mode == "recovering";
-  e.textContent = rec ? "Recovering" : s ? (STATES[s] || STATES.unsettled)[0] : "-"; e.style.color = rec ? C.warn : s ? C[stateColour(s)] : C.ink2;
+  e.textContent = rec ? "Recovering" : s ? (STATES[s] || STATES.unsettled)[0] : "-"; e.style.color = rec ? C.bad : s ? C[stateColour(s)] : C.ink2;      // the link is down while it recovers, as the card says
   document.getElementById("x_" + p.id).textContent = lost + " loss" + (lost == 1 ? "" : "es") + " shown in this window" +
     (lost ? (said == lost ? (lost == 1 ? ", during an announced intervention" : ", all during announced interventions") : said ? ", " + said + " of them during announced interventions" : ", none announced") : "");
 }
@@ -332,7 +332,7 @@ function drawSCurve(p) {
   document.getElementById("x_" + p.id).textContent = busyNow() ? "no phase to show now: " + busyWhy() :
     lastPt && lastPt[3] && lastPt[2] != null && lastPt[2] <= -35 && lastPt[2] >= -55 ? "now: resting in the false lock, " + fmt(-lastPt[2]) + " kHz below the carrier, not locked to it; the open circles are not its phase to the carrier" :
     lastPt && lastPt[3] ? "now: the loop follows something" + (lastPt[2] != null ? " " + fmt(Math.abs(lastPt[2])) + " kHz " + (lastPt[2] < 0 ? "below" : "above") + " the carrier" : " other than the carrier") +
-      " (an interferer stronger than the carrier has captured it); the open circles are its phase to that, not to the carrier" : !lastPt && skipped ? "no phase to show now: not locked or no carrier (these slow readings average a beat away)" : lastPt ? "grey: model; blue: live; now: phase " + lastPt[0].toFixed(0) + "°, error " + lastPt[1].toFixed(0) + " mV from the loop's reference" : "no reading yet";
+      " (an interferer stronger than the carrier has captured it); the open circles are its phase to that, not to the carrier" : !lastPt && skipped ? "no phase to show now: not locked or no carrier (these slow readings average a beat away)" : lastPt ? "grey: model; blue: live; now: phase " + (Math.round(lastPt[0]) || 0) + "°, error " + (Math.round(lastPt[1]) || 0) + " mV from the loop's reference" : "no reading yet";
 }
 function drawAll() { for (const p of PANELS) { try { ({timeline: drawTimeline, scatter: drawScatter, pullin: drawPullin, scurve: drawSCurve}[p.kind] || drawSeries)(p); } catch (e) { console.log(p.id, e); } } }
 function status() {

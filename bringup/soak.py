@@ -15,7 +15,7 @@ Each disturbance is drawn at random, its parameters from continuous ranges (the 
     release      the loop held, re-centred and let go -400..+400 kHz from the lock: where it comes to rest is predicted
                  by the measured pull-in map (BRINGUP_LOG 4.12: the lock above -13 kHz, the false lock between the
                  watersheds at -16 and -94 kHz, the rail below -129 kHz; between those, either)
-    carrier_off  the TX muted for 0.2-60 s (log-uniform)
+    carrier_off  the TX muted for 10 ms - 60 s (log-uniform; soak2 found 0.3 s enough to lose the lock, into the false lock)
     attn         the attenuator stepped -6..+6 dB (kept within 6-31.75 dB) for 5-30 s
 Each is announced on the status page (a note from soak.py, open until the link is locked again with linkd active), and
 then checked:
@@ -310,8 +310,9 @@ def audit(t0, t_end, t_back, note_id=None, kind=None, params=None, marks=None, t
 
     # what the kind predicts
     params, marks = params or {}, marks or {}
-    if kind == "release":
-        t_rel = marks.get("released", t0)
+    if kind == "release" or (kind == "carrier_off" and "unmuted" in marks):
+        # where the loop came to rest: after a release, or once the carrier is back after an interruption
+        t_rel = marks.get("released") or marks.get("unmuted") or t0
         rest = [r for r in real if t_rel + 3 <= r["t"] <= t_last and r.get("state") in ("lost", "locked", "interfered", "unsettled")
                 and "recovering" not in (r.get("linkd") or {}).get("mode", "")]
         # before linkd's first recovery (its looks are busy; the counts move after it)
@@ -322,7 +323,8 @@ def audit(t0, t_end, t_back, note_id=None, kind=None, params=None, marks=None, t
         got = rest_class(off_r, vc_r)
         out["rest"] = {"class": got, "off_khz": off_r, "vc": vc_r}
         want = params.get("predicted")
-        check("rest_as_map", want == "either" or got == want, "predicted %s, rested %s" % (want, got))
+        if kind == "release":
+            check("rest_as_map", want == "either" or got == want, "predicted %s, rested %s" % (want, got))
         if got == "lock":
             check("lock_no_loss", d["losses"] == 0, "came to the lock by itself but linkd counted %d" % d["losses"])
         elif got in ("falselock", "rail"):
@@ -382,7 +384,7 @@ def draw(kind, rng, d0):
         k = round(rng.uniform(-400, 400), 1)
         return {"off_khz": k, "predicted": predict_release(k)}
     if kind == "carrier_off":
-        return {"seconds": round(lu(0.2, 60.0), 2)}
+        return {"seconds": round(lu(0.01, 60.0), 3)}
     if kind == "attn":
         dd = 0.0
         while abs(dd) < 0.5 or not 6.0 <= d0 + dd <= 31.75:
@@ -448,12 +450,16 @@ class Soak:
             later(shots_at and 4 + 10 * shots_at, "release")
             time.sleep(15.0)
         elif kind == "carrier_off":
+            # one write each way (CTRL bit 0, TX_DIS), so that a short interruption is as short as asked
             B = self.board()
-            B.cl.ctrl(tx_dis=1)
+            v = B.cl.rd("CTRL")
+            later(shots_at and shots_at * p["seconds"] if p["seconds"] > 2 else None, "carrier_off")
+            B.cl.wr("CTRL", (v | 1) & ~0x80)
             marks["muted"] = time.time()
-            later(shots_at and shots_at * p["seconds"], "carrier_off")
             time.sleep(p["seconds"])
-            B.tx(True)
+            B.cl.wr("CTRL", v & ~1 & ~0x80)
+            marks["unmuted"] = time.time()
+            p["actual_s"] = round(marks["unmuted"] - marks["muted"], 4)
         elif kind == "attn":
             B = self.board()
             d0 = float(r0["dsa_db"])
@@ -493,6 +499,8 @@ class Soak:
         extra = ""
         if kind == "release":
             extra = " rest %s" % (a.get("rest") or {}).get("class")
+        elif kind == "carrier_off":
+            extra = " (off %.3f s) rest %s" % (p.get("actual_s", p["seconds"]), (a.get("rest") or {}).get("class"))
         elif kind == "attn" and a.get("attn") and a["attn"]["ant_db"] is not None:
             extra = " dem %+.1f, RX ANT %+.1f dB" % (a["attn"]["dem_db"], a["attn"]["ant_db"])
         print("%s #%-3d %-11s %s | %s%s, back %s | %s" % (
