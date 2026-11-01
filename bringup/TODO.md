@@ -40,7 +40,10 @@ experiments; pictures, not one-word states, each with what led to it and how to 
    CW's capture (BRINGUP_LOG 4.25).  linkd takes link.json's tx_mhz / rx_mhz and the self-test has 'send' / 'check' for
    two boards (untested across two).  Left running undisturbed: soak14, the self-test's rounds, the scope watcher, the
    10-minute photographs.  To compare in the morning: symbols under the B210 settled and calibrated against the fixed
-   delay's record (false decisions with the lower windows).
+   delay's record (false decisions with the lower windows).  The night's random B210 trials are not a fair comparison
+   (ID 9's counts inflated, interference of every kind): after soak14 (about 09:40 PST) an A/B with the B210 held at one
+   setting (`b210demo.py bursts --gain 85`, then a CW near and far) while the self-test alternates settled / fixed and
+   calibrated / plain ({"calibrate": false}, plan 'a3delay' for fixed).  Deploy `835f759` (the panel's dashed lines).
    **Status 2026-11-01 01:30 PDT:** the board runs ID 0x434C000A (`~/costaslink_id10/`: the single symbols' counts add
    up, sent = right + wrong + undecided + missed); linkd moves the receiver's windows with the level; the page shows each
    symbol run's table of states sent and decided.  The night's rehearsal (BRINGUP_LOG 4.24): 98 random disturbances
