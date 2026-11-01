@@ -298,8 +298,11 @@ class Dashboard:
                     where = (" (the oscillator went %.0f kHz %s the carrier)" % (abs(off), "below" if off < 0 else "above")) \
                         if off is not None and abs(off) >= 3 else ""
                     act = self.active_note(r["t"])
+                    waiting = (L.get("mode") or "").startswith("waiting for the carrier")
                     self.event({"t": r["t"], "kind": "loss-expected" if act else "loss",
-                                        "text": "The lock was lost" + where + "; the board started to recover it." +
+                                        "text": "The lock was lost" + where + ("; no carrier arrives (the path blocked, or the other "
+                                                "board off?): the board recovers it the moment one does." if waiting else
+                                                "; the board started to recover it.") +
                                                 (" Expected: during '%s'." % act["text"] if act else "")})
                 if L["recoveries"] > self._lk["recoveries"]:
                     d = L.get("last_recovery_s")
