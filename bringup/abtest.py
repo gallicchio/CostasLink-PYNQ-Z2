@@ -101,7 +101,7 @@ def main(argv):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--minutes", type=float, default=4.0)
     ap.add_argument("--conditions", default="quiet,bursts,cw_near,cw_far")
-    ap.add_argument("--bias", type=float, default=None, help="the calibration's window_bias for the run (0.5 after)")
+    ap.add_argument("--bias", type=float, default=None, help="the calibration's window_bias for the run (0.7, the default, after)")
     a = ap.parse_args(argv)
     conds = [c for c in a.conditions.split(",") if c]
     for c in conds:
@@ -119,7 +119,7 @@ def main(argv):
             collect(seen, rows, "after " + c)
     finally:
         if a.bias is not None:
-            soak.post("/api/selftest", {"window_bias": 0.5})
+            soak.post("/api/selftest", {"window_bias": 0.7})
         soak.post("/api/selftest", {"on": True, "plan": "cycle"})
     s = summary(rows)
     os.makedirs(OUT, exist_ok=True)

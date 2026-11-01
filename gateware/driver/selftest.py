@@ -98,14 +98,16 @@ class SelfTest:
         self.server, self.poll_s = server, poll_s
         self.on, self.plan_name, self.calibrate_on = False, "cycle", True
         # where in each window's plateau its threshold goes, from the idle's side: 0.5 its middle (best against noise);
-        # more, away from the idle (fewer false events from an interferer riding on it, less margin for the states)
-        self.window_bias = 0.5
+        # more, away from the idle (fewer false events from an interferer riding on it, less margin for the states).
+        # 0.7 since the A/B of 2026-11-01 12:46 (BRINGUP_LOG 4.30): quiet, every A3 corner right as at 0.5; under a CW
+        # 10 dB down 150 times fewer false events, A1 80-86 % right where 0.5 gave 69-74 %, A3's wrong 4-25 % not 37-48 %
+        self.window_bias = 0.7
         try:
             with open(STATE_FILE) as f:
                 d = json.load(f)
             self.on, self.plan_name = bool(d.get("on")), d.get("plan", "cycle")
             self.calibrate_on = bool(d.get("calibrate", True))
-            self.window_bias = float(d.get("window_bias", 0.5))
+            self.window_bias = float(d.get("window_bias", 0.7))
         except (OSError, ValueError):
             pass
         self._cal_tried = 0.0
