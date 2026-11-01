@@ -288,6 +288,7 @@ class Link(W.Weekend):
                     time.sleep(0.05)
                     self.cl.rx_clear()
                     time.sleep(seconds)
+                    self.cl.rx_enable(False)        # the counts and the matrix read alike (the engine stopped: ID 10)
                     s_ = self.cl.rx_stats()
                     cm = self.cl.confusion()
                     self.stream.set(np.full(P * 50, complex(*tx.idle)))
@@ -347,31 +348,33 @@ class Link(W.Weekend):
             " ".join("0" if s[1] == 0 else "%.3f" % s[1] for s in segs[:30])), flush=True)
         return res
 
-    def bpsk_buffer(self, baud, trim_ppm=None, reps=4):
+    def bpsk_buffer(self, baud, trim_ppm=None, reps=4, ook=False):
         bits = prbs_bits(15)
-        sym = 1.0 - 2.0 * bits
+        sym = (1.0 - bits) if ook else (1.0 - 2.0 * bits)       # OOK: bit 0 the carrier, bit 1 nothing
         sps = self.stream.rate / baud * (1 + (trim_ppm or 0.0) * 1e-6)
         n = int(round(len(sym) * reps * sps / self.stream.cyc)) * self.stream.cyc
         idx = np.minimum((np.arange(n) / sps).astype(int), len(sym) * reps - 1) % len(sym)
         return sym[idx].astype(np.complex128)
 
-    def ber_cdr_ext(self, mhz, st, baud=1e6, seconds=1.0, nseg=10, gain=4):
+    def ber_cdr_ext(self, mhz, st, baud=1e6, seconds=1.0, nseg=10, gain=4, ook=False):
         """the B210's BPSK PRBS15 checked by the board with the timing recovered (ID version 4): the polarity from a
         short run each way, then nseg runs of `seconds`; each run's clock offset from the recovery's corrections
         (-sum / samples elapsed), read while it runs (a write of RX_BER_CFG restarts the recovery)"""
         cl = self.cl
         p = int(round(100e6 / baud))
-        self.stream.set(self.bpsk_buffer(baud))
+        self.stream.set(self.bpsk_buffer(baud, ook=ook))
         time.sleep(0.3)
         cl.tx_timing(period=p)
+        # OOK (ID 12): read on the I window on the carrier's side of this lock
+        src = ("IP" if st["side"] > 0 else "IN") if ook else "I"
 
         def run(inv, sec):
             u0 = self.stream.underflows
-            cl.ber_config(15, None, invert=inv, enable=True, cdr=True, gain=gain, period=p)
+            cl.ber_config(15, None, invert=inv, enable=True, cdr=True, gain=gain, period=p, src=src)
             time.sleep(sec)
             c = cl.cdr_state()
             b_run = cl.rd("RX_BER_BITS")
-            cl.ber_config(15, None, invert=inv, enable=False, cdr=True, gain=gain, period=p)
+            cl.ber_config(15, None, invert=inv, enable=False, cdr=True, gain=gain, period=p, src=src)
             r = cl.ber()
             ppm = -c["sum_samples"] / (b_run * p * cl.ser) * 1e6 if b_run else None
             return {"bits": r["bits"], "mismatches": r["mismatches"], "ber": r["ber"], "ppm": ppm,
@@ -383,13 +386,13 @@ class Link(W.Weekend):
         bits = sum(r["bits"] for r in runs)
         mism = sum(r["mismatches"] for r in runs)
         o = self.observe(st["cen"], st["a"])
-        res = {"baud": baud, "period": p, "gain": gain, "invert": inv, "trial": {str(k): v for k, v in trial.items()},
+        res = {"mod": "ook" if ook else "bpsk", "baud": baud, "period": p, "gain": gain, "invert": inv, "trial": {str(k): v for k, v in trial.items()},
                "runs": runs, "bits": bits, "mismatches": mism, "ber": mism / 3.0 / bits if bits else None,
                "lock_after": {k: o[k] for k in ("state", "di", "vc")}}
         self.stream.set(np.ones(int(self.stream.rate * 1e-3)))
-        print("%d B210 -> board BPSK %.2f Mbaud, timing recovered (gain %d): %d bits, %d mismatches (BER %s); clocks %s ppm; "
+        print("%d B210 -> board %s %.2f Mbaud, timing recovered (gain %d): %d bits, %d mismatches (BER %s); clocks %s ppm; "
               "runs clean %d of %d; the B210's underflows per run %s" % (
-                  mhz, baud / 1e6, gain, bits, mism, res["ber"] if not res["ber"] else "%.2e" % res["ber"],
+                  mhz, "OOK" if ook else "BPSK", baud / 1e6, gain, bits, mism, res["ber"] if not res["ber"] else "%.2e" % res["ber"],
                   " ".join("%+.2f" % r["ppm"] for r in runs if r["ppm"] is not None),
                   sum(1 for r in runs if r["mismatches"] == 0), nseg, [r["underflows"] for r in runs]), flush=True)
         return res
@@ -404,16 +407,16 @@ class Link(W.Weekend):
                 return out
             out["lock"] = st
             if events:
-                out["events"] = self.events_ext(mhz, st)
+                out["events"] = self.events_ext(mhz, st, names=("A1", "A1w", "A2", "A3"))
             out["ber"] = [self.ber_ext(mhz, st, baud=1e6)] if fixed else []
             if fixed and ppm_clk is not None:
                 out["ber"].append(self.ber_ext(mhz, st, baud=1e6, trim_ppm=-ppm_clk))
                 out["ber"].append(self.ber_ext(mhz, st, baud=1e6, trim_ppm=ppm_clk))
             if getattr(self.cl, "cdr", False):
                 out["ber_cdr"] = []
-                for baud in (1e6, 2e6):
-                    for g in (4, 6):
-                        out["ber_cdr"].append(self.ber_cdr_ext(mhz, st, baud=baud, gain=g))
+                for ook in ((False, True) if getattr(self.cl, "ber_src", False) else (False,)):
+                    for baud in (1e6, 2e6):
+                        out["ber_cdr"].append(self.ber_cdr_ext(mhz, st, baud=baud, gain=4, ook=ook))
         finally:
             self.stream.stop()
             self.ext = False
