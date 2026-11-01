@@ -536,7 +536,7 @@ function drawScope(p) {
   const age = Date.now() / 1000 - c.t;
   x.textContent = (c.link ? scopeSays(c) : "The bench scope, " + dur(Math.max(0, age)) + " ago" + (c.text ? ", during " + c.text : "") + ".") +
     " " + c.i.length + " samples, " + (c.dt_ns ? fmt(c.dt_ns) + " ns apart" : "") + "; circles: the locked idle carrier; red squares: where " +
-    (c.kind == "data" ? "the data's two levels" : schemeWords(c.scheme) + "'s states") + " should land (nominal: this board's Q swing is about 0.6 of its I, so the corners come out nearer the I axis). " +
+    (c.kind == "data" ? "the data's two levels" : schemeWords(c.scheme) + "'s states") + " should land: on the idle's circle at the scheme's angles (this board's TX is saturated, so the corners come out at the idle's amplitude, about 0.7 of it on each axis, within 10 degrees). " +
     (c.kind == "pattern" ? "The dots cluster where the signal sits in each state; the arcs between are its moves from one state to the next. " :
      c.kind == "symbols" ? "Single symbols are about 1 % of the time, so few samples reach them (the QPSK pattern, in each round, fills the picture). " : "") +
     (c.input && c.input.indexOf("50") >= 0 ? "The scope at 50 ohm sees the arm's own edge." : "The scope at 1 M saw I MON and Q MON through 1 k and its cable (about 0.1 us): short symbols did not reach their states.");
@@ -549,7 +549,10 @@ const SCHEMES = {
   A2:  {text: "1 of 2 (1 bit): Q steps up or down, I stays", idle: [1, 0], msgs: [[1, 1], [1, -1]]},
   A3:  {text: "1 of 4 (2 bits): the QPSK corners, I and Q each to + or -", idle: [1, 0], msgs: [[1, 1], [1, -1], [-1, 1], [-1, -1]]}};
 function schemeWords(n) { return SCHEMES[n] ? n + " (" + SCHEMES[n].text + ")" : (n || "?"); }
-function rxPt(pt, side) { return [side * pt[0], -side * pt[1]]; }
+// where a state lands: on the idle's circle at the TX point's angle, not at (+-1, +-1): the board's TX is saturated, so
+// every state comes out at the idle's amplitude (the B210 measured 0.99-1.02 of it, within 10 degrees of these angles:
+// BRINGUP_LOG 4.26), and its corners reach cos 45 of the carrier's level on each axis
+function rxPt(pt, side) { const r = Math.hypot(pt[0], pt[1]) || 1; return [side * pt[0] / r, -side * pt[1] / r]; }
 // the lock point a capture was taken on: where its I spends most of the time against the arm's middle
 function sideOf(c, i0) { const m = c.i.slice().sort((a, b) => a - b)[Math.floor(c.i.length / 2)]; return m >= i0 ? 1 : -1; }
 function scopeOf(kind) { for (let k = scopes.length - 1; k >= 0; k--) if (scopes[k].kind == kind) return scopes[k]; return null; }
@@ -597,8 +600,8 @@ function levelLines(g, c, mid, y, L, pw) {
 }
 function levelWords(c) {
   return c.kind == "data" ? "dashed: I's two levels for the bits (nominal, the carrier's level either side; Q stays at the middle)" :
-    "dashed: where " + schemeWords(c.scheme) + " should put I (blue) and Q (orange) for the idle and each state (nominal, the carrier's level; " +
-    "this board's Q swing is about 0.6 of its I, the board's own constellation shows the real levels)";
+    "dashed: where " + schemeWords(c.scheme) + " should put I (blue) and Q (orange) for the idle and each state (on the idle's circle: " +
+    "the board's TX is saturated, so a corner reaches about 0.7 of the carrier's level on each axis; the board's own constellation shows the real levels)";
 }
 function drawScopeFold(p) {
   const c = scopeOf(p.which); if (!c) return noCapture(p);

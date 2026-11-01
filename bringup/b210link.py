@@ -9,6 +9,11 @@ the B210 to the Costas board and also vice versa").  The bench of weekend.py (fo
     python3 bringup/b210link.py from     [--mhz 5200]    board -> B210: the board sends BPSK PRBS15 at 1-10 Mbaud, the
                                                           B210 captures, sdr_rx.py recovers the carrier and the timing
                                                           and checks the PRBS: the BER, the clocks' offset in ppm
+    python3 bringup/b210link.py pattern  [--mhz 5200]    board -> B210: the board's TX constellation itself (Jason,
+                                                          2026-11-01: where does Q's 0.6 of I come from?): A1, A2,
+                                                          A3's states sent half the time (the self-test's QPSK pattern),
+                                                          the B210 captures, its idle carrier the phase reference, the
+                                                          states clustered: each state's I and Q against the idle's
     python3 bringup/b210link.py to       [--mhz 5200]    B210 -> board, the board's TX muted: the board locks to the
                                                           B210's carrier; A1 and A3 events from the B210 decided by the
                                                           board; BPSK PRBS15 from the B210 checked by the board's
@@ -137,6 +142,106 @@ class Link(W.Weekend):
             cl.tx_stop()
             cl.ctrl(tx_dis=1)
         return out
+
+    # ---- board -> B210: the TX's own constellation ----
+    def pattern(self, mhz, schemes=("A1", "A2", "A3"), fs=20e6, gain=45, caps=3):
+        """each scheme's states at random half the time (40 clocks a symbol, 20 of them the state: 2.5 M a second), as
+        the self-test's pattern; the B210 at fs (its LO fs / 5 below), the carrier found from the idle's line (half the
+        time: the mean of the states is the idle's half), each 1 ms block turned so its mean (the idle) lies on +I, the
+        samples between two states dropped, and k-means from the nominal states: each state's position against the
+        idle's (the B210's own I / Q matched to a percent, so what is left is the board's TX: its ladders, VR's null,
+        the modulator)"""
+        self.ext = False
+        cl = self.cl
+        self.tune(mhz)
+        self.set_null(mhz)
+        out = {"mhz": mhz, "fs": fs, "schemes": {}}
+        try:
+            for name in schemes:
+                tx = C.SCHEMES[name]
+                cl.tx_points(tx.tx_idle(), [C.point_code(i, q) for i, q in tx.msgs])
+                cl.ctrl(tx_dis=0)
+                cl.events(period=40, width=20, count=0, n=tx.n, source="prbs" if tx.n > 1 else "count")
+                cl.tx_go()
+                time.sleep(0.2)
+                lo = float(mhz) * 1e6 - fs / 5
+                pts = []
+                for _ in range(caps):
+                    x, ovf, errs = self.bb.rx(lo / 1e6, int(0.05 * fs), fs, gain, bw=fs, mcr=self.MCR.get(fs, 32e6))
+                    x = np.asarray(x[2000:])
+                    if ovf:
+                        continue
+                    pts.append(self._stable_points(x, fs))
+                cl.tx_stop()
+                cl.hold_point(1, 0)
+                if not pts:
+                    out["schemes"][name] = {"error": "every capture overflowed"}
+                    continue
+                z = np.concatenate(pts)
+                res = self._clusters(z, [complex(*tx.idle)] + [complex(i, q) for i, q in tx.msgs])
+                res["n"] = int(len(z))
+                out["schemes"][name] = res
+                print("%s: the idle at 1; %s" % (name, "; ".join("state %d (TX %+d, %+d) at I %+.3f, Q %+.3f (|%.3f|)" % (
+                    k, m[0], m[1], c[0], c[1], abs(complex(*c))) for k, (m, c) in enumerate(zip(tx.msgs, res["states"])))), flush=True)
+                self._plot_pattern(name, z, res)
+        finally:
+            cl.tx_stop()
+            cl.hold_point(1, 0)
+        return out
+
+    @staticmethod
+    def _stable_points(x, fs, block_s=1e-3):
+        N = 1 << int(np.ceil(np.log2(len(x))))
+        X = np.abs(np.fft.fft(x * np.hanning(len(x)), N))
+        f = np.fft.fftfreq(N, 1 / fs)
+        sel = np.abs(f - fs / 5) < 80e3
+        k = int(np.argmax(np.where(sel, X, 0)))
+        a, b, c = X[k - 1], X[k], X[(k + 1) % N]
+        f_pk = f[k] + 0.5 * (a - c) / (a - 2 * b + c) * fs / N
+        y = x * np.exp(-2j * np.pi * f_pk * np.arange(len(x)) / fs)
+        nb = int(block_s * fs)
+        out = []
+        for k0 in range(0, len(y) - nb, nb):
+            blk = y[k0:k0 + nb]
+            m = np.mean(blk)                                 # the idle's half (the states average to nothing)
+            blk = blk * np.exp(-1j * np.angle(m)) / (2 * abs(m))
+            d1 = np.abs(np.diff(blk))
+            keep = np.zeros(len(blk), bool)
+            keep[1:-1] = (d1[:-1] < 0.15) & (d1[1:] < 0.15)   # not on the way between two states
+            out.append(blk[keep])
+        return np.concatenate(out)
+
+    @staticmethod
+    def _clusters(z, nominal, iters=30):
+        c = np.array(nominal, complex) * np.array([1.0] + [0.8] * (len(nominal) - 1))
+        for _ in range(iters):
+            lab = np.argmin(np.abs(z[:, None] - c[None, :]), axis=1)
+            c = np.array([z[lab == k].mean() if np.any(lab == k) else c[k] for k in range(len(c))])
+        idle = c[0]
+        rel = c * np.exp(-1j * np.angle(idle)) / abs(idle)
+        spread = [float(np.std(np.abs(z[lab == k] - c[k]))) / abs(idle) if np.any(lab == k) else None for k in range(len(c))]
+        share = [float(np.mean(lab == k)) for k in range(len(c))]
+        return {"idle": [float(idle.real), float(idle.imag)], "states": [[float(v.real), float(v.imag)] for v in rel[1:]],
+                "spread": spread, "share": share}
+
+    @staticmethod
+    def _plot_pattern(name, z, res):
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots(figsize=(5, 5))
+        zz = z[:: max(1, len(z) // 20000)]
+        ax.plot(zz.real, zz.imag, ".", ms=1, alpha=0.3, color="#1e3a8a")
+        for k, (i, q) in enumerate([[1.0, 0.0]] + res["states"]):
+            ax.plot(i, q, "s", mfc="none", mec="#d64545", ms=10)
+            ax.annotate("idle" if k == 0 else str(k - 1), (i, q), textcoords="offset points", xytext=(8, 6), color="#d64545")
+        ax.axhline(0, color="#999", lw=0.5); ax.axvline(0, color="#999", lw=0.5)
+        ax.set_aspect("equal"); ax.set_xlim(-1.6, 1.6); ax.set_ylim(-1.6, 1.6)
+        ax.set_title("%s from the board's TX, as the B210 hears it (the idle at 1)" % name, fontsize=10)
+        fig.tight_layout()
+        os.makedirs(OUT, exist_ok=True)
+        fig.savefig(os.path.join(OUT, "pattern_%s_%s.png" % (name, LT.O.stamp())), dpi=90)
+        plt.close(fig)
 
     # ---- B210 -> board ----
     def lock_ext(self, mhz, delta_hz, gain=80, rate=4e6, park_hz=-1e6, target=0.15):
@@ -317,7 +422,7 @@ class Link(W.Weekend):
 
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("what", nargs="+", choices=["offset", "from", "to"])
+    ap.add_argument("what", nargs="+", choices=["offset", "from", "to", "pattern"])
     ap.add_argument("--mhz", type=float, default=5200)
     ap.add_argument("--gain", type=float, default=80)
     ap.add_argument("--no-fixed", action="store_true", help="skip the fixed-phase BER runs")
@@ -331,6 +436,8 @@ def main(argv):
             out["offset"] = L.offset(mhz)
         if "from" in a.what:
             out["from"] = L.from_board(mhz)
+        if "pattern" in a.what:
+            out["pattern"] = L.pattern(mhz)
         if "to" in a.what:
             ppm = None
             if out.get("from"):

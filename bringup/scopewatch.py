@@ -11,7 +11,10 @@ timebase is set for each capture and put back after; its channels, offsets and t
 ch3 at 0.1 V/div about 1.65 V: BRINGUP_LOG's bench).  Since 2026-11-01 07:30 PST ch2 and ch3 are at 50 ohm with the
 probe factor 21 (each tap is 1 k into 50 ohm: /21; REVB 34), so the scope reads volts at the arm, fast (the 1 M input
 and the cable had smoothed it over 115 ns); the scope's DC at 50 ohm is a millivolt or so off at its input (20 mV at
-the arm), so each capture's mean is put on the board's own slow I and Q read with it.
+the arm), so it is measured in the self-test's carrier-alone step (the scope's mean against the board's own slow I
+and Q, both on the same steady idle) and taken off every capture.  (Putting each capture's mean on the board's slow
+reading, as first done, lifted BPSK data a whole leg: during data the board reads its level in a 0.1 s gap each
+second, on the idle carrier, so the data looked like on-off keying; Jason, 07:40.)
 """
 import argparse
 import json
@@ -83,6 +86,7 @@ def main(argv):
     from siglent_SDS2104X import SDS2104X
     sc = SDS2104X(SCOPE)
     done, t_stop = set(), time.time() + 3600 * a.hours
+    off = {"i": 0.0, "q": 0.0, "t": None}            # the scope's DC error at 50 ohm, in volts at the arm
     print("%s watching the self-test for symbols and data" % time.strftime("%H:%M:%S"), flush=True)
     while time.time() < t_stop:
         time.sleep(0.5)
@@ -92,9 +96,28 @@ def main(argv):
             continue
         st = r.get("selftest") or {}
         now = st.get("now") or {}
+        if st.get("on") and now.get("step") == "idle" and now.get("since") not in done and time.time() - now["since"] > 1.0:
+            done.add(now["since"])
+            adc = r.get("adc") or {}
+            if r.get("state") == "locked" and adc.get("I") is not None and adc.get("Q") is not None and not r.get("busy"):
+                try:
+                    i, q, _ = capture(sc, 1e-6)
+                    di, dq = adc["I"] - sum(i) / len(i), adc["Q"] - sum(q) / len(q)
+                    if abs(di) < 0.08 and abs(dq) < 0.08:
+                        k = 0.5 if off["t"] else 1.0
+                        off.update(i=off["i"] + k * (di - off["i"]), q=off["q"] + k * (dq - off["q"]), t=time.time())
+                        print("%s the scope's offset on the idle: I %+.1f mV, Q %+.1f mV at the arm" % (
+                            time.strftime("%H:%M:%S"), 1e3 * off["i"], 1e3 * off["q"]), flush=True)
+                except Exception as e:                           # noqa: BLE001
+                    print("%s offset capture failed: %s" % (time.strftime("%H:%M:%S"), e), flush=True)
+            continue
         if not st.get("on") or now.get("step") not in ("symbols", "data", "pattern") or now.get("since") in done:
             continue
         if time.time() - now["since"] < 1.0 or time.time() - now["since"] > now.get("seconds", 10) - 1.0:
+            continue
+        # data: in the middle of a second, clear of the 0.1 s gap each second in which the board reads the idle carrier's
+        # level (a capture at 1.0 s caught the gap: the carrier idling, the data stopped; 07:40)
+        if now["step"] == "data" and not 0.35 < (time.time() - now["since"]) % 1.0 < 0.65:
             continue
         done.add(now["since"])
         period_ns = now["period"] * 10.0
@@ -103,14 +126,11 @@ def main(argv):
         tdiv = (max(1e-6, min(50e-6, 0.3 * period_ns * 1e-9)) if now["step"] == "symbols" else
                 5 * period_ns * 1e-9 if now["step"] == "pattern" else max(1e-7, 4 * period_ns * 1e-9))
         b2 = b210_now()
-        adc = r.get("adc") or {}
         try:
             leg = (r.get("leg_ref_mv") or 160) / 1000.0
             trig = (3, (r.get("q0") or 1.63) + 0.3 * leg, "RISing") if now.get("scheme") == "A2" and now["step"] == "symbols" else None
             i, q, dt = capture(sc, tdiv, trig)
-            if adc.get("I") is not None and adc.get("Q") is not None and i and q:
-                di, dq = adc["I"] - sum(i) / len(i), adc["Q"] - sum(q) / len(q)
-                i, q = [v + di for v in i], [v + dq for v in q]
+            i, q = [v + off["i"] for v in i], [v + off["q"] for v in q]
         except Exception as e:                                   # noqa: BLE001 - the next step tries again
             print("%s capture failed: %s" % (time.strftime("%H:%M:%S"), e), flush=True)
             continue

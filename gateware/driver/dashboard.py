@@ -223,7 +223,7 @@ class Dashboard:
              # and the B210 were doing, in words
              "kind": str(d.get("kind", ""))[:20], "period_ns": d.get("period_ns"), "width_ns": d.get("width_ns"),
              "scheme": str(d.get("scheme", ""))[:10], "leg": d.get("leg"), "link": str(d.get("link", ""))[:300],
-             "b210": str(d.get("b210", ""))[:300],
+             "b210": str(d.get("b210", ""))[:300], "input": str(d.get("input", ""))[:80],
              "i": [round(float(v), 4) for v in d["i"][:n]], "q": [round(float(v), 4) for v in d["q"][:n]]}
         self.scopes.append(c)
         # into the day log at most once a minute a kind, thinned to 1 500 samples: every capture whole was 55 MB of a
