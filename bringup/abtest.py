@@ -29,6 +29,10 @@ CONDITIONS = {
     "bursts": ["bursts", "--on-ms", "1", "--per-ms", "20", "--gain", "85"],    # bit errors and false symbols (MONDAY)
     "cw_near": ["cw", "+0.43", "--gain", "80"],                                 # A2's false events in 4.24
     "cw_far": ["cw", "+2", "--gain", "85"],
+    # weaker (the first round's CWs at gains 80-85 were at or over the carrier at RX ANT: nothing decided either way)
+    "bursts_weak": ["bursts", "--on-ms", "1", "--per-ms", "20", "--gain", "78"],
+    "cw_near_weak": ["cw", "+0.43", "--gain", "70"],
+    "cw_far_weak": ["cw", "+2", "--gain", "72"],
 }
 
 
@@ -97,12 +101,15 @@ def main(argv):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--minutes", type=float, default=4.0)
     ap.add_argument("--conditions", default="quiet,bursts,cw_near,cw_far")
+    ap.add_argument("--bias", type=float, default=None, help="the calibration's window_bias for the run (0.5 after)")
     a = ap.parse_args(argv)
     conds = [c for c in a.conditions.split(",") if c]
     for c in conds:
         if c not in CONDITIONS:
             raise SystemExit("no condition %r (%s)" % (c, ", ".join(CONDITIONS)))
     seen, rows = set(), []
+    if a.bias is not None:                           # calibrated again at that bias before the first condition
+        soak.post("/api/selftest", {"window_bias": a.bias})
     soak.post("/api/selftest", {"on": True, "plan": "ab"})
     try:
         for c in conds:
@@ -111,12 +118,14 @@ def main(argv):
             time.sleep(30.0)
             collect(seen, rows, "after " + c)
     finally:
+        if a.bias is not None:
+            soak.post("/api/selftest", {"window_bias": 0.5})
         soak.post("/api/selftest", {"on": True, "plan": "cycle"})
     s = summary(rows)
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, "ab_%s.json" % time.strftime("%Y%m%d_%H%M"))
     with open(path, "w") as f:
-        json.dump({"conditions": {c: CONDITIONS[c] for c in conds}, "minutes": a.minutes, "rows": rows,
+        json.dump({"conditions": {c: CONDITIONS[c] for c in conds}, "minutes": a.minutes, "bias": a.bias, "rows": rows,
                    "summary": [dict(zip(("condition", "scheme", "decided", "windows"), k), **v) for k, v in s.items()]},
                   f, indent=1, default=str)
     print(table(s))

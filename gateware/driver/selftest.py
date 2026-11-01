@@ -97,11 +97,15 @@ class SelfTest:
     def __init__(self, server, poll_s=0.2):
         self.server, self.poll_s = server, poll_s
         self.on, self.plan_name, self.calibrate_on = False, "cycle", True
+        # where in each window's plateau its threshold goes, from the idle's side: 0.5 its middle (best against noise);
+        # more, away from the idle (fewer false events from an interferer riding on it, less margin for the states)
+        self.window_bias = 0.5
         try:
             with open(STATE_FILE) as f:
                 d = json.load(f)
             self.on, self.plan_name = bool(d.get("on")), d.get("plan", "cycle")
             self.calibrate_on = bool(d.get("calibrate", True))
+            self.window_bias = float(d.get("window_bias", 0.5))
         except (OSError, ValueError):
             pass
         self._cal_tried = 0.0
@@ -127,7 +131,7 @@ class SelfTest:
         return out
 
     def set(self, d):
-        """POST /api/selftest: {"on": bool, "plan": name, "holdover": bool, "calibrate": bool}"""
+        """POST /api/selftest: {"on": bool, "plan": name, "holdover": bool, "calibrate": bool, "window_bias": 0.5-0.9}"""
         if "holdover" in d:                              # from inside the server: linkd is not paused by it
             self._do(lambda cl: cl.shold(bool(d["holdover"])))
         if "plan" in d:
@@ -138,9 +142,16 @@ class SelfTest:
             self.on = bool(d["on"])
         if "calibrate" in d:                             # the windows from the states' levels (on by default)
             self.calibrate_on = bool(d["calibrate"])
+        if "window_bias" in d:                           # calibrated again at the next step
+            self.window_bias = min(0.9, max(0.1, float(d["window_bias"])))
+            L = getattr(self.server, "linkd", None)
+            if L is not None:
+                L.cal = None
+            self._cal_tried = 0.0
         try:
             with open(STATE_FILE, "w") as f:
-                json.dump({"on": self.on, "plan": self.plan_name, "calibrate": self.calibrate_on}, f)
+                json.dump({"on": self.on, "plan": self.plan_name, "calibrate": self.calibrate_on,
+                           "window_bias": self.window_bias}, f)
         except OSError:
             pass
         return self.state(full=True)
@@ -355,8 +366,11 @@ class SelfTest:
         side, leg = sw["A3"]["side"], L.leg_windows
         k_of = {"QP": 1, "QN": 2, "IP": 3, "IN": 4}
         new, plateaus = {}, {}
+        b = self.window_bias
         for w in ("QP", "QN", "IP", "IN"):
             lo, hi = -1e9, 1e9
+            tx3 = SCHEMES["A3"]
+            idle_high = _Frame(tx3, side).fast(_Frame(tx3, side).rx_point(tx3.idle))[k_of[w]]
             for name, r in sw.items():
                 tx = SCHEMES[name]
                 fr = _Frame(tx, side)
@@ -380,9 +394,12 @@ class SelfTest:
                 lo, hi = max(lo, best[0]), min(hi, best[1])
             if lo is None or hi - lo < 0.010:
                 continue
-            new[w] = max(0.5 * (lo + hi), L.cen[w] + 0.25 * leg)
+            # b of the way across the plateau from the idle's side: up from its bottom where the idle reads low, down
+            # from its top where the idle reads high (b = 0.5: the middle either way)
+            at = lo + b * (hi - lo) if not idle_high else hi - b * (hi - lo)
+            new[w] = max(at, L.cen[w] + 0.25 * leg)
         res = {"step": "calibrate", "side": side, "leg_v": round(leg, 4), "before_v": before, "plateaus_v": plateaus,
-               "after_v": {w: round(v, 4) for w, v in new.items()}}
+               "after_v": {w: round(v, 4) for w, v in new.items()}, "window_bias": b}
         frac = float((L.cfg or {}).get("window_frac", 0.5))
         plain = {w: round(L.cen[w] + frac * leg, 4) for w in L.cen}      # the page's dashed lines: the plain rule's
         self.last_levels = {"t": time.time(), "scheme": "A3", "side": side, "leg_v": round(leg, 4),
