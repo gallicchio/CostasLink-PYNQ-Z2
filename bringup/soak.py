@@ -428,7 +428,7 @@ def describe(kind, p):
     if kind == "release":
         return "the loop released %+.0f kHz from the lock (the map predicts: %s)" % (p["off_khz"], p["predicted"])
     if kind == "carrier_off":
-        return "the carrier switched off for %.1f s" % p["seconds"]
+        return "the carrier switched off for " + (("%.0f ms" % (p["seconds"] * 1e3)) if p["seconds"] < 1 else ("%.1f s" % p["seconds"]))
     if kind == "attn":
         return "the attenuator %+.2f dB for %.0f s" % (p["db"], p["seconds"])
     return kind
