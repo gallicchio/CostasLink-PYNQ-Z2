@@ -406,8 +406,12 @@ class SelfTest:
                 abs((L.leg or L.leg_windows) - L.cal["leg"]) > 0.15 * L.cal["leg"])
 
     def symbols(self, st):
-        name = st.get("scheme") or SCHEME_ROTA[self._k["scheme"] % len(SCHEME_ROTA)]
-        self._k["scheme"] += 1
+        # the rota turns only for a step that names no scheme: the QPSK step (A3, named) turned it too, so the round's
+        # symbols step took every other one, A3 and A2 only, A1 and A1w never (2026-11-01 12:04)
+        name = st.get("scheme")
+        if not name:
+            name = SCHEME_ROTA[self._k["scheme"] % len(SCHEME_ROTA)]
+            self._k["scheme"] += 1
         period, width, seconds = int(st["period"]), int(st["width"]), float(st["seconds"])
         # settle: ID 11's settled decision, k samples held (SETTLE's by default where the overlay has it); delay the
         # samples from the first comparator to fire to the decision, with settle the longest wait
