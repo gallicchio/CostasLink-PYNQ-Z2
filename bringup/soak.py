@@ -248,10 +248,16 @@ def audit(t0, t_end, t_back, note_id=None, kind=None, params=None, marks=None, t
     except Exception as e:                                       # noqa: BLE001
         check("api_read", False, str(e)[:200])
 
+    # the board's server restarted inside the window (linkd's counts went down: they start again at 0): its gap in the
+    # looks and its counts are the restart's, not the disturbance's (soak15 #32 flagged both, a deploy at 14:54:45)
+    Lc = [r["linkd"].get("losses", 0) for r in real if r.get("linkd") and r["linkd"].get("losses") is not None]
+    restarted = any(b < a for a, b in zip(Lc, Lc[1:]))
+    out["server_restarted"] = restarted
     # the looks a second apart
     ts = [r["t"] for r in looks]
     gap = max((b - a for a, b in zip(ts, ts[1:])), default=0.0)
-    check("looks_continuous", gap <= 3.5, "the longest gap between looks %.1f s" % gap)
+    check("looks_continuous", gap <= 3.5 or restarted, "the longest gap between looks %.1f s%s" % (
+        gap, " (the server restarted in the window)" if restarted else ""))
 
     # the note
     if note_id:
@@ -274,7 +280,8 @@ def audit(t0, t_end, t_back, note_id=None, kind=None, params=None, marks=None, t
     n_ev_all = {k: sum(1 for e in ev_log if e["kind"] in ks and e["t"] > first_t)
                 for k, ks in (("losses", ("loss", "loss-expected")), ("recoveries", ("recovered",)), ("failed", ("failed",)))}
     out["events"] = n_ev_all
-    check("events_vs_linkd", n_ev_all == d, "linkd %s, the page's events %s" % (d, n_ev_all))
+    if not restarted:
+        check("events_vs_linkd", n_ev_all == d, "linkd %s, the page's events %s" % (d, n_ev_all))
     # a jump to the other lock point with no unlocked look between: a slip, which the page must list
     lk = [r for r in real if r.get("state") == "locked" and r.get("adc") and r.get("i0") is not None
           and abs(r["adc"]["I"] - r["i0"]) > 0.05 and (r.get("rate") or {}).get("CMP_I", 1e9) < 2000]
