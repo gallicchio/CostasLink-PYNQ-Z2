@@ -128,6 +128,7 @@ class Dashboard:
             r["gw_lock"] = cl.lock_state()            # the gateware's own judgement (ID version 8, lockmon.v)
         pll = getattr(cl, "_pll", {})
         r["rx_mhz"] = pll.get(1, (None,))[0] if isinstance(pll, dict) else None
+        r["tx_mhz"] = pll.get(0, (None,))[0] if isinstance(pll, dict) else None
         r["dsa_db"] = getattr(cl, "_dsa_db", None)
         cfg = cl.rd("RX_BER_CFG")
         if cfg & 1:

@@ -640,6 +640,7 @@ function status() {
     "; <b>the B210</b> " + (bn ? bn.text.replace(/^B210: /, "sends ") : "is quiet") + "." + (fk.own_activity ? " The comparators' activity now is the board's own symbols, not interference." : "");
   const f = fullLast() || r;                    // a busy look has no firmware, carrier or attenuator reading
   document.getElementById("meta").textContent = "firmware " + (f.id || "?") + (f.rx_mhz ? ", carrier " + f.rx_mhz + " MHz" : "") +
+    (f.tx_mhz && f.rx_mhz && f.tx_mhz != f.rx_mhz ? " (it sends at " + f.tx_mhz + " MHz)" : "") +
      (f.dsa_db != null ? ", attenuator " + f.dsa_db + " dB" : "") + ", updated " + new Date(r.t * 1000).toLocaleTimeString() +
      (busyNow() ? " (" + busyWhy() + ": no readings for " + Math.round(r.t - (fullLast() || r).t) + " s)" : "");
 }

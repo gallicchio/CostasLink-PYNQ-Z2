@@ -21,7 +21,8 @@ A loop held by software (CTRL's LOOP_HOLD) is parked on purpose (a test setting 
 leaves it alone.  It records losses, recoveries, failures, how long the last took, in `state()`, for the dashboard.
 
 Setting the link up from nothing (the board just powered, the server just started): when link.json sits beside the
-server, linkd does it first, before anyone asks.  link.json: {"mhz": 5200, "vr": {"VR_I": .., "VR_Q": ..} (the TX
+server, linkd does it first, before anyone asks.  link.json: {"mhz": 5200 (or "tx_mhz" and "rx_mhz" apart: two boards
+as two one-way links, MONDAY.md 5), "vr": {"VR_I": .., "VR_Q": ..} (the TX
 carrier's null at that frequency, from the board's calibration), "leg_target": 0.15, "window_frac": 0.5, "v_t2": 2.9,
 "dsa_min": 6.0}.  Both synthesizers to the carrier, the TX at its idle point; with no carrier (TX muted, DSA 31.75)
 the arms' middles on the ADC and each window comparator's centre (Rice's parabola, stage 3.7); then the attenuation
@@ -204,11 +205,15 @@ class LinkD:
     # ---- the link from nothing ----
     def setup(self, cfg):
         cl = self.server.cl
-        mhz = float(cfg["mhz"])
-        self.mode = "setting up the link at %g MHz" % mhz
+        # one carrier both ways (one board to itself), or two apart (two boards, each receiving the other's TX: the TX
+        # synthesizer on tx_mhz, the RX one on rx_mhz; VR, the TX's carrier null, belongs to tx_mhz)
+        tx_mhz = float(cfg.get("tx_mhz", cfg.get("mhz")))
+        rx_mhz = float(cfg.get("rx_mhz", cfg.get("mhz")))
+        self.mode = ("setting up the link at %g MHz" % rx_mhz if tx_mhz == rx_mhz else
+                     "setting up the link: receiving at %g MHz, sending at %g MHz" % (rx_mhz, tx_mhz))
         cl.ctrl(loop_hold=1, tx_dis=1)
-        for which in (0, 1):
-            cl.pll_tune(which, mhz)
+        cl.pll_tune(0, tx_mhz)
+        cl.pll_tune(1, rx_mhz)
         time.sleep(RELOCK_S)
         vr = cfg.get("vr")
         if vr:
