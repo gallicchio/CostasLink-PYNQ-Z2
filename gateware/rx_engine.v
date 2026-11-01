@@ -236,33 +236,60 @@ module rx_engine #(
     // than RX_DELAY after it, whose vector the table holds as one state's and which has held k samples (each corner
     // decided as soon as it has settled; RX_DELAY the longest wait).  k must outlast the comparators' skew: a corner on
     // its way can pass through another state's vector (Q crossed, I not yet: the corner that moves Q alone), and a k
-    // shorter than that decides it wrong (test_sim's test_settled_decision).  Sample j of fs_d lies RX_DELAY - remain +
-    // j samples after the event; the vectors' run length carries across clocks in sv_prev / sc_prev.
-    reg  [4:0] sv_prev;
-    reg  [7:0] sc_prev;
-    reg        set_found;
-    reg  [3:0] set_s;
-    reg  [7:0] sc_k, sc_last;
-    reg  [4:0] sv_k, sv_km1;
-    integer    m;                                     // its own loop variable (one per always @*)
-    always @* begin
-        set_found = 1'b0; set_s = 4'd0;
-        sc_k = sc_prev; sv_km1 = sv_prev;
-        for (m = 0; m < SER; m = m + 1) begin
-            sv_k = fs_d[6*m +: 5];
-            sc_k = (sv_k == sv_km1) ? ((sc_k == 8'hFF) ? sc_k : sc_k + 8'd1) : 8'd1;
-            if (!set_found && settle != 8'd0 && !first_mode && lut[{sv_k, 2'b11}] && sc_k >= settle &&
-                {1'b0, dly} + m[8:0] >= remain && m[8:0] <= remain) begin
-                set_found = 1'b1; set_s = m[3:0];
-            end
-            sv_km1 = sv_k;
-        end
-        sc_last = sc_k;
-    end
+    // shorter than that decides it wrong (test_sim's test_settled_decision).  Pipelined (the first build's serial run
+    // count was 22 levels, 8 ns over the 100 MHz clock): each sample's table bit and whether it equals the sample before
+    // are worked out from stage 1's samples a clock ahead and registered beside fs_d, with the last two clocks' 'same'
+    // bits behind them (k up to 2 SER + 1); the event's bounds are masks set a clock ahead (lo_m from the event's
+    // sample on, hi_m up to RX_DELAY after it).
+    reg  [SER-1:0]   vld_d, same_d, same_p1, same_p2, lo_m, hi_m;
+    reg  [2*SER-1:0] kmask;                            // the k - 1 newest 'same' bits that must hold
+    integer          m;
     always @(posedge clk) begin
-        sv_prev <= fs_d[6*(SER-1) +: 5];
-        sc_prev <= sc_last;
+        vld_d[0]  <= lut[{fs1[4:0], 2'b11}];
+        same_d[0] <= fs1[4:0] == fs_d[6*(SER-1) +: 5];
+        for (m = 1; m < SER; m = m + 1) begin
+            vld_d[m]  <= lut[{fs1[6*m +: 5], 2'b11}];
+            same_d[m] <= fs1[6*m +: 5] == fs1[6*(m-1) +: 5];
+        end
+        same_p1 <= same_d;
+        same_p2 <= same_p1;
     end
+    wire [3*SER-1:0] same_h = {same_d, same_p1, same_p2};     // the newest at the top
+    reg              set_found;
+    reg  [3:0]       set_s;
+    reg  [2*SER-1:0] run_w;
+    integer          m2, rb;
+    always @* begin
+        set_found = 1'b0; set_s = 4'd0; run_w = {2*SER{1'b0}};
+        for (m2 = SER - 1; m2 >= 0; m2 = m2 - 1) begin       // the earliest qualifying sample wins
+            for (rb = 0; rb < 2*SER; rb = rb + 1) run_w[rb] = same_h[2*SER + m2 - rb];
+            if (vld_d[m2] && lo_m[m2] && hi_m[m2] && &(run_w | ~kmask)) begin
+                set_found = 1'b1; set_s = m2[3:0];
+            end
+        end
+        if (settle == 8'd0 || first_mode || st != S_DECIDE) set_found = 1'b0;
+    end
+    function [SER-1:0] ge_mask;                               // samples j >= s
+        input [8:0] s_;
+        integer q;
+        begin
+            for (q = 0; q < SER; q = q + 1) ge_mask[q] = q[8:0] >= s_;
+        end
+    endfunction
+    function [SER-1:0] le_mask;                               // samples j <= r
+        input [8:0] r_;
+        integer q;
+        begin
+            for (q = 0; q < SER; q = q + 1) le_mask[q] = q[8:0] <= r_;
+        end
+    endfunction
+    function [2*SER-1:0] kmask_of;                            // k - 1 low bits set (k = 0 or 1: none)
+        input [7:0] k_;
+        integer q;
+        begin
+            for (q = 0; q < 2*SER; q = q + 1) kmask_of[q] = (k_ > 8'd1) && (q[7:0] < k_ - 8'd1);
+        end
+    endfunction
     wire       dec_now = (st == S_DECIDE) && (set_found || remain < SER9);
     wire [8:0] dec_s   = set_found ? {5'd0, set_s} : remain;
     /* verilator lint_off UNUSEDSIGNAL */
@@ -370,7 +397,8 @@ module rx_engine #(
     always @(posedge clk) begin
         if (rst) begin
             en <= 1'b0; first_mode <= 1'b0; ref_trig <= 1'b0; single <= 1'b0; cm_row_reg <= 3'd0; cm_row_tx <= 1'b1;
-            idle <= 5'b00001; mask <= 5'b00001; dly <= 8'd4; quiet <= 8'd4; cdly <= 8'd6; settle <= 8'd0; window <= 32'd100;
+            idle <= 5'b00001; mask <= 5'b00001; dly <= 8'd4; quiet <= 8'd4; cdly <= 8'd6; settle <= 8'd0;
+            kmask <= {2*SER{1'b0}}; lo_m <= {SER{1'b1}}; hi_m <= {SER{1'b1}}; window <= 32'd100;
             lut <= 128'd0; slow_exp <= 32'd0; hist_what <= 2'd1; hist_shift <= 4'd0; hist_addr <= 10'd0; cm_addr <= 6'd0;
             ber_en <= 1'b0; ber_inv <= 1'b0; ber_poly <= 3'd2; ber_phase <= 16'd0; clr <= 1'b0;
             ber_cdr <= 1'b0; ber_gain <= 4'd4; ber_pol <= 1'b0;
@@ -412,7 +440,7 @@ module rx_engine #(
                                      stopped <= 1'b0; end
                 R_RX_IDLE:     begin idle <= bus_wdata[4:0]; mask <= bus_wdata[12:8]; end
                 R_RX_TIMING:   begin dly <= bus_wdata[7:0]; quiet <= bus_wdata[15:8]; cdly <= bus_wdata[23:16];
-                                     settle <= bus_wdata[31:24]; end
+                                     settle <= bus_wdata[31:24]; kmask <= kmask_of(bus_wdata[31:24]); end
                 R_RX_WINDOW:   window <= bus_wdata;
                 R_RX_LUT0:     lut[31:0]   <= bus_wdata;
                 R_RX_LUT1:     lut[63:32]  <= bus_wdata;
@@ -479,9 +507,15 @@ module rx_engine #(
                 if (ref_live) ref_pend <= 1'b0;
                 else n_false <= n_false + 1'b1;
                 remain <= {5'd0, out_s1} + {1'b0, dly};
+                lo_m   <= ge_mask({5'd0, out_s1});
+                hi_m   <= le_mask({5'd0, out_s1} + {1'b0, dly});
                 st     <= S_DECIDE;
             end
-            S_DECIDE: if (!dec_now) remain <= remain - SER9;
+            S_DECIDE: if (!dec_now) begin
+                remain <= remain - SER9;
+                lo_m   <= {SER{1'b1}};
+                hi_m   <= le_mask(remain - SER9);
+            end
             S_CONFIRM: begin
                 if (dec1) ;                                 // the table's answer comes this clock
                 else if (ccnt != 8'd0) ccnt <= ccnt - 1'b1;
