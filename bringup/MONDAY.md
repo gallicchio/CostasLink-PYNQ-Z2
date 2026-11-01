@@ -74,6 +74,11 @@ activity, its signal, its bits and symbols and the scope's views first.  What to
    (from inside the board's server, so linkd is not paused; a server restart also turns it off).
 6. Afterwards: `{"on": false}` (or leave it on: it pauses whenever a bench program drives the board).
 
+**Before any physics run (QPV)**: run the learning step with the link quiet (about 11 minutes; the page's 'Learned
+settings' shows what it chose, `GET /api/learned` gives each scheme's `rx_config` for the run's own code):
+
+    curl -X POST -d '{"plan": "learn"}' http://192.168.8.142:8080/api/selftest     # then back to the plan before
+
 ## 2. Board A to the VNA (the RACON room, 1-2 h with the move)
 
 Needs: the 8720ES calibrated (full 2-port, 3-6.5 GHz, -30 dBm or less into the board), the board's E3646A and the

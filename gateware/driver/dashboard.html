@@ -177,6 +177,8 @@ const PANELS = [
   help:"<p>While a test sends single symbols: the mean time from each symbol leaving the transmitter to the receiver's decision, in nanoseconds (the receiver's settling delay included). No judgement: it is set by the scheme and the receiver's settings.</p>"},
  {id:"lathist", title:"Single symbols: latency, the last run's spread", kind:"lathist",
   help:"<p>The last self-test run of single symbols: how many decisions came after each latency, from the symbol leaving the transmitter to the receiver's decision (one bar per receiver sample, 1.25 ns; counts on a log scale). Without interference they fall in a narrow spike (the receiver's settling and the path); interference spreads them out, and a stray decision long after shows a symbol decided late or a false one.</p><p>Below it, for schemes of 2 or 4 states, the run's table: a row for each state sent, a column for each state decided (green the right ones, red the wrong).  A row that totals less than the others lost its symbols to 'undecided' or 'missed': that state's pattern sits near a comparator's threshold.</p><p class='k'>Good: one narrow spike; the table's counts on its diagonal.</p>"},
+ {id:"learned", title:"Learned settings (the learning step, for physics runs)", kind:"learned",
+  help:"<p>What the self-test's learning step chose (plan 'learn': <code>POST /api/selftest {\"plan\": \"learn\"}</code>, about 10 minutes with the link quiet), for each scheme: the decision table and timing with the lowest mean latency that decided every symbol right (no wrong decision, at most 1 in 100 000 undecided or missed), confirmed on a longer run; and for the data, the timing recovery's gain at each rate. Bars: the mean latency from the symbol leaving the transmitter to the receiver's decision; the tick: 99.9 % of decisions came by then.</p><p>The tables: <b>all</b> wants every comparator as the state should show it; <b>info</b> only the comparators that carry the scheme's bits (an interferer on the others no longer leaves the symbol undecided); <b>learned</b> adds the vectors the board was seen to make for one state. The choices are used by the self-test's own runs, and a physics run reads them from <code>GET /api/learned</code> (each scheme's <code>rx_config</code>), while the link stays on the lock point and within 15 % of the level they were learned at; learn again after moving an antenna, the attenuator or the carrier.</p>"},
  {id:"levels", title:"The board's own constellation, along each window", kind:"levels",
   help:"<p>The board measuring its own received states with its comparators, no scope: the self-test sends the single symbols' states (A3's four corners) at random half the time and sweeps each window comparator's threshold across its arm, reading how much of the time the comparator is on. Each bar is how much time the input spent at that level (from the comparator's centre, mV): a tall bar for the idle carrier (half the time), smaller ones for each state.</p><p>Each threshold (red) must sit in a gap, clear of every bar on both sides: then every symbol is decided right however noise moves it. The board places them there itself, in the middle of the gap, on each of its two lock points (dashed: where the plain rule, half the carrier's level, put them).</p><p class='k'>Good: the red lines well clear of the bars. A bar touching a line: that state is decided only some of the time ('undecided' in the symbols' counts).</p>"},
  {id:"fastconst", title:"Constellation (fast)", kind:"scope", src:"scope",
@@ -200,7 +202,7 @@ let span = 600, hist = [], last = null, notes = [], pullin = null;
 const grid = document.getElementById("grid");
 // ?view=demo: what a demonstration shows first (the link at work, its signal, its bits and symbols, the scope), the
 // loop's physics after (the order only: every panel is still there)
-const DEMO = ["activity_lanes", "state", "rxant", "ber", "symbols", "latency", "lathist", "levels", "fastconst", "data_eye", "sym_fold", "data_raw", "sym_raw",
+const DEMO = ["activity_lanes", "state", "rxant", "ber", "symbols", "latency", "lathist", "learned", "levels", "fastconst", "data_eye", "sym_fold", "data_raw", "sym_raw",
               "offset", "pullin", "dem", "gwlock", "vc", "activity", "interference", "skew", "hold", "temp", "supply", "scurve", "constellation"];
 if (new URLSearchParams(location.search).get("view") == "demo")
   PANELS.sort((a, b) => (DEMO.indexOf(a.id) + 1 || 99) - (DEMO.indexOf(b.id) + 1 || 99));
@@ -688,6 +690,41 @@ function drawLatHist(p) {
     xv.appendChild(t);
   }
 }
+// the learning step's choices (GET /api/learned): a bar per scheme (mean latency, a tick at 99.9 %), then the table
+let learnedP = null;
+async function fetchLearned() { try { learnedP = await (await fetch("/api/learned")).json(); } catch (e) {} }
+fetchLearned(); setInterval(fetchLearned, 60000);
+function drawLearned(p) {
+  const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv), xv = document.getElementById("x_" + p.id);
+  document.getElementById("v_" + p.id).textContent = "";
+  g.clearRect(0, 0, w, h);
+  const P = learnedP;
+  if (!P || !P.symbols) { xv.textContent = "Nothing learned yet: run the learning step (plan 'learn') with the link quiet."; return; }
+  const rows = Object.entries(P.symbols).map(([n, e]) => [n, e]).concat(Object.entries(P.qpsk || {}).map(([n, e]) => [n + " QPSK", e]));
+  const L = 84, R = 70, T = 6, bh = Math.min(22, (h - T - 22) / Math.max(1, rows.length) - 4), xmax = Math.max(80, ...rows.map(([, e]) => (e.lat_p999 || 0) + 5));
+  const x = v => L + (w - L - R) * v / xmax;
+  g.font = "12px system-ui";
+  rows.forEach(([n, e], k) => { const yy = T + k * (bh + 4), m = e.lat_ns ? e.lat_ns[1] : null;
+    g.fillStyle = C.ink2; g.textAlign = "right"; g.fillText(n, L - 6, yy + bh * 0.7);
+    if (m == null) return;
+    g.fillStyle = e.ok ? C.data : C.bad; g.fillRect(L, yy, x(m) - L, bh);
+    if (e.lat_p999) { g.fillStyle = C.ink; g.fillRect(x(e.lat_p999) - 1, yy - 1, 2, bh + 2); }
+    g.fillStyle = C.ink2; g.textAlign = "left"; g.fillText(fmt(m) + " ns", x(Math.max(m, e.lat_p999 || 0)) + 5, yy + bh * 0.7); });
+  g.fillStyle = C.ink2; g.textAlign = "left"; g.fillText("0", L, h - 6); g.textAlign = "right"; g.fillText(fmt(xmax) + " ns", w - R, h - 6);
+  const age = Date.now() / 1000 - (P.t || 0);
+  const t = document.createElement("table"); t.className = "cmt";
+  const hd = t.insertRow(); ["scheme", "table", "decided", "mean ns", "99.9 % ns", "confirmed"].forEach(c => { hd.insertCell().textContent = c; });
+  rows.forEach(([n, e]) => { const c = e.confirmed || {}, tr = t.insertRow();
+    [n, e.table, e.settle ? "held " + e.settle + " samples (within " + e.delay + ")" : e.delay + " samples after the start",
+     e.lat_ns ? fmt(e.lat_ns[1]) : "-", e.lat_p999 != null ? fmt(e.lat_p999) : "-",
+     c.sent ? c.right + " of " + c.sent + " right" + (c.wrong || c.undecided || c.missed ? " (" + (c.wrong || 0) + " wrong, " + ((c.undecided || 0) + (c.missed || 0)) + " lost)" : "") : "-"]
+      .forEach((v, j) => { const td = tr.insertCell(); td.textContent = v; if (j == 5 && c.sent) td.style.color = e.ok ? C.good : C.bad; }); });
+  const dt = Object.entries(P.data || {}).map(([m, d]) => m.toUpperCase() + " clean to " + (d.max_clean_mbaud != null ? fmt(d.max_clean_mbaud) + " Mbaud" : "-") +
+    " (the timing recovery's gain " + [...new Set(Object.values(d.gain || {}))].join(" / ") + ")").join("; ");
+  xv.textContent = "Learned " + dur(Math.max(0, age)) + " ago on lock point " + (P.side > 0 ? "+" : "-") + " with the carrier at " +
+    fmt((P.leg || 0) * 1000) + " mV on the I arm, the windows' bias " + P.window_bias + ", in " + fmt(P.seconds || 0) + " s" + (P.complete ? "" : " (incomplete)") + ". " + dt + ".";
+  xv.appendChild(t);
+}
 // the self-test's last sweep of the windows (selftest.py 'calibrate' / 'levels'): each comparator's input distribution
 // (the duty's drop step by step), the thresholds before and after
 function drawLevels(p) {
@@ -722,7 +759,7 @@ function drawLevels(p) {
     ". Bars: where each comparator's input spent its time (taller: longer; the idle carrier half of it); " +
     (lv.after_v ? "red: its threshold as the board calibrated it, dashed: the plain rule's." : "dashed: its threshold.");
 }
-function drawAll() { for (const p of PANELS) { try { ({timeline: drawTimeline, scatter: drawScatter, pullin: drawPullin, scurve: drawSCurve, scope: drawScope, activity: drawActivity, scopewave: drawScopeWave, scopefold: drawScopeFold, lathist: drawLatHist, levels: drawLevels}[p.kind] || drawSeries)(p); } catch (e) { console.log(p.id, e); } } }
+function drawAll() { for (const p of PANELS) { try { ({timeline: drawTimeline, scatter: drawScatter, pullin: drawPullin, scurve: drawSCurve, scope: drawScope, activity: drawActivity, scopewave: drawScopeWave, scopefold: drawScopeFold, lathist: drawLatHist, levels: drawLevels, learned: drawLearned}[p.kind] || drawSeries)(p); } catch (e) { console.log(p.id, e); } } }
 function status() {
   const st = document.getElementById("status"), r = last;
   if (!r) return;
