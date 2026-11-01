@@ -133,6 +133,7 @@ driver files beside it; since 2026-10-31 12:55 the boot service `costaslink-netb
 | 01:27 PST | `22b4287` | the receiver's windows from the states' own levels (the self-test's 'calibrate', linkd keeps it per lock point) | the levels sweep: margins of 2-12 mV at half the I leg | restart, between soak14 #44 and #45 |
 | 01:39 PST | `d44cd87` | A3 settled on 6 samples (4 decided 2.1 % wrong with the calibrated windows) | the plan 'settle' again | restart, between soak14 #50 and #51 |
 | 01:43 PST | `abd1274` | linkd: a lock far from the learned one is not a lock (not learned from); the lock's VC learned afresh after a recovery | soak14 #50, flagged: a CW's capture pulled the learned VC 70 kHz | restart, between soak14 #51 and #52 |
+| 01:59 PST | `1eda0df` | the page: 'The board's own constellation, along each window' (the last calibration's sweep, its thresholds before and after) | the students; REVB U2's constellation without a scope | restart, between soak14 #60 and #61 |
 
 ## Before power (2026-10-28)
 
