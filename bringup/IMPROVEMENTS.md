@@ -20,6 +20,7 @@ it (a BRINGUP_LOG row, a REVB row).  The version table in BRINGUP_LOG ('What run
 | the lock judged in gateware every 10 ms, the PYNQ-Z2's LEDs from it; the hold's release scaled | ID 8, `lockmon.v` | 4.17 |
 | **the random message reduced right for N = 2** (A2 sent messages 2 and 3 a quarter of the time: 75 % decided) | ID 9, `tx_engine.v` | the self-test's A2, 149 974 of 199 999 (REVB 22 fixed) |
 | **the lock monitor blind to the board's own events' Q moves** (its LEDs read the self-test's A2 / A3 as lost) | ID 9, `lockmon.v` | the page's photographs, 2026-10-31 22:03; `tb_lockmon.v` |
+| **the single symbols' counts add up**: undecided symbols counted (RX_UNDEC), false decisions kept out of right and wrong, no reference both paired and missed; the page's 'sent' the references, the self-test's counts read with the receiver stopped | ID 10, `rx_engine.v`; `selftest.py`, `dashboard.*` | 4.24: 'right' and 'wrong' ran to millions for 200 000 sent under a CW; after, every run closes |
 | linkd: the automatic recovery in the board server, from above, VC-judged (no needless recoveries under bursts) | `linkd.py` | 4.15-4.16, 4.18, 4.20-4.21: 67 of 67 losses recovered |
 | the link set up from `link.json` at power-up, the server a boot service | `linkd.py`, `costaslink-netbus` | 4.17 |
 | requests that only look do not pause linkd; requests flagged 'nodrive' (tests standing in for the world) neither | `netbus.py` | 4.16, 4.18 |

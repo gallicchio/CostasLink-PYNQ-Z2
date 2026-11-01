@@ -62,7 +62,7 @@ udev rule (`99-bench-instruments.rules`), which the reinstalled PC does not have
 Kept as they change (Jason, 2026-10-31: log the changes made to the gateware and firmware).  The PYNQ's own image
 (PYNQ 3.0.1) is unchanged throughout.  Each overlay lives in its own `~/costaslink_<name>/` on the PYNQ with the
 driver files beside it; since 2026-10-31 12:55 the boot service `costaslink-netbus` runs the server from the symlink
-`~/costaslink_current` (now `~/costaslink_lockmon/`).  The firmware's ID register says which overlay is loaded.
+`~/costaslink_current` (now `~/costaslink_id10/`).  The firmware's ID register says which overlay is loaded.
 
 **The gateware (the overlay)**, all Vivado 2022.1 but ID 3:
 
@@ -75,7 +75,8 @@ driver files beside it; since 2026-10-31 12:55 the boot service `costaslink-netb
 | 0x434C0006 | `8521517` | 10-31 02:36, `~/costaslink_cdrpol/` | the timing recovery on one edge polarity, centred on the measured skew | its false lock between CMP_I's edges, 4.10 |
 | 0x434C0007 | `3c76423` | 10-31 10:05, `~/costaslink_persist/` | the hold's persistence (RX_IHOLD_PERSIST) | holds under bursts, 4.13-4.14 |
 | 0x434C0008 | `816347c` + `97a9d8f` | 10-31 12:52, `~/costaslink_lockmon/` | `lockmon.v`, the lock judged every 10 ms from 64 sub-windows, on the PYNQ-Z2's LEDs; the hold's release scaled to the busy time, registered in three steps | the board judging its own lock, 4.17 |
-| 0x434C0009 | `dcc9367` (Vivado 2022.1, Performance_NetDelay_high: WNS +0.084 ns, WHS +0.038 ns; the fast path's worst 13.007 ns; ExplorePostRoutePhysOpt and Explore missed by 0.39-0.43 ns on the route to TX_I1) | 10-31 22:32, `~/costaslink_id9/` (now; the page's logs linked from `~/costaslink_lockmon/dashboard`) | the random message masked before its reduction (REVB 22: A2 sent 2 and 3 a quarter of the time); the lock monitor blind to the Q windows' changes during this board's own events and 64 clocks after | the self-test's A2 decided 75 %, its LEDs read its own A2 / A3 as lost (4.23); after: A2 168 552 right of 168 528, the monitor 'locked, 0 of 64' through them |
+| 0x434C0009 | `dcc9367` (Vivado 2022.1, Performance_NetDelay_high: WNS +0.084 ns, WHS +0.038 ns; the fast path's worst 13.007 ns; ExplorePostRoutePhysOpt and Explore missed by 0.39-0.43 ns on the route to TX_I1) | 10-31 22:32, `~/costaslink_id9/` (the page's logs linked from `~/costaslink_lockmon/dashboard`) | the random message masked before its reduction (REVB 22: A2 sent 2 and 3 a quarter of the time); the lock monitor blind to the Q windows' changes during this board's own events and 64 clocks after | the self-test's A2 decided 75 %, its LEDs read its own A2 / A3 as lost (4.23); after: A2 168 552 right of 168 528, the monitor 'locked, 0 of 64' through them |
+| 0x434C000A | `ae9f294` (Vivado 2022.1, Performance_NetDelay_high: WNS +0.074 ns, WHS +0.033 ns; the fast path's worst 12.907 ns; built in 8 minutes) | 11-01 01:05, `~/costaslink_id10/` (now; its `dashboard/` linked to `~/costaslink_lockmon/dashboard`) | the single symbols' counts add up: RX_UNDEC (0xB0, events with a reference whose pattern is no single message's), the confusion matrix only for events with a reference when its row is this board's TX message (a remote TX's row still takes every decision), an event pairs with a reference only inside its window (no reference both paired and missed) | the night's 530 self-test runs (4.24): a false event's decision went into right or wrong (A2 under a CW 0.43 MHz off: 878 475 right and 1 425 338 wrong for 200 000 sent), references counted twice (up to 1 783 a run), undecided symbols in no count; `tb_engines.v`'s four new checks fail on ID 9; after: sent = right + wrong + undecided + missed in every run |
 
 **The board's server software** (the driver `costaslink.py`, `netbus.py`, the recovery `linkd.py`, the status page
 `dashboard.py` and `dashboard.html`), 2026-10-31.  A `.py` change takes `sudo systemctl restart costaslink-netbus`
@@ -119,6 +120,8 @@ driver files beside it; since 2026-10-31 12:55 the boot service `costaslink-netb
 | 00:05 | `bb051e1` | a loss linkd mended between two looks breaks the slip detector's run | a recovery listed as a slip, 00:02 | restart |
 | 00:24 | `ee28fd7` | during a recovery the Now line and the lanes' caption say the board is bringing the link back (they gave the last full look's step) | the page photographed in soak13 | page |
 | 00:34 | `7630dbe` | a loss while linkd waits for the carrier says so ('no carrier arrives ... recovers it the moment one does'), not 'started to recover it' | soak13 #25: a 52.8 s cut, 53 looks waiting | restart, between soak13 and soak14 |
+| 00:59 | `62d8fcd` | the single symbols' counts: 'sent' the references (it was the events, false ones included), 'undecided', the whole matrix; the self-test reads the counts with the receiver stopped; the driver reads RX_UNDEC from ID 10 | the 00:53 photograph: '26 364 576 sent, 8 927 240 right, 6 109 841 wrong' in ten minutes | restart, between soak14 #11 and #12 |
+| 01:05 | `ae9f294`, `62d8fcd` | ID 10 (above), with the new `regmap.py` beside the driver | | new directory `~/costaslink_id10/`, the symlink repointed, restart between soak14 #13 and #14 |
 
 ## Before power (2026-10-28)
 
