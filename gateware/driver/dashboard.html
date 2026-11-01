@@ -619,12 +619,14 @@ function drawScopeFold(p) {
     for (let k = 1; k < n; k++) if ((c.i[k - 1] - mid) * (c.i[k] - mid) < 0) { const a = 2 * Math.PI * (((k - 0.5) * dt) % Tb) / Tb; cs += Math.cos(a); sn += Math.sin(a); nc++; }
     const ph0 = ((Math.atan2(sn, cs) / (2 * Math.PI)) * Tb + Tb) % Tb;
     const [g, x, y] = scopeFrame(p, 0.32, 0, 2 * Tb, "ns");
-    g.fillStyle = "rgba(30, 58, 138, 0.22)"; let up = 1e9, dn = -1e9;
+    // the opening and the two levels both from this capture at the bit's middle (the levels from the board's slow
+    // reading are its own and can lag: 2026-11-01 the caption said 'open by 322 mV of the 299 mV between the levels')
+    g.fillStyle = "rgba(30, 58, 138, 0.22)"; let up = 1e9, dn = -1e9, su = 0, nu = 0, sd = 0, nd = 0;
     for (let k = 0; k < n; k++) { const tau = (((k * dt - ph0) % (2 * Tb)) + 2 * Tb) % (2 * Tb), v = c.i[k] - mid; g.fillRect(x(tau) - 1, y(v) - 1, 2, 2);
-      const u = (tau % Tb) / Tb; if (u > 0.4 && u < 0.6) { if (v > 0) up = Math.min(up, v); else dn = Math.max(dn, v); } }
-    const open = up < 1e8 && dn > -1e8 ? up - dn : null;
+      const u = (tau % Tb) / Tb; if (u > 0.4 && u < 0.6) { if (v > 0) { up = Math.min(up, v); su += v; nu++; } else { dn = Math.max(dn, v); sd += v; nd++; } } }
+    const open = up < 1e8 && dn > -1e8 ? up - dn : null, span = nu && nd ? su / nu - sd / nd : null;
     xv.innerHTML = scopeSays(c) + "<br>" + fmt(1000 / Tb) + " Mbaud, " + nc + " transitions; the eye open at its middle by " + (open != null ? Math.round(open * 1000) + " mV" : "-") +
-      " of the " + Math.round(2 * leg * 1000) + " mV between the levels" + (open != null && open < 0.3 * leg ? " (nearly closed: the monitor tap's smoothing at this rate, or noise)" : "");
+      (span != null ? " of the " + Math.round(span * 1000) + " mV between its two levels" : "") + (open != null && span != null && open < 0.3 * span ? " (nearly closed: the monitor tap's smoothing at this rate, or noise)" : "");
   } else {
     const W = c.width_ns || 200, mid = c.i0 != null ? c.i0 : 1.65, qm = c.q0 != null ? c.q0 : 1.63;
     // the idle: where I and Q spend most of the time; an event starts where they leave it after a quiet stretch

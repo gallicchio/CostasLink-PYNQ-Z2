@@ -48,7 +48,11 @@ activity, its signal, its bits and symbols and the scope's views first.  What to
    Mbaud and the fast constellation shows the QPSK corners.  **A point to make**: the corners come out at about 40
    degrees and at the idle's own amplitude, not at 45 degrees and 1.41 times it: the board's transmitter is saturated
    (the B210, listening to it, measured every state at the idle's amplitude: BRINGUP_LOG 4.26, REVB 35).  'The board's
-   own constellation, along each window' shows the same from the board's own comparators, no scope needed.
+   own constellation, along each window' shows the same from the board's own comparators, no scope needed.  **FSK** (firmware
+   ID 13: the transmitter turns its four axis points, one turn a bit, the direction the bit) the board can send but
+   not receive (a Costas loop): the B210 decodes it (`python3 bringup/b210link.py from --mods fsk`, 25 kbaud-2.5
+   Mbaud, no error).  **Every link** (BRINGUP_LOG 4.29): the board to itself, to the B210, from the B210, and the B210
+   to itself all carry BPSK, OOK, QPSK and (but into the board) FSK, the timing recovered across unrelated clocks.
 4. **Interference** from the B210, one at a time, each shown on the page's B210 lane:
 
        python3 bringup/b210demo.py bursts --on-ms 1 --per-ms 20 --gain 85 --seconds 20   # bit errors, false symbols
