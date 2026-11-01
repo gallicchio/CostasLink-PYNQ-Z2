@@ -52,7 +52,9 @@ experiments; pictures, not one-word states, each with what led to it and how to 
    * the carrier gone with the holdover off costs the lock after 40-60 ms (4.21: off 57 ms the loop came back in the
      false lock; REVB 31), so every interruption costs a recovery; measure the signal holdover (shold) with linkd and
      the carrier interrupted at random (`soak.py --kinds carrier_off` with the holdover on), and decide whether
-     deployment turns it on
+     deployment turns it on.  **Measured 20:47 (4.22): 33 of 33 gaps of 23 ms-53.6 s held, no loss; 14 slipped half a
+     cycle.**  Left: the overnight mixed soak with it on (`soak9_hold.log`, no harm under interference?), then
+     Jason's decision; and the slips between two boards (here our own TX_DIS pushes the shared TCXO)
    * the board's lock monitor (`lockmon.v`, the LEDs) judges from the comparators alone and calls strong interference
      'lost' while the oscillator sits on the carrier (4.20): give it VC (REVB U3, the FPGA reading the ADC itself) or
      say on the LEDs 'interference', not 'lost'
