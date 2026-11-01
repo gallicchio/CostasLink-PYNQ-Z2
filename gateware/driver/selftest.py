@@ -689,8 +689,9 @@ class SelfTest:
                     json.dump(prof, f, indent=1)
             except OSError:
                 pass
-        if self._after_learn:                         # once through: back to the plan before
-            self.plan_name, self._after_learn = self._after_learn, None
+        if self._after_learn or self.plan_name == "learn":   # once through: back to the plan before (or the rounds, if
+            # the plan before was lost with a restart: selftest.json keeps 'learn', and it learned again and again)
+            self.plan_name, self._after_learn = self._after_learn or "cycle", None
             try:
                 with open(STATE_FILE, "w") as f:
                     json.dump({"on": self.on, "plan": self.plan_name, "calibrate": self.calibrate_on,
