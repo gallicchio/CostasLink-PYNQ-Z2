@@ -314,8 +314,12 @@ class Dashboard:
                                         "text": "Locked again by itself" + (" %.1f s after the loss" % d if d is not None else "") +
                                                 ((", %d start(s)" % L["last_starts"]) if L.get("last_starts") else "") + "."})
                 if L["failed"] > self._lk["failed"]:
+                    act = self.active_note(r["t"])
                     self.event({"t": r["t"], "kind": "failed",
-                                        "text": "A recovery found no carrier; it will try again (is the other board on?)."})
+                                "text": "A recovery did not lock" + (
+                                    " (expected: during '%s': an interferer in the way)" % act["text"] if act else
+                                    " (no carrier found, or an interferer in the way: is the other board on?)") +
+                                "; it tries again after a pause."})
                 if (L.get("window_moves") or 0) > self._lk.get("window_moves", 0) and L.get("leg"):
                     lw = L.get("leg_windows") or L["leg"]
                     self.event({"t": r["t"], "kind": "windows",
