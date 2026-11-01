@@ -385,7 +385,9 @@ class Link(W.Weekend):
         return out
 
     # ---- B210 -> board: the board's receiver against the B210's exact states ----
-    RX_PATTERNS = {"axes": [(0, 1), (0, -1)], "flip": [(-1, 0)], "corners": [(1, 1), (1, -1), (-1, 1), (-1, -1)]}
+    # no pure-Q states: the board's loop is a hard-limited Costas loop (sign of I times Q), and a state with I near zero
+    # gives it a sign from noise or the slightest turn: half the time on (0, +-1) pulled it to -48 degrees (12:50)
+    RX_PATTERNS = {"corners": [(1, 1), (1, -1), (-1, 1), (-1, -1)], "flip": [(-1, 0)]}
 
     @staticmethod
     def duty_steps(pts, floor=0.002):
@@ -419,6 +421,16 @@ class Link(W.Weekend):
                "patterns": {}}
         try:
             for pname, states in self.RX_PATTERNS.items():
+                self.stream.set(np.ones(P * 50))       # the lock checked on the idle alone first, found again if gone
+                time.sleep(0.3)
+                o = self.observe(st["cen"], st["a"])
+                if o["state"] != "locked":
+                    st2 = self.lock_ext(mhz, self._delta, gain=self._gain, rate=rate)
+                    if st2 is None:
+                        out["patterns"][pname] = {"error": "no lock before it (%s)" % o["state"]}
+                        continue
+                    st = st2
+                    cen = {w: st["cen"][w]["v0"] for w in ("QP", "QN", "IP", "IN")}
                 base = np.full(P * len(states) * 20, complex(1, 0))
                 for k in range(len(states) * 20):
                     base[k * P: k * P + Wd] = complex(*states[k % len(states)])
@@ -430,7 +442,10 @@ class Link(W.Weekend):
                     pts = [(v, d) for v, r, d in self.cl.threshold_scan(w, vs, seconds=seconds)]
                     sweeps[w] = [[round(v, 4), round(d, 5)] for v, d in pts]
                     steps[w] = [[round(1e3 * (m - cen[w]), 2), round(h, 3)] for m, h in self.duty_steps(pts)]
+                self.stream.set(np.ones(P * 50))       # judged on the idle: the pattern itself reads as 'beating'
+                time.sleep(0.3)
                 o = self.observe(st["cen"], st["a"])
+                self.stream.set(base)
                 out["patterns"][pname] = {"states": states, "sweeps": sweeps, "steps_mv": steps,
                                           "lock_after": {k: o[k] for k in ("state", "di", "vc")}}
                 print("%d rxcal %-7s %s: %s; then %s" % (mhz, pname, states, "; ".join(
@@ -439,6 +454,104 @@ class Link(W.Weekend):
         finally:
             self.stream.set(np.ones(P * 50))
             self.thresholds(st["cen"], st["a"], 0.5)
+        return out
+
+    def rx_scope(self, mhz, st, period_s=4e-6, width_s=2e-6, caps=5, tdiv=5e-6, only=None):
+        """the same states on the bench scope (I MON, Q MON at 50 ohm, probe factor 21: volts at the arm): each state's
+        cluster from thousands of samples, the samples between states dropped; relative to the idle on the same channel,
+        so a channel's gain error cancels in the flip's Q (the receiver's own share of A1's 30 mV, REVB 35).  Q's scale
+        against I's from the corners carries the scope's two channels' gains (about 1 %)"""
+        import scopewatch as SW
+        sc = self.b.scope
+        rate = self.stream.rate
+        P, Wd = int(round(period_s * rate)), int(round(width_s * rate))
+        # each pattern: its states, and a turn of the whole buffer (the loop locks to the turned idle, so each of the
+        # board's quadrants is fed by another of the B210's codes: an error that stays put is the board's); 'small'
+        # the corners at 0.71 of the idle's amplitude, not 1.41 (compression shows as an error that goes away)
+        C4 = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
+        pats = {"idle": ([], 1), "flip": ([(-1, 0)], 1), "corners": (C4, 1),
+                "small": ([(0.5 * a_, 0.5 * b_) for a_, b_ in C4], 1), "idle_j": ([], 1j), "corners_j": (C4, 1j),
+                # the window comparators silenced (thresholds at the top: never high), I's alone and all four: if the
+                # corners' asymmetry (Q 7-15 % smaller on the idle's side of I) goes, it is their switching on the node
+                "corners_noiwin": (C4, 1), "corners_nowin": (C4, 1)}
+        if only:
+            pats = {k: v for k, v in pats.items() if k in only}
+        out = {"mhz": mhz, "side": st["side"], "a": st["a"], "patterns": {}}
+        try:
+            for pname, (states, rot) in pats.items():
+                if states:
+                    base = np.full(P * len(states) * 20, complex(1, 0))
+                    for k in range(len(states) * 20):
+                        base[k * P: k * P + Wd] = complex(*states[k % len(states)])
+                else:
+                    base = np.ones(P * 50, dtype=complex)
+                self.stream.set(base * rot)
+                if pname in ("corners_noiwin", "corners_nowin"):
+                    for w in (("IP", "IN") if pname == "corners_noiwin" else ("QP", "QN", "IP", "IN")):
+                        self.cl.threshold(w, 2.499)
+                time.sleep(0.5)
+                I, Q = [], []
+                for _ in range(caps):
+                    i, q, dt = SW.capture(sc, tdiv)
+                    I += i
+                    Q += q
+                I, Q = np.array(I), np.array(Q)
+                # the clusters: k-means from the idle (the densest place) and each state at the middle plus the idle's
+                # vector turned by the state's angle (the patterns are balanced: the middle is twice the mean less the
+                # idle; a mirrored Q gives the same set of corners, so the mirror does not matter)
+                z = I + 1j * Q
+                if not states:                            # the idle alone: its place for the patterns after (per turn)
+                    z_idle = complex(np.median(I), np.median(Q))
+                    idle_alone = z_idle
+                else:
+                    z_idle = idle_alone
+                # the patterns' mean is the middle plus half the idle's vector times (1 + the states' mean direction):
+                # the corners average to the middle (2 mean - idle), a flip half the time is the middle itself
+                ub = 1.0 + (np.mean([complex(a_, b_) for a_, b_ in states]) if states else 0)
+                origin = (complex(np.mean(I), np.mean(Q)) - 0.5 * ub * z_idle) / (1 - 0.5 * ub) if states else 0j
+                v = z_idle - origin
+                cents = np.array([z_idle] + [origin + v * complex(a_, b_) for a_, b_ in states], dtype=complex)
+                r_keep = 0.25 * abs(v) if states else 0.05
+                for _ in range(20):
+                    dd = np.abs(z[:, None] - cents[None, :])
+                    lab = np.argmin(dd, axis=1)
+                    keep = dd[np.arange(len(z)), lab] < r_keep
+                    for k in range(len(cents)):
+                        m = keep & (lab == k)
+                        if m.sum() > 10:
+                            cents[k] = np.mean(z[m])
+                spread = [float(np.std(np.abs(z[keep & (lab == k)] - cents[k]))) * 1e3 if (keep & (lab == k)).sum() > 10 else None
+                          for k in range(len(cents))]
+                row = {"states": states, "n": int(len(z)), "kept": int(keep.sum()),
+                       "centres_mv": [[round(c.real * 1e3, 2), round(c.imag * 1e3, 2)] for c in cents],
+                       "spread_mv": [round(x, 2) if x is not None else None for x in spread],
+                       "shares": [round(float(np.mean(lab[keep] == k)), 3) for k in range(len(cents))]}
+                if pname == "flip":
+                    # the tilt of the line from the idle to the flip: their Q apart on the same channel over their I
+                    # apart (the board's own TX: about 30 mV on a 0.35 V swing, 5 degrees of tilt for its 10 off 180)
+                    row["flip_dq_mv"] = round((cents[1].imag - cents[0].imag) * 1e3, 2)
+                    row["flip_tilt_deg"] = round(float(np.degrees(np.arctan2(cents[1].imag - cents[0].imag,
+                                                                             abs(cents[1].real - cents[0].real)))), 2)
+                if pname in ("corners", "small", "corners_j", "corners_noiwin", "corners_nowin"):
+                    m_ = np.mean(cents[1:])                  # about the corners' own centre (no middle needed)
+                    cs = cents[1:] - m_
+                    ref = (cents[0] - m_) / abs(cents[0] - m_)   # the idle's direction: 0 degrees
+                    cr = cs / ref
+                    row["corner_i_mv"] = [round(abs(c.real) * 1e3, 1) for c in cr]
+                    row["corner_q_mv"] = [round(abs(c.imag) * 1e3, 1) for c in cr]
+                    row["q_over_i"] = round(float(np.mean(np.abs(cr.imag)) / np.mean(np.abs(cr.real))), 4)
+                    row["corner_deg"] = [round(float(np.degrees(np.angle(c))), 1) for c in cr]
+                    row["idle_over_corner_i"] = round(float(abs(cents[0] - m_) / np.mean(np.abs(cr.real))), 4)
+                if pname in ("corners_noiwin", "corners_nowin"):
+                    self.thresholds(st["cen"], st["a"], 0.5)
+                out["patterns"][pname] = row
+                print("%d rxscope %-7s centres %s mV (spread %s, shares %s)%s" % (
+                    mhz, pname, row["centres_mv"], row["spread_mv"], row["shares"],
+                    (": the flip's Q %+.1f mV from the idle's, the line between them tilted %+.2f degrees" % (row["flip_dq_mv"], row["flip_tilt_deg"])) if pname == "flip" else
+                    (": |I| %s, |Q| %s mV, Q/I %.4f, angles %s" % (row["corner_i_mv"], row["corner_q_mv"], row["q_over_i"], row["corner_deg"])) if "q_over_i" in row else ""),
+                    flush=True)
+        finally:
+            self.stream.set(np.ones(P * 50))
         return out
 
     # ---- B210 -> board ----
@@ -627,12 +740,13 @@ class Link(W.Weekend):
 
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("what", nargs="+", choices=["offset", "from", "to", "pattern", "self", "rxcal"])
+    ap.add_argument("what", nargs="+", choices=["offset", "from", "to", "pattern", "self", "rxcal", "rxscope"])
     ap.add_argument("--mhz", type=float, default=None, help="5200 (5400 for 'self' alone: 200 MHz from the board's link)")
     ap.add_argument("--gain", type=float, default=80)
     ap.add_argument("--no-fixed", action="store_true", help="skip the fixed-phase BER runs")
     ap.add_argument("--no-events", action="store_true")
     ap.add_argument("--mods", default="bpsk,ook,qpsk,fsk", help="'from' and 'self': the modulations (fsk: ID 13)")
+    ap.add_argument("--only", default=None, help="'rxscope': its patterns, e.g. idle,corners,corners_noiwin")
     ap.add_argument("--rate", type=float, default=4e6, help="'to': the B210's stream rate (10e6 or more: A3 at 2.5 M/s too)")
     a = ap.parse_args(argv)
     mods = [m for m in a.mods.split(",") if m]
@@ -671,8 +785,14 @@ def main(argv):
         if "rxcal" in a.what:                          # the board's receiver against the B210's exact states
             if "offset" not in out:
                 out["offset"] = L.offset(mhz)
-            st = L.lock_ext(mhz, out["offset"]["delta_hz"], gain=a.gain, rate=a.rate)
+            L._delta, L._gain = out["offset"]["delta_hz"], a.gain
+            st = L.lock_ext(mhz, L._delta, gain=a.gain, rate=a.rate)
             out["rxcal"] = L.rx_accuracy(mhz, st) if st else {"error": "no lock to the B210"}
+        if "rxscope" in a.what:                        # the same on the bench scope (scopewatch.py stopped first)
+            if "offset" not in out:
+                out["offset"] = L.offset(mhz)
+            st = L.lock_ext(mhz, out["offset"]["delta_hz"], gain=a.gain, rate=a.rate)
+            out["rxscope"] = L.rx_scope(mhz, st, only=a.only.split(",") if a.only else None) if st else {"error": "no lock to the B210"}
     finally:
         try:
             L.cl.dac(S.DAC2, V_T2=S.V_MID)
