@@ -43,6 +43,9 @@ PLANS = {
     "symbols": [{"step": "idle", "seconds": 2.0}, {"step": "symbols", "seconds": 13.0, "period": 2000, "width": 20}],
     # the carrier alone: the level every second
     "carrier": [{"step": "idle", "seconds": 10.0}],
+    # two boards: this one sends BPSK data continuously (25 Mbaud), or checks the other's (MONDAY.md 5)
+    "send": [{"step": "data_tx", "seconds": 30.0, "period": 4}],
+    "check": [{"step": "data_rx", "seconds": 30.0, "period": 4}],
     # where each window comparator's input sits for every state of A3, then A2 (the margins on this lock point)
     "levels": [{"step": "levels", "scheme": "A3"}, {"step": "idle", "seconds": 3.0}, {"step": "levels", "scheme": "A2"},
                {"step": "idle", "seconds": 3.0}],
@@ -379,6 +382,84 @@ class SelfTest:
             self._do(start)
         return {"step": "data", "period": period, "mbaud": mbaud, "seconds": seconds, "side": side, "interrupted": not ok,
                 "bits": bits, "errors": errors, "ber": (errors / bits) if bits else None, "skew_samples": skew}
+
+    # ---- two boards (MONDAY.md 5): one sends, the other checks ----
+    def data_tx(self, st):
+        """BPSK PRBS15 sent continuously for another board to check (plan 'send'): no check here, no gaps"""
+        period, seconds = int(st.get("period", 4)), float(st["seconds"])
+        L = getattr(self.server, "linkd", None)
+        losses0 = L.counts["losses"] if L else 0
+
+        def start(cl):
+            cl.tx_points(point_code(1, 0), [point_code(1, 0), point_code(-1, 0)])
+            cl.tx_timing(period=period)
+            cl.tx_prbs(15)
+            cl.tx_mode("prbs", n=2)
+            cl.tx_go()
+            self._busy = True
+            return cl.t_clk
+
+        def stop(cl):
+            cl.tx_stop()
+            cl.hold_point(1, 0)
+            self._busy = False
+        t_clk = self._do(start)
+        mbaud = 1e-6 / (period * t_clk)
+        self._say("data", "BPSK PRBS15 data at %.3g Mbaud sent for the other board to check, %g s" % (mbaud, seconds),
+                  period=period, mbaud=mbaud, seconds=seconds)
+        try:
+            ok = self._watch(seconds, losses0)
+        finally:
+            self._do(stop)
+        return {"step": "data_tx", "period": period, "mbaud": mbaud, "seconds": seconds, "interrupted": not ok}
+
+    def data_rx(self, st):
+        """the other board's BPSK PRBS15 checked (plan 'check'), the timing recovered from its own edges (ber_cdr.v):
+        this board's TX the carrier alone.  The 180-degree ambiguity is the two boards' (which lock point each sits
+        on), so the first 0.2 s picks the polarity: a check reading nearly every bit wrong is the other one"""
+        period, seconds = int(st.get("period", 4)), float(st["seconds"])
+        L = getattr(self.server, "linkd", None)
+        losses0 = L.counts["losses"] if L else 0
+        inv = {"v": False}
+
+        def start(cl):
+            cl.hold_point(1, 0)
+            cl.ber_config(15, None, invert=inv["v"], enable=True, cdr=True, period=period)
+            self._busy = True
+            return cl.t_clk
+
+        def read(cl):
+            cl.ber_config(15, None, invert=inv["v"], enable=False, cdr=True, period=period)
+            return cl.ber(), cl.cdr_state()
+
+        def stop(cl):
+            cl.ber_config(15, None, invert=inv["v"], enable=False, cdr=True, period=period)
+            self._busy = False
+        t_clk = self._do(start)
+        time.sleep(0.2)
+        r, _ = self._do(read)
+        if r.get("bits") and (r.get("mismatches") or 0) / 3.0 > 0.4 * r["bits"]:
+            inv["v"] = True
+        mbaud = 1e-6 / (period * t_clk)
+        self._say("data", "the other board's BPSK PRBS15 data at %.3g Mbaud checked, the timing recovered, %g s" % (
+            mbaud, seconds), period=period, mbaud=mbaud, seconds=seconds)
+        bits, errors, skew, ok = 0, 0.0, None, True
+        t_end = time.time() + seconds
+        try:
+            while True:
+                self._do(start)
+                ok = self._watch(min(1.0, max(0.05, t_end - time.time())), losses0)
+                r, c = self._do(read)
+                bits += r.get("bits") or 0
+                errors += (r.get("mismatches") or 0) / 3.0
+                skew = c.get("skew_samples", skew)
+                if not ok or self._aborted or time.time() > t_end - 0.05:
+                    break
+        finally:
+            self._do(stop)
+        return {"step": "data_rx", "period": period, "mbaud": mbaud, "seconds": seconds, "inverted": inv["v"],
+                "interrupted": not ok, "bits": bits, "errors": errors, "ber": (errors / bits) if bits else None,
+                "skew_samples": skew}
 
     # ---- the loop ----
     def run(self):
