@@ -53,6 +53,9 @@ class Dashboard:
         self.period_s = period_s
         self.slow_every = slow_every
         self.hist = collections.deque(maxlen=int(keep_s / period_s) + 10)
+        # each look as the JSON written to the log, kept beside it: the page's history is sent from these strings, not
+        # encoded again for every request (a 10-minute history cost the PYNQ 2.3 s, and the looks fell late meanwhile)
+        self.hist_json = collections.deque(maxlen=self.hist.maxlen)
         self.log_dir = log_dir or os.path.join(HERE, "dashboard")
         self.keep_days, self.min_free_mb = keep_days, min_free_mb
         self._day = None                 # the day of the last write (a new one prunes the old logs)
@@ -252,6 +255,7 @@ class Dashboard:
                             self.scopes.append(d["scope"])
                         else:
                             self.hist.append(d)
+                            self.hist_json.append(line.decode(errors="replace").strip())
                             n_looks += 1
             except OSError:
                 pass
@@ -415,11 +419,13 @@ class Dashboard:
             t0 = time.time()
             r = self.look()
             self.n += 1
+            js = json.dumps(r, default=str)
             self.hist.append(r)
-            self.write(r)
+            self.hist_json.append(js)
+            self.write(r, js)
             time.sleep(max(0.05, self.period_s - (time.time() - t0)))
 
-    def write(self, r):
+    def write(self, r, js=None):
         try:
             os.makedirs(self.log_dir, exist_ok=True)
             day = time.strftime("%Y-%m-%d", time.localtime(r["t"]))
@@ -427,7 +433,7 @@ class Dashboard:
                 self._day = day
                 self.prune(day)
             with open(os.path.join(self.log_dir, day + ".jsonl"), "a") as f:
-                f.write(json.dumps(r, default=str) + "\n")
+                f.write((js or json.dumps(r, default=str)) + "\n")
         except OSError:
             pass
 
@@ -456,10 +462,14 @@ class Dashboard:
             pass
 
     def history(self, s):
+        """the last s seconds' looks as one JSON array, from the strings kept (at most 1500 to the page)"""
         t_min = time.time() - s
-        out = [r for r in list(self.hist) if r["t"] >= t_min]
-        step = max(1, len(out) // 1500)              # at most 1500 points to the page
-        return out[::step] + ([out[-1]] if out and (len(out) - 1) % step else [])
+        hs, js = list(self.hist), list(self.hist_json)
+        k0 = next((k for k, r in enumerate(hs) if r["t"] >= t_min), len(hs))
+        out = js[k0:]
+        step = max(1, len(out) // 1500)
+        pick = out[::step] + ([out[-1]] if out and (len(out) - 1) % step else [])
+        return "[" + ",".join(pick) + "]"
 
     # ---- the web page ----
     def http(self):
@@ -496,23 +506,31 @@ class Dashboard:
                     st = getattr(dash.server, "selftest", None)
                     self.send(200, json.dumps(st.state() if st else {"on": False, "absent": True}, default=str), "application/json")
                 elif u.path == "/api/scope":
-                    s = float(parse_qs(u.query).get("s", ["7200"])[0])
+                    # the latest capture of each kind (symbols, data, other): the page draws no more (all 40 were 2.8 MB)
+                    q = parse_qs(u.query)
+                    s = float(q.get("s", ["7200"])[0])
                     t0 = time.time() - s
-                    self.send(200, json.dumps([c for c in dash.scopes if c.get("t", 0) >= t0], default=str), "application/json")
+                    cs = [c for c in dash.scopes if c.get("t", 0) >= t0]
+                    if q.get("all", ["0"])[0] != "1":
+                        last = {}
+                        for c in cs:
+                            last[c.get("kind", "")] = c
+                        cs = sorted(last.values(), key=lambda c: c["t"])
+                    self.send(200, json.dumps(cs, default=str), "application/json")
                 elif u.path == "/api/notes":
                     s = float(parse_qs(u.query).get("s", ["7200"])[0])
                     t0 = time.time() - s
                     ns = [dict(n, t_end=dash.note_end(n)) for n in dash.notes]
                     self.send(200, json.dumps([n for n in ns if (n["t_end"] or 1e18) >= t0], default=str), "application/json")
                 elif u.path == "/api/now":
-                    self.send(200, json.dumps(dash.hist[-1] if dash.hist else {}, default=str), "application/json")
+                    self.send(200, dash.hist_json[-1] if dash.hist_json else "{}", "application/json")
                 elif u.path == "/api/events":
                     s = float(parse_qs(u.query).get("s", ["7200"])[0])     # the page's span (it listed only the last 30)
                     t0 = time.time() - s
                     self.send(200, json.dumps([e for e in dash.events if e["t"] >= t0][-3000:], default=str), "application/json")
                 elif u.path == "/api/history":
                     s = float(parse_qs(u.query).get("s", ["600"])[0])
-                    self.send(200, json.dumps(dash.history(s), default=str), "application/json")
+                    self.send(200, dash.history(s), "application/json")
                 else:
                     self.send(404, "not here", "text/plain")
 

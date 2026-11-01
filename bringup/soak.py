@@ -515,10 +515,20 @@ class Soak:
         """one of the B210's interferers, as the kinds of the same name send it; announce: its own note, for the page's
         B210 lane (a data run's interferer, inside the run's note)"""
         mhz = self.mhz
+        note = {}
         if announce:
+            # ended when the radio stops: it starts streaming up to a second after the call, so a note ended at its start
+            # plus its length closed early (a scope capture of the CW's beat was captioned 'the B210 was quiet', 22:36)
             t = time.time()
-            post("/api/note", {"text": describe(kind, p), "kind": "intervention", "source": "soak.py", "t_start": t,
-                               "t_end": t + p["seconds"], "b210": dict(p, kind=kind)})
+            note = post("/api/note", {"text": describe(kind, p), "kind": "intervention", "source": "soak.py", "t_start": t,
+                                      "t_end": t + p["seconds"] + 5.0, "b210": dict(p, kind=kind)})
+        try:
+            self._b210(kind, p, mhz)
+        finally:
+            if note.get("id"):
+                post("/api/note", {"id": note["id"], "end": True})
+
+    def _b210(self, kind, p, mhz):
         if kind == "cw_far":
             self.bb.tone(mhz + p["off_mhz"], gain=p["gain"], seconds=p["seconds"])
         elif kind == "cw_near":
@@ -557,16 +567,9 @@ class Soak:
         def later(dt, name):
             if dt is not None:
                 threading.Timer(dt, lambda: marks.__setitem__("shot", shot(name))).start()
-        if kind == "cw_far":
-            later(shots_at and shots_at * p["seconds"], "cw_far")
-            self.bb.tone(mhz + p["off_mhz"], gain=p["gain"], seconds=p["seconds"])
-        elif kind == "cw_near":
-            later(shots_at and shots_at * p["seconds"], "cw_near")
-            self.bb.tone(mhz + 2.0, gain=p["gain"], seconds=p["seconds"], offset_hz=p["off_khz"] * 1e3 - 2e6, rate=5e6)
-        elif kind == "bursts":
-            later(shots_at and shots_at * p["seconds"], "bursts")
-            self.bb.bursts(mhz + p["off_mhz"], gain=p["gain"], bw_mhz=p["bw_mhz"], on_ms=p["on_ms"], off_ms=p["per_ms"] - p["on_ms"],
-                           seconds=p["seconds"], seed=p["seed"])
+        if kind in ("cw_far", "cw_near", "bursts"):
+            later(shots_at and shots_at * p["seconds"], kind)
+            self.b210(kind, p, announce=True)
         elif kind == "release":
             B = self.board()
             vc_lock = r0["vc_lock"]
@@ -650,8 +653,8 @@ class Soak:
         if r0 is None:
             return None
         # an end 10 min on, in case this program dies before it ends the note (an open one would read 'under way' for ever)
-        note = post("/api/note", dict({"text": describe(kind, p) + " (soak #%d)" % n, "kind": "intervention", "source": "soak.py",
-                                       "t_end": time.time() + 600}, **({"b210": dict(p, kind=kind)} if kind in ("cw_far", "cw_near", "bursts") else {})))
+        note = post("/api/note", {"text": describe(kind, p) + " (soak #%d)" % n, "kind": "intervention", "source": "soak.py",
+                                  "t_end": time.time() + 600})
         t0 = time.time()
         err = None
         try:

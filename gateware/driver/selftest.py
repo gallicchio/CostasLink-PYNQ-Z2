@@ -78,7 +78,7 @@ class SelfTest:
 
     # ---- for the page ----
     def state(self):
-        return {"on": self.on, "plan": self.plan_name, "now": dict(self.now), "results": list(self.results)[-6:]}
+        return {"on": self.on, "plan": self.plan_name, "now": dict(self.now), "results": list(self.results)[-3:]}
 
     def set(self, d):
         """POST /api/selftest: {"on": bool, "plan": name, "holdover": bool}"""

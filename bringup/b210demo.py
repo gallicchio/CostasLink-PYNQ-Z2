@@ -14,7 +14,6 @@ the board's carrier at RX ANT over the bench's 30-40 cm, BRINGUP_LOG 4.2).  The 
 self-test (selftest.py) keep running: this program never talks to the board, only to its page.
 """
 import argparse
-import json
 import os
 import random
 import sys
@@ -28,22 +27,12 @@ import soak as S                                     # noqa: E402
 DASH = S.DASH
 
 
-def announce(kind, p):
-    t = time.time()
-    body = {"text": S.describe(kind, p), "kind": "intervention", "source": "b210demo.py", "t_start": t, "t_end": t + p["seconds"],
-            "b210": dict(p, kind=kind)}
-    try:
-        urllib.request.urlopen(urllib.request.Request(DASH + "/api/note", data=json.dumps(body).encode(), method="POST"), timeout=5)
-    except Exception as e:                                       # noqa: BLE001 - the radio goes on regardless
-        print("the page did not take the note: %s" % e, flush=True)
-
-
 def send(bb, mhz, kind, p):
+    """the burst, announced on the page for as long as the radio really sends it (soak.Soak.b210)"""
     print("%s %s" % (time.strftime("%H:%M:%S"), S.describe(kind, p)), flush=True)
-    announce(kind, p)
     s = S.Soak.__new__(S.Soak)
     s.mhz, s.bb = mhz, bb
-    s.b210(kind, p)
+    s.b210(kind, p, announce=True)
 
 
 def main(argv):
