@@ -75,6 +75,7 @@ class Dashboard:
         self.events = collections.deque(maxlen=5000)   # what happened, in words, for the page's list (2 h of a busy test)
         self.notes = collections.deque(maxlen=500)     # notes posted by experiments: interventions, explanations
         self.scopes = collections.deque(maxlen=40)     # I MON / Q MON captures a bench test posted (POST /api/scope)
+        self._scope_logged = {}                        # kind -> when one was last written to the day log
         self._lk = None                                 # linkd's counts at the last look
 
     # ---- the looks ----
@@ -220,7 +221,13 @@ class Dashboard:
              "b210": str(d.get("b210", ""))[:300],
              "i": [round(float(v), 4) for v in d["i"][:n]], "q": [round(float(v), 4) for v in d["q"][:n]]}
         self.scopes.append(c)
-        self.write({"t": c["t"], "scope": c})
+        # into the day log at most once a minute a kind, thinned to 1 500 samples: every capture whole was 55 MB of a
+        # 90 MB day (the page shows the last of each kind from memory; restore() needs no more)
+        last = self._scope_logged.get(c["kind"], 0.0)
+        if c["t"] - last >= 60.0:
+            self._scope_logged[c["kind"]] = c["t"]
+            k = max(1, n // 1500)
+            self.write({"t": c["t"], "scope": dict(c, i=c["i"][::k], q=c["q"][::k], dt_ns=c["dt_ns"] * k)})
         return {"t": c["t"], "n": n}
 
     def event(self, e):
