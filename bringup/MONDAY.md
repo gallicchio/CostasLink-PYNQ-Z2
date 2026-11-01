@@ -20,8 +20,13 @@ Open the page full screen; with **http://192.168.8.142:8080/?controls=1** it has
 activity, its signal, its bits and symbols and the scope's views first.  What to show, in order:
 1. **The status card's 'Now' line and the lanes 'What is being done'**: the link alternates the carrier alone, single
    symbols (orange: 'idle to one of N', N = 1, 2, 4: A1, A1w, A2, A3) and data (blue: BPSK PRBS15, every bit checked).
-2. **Single symbols**: 'how each was decided' (right / wrong / false / missed each second), 'latency' (about 70-80 ns,
-   the receiver's settling included), and the scope's raw and aligned views of the symbols' I and Q.
+2. **Single symbols**: 'how each was decided' (each symbol sent is right, wrong, undecided or missed; false decisions
+   besides: from firmware ID 10 they add up exactly), 'latency' (about 70-80 ns, the receiver's settling included), the
+   last run's spread with its table of states sent against states decided, and the scope's raw and aligned views of the
+   symbols' I and Q.  **Latency against certainty** (a minute, the B210 quiet): `{"plan": "a3delay"}` decides A3 at
+   10, 15, 20, 25, 30, 40, 60 ns after its first comparator fires: the latency panel climbs a staircase 69-119 ns, and
+   below 25 ns one corner of the four goes 'undecided' (its second comparator has not crossed yet; which corner depends
+   on which of its two lock points the loop sits on: REVB 32).  Back with `{"plan": "cycle"}`.
 3. **Data**: 'Data: bit errors' (green ticks: seconds without an error), the timing recovery's 'comparator skew'
    (judged against the bit), the scope's raw data and its eye.
 4. **Interference** from the B210, one at a time, each shown on the page's B210 lane:
@@ -34,7 +39,8 @@ activity, its signal, its bits and symbols and the scope's views first.  What to
 5. **The physical path**, the B210 quiet: a metal plate between the antennas, then moving an antenna.  For a live
    level every second switch the self-test to the carrier alone (`{"plan": "carrier"}`: RX ANT and the demodulator in
    dBm each second); for live bit errors to `{"plan": "data"}` (BPSK at 25 Mbaud, a 2 s look at the level every 30 s).
-   A short block (under 44 ms) rides through; a longer one loses the lock and linkd brings it back in 2-3 s after the
+   A weaker or stronger path moves the receiver's decision windows with it ('What happened': 'the receiver's decision
+   windows followed it'), so single symbols keep being decided down to the noise.  A short block (under 44 ms) rides through; a longer one loses the lock and linkd brings it back in 2-3 s after the
    path clears ('Lost', 'Recovering', 'Locked' on the card, a red stretch in 'Lock, over time').  With the holdover
    on, every block up to about 100 s rides through as 'Carrier interrupted: holding' (BRINGUP_LOG 4.22; half of them
    come back half a cycle over, listed as a slip): turning it on is your call, and the demo can show both:
