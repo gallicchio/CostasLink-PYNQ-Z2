@@ -14,6 +14,12 @@ Before they arrive (5 min, from the bench PC):
     # the bench scope photographed in each symbols and data step, posted to the page
     python3 bringup/scopewatch.py &
 
+If the PYNQ does not answer (it hung once on a reboot, 2026-11-01: BRINGUP_LOG 4.27), it is on the E3646A's output 2 and
+the board on output 1: `python3 bringup/bench.py --board A psu cycle --volts 5.3 --amps 1.5` takes the board to 0 V,
+switches both off, waits 10 s, and brings them back in order (the PYNQ, its server answering with our overlay, about
+90 s, then the board).  Stop the watchdog first and start it again after (`bench.py --board A --stage watch run watch
+--hours 64 --pynq-misses 6 --amps-hi 1.5`).
+
 Open the page full screen; with **http://192.168.8.142:8080/?controls=1** it has buttons for the self-test's plan
 (off, rounds, single symbols, data, carrier alone) and the holdover (on, off), in place of the `curl` commands below
 (the plain address stays read-only for anyone else watching); add `&view=demo` (or `?view=demo`) to put the link's
