@@ -95,7 +95,7 @@ driver files beside it; since 2026-10-31 12:55 the boot service `costaslink-netb
 | 16:13 | `b538bed` | panels grey while the board is too busy to read; a loop held off the lock said to be held by something; the S-curve's points while not locked open; no drift advice with no carrier; temperature good to 70 C; logs pruned at 14 days; notes never ended expire after an hour | `soak.py`'s photographs, 4.20 | restart |
 | 16:33 | `8e38159` | linkd's modes in words; why a level is not measurable while locked; what the lock monitor (the LEDs) counts | the same | page |
 | 17:32 | `8ffe3c9` | 'Recovering' red on the timeline; no '-0' phase | the same | page |
-| 17:45 | `2b6dbac` | the carrier's level from linkd's measured middles and the two lock points' learned offset (it read 0.5-1.3 dB apart by side); half-cycle slips listed in 'What happened' | `soak.py`'s check 'as_before', 4.21 | restart |
+| 17:45, 18:12 | `2b6dbac` | the carrier's level from linkd's measured middles and the two lock points' learned offset (it read 0.5-1.3 dB apart by side; 17:45); half-cycle slips listed in 'What happened' (18:12) | `soak.py`'s check 'as_before', 4.21 | restart |
 
 ## Before power (2026-10-28)
 
