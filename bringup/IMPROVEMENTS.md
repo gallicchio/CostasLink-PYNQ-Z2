@@ -37,6 +37,13 @@ it (a BRINGUP_LOG row, a REVB row).  The version table in BRINGUP_LOG ('What run
 | linkd lowers the receiver's windows with a weaker carrier (set at setup for the level then: 2-4 dB more attenuation lost 70-74 % of A2's and A3's symbols), never above setup's (raised with a stronger one they lost A3's corners) | `linkd.py`, `dashboard.py` ('What happened' says so) | REVB 33, 4.24 |
 | the netbus client connects again after a server restart | `netbus.py` | soak12 #12 |
 | the latency's spread per symbol run (a histogram), the level read in gaps of the data, the demonstration's controls and order | `selftest.py`, `dashboard.*` | 2026-10-31 22:57-23:24 |
+| on-off keying checked on the I window on the carrier's side (RX_BER_CFG[31:30]), the self-test's OOK and QPSK data in each round; OOK read at half the leg during its step (the calibration's quarter gave 4e-7 at 25 Mbaud) | ID 12, `selftest.py` | 4.27-4.29 |
+| **FSK data**: TX mode 4 with the PRBS as source, a turn of the N points a bit, its direction the bit (continuous phase, the tones +-1 / (N TX_PERIOD)); received by the B210 only | ID 13, `tx_engine.v` | 4.29: 25 kbaud-2.5 Mbaud, 1.4e6 bits, no error |
+| the PYNQ on the bench supply's output 2, the board switched by its own output's voltage, on only with the PYNQ's server up; `bench.py psu up / cycle`; the watchdog power-cycles a silent PYNQ at most 3 times, then switches both off and leaves them off | `bench.py`, `stages.py` | 4.27 (a reboot that hung) |
+| the board's service after the image's `bootpy.service` (its boot.py loaded the base overlay over ours on a cold boot) | `install_service.sh` | 4.27 |
+| linkd learns the carrier's level only while the self-test is not sending (OOK's nulls passed for the idle: the windows moved and the calibration was dropped, a quarter of a 103 mV leg for a 173 mV carrier) | `linkd.py` | 4.29's day log, 11:23 and 11:41 |
+| the page: the live counts read with the matrix first (never more right than sent), the eye's caption from the capture's own levels | `dashboard.*` | the photographs of 11:44 and 11:54 |
+| the B210 as a full link partner: BPSK, OOK, QPSK and FSK received in software (`sdr_rx.py`), its own loop (`b210link.py self`), its stream's buffers long enough not to underflow | `bringup/` | 4.29 |
 
 ### Next (in order of what it would change)
 
