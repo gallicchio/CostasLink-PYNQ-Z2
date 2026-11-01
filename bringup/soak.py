@@ -389,9 +389,11 @@ def audit(t0, t_end, t_back, note_id=None, kind=None, params=None, marks=None, t
         rxl = [r["rx"] for r in real if r.get("rx") and ds <= r["t"] <= de + 1]
         check("symbols_on_page", bool(rxl), "the page read no decisions while the symbols ran")
         if rxl:
+            # right and missed end with the transmitter; false decisions (and so 'events') go on while the receiver is
+            # on and the interference lasts, after the run's own read (A1w under bursts: 22 000 more, soak10 #7)
             pr, keys = rxl[-1], ("events", "right", "false", "missed")
-            check("symbols_page_vs_run", all(pr.get(k) == res.get(k) for k in keys),
-                  "the page's last look %s, the run's %s" % ({k: pr.get(k) for k in keys}, {k: res.get(k) for k in keys}))
+            ok = all(pr.get(k) == res.get(k) for k in ("right", "missed")) and all((pr.get(k) or 0) >= (res.get(k) or 0) for k in ("events", "false"))
+            check("symbols_page_vs_run", ok, "the page's last look %s, the run's %s" % ({k: pr.get(k) for k in keys}, {k: res.get(k) for k in keys}))
         if not params.get("with") and res.get("events"):
             check("symbols_clean", res["right"] >= 0.999 * res["events"] and (res.get("false") or 0) <= max(2, 1e-4 * res["events"]),
                   "no interference: %s sent, %s right, %s wrong, %s false, %s missed" % tuple(res.get(k) for k in ("events", "right", "symbol_errors", "false", "missed")))
@@ -493,8 +495,8 @@ def describe(kind, p):
 
 
 class Soak:
-    def __init__(self, mhz):
-        self.mhz = mhz
+    def __init__(self, mhz, world=False):
+        self.mhz, self.world = mhz, world
         self._A = None
         from b210 import B210
         self.bb = B210()
@@ -505,11 +507,18 @@ class Soak:
             import autolock as A
             self._A = A.LinkdTest(b210=False)
             self._A.bb = self.bb
+            if self.world:
+                self._A.cl.bus.nodrive = True             # these requests stand in for the world: linkd stays on duty
         return self._A
 
-    def b210(self, kind, p):
-        """one of the B210's interferers, as the kinds of the same name send it"""
+    def b210(self, kind, p, announce=False):
+        """one of the B210's interferers, as the kinds of the same name send it; announce: its own note, for the page's
+        B210 lane (a data run's interferer, inside the run's note)"""
         mhz = self.mhz
+        if announce:
+            t = time.time()
+            post("/api/note", {"text": describe(kind, p), "kind": "intervention", "source": "soak.py", "t_start": t,
+                               "t_end": t + p["seconds"], "b210": dict(p, kind=kind)})
         if kind == "cw_far":
             self.bb.tone(mhz + p["off_mhz"], gain=p["gain"], seconds=p["seconds"])
         elif kind == "cw_near":
@@ -525,7 +534,7 @@ class Soak:
         try:
             time.sleep(min(1.0, 0.3 * p["seconds"]))
             old = sc.q(":TIMebase:SCALe?")
-            tdiv = 1e-6 if kind == "data" else max(1e-6, min(50e-6, p["period"] * 1e-8))
+            tdiv = max(1e-7, 4 * p["period"] * 1e-8) if kind == "data" else max(1e-6, min(50e-6, p["period"] * 1e-8))
             sc.timebase(scale=tdiv)
             time.sleep(0.3)
             try:
@@ -583,7 +592,7 @@ class Soak:
             w = p.get("with")
             th = None
             if w:
-                th = threading.Thread(target=self.b210, args=(w["kind"], w), daemon=True)
+                th = threading.Thread(target=self.b210, args=(w["kind"], w, True), daemon=True)
                 th.start()
                 time.sleep(0.8)                                  # the B210's stream running before the data starts
                 marks["interference"] = time.time()
@@ -611,8 +620,13 @@ class Soak:
             if th:
                 th.join(timeout=p["seconds"] + 30)
             if cap.get("i"):
+                w_ = p.get("with")
                 q = post("/api/scope", {"t": cap["t"], "text": describe(kind, p) + " (soak #%d)" % getattr(self, "_n", 0), "source": "soak.py",
-                                        "dt_ns": cap["dt_ns"], "i0": r0.get("i0"), "q0": r0.get("q0"), "i": cap["i"], "q": cap["q"]})
+                                        "dt_ns": cap["dt_ns"], "i0": r0.get("i0"), "q0": r0.get("q0"), "i": cap["i"], "q": cap["q"],
+                                        "kind": kind, "period_ns": p["period"] * 10.0, "width_ns": p.get("width", 0) * 10.0 or None,
+                                        "scheme": p.get("scheme", ""), "leg": (r0.get("leg_ref_mv") or 160) / 1000.0,
+                                        "link": describe(kind, dict(p, **{"with": None})).replace(", no interference", "") + " (soak.py)",
+                                        "b210": describe(w_["kind"], w_).replace("B210: ", "sent ", 1) if w_ else "quiet"})
                 marks["scope"] = {"t": cap["t"], "n": len(cap["i"]), "posted": bool(q)}
             elif cap.get("error"):
                 marks["scope"] = {"error": cap["error"]}
@@ -633,8 +647,8 @@ class Soak:
         if r0 is None:
             return None
         # an end 10 min on, in case this program dies before it ends the note (an open one would read 'under way' for ever)
-        note = post("/api/note", {"text": describe(kind, p) + " (soak #%d)" % n, "kind": "intervention", "source": "soak.py",
-                                  "t_end": time.time() + 600})
+        note = post("/api/note", dict({"text": describe(kind, p) + " (soak #%d)" % n, "kind": "intervention", "source": "soak.py",
+                                       "t_end": time.time() + 600}, **({"b210": dict(p, kind=kind)} if kind in ("cw_far", "cw_near", "bursts") else {})))
         t0 = time.time()
         err = None
         try:
@@ -768,12 +782,17 @@ def main(argv):
     ap.add_argument("--shots", type=float, default=0.3)
     ap.add_argument("--kinds", nargs="*", default=list(KINDS))
     ap.add_argument("--holdover", action="store_true")
+    ap.add_argument("--world", action="store_true", help="the board's self-test runs: only the B210 and the world's stand-ins "
+                    "(the carrier cut, the attenuator stepped: a blocked path, a moved antenna) without pausing linkd")
     a = ap.parse_args(argv)
     if a.what == "audit":
         audit_file(a.file)
         return
     seed = a.seed if a.seed is not None else int(time.time()) % 100000
-    Soak(a.mhz).run(a.hours, tuple(a.gap), seed, a.shots, a.kinds, a.holdover)
+    kinds = a.kinds
+    if a.world and kinds == list(KINDS):
+        kinds = ["cw_far", "cw_near", "bursts", "carrier_off", "attn"]
+    Soak(a.mhz, world=a.world).run(a.hours, tuple(a.gap), seed, a.shots, kinds, a.holdover)
 
 
 if __name__ == "__main__":

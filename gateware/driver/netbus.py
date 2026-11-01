@@ -134,7 +134,8 @@ class Server:
             req = json.loads(line)
             with self.lock:
                 self.requests += 1
-                if not (req.get("op") in OBSERVE_OPS or (req.get("op") == "call" and req.get("name") in OBSERVE_CALLS)):
+                # 'nodrive': a test standing in for the world (a blocked path, a moved antenna) leaves linkd on duty
+                if not (req.get("nodrive") or req.get("op") in OBSERVE_OPS or (req.get("op") == "call" and req.get("name") in OBSERVE_CALLS)):
                     self.last = {"peer": peer, "op": req.get("op"), "name": req.get("name") or req.get("reg"), "t": time.time()}
                 result = self.op(req)
             return json.dumps({"ok": True, "result": result}, default=_jsonable)
@@ -165,16 +166,24 @@ class Server:
 
         return TCP((bind, port), Handler)
 
-    def serve(self, bind="0.0.0.0", port=PORT, dashboard=None, linkd=False):
+    def serve(self, bind="0.0.0.0", port=PORT, dashboard=None, linkd=False, selftest=False):
         """dashboard: a port for the read-only status page (dashboard.py), or None; linkd: the link's automatic
-        recovery (linkd.py), active whenever no client has driven the board for a minute"""
+        recovery (linkd.py), active whenever no client has driven the board for a minute; selftest: the link's own
+        rounds of single symbols and data (selftest.py), on or off from the page (POST /api/selftest)"""
         self.linkd = None
+        self.selftest = None
         if linkd:
             try:
                 from linkd import LinkD
                 self.linkd = LinkD(self).start()
             except Exception as e:                                   # noqa: BLE001 - the driver is served regardless
                 print("no linkd: %s: %s" % (type(e).__name__, e), flush=True)
+        if selftest:
+            try:
+                from selftest import SelfTest
+                self.selftest = SelfTest(self).start()
+            except Exception as e:                                   # noqa: BLE001 - the driver is served regardless
+                print("no selftest: %s: %s" % (type(e).__name__, e), flush=True)
         if dashboard:
             try:
                 from dashboard import Dashboard
@@ -207,8 +216,11 @@ class NetBus:
         self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.f = self.sock.makefile("rwb")
         self.lock = threading.Lock()
+        self.nodrive = False             # True: these requests stand in for the world and do not pause linkd
 
     def request(self, req, timeout=None):
+        if self.nodrive:
+            req = dict(req, nodrive=True)
         with self.lock:
             if timeout is not None:
                 self.sock.settimeout(timeout)
@@ -312,6 +324,7 @@ def main():
     s.add_argument("--port", type=int, default=PORT)
     s.add_argument("--dashboard", type=int, default=None, metavar="PORT", help="also serve the status page (dashboard.py)")
     s.add_argument("--linkd", action="store_true", help="the link's automatic recovery (linkd.py) while no client drives")
+    s.add_argument("--selftest", action="store_true", help="the link's own rounds of symbols and data (selftest.py)")
     p = sub.add_parser("ping", help="on the PC: is the server there, and what does the board say")
     p.add_argument("host")
     p.add_argument("--port", type=int, default=PORT)
@@ -324,7 +337,7 @@ def main():
         else:
             from costaslink import PynqBus
             bus = PynqBus(a.bit, download=not a.no_download)
-        Server(CostasLink(bus)).serve(a.bind, a.port, dashboard=a.dashboard, linkd=a.linkd)
+        Server(CostasLink(bus)).serve(a.bind, a.port, dashboard=a.dashboard, linkd=a.linkd, selftest=a.selftest)
     else:
         with NetBus(a.host, a.port, timeout=10) as nb:
             print(json.dumps(nb.ping(), indent=1))

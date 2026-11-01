@@ -17,6 +17,7 @@ h1 { font-size:18px; margin:0 12px 0 0; }
 #status .word { font-size:26px; font-weight:700; grid-row:span 3; align-self:center; }
 #status .todo { font-weight:600; }
 #status .small { font-size:13px; color:var(--ink2); }
+#status .now { font-size:15px; }
 .ranges { margin:0 16px 8px; display:flex; gap:6px; flex-wrap:wrap; }
 .ranges button { border:1px solid var(--line); background:var(--card); border-radius:6px; padding:4px 10px; cursor:pointer; }
 .ranges button.on { background:var(--ink); color:#fff; }
@@ -40,7 +41,7 @@ dialog .k { font-weight:700; }
 </style></head><body>
 <header><h1>CostasLink link status</h1><span class="meta" id="meta">connecting...</span></header>
 <div id="status"><div class="word" id="word">...</div><div id="why"></div><div class="todo" id="todo"></div>
-<div class="small" id="small"></div></div>
+<div class="now" id="nowline"></div><div class="small" id="small"></div></div>
 <div class="ranges"><span class="meta" style="align-self:center">show the last</span>
 <button data-s="600" class="on">10 min</button><button data-s="3600">1 hour</button><button data-s="7200">2 hours</button>
 <span class="meta" style="align-self:center;margin-left:12px"><span style="color:var(--note)">&#9632;</span> purple spans: an
@@ -94,6 +95,8 @@ const HELP_BANDS = "<p>The bands behind the plot say how good a value is: <span 
   "<span style='color:" + C.warn + "'>yellow</span> marginal, <span style='color:" + C.bad + "'>red</span> bad. A value beyond the " +
   "plot's range is drawn on its edge as &#9650; (above) or &#9660; (below); a gap in the trace means no reading was taken.</p>";
 const PANELS = [
+ {id:"activity_lanes", title:"What is being done: the link and the B210", kind:"activity",
+  help:"<p>Two lanes over the same time as the other plots. <b>The link</b>, read from the board's own transmitter and receiver every second (whoever drives it): the carrier alone (grey), single symbols from the idle to one of 1, 2 or 4 states and back (orange: the latency and decision tests), data streaming (blue: a pseudo-random string of bits, each checked), the carrier switched off (pale), the loop held by a program (dark grey). <b>The B210</b>, the bench's radio, as the programs that drive it announce it: a CW some MHz away (teal), a CW close to the carrier (pink), bursts of noise (brown); empty: quiet.</p><p>Read the other plots against these lanes: bit errors and wrong decisions should come only with the B210 busy, a weak signal, or a blocked path.</p>"},
  {id:"state", title:"Lock, over time", kind:"timeline",
   help:"<p>Each moment coloured by the receiver's state: green locked; yellow interference (the oscillator still on the carrier), holding or settling; red lost (the oscillator off the carrier) or no carrier; grey: no reading. Purple bars above the strip: interventions someone announced, so a red stretch under one was expected.</p><p class='k'>Good: solid green.</p><p>Red stretches are losses; the board's recovery should end each within seconds. Many unexplained red stretches mean strong interference or a weak signal: see the other plots for which.</p>"},
  {id:"offset", title:"Frequency offset from the carrier", unit:"kHz", get:r=>r.state == "held" ? null : r.off_khz, lo:-150, hi:150, symlog:5,
@@ -129,12 +132,14 @@ const PANELS = [
   bands:[[0,1,"good"],[1,10,"warn"],[10,100,"bad"]],
   help:"<p>The share of the last second the interference hold kept the loop frozen (when it is switched on).</p><p class='k'>Good: under 1 %.</p><p>The hold keeps a strong interferer from dragging the loop off, but while held the link's decisions slowly lose their phase, so long holds cost data. <b>Often high:</b> a persistent interferer nearby.</p>"},
  {id:"skew", title:"Timing: comparator skew", unit:"ns", get:r=>r.skew_ns, lo:0, hi:6, absent:"measured only while a data check runs; the link now carries only its idle carrier",
-  bands:[[0,1.5,"good"],[1.5,3.5,"warn"],[3.5,6,"bad"]],
-  help:"<p>When a timing-recovered data check runs: how much later the receiver's sign comparator switches one way than the other (its duty-cycle distortion). It eats into the eye.</p><p class='k'>Good: under 1.5 ns.</p><p>Shown only while data is being checked: the link left alone carries only its idle carrier, so this plot is empty then, and that is fine. Large values come from the comparator's threshold sitting off the signal's middle (REVB 30).</p>"},
- {id:"ber", title:"Data: bit errors", unit:"", get:r=>r._ber ? r._ber.plot : null, lo:1e-9, hi:0.5, log:true, ticks:[1e-9, 1e-6, 1e-3, 0.5],
+  // judged against the bit, not in ns: 3.5 ns is 17 % of a bit at 50 Mbaud and under 1 % at 2 Mbaud
+  judge:r=>{ const T = r && r.tx && r.tx.period ? r.tx.period * 10 : null; if (r.skew_ns == null || !T) return null; const f = r.skew_ns / T; return f < 0.1 ? "good" : f < 0.25 ? "warn" : "bad"; },
+  help:"<p>When a timing-recovered data check runs: how much later the receiver's sign comparator switches one way than the other (its duty-cycle distortion). It eats into the eye.</p><p class='k'>Good: under a tenth of a bit (the judgement is against the bit's length at the rate running: 2 ns is good at 25 Mbaud, 3.5 ns at 50 Mbaud is marginal).</p><p>Shown only while data is being checked: the link left alone carries only its idle carrier, so this plot is empty then, and that is fine. Large values come from the comparator's threshold sitting off the signal's middle (REVB 30).</p>"},
+ {id:"ber", title:"Data: bit errors", unit:"", get:r=>r._ber && r._ber.errs > 0 ? r._ber.ber : null, lo:1e-9, hi:0.5, log:true, ticks:[1e-9, 1e-6, 1e-3, 0.5],
+  zero:r=>r._ber && r._ber.errs === 0 && r._ber.bits > 0,
   fmtv:v=>v.toExponential(1), bands:[[1e-9,1e-6,"good"],[1e-6,1e-3,"warn"],[1e-3,0.5,"bad"]],
   absent:"measured only while a data check runs (a pseudo-random string of bits on the link); the link now carries only its idle carrier",
-  help:"<p>While a data check runs (a pseudo-random string of BPSK bits, PRBS15, sent and checked by the board itself): the share of bits received wrong, each second, on a log scale. A second with no error is drawn at 1 / (the bits that second): the rate is below that.</p><p class='k'>Good: under one in a million (1e-6).</p><p><b>About 1/3 or 1/6</b> means not bit errors but a lost or slipped loop (every check fails). <b>Rising with interference:</b> the eye is closing; see the timing and the interference plots.</p>"},
+  help:"<p>While a data check runs (a pseudo-random string of BPSK bits, PRBS15, sent and checked by the board itself): the share of bits received wrong, each second, on a log scale. A second with no error at all is a green tick along the bottom (its rate is below one in the bits counted that second).</p><p class='k'>Good: under one in a million (1e-6).</p><p><b>About 1/3 or 1/6</b> means not bit errors but a lost or slipped loop (every check fails). <b>Rising with interference:</b> the eye is closing; see the timing and the interference plots.</p>"},
  {id:"symbols", title:"Single symbols: how each was decided", kind:"multi", unit:"a second", lo:0.5, hi:1e7, log:true, ticks:[1, 1e2, 1e4, 1e6],
   series:[[r=>r._rx && r._rx.right || null, "right", "#1f9d6a"], [r=>r._rx && r._rx.wrong || null, "wrong", "#d64545"],
           [r=>r._rx && r._rx.false || null, "false (decided, none sent)", "#c79200"], [r=>r._rx && r._rx.missed || null, "missed", "#7c3aed"]],
@@ -144,6 +149,14 @@ const PANELS = [
   help:"<p>While a test sends single symbols: the mean time from each symbol leaving the transmitter to the receiver's decision, in nanoseconds (the receiver's settling delay included). No judgement: it is set by the scheme and the receiver's settings.</p>"},
  {id:"fastconst", title:"Constellation (fast: the bench scope)", kind:"scope",
   help:"<p>The received I and Q as the bench oscilloscope saw them on I MON and Q MON (thousands of samples, a few nanoseconds apart), posted here by a bench test while it sends data or symbols: the real constellation, which the slow plot cannot show (its readings average a millisecond). Denser blue where the signal spends more time; the circles mark the locked idle carrier.</p><p>BPSK data: two clusters, left and right. Single symbols (A3): the idle cluster, and dots toward the four corners. Noise spreads the clusters; a CW near the carrier draws circles; a lost loop smears a ring.</p><p>Only on the bench: the deployed board has no scope (rev B: a dual ADC on I and Q, REVB U2).</p>"},
+ {id:"sym_raw", title:"Single symbols, raw: I and Q (the bench scope)", kind:"scopewave", which:"symbols",
+  help:"<p>The received I (blue) and Q (orange) against time, from the bench oscilloscope on I MON and Q MON, while the link sent single symbols: the idle carrier sits at one level, and each symbol is a short excursion to one of the scheme's states and back (A1 flips I, A2 steps Q, A3 goes to a corner). Noise thickens the lines; a CW near the carrier makes them wave.</p><p>The monitor taps smooth over about 0.1 us, so edges look rounded. Only on the bench: the deployed board has no scope (REVB U2).</p>"},
+ {id:"sym_fold", title:"Single symbols, aligned: every event overlaid at its start", kind:"scopefold", which:"symbols",
+  help:"<p>The same capture cut at each symbol's start (found where I and Q leave the idle) and overlaid, so the shape and timing of the excursion stand out: how fast it leaves the idle, how flat it sits, how fast it comes back. Every event drawn faintly, I blue and Q orange; interference shows as spread between the traces.</p>"},
+ {id:"data_raw", title:"Data, raw: I and Q (the bench scope)", kind:"scopewave", which:"data",
+  help:"<p>The received I (blue) and Q (orange) against time while the link streamed BPSK data: I jumps between its two levels with the bits, Q stays near the middle (the loop keeps the data on I). Noise thickens the lines, interference moves Q.</p>"},
+ {id:"data_eye", title:"Data, eye: I folded at the recovered bit timing", kind:"scopefold", which:"data",
+  help:"<p>The same capture's I cut into two-bit pieces at the bit period, aligned on its own transitions (the timing recovered from the signal, as the board's check does), and overlaid: the eye diagram. The open space in the middle of each bit is the margin the receiver decides in; noise and interference close it. The board samples in the middle of the eye.</p><p class='k'>Good: a wide, clean opening. At high rates the monitor tap's smoothing (about 0.1 us) closes this picture before the board's own comparator sees any trouble.</p>"},
  {id:"temp", title:"Board temperature", unit:"°C", get:r=>r.det&&r.det.temp_c, lo:0, hi:90,
   bands:[[0,5,"bad"],[5,15,"warn"],[15,70,"good"],[70,80,"warn"],[80,90,"bad"]],
   help:"<p>The board's thermistor, near the RF chain. Board A runs at 59-60 °C on the bench (all of 2026-10-31).</p><p class='k'>Good: 15-70 °C.</p><p><b>Hot</b> (yellow from 70 °C, 10 above its usual; red from 80, short of the 85 °C top of the RF chips' operating range): shade the board, give it airflow. Its frequencies drift with temperature; the loop follows slow drift.</p>"},
@@ -178,6 +191,56 @@ function hatch(g) { if (_hatch) return _hatch; const c = document.createElement(
 function side(g, x, y, left, col) { g.fillStyle = col; g.beginPath(); g.moveTo(left ? x + 6 : x - 6, y - 4); g.lineTo(left ? x + 6 : x - 6, y + 4); g.lineTo(x, y); g.fill(); }
 function tri(g, x, y, up, col) { g.fillStyle = col; g.beginPath(); g.moveTo(x - 4, up ? y + 6 : y - 6); g.lineTo(x + 4, up ? y + 6 : y - 6); g.lineTo(x, y); g.fill(); }
 // the notes as purple spans on a time axis
+// what the link is asked to do (its registers) and what the B210 sends (the notes its programs post)
+const ACT = {carrier: ["#b8bec8", "the carrier alone"], symbols: ["#e07b00", "single symbols"], data: ["#1e3a8a", "data"],
+             rotate: ["#8b5a2b", "rotating (FSK-like)"], off: ["#eceef1", "the carrier off"], held: ["#4b5563", "the loop held by a program"]};
+const B2 = {cw_far: ["#0e7490", "a CW MHz away"], cw_near: ["#be185d", "a CW near the carrier"], bursts: ["#a16207", "noise bursts"],
+            b210: ["#6b7280", "the B210"]};
+function linkAct(r) { if (!r || !r.tx || !r.ctrl) return null; if (r.ctrl.tx_dis) return "off"; if (r.ctrl.loop_hold) return "held";
+  const m = r.tx.mode, run = r.tx.running; return run && (m == "events" || m == "trig_in") ? "symbols" : run && m == "prbs" ? "data" : run && m == "rotate" ? "rotate" : "carrier"; }
+function linkLabel(r) { const a = linkAct(r), s = r.selftest && r.selftest.on ? r.selftest.now : null;
+  if (a == "symbols") return s && s.step == "symbols" ? s.scheme : "1 of " + r.tx.n;
+  if (a == "data") return fmt(100 / r.tx.period) + " Mb/s"; return ""; }
+function linkText(r) { const a = linkAct(r); if (!a) return "not known (no reading)"; const s = r.selftest && r.selftest.on ? r.selftest.now : null;
+  if (a == "symbols") return "sending single symbols" + (s && s.step == "symbols" ? " of " + s.text.replace(/^single symbols of /, "") :
+     ", each one of " + r.tx.n + " states, one every " + fmt(r.tx.period / 100) + " us") + (r.rx_on ? "; the receiver decides each and times it" : "");
+  if (a == "data") return "streaming BPSK data at " + fmt(100 / r.tx.period) + " Mbaud" + (r.ber_on ? ", every bit checked, the timing recovered" : "");
+  if (a == "rotate") return "rotating the carrier's phase (an FSK-like test)";
+  if (a == "off") return "the carrier switched off"; if (a == "held") return "the carrier, with the loop held by a program";
+  return "the carrier alone" + (s && s.step == "idle" ? " (the self-test reads its level)" : ""); }
+function b210Kind(n) { return n.b210 && B2[n.b210.kind] ? n.b210.kind : "b210"; }
+function b210Notes() { return notes.filter(n => n.b210 || /^B210/.test(n.text)); }
+function b210Label(n) { const b = n.b210 || {}; return b.kind == "cw_far" ? (b.off_mhz > 0 ? "+" : "") + fmt(b.off_mhz) + " MHz" :
+  b.kind == "cw_near" ? (b.off_khz > 0 ? "+" : "") + fmt(b.off_khz) + " kHz" : b.kind == "bursts" ? fmt(b.on_ms) + "/" + fmt(b.per_ms) + " ms" : ""; }
+function b210Now() { const now = Date.now() / 1000; return b210Notes().find(n => n.t_start <= now && now <= (n.t_end || now + 1)); }
+function drawActivity(p) {
+  const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv);
+  const L = 70, R = 10, now = Date.now() / 1000, t0 = now - span, pw = w - L - R, x = t => L + pw * (t - t0) / span;
+  const lanes = [[18, (h - 50) / 2 - 4], [18 + (h - 50) / 2 + 4, (h - 50) / 2 - 4]];
+  g.clearRect(0, 0, w, h); g.font = "12px system-ui";
+  g.fillStyle = C.ink2; g.textAlign = "left"; g.fillText("the link", 2, lanes[0][0] + lanes[0][1] / 2 + 4); g.fillText("the B210", 2, lanes[1][0] + lanes[1][1] / 2 + 4);
+  for (const [y0, hh] of lanes) { g.fillStyle = "#f4f5f7"; g.fillRect(L, y0, pw, hh); }
+  // the link: one segment per look, labelled where a run starts
+  let prev = null, lastLab = null, labX = -1e9;
+  for (const r of hist) { if (r.t < t0 - 2) { prev = r; continue; } const a = r.busy ? (prev && linkAct(prev)) : linkAct(r); if (!a) { prev = r; continue; }
+    const xa = prev ? Math.max(x(prev.t), L) : x(r.t); if (prev && r.t - prev.t > Math.max(10, span / 150)) { prev = r; continue; }
+    g.fillStyle = ACT[a][0]; g.fillRect(xa, lanes[0][0], Math.max(1, x(r.t) - xa + 0.5), lanes[0][1]);
+    const lab = r.busy ? null : linkLabel(r); if (lab && lab != lastLab && x(r.t) - labX > 46) { g.fillStyle = a == "data" ? "#fff" : "#16181d"; g.font = "11px system-ui"; g.fillText(lab, xa + 2, lanes[0][0] + lanes[0][1] / 2 + 4); labX = x(r.t); g.font = "12px system-ui"; }
+    if (!r.busy) lastLab = lab || null; prev = r.busy ? Object.assign({}, prev || r, {t: r.t}) : r; }
+  // the B210: one segment per announcement
+  for (const n of b210Notes()) { const a = n.t_start, b = n.t_end || now; if (b < t0) continue; const xa = x(Math.max(a, t0)), xb = x(Math.min(b, now));
+    g.fillStyle = B2[b210Kind(n)][0]; g.fillRect(xa, lanes[1][0], Math.max(2, xb - xa), lanes[1][1]);
+    const lab = b210Label(n); if (lab && xb - xa > 40) { g.fillStyle = "#fff"; g.font = "11px system-ui"; g.fillText(lab, xa + 2, lanes[1][0] + lanes[1][1] / 2 + 4); g.font = "12px system-ui"; } }
+  g.fillStyle = C.ink2; g.textAlign = "left"; g.fillText(spanLabel(), L + 2, h - 6); g.textAlign = "right"; g.fillText("now", w - R, h - 6);
+  const fl = fullLast(), bn = b210Now(), st = fl && fl.selftest;
+  document.getElementById("v_" + p.id).textContent = "";
+  const res = st && st.results ? st.results.filter(x => x.step != "idle" && !x.error).slice(-2) : [];
+  document.getElementById("x_" + p.id).innerHTML = "<b>Now</b>: the link " + linkText(fl) + "; the B210 " + (bn ? bn.text.replace(/^B210: /, "sends ") : "quiet") + "." +
+    (res.length ? "<br>The self-test's last: " + res.map(x => x.step == "symbols" ? x.scheme + ": " + x.events + " symbols, " + x.right + " right, " + x.wrong + " wrong, " + x.false + " false, " + x.missed + " missed" + (x.lat_ns ? ", " + fmt(x.lat_ns[1]) + " ns" : "") :
+       fmt(x.mbaud) + " Mbaud: " + (x.bits ? x.bits.toExponential(1) + " bits, " + Math.round(x.errors) + " errors" : "no count") + (x.interrupted ? " (interrupted)" : "")).join("; ") + "." : "") +
+    "<br>" + Object.entries(ACT).map(([k, [c, t]]) => "<span style='color:" + c + "'>&#9632;</span> " + t).join(" &nbsp; ") + "<br>" +
+    Object.entries(B2).map(([k, [c, t]]) => "<span style='color:" + c + "'>&#9632;</span> " + t).join(" &nbsp; ");
+}
 function drawNotes(g, x, top, height, t0) {
   for (const n of notes) { const a = n.t_start, b = n.t_end || Date.now() / 1000; if (b < t0) continue;
     const xa = Math.max(x(Math.max(a, t0)), x(t0)), xb = x(b);
@@ -210,6 +273,7 @@ function drawSeries(p) {
   if (p.id == "vc") { const vl = lastValue(r => r.vc_lock); if (vl) { g.strokeStyle = C.ink2; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(L, y(vl)); g.lineTo(L + pw, y(vl)); g.stroke(); g.setLineDash([]); } }
   const series = p.kind == "multi" ? p.series.map(([k, lab, col], i) => [typeof k == "function" ? k : r => r.rate ? r.rate[k] : null, col || SERIES[i], lab]) : [[p.get, C.data, null]];
   if (p.also) series.unshift([p.also[0], SERIES[p.also[1]], p.also[2]]);
+  if (p.zero) { g.fillStyle = C.good; for (const r of hist) if (r.t >= t0 && !r.busy && p.zero(r)) g.fillRect(x(r.t) - 1, T + ph - 7, 2.5, 7); }
   for (const [get, col] of series) {
     g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); let pen = false, prevT = null;
     for (const r of hist) { if (r.t < t0) continue; const v = r.busy ? null : get(r);
@@ -228,15 +292,18 @@ function drawSeries(p) {
     return; }
   const stale = busyNow(), fl = fullLast() || last || {};
   const lv = lastValue(p.get), nowNull = stale || (p.nm && last && !last.busy && p.get(last) == null);
-  const k = nowNull ? null : p.judge ? p.judge(fl) : band(p, lv);
-  el.textContent = lv == null ? "-" : (p.fmtv || fmt)(lv) + " " + p.unit + (lv > p.hi ? " ▲" : lv < p.lo ? " ▼" : "") + (nowNull ? " (last)" : "");
+  // the bit errors: the last second's count, whether or not it had errors (the plot draws only those that did)
+  const bl = p.id == "ber" ? lastValue(r => r._ber) : null, bound = !!(bl && bl.errs === 0);
+  const k = nowNull ? null : bound ? "good" : bl ? band(p, bl.ber) : p.judge ? p.judge(fl) : band(p, lv);
+  el.textContent = bound ? "0 errors (< " + (1 / bl.bits).toExponential(0) + ")" + (nowNull ? " (last)" : "") : bl ? (p.fmtv || fmt)(bl.ber) + (nowNull ? " (last)" : "") :
+    lv == null ? "-" : (p.fmtv || fmt)(lv) + " " + p.unit + (lv > p.hi ? " ▲" : lv < p.lo ? " ▼" : "") + (nowNull ? " (last)" : "");
   el.style.color = k ? C[k] : C.ink2;
   let extra = "";
   if (p.id == "dem" && fl.dsa_db != null) extra = " (attenuator " + fl.dsa_db + " dB of 0-31.75)";
   if (p.id == "gwlock" && fl.gw_lock) extra = " (it says: " + fl.gw_lock.state + "; " + fl.gw_lock.losses + " losses since the firmware was loaded)" +
      (fl.gw_lock.state == "lost" && fl.state == "interfered" ? ". It judges from the comparators alone; the oscillator is still on the carrier, so the page calls this interference, not a loss" : "");
   if (lv == null && p.absent) extra = " (" + p.absent + ")";
-  if (p.id == "ber") { const b = lastValue(r => r._ber); if (b) extra = " (the last second: " + Math.round(b.errs) + " errors in " + b.bits.toExponential(1) + " bits" + (b.errs ? "" : ": the rate is below the value shown") + ")"; }
+  if (p.id == "ber") { const b = lastValue(r => r._ber); if (b) extra = " (the last second: " + Math.round(b.errs) + " errors in " + b.bits.toExponential(1) + " bits" + (b.errs ? "" : ": the rate is below one in that many") + "; green ticks along the bottom: seconds with no error)"; }
   if (p.id == "latency") { const x = lastValue(r => r._rx && r._rx.lat_ns != null ? r._rx : null); if (x) extra = " (from " + fmt(x.lat_min_ns) + " to " + fmt(x.lat_max_ns) + " ns in this run)"; }
   const why = stale ? busyWhy() : {lost: "not locked", nocarrier: "no carrier", interfered: "interference", held: "a program holds the loop", holdover: last && last.gw_lock && last.gw_lock.state != "no carrier" ? "held through interference" : "the carrier interrupted"}[last && last.state] ||
      "the I comparator is toggling: bursts of interference, or data on the link, spoil this slow reading";
@@ -394,10 +461,73 @@ function drawScope(p) {
   for (let k = 0; k < c.i.length; k++) { const xx = cx + (c.i[k] - i0) * sc, yy = cy - (c.q[k] - q0) * sc;
     if (xx < 0 || xx > w || yy < 0 || yy > h) continue; g.fillRect(xx - 1.2, yy - 1.2, 2.4, 2.4); }
   const age = Date.now() / 1000 - c.t;
-  x.textContent = "the bench scope, " + dur(Math.max(0, age)) + " ago" + (c.text ? ", during " + c.text : "") + " (" + c.i.length + " samples, " +
-    (c.dt_ns ? fmt(c.dt_ns) + " ns apart" : "") + "); circles: the locked idle carrier";
+  x.textContent = (c.link ? scopeSays(c) : "The bench scope, " + dur(Math.max(0, age)) + " ago" + (c.text ? ", during " + c.text : "") + ".") +
+    " " + c.i.length + " samples, " + (c.dt_ns ? fmt(c.dt_ns) + " ns apart" : "") + "; circles: the locked idle carrier";
 }
-function drawAll() { for (const p of PANELS) { try { ({timeline: drawTimeline, scatter: drawScatter, pullin: drawPullin, scurve: drawSCurve, scope: drawScope}[p.kind] || drawSeries)(p); } catch (e) { console.log(p.id, e); } } }
+function scopeOf(kind) { for (let k = scopes.length - 1; k >= 0; k--) if (scopes[k].kind == kind) return scopes[k]; return null; }
+function scopeSays(c) { return "The bench scope, " + dur(Math.max(0, Date.now() / 1000 - c.t)) + " ago: the link " + (c.link || c.text || "?") +
+  "; the B210 " + (c.b210 || "quiet") + "."; }
+function scopeFrame(p, top, x0, x1, xunit) {
+  const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv), L = 46, R = 10, T = 8, Bt = 22, pw = w - L - R, ph = h - T - Bt;
+  g.clearRect(0, 0, w, h); g.strokeStyle = "#c9ccd2"; g.lineWidth = 1; g.strokeRect(L, T, pw, ph);
+  const x = t => L + pw * (t - x0) / (x1 - x0), y = v => T + ph * (1 - (Math.max(-top, Math.min(top, v)) + top) / (2 * top));
+  g.beginPath(); g.moveTo(L, y(0)); g.lineTo(L + pw, y(0)); g.stroke();
+  g.fillStyle = C.ink2; g.font = "12px system-ui"; g.textAlign = "right";
+  for (const v of [-0.3, 0, 0.3]) g.fillText((v > 0 ? "+" : "") + v.toFixed(1) + " V", L - 4, y(v) + 4);
+  g.textAlign = "left"; g.fillText(fmt(x0) + " " + xunit, L + 2, h - 6); g.textAlign = "right"; g.fillText(fmt(x1) + " " + xunit, w - R, h - 6);
+  return [g, x, y, L, pw, T, ph];
+}
+function legOf(c) { return c.leg || (last && last.leg_ref_mv ? last.leg_ref_mv / 1000 : 0.16); }
+function noCapture(p) { document.getElementById("v_" + p.id).textContent = "";
+  const [g] = scopeFrame(p, 0.32, 0, 1, ""); document.getElementById("x_" + p.id).textContent = "No capture yet: one is taken while the link " +
+    (p.which == "symbols" ? "sends single symbols" : "streams data") + " (the board's self-test or a bench test) and the bench scope is on I MON and Q MON."; }
+function drawScopeWave(p) {
+  const c = scopeOf(p.which); if (!c) return noCapture(p);
+  const n = c.i.length, dt = c.dt_ns || 1, mid = c.i0 != null ? c.i0 : 1.65, qm = c.q0 != null ? c.q0 : 1.63, leg = legOf(c);
+  const [g, x, y, L, pw] = scopeFrame(p, 0.32, 0, n * dt / 1000, "us");
+  g.setLineDash([4, 3]); g.strokeStyle = C.good; for (const v of [leg, -leg]) { g.beginPath(); g.moveTo(L, y(v)); g.lineTo(L + pw, y(v)); g.stroke(); } g.setLineDash([]);
+  for (const [arr, m, col] of [[c.q, qm, SERIES[1]], [c.i, mid, C.data]]) { g.strokeStyle = col; g.lineWidth = 1.2; g.beginPath();
+    for (let k = 0; k < n; k++) { const xx = x(k * dt / 1000), yy = y(arr[k] - m); k ? g.lineTo(xx, yy) : g.moveTo(xx, yy); } g.stroke(); }
+  document.getElementById("v_" + p.id).textContent = "";
+  document.getElementById("x_" + p.id).innerHTML = scopeSays(c) + "<br><span style='color:" + C.data + "'>&#9632;</span> I &nbsp; <span style='color:" + SERIES[1] +
+    "'>&#9632;</span> Q (volts from their middles); dashed green: the idle carrier's level either side";
+}
+function drawScopeFold(p) {
+  const c = scopeOf(p.which); if (!c) return noCapture(p);
+  const n = c.i.length, dt = c.dt_ns || 1, leg = legOf(c), xv = document.getElementById("x_" + p.id);
+  document.getElementById("v_" + p.id).textContent = "";
+  if (p.which == "data") {
+    const Tb = c.period_ns; if (!Tb) { scopeFrame(p, 0.32, 0, 1, ""); xv.textContent = scopeSays(c) + " (no bit period recorded with it)"; return; }
+    // the data's own middle (the two levels' mean), its transitions' place in the bit, and the samples folded on two bits
+    const srt = c.i.slice().sort((a, b) => a - b), mid = (srt[Math.floor(n * 0.15)] + srt[Math.floor(n * 0.85)]) / 2;
+    let cs = 0, sn = 0, nc = 0;
+    for (let k = 1; k < n; k++) if ((c.i[k - 1] - mid) * (c.i[k] - mid) < 0) { const a = 2 * Math.PI * (((k - 0.5) * dt) % Tb) / Tb; cs += Math.cos(a); sn += Math.sin(a); nc++; }
+    const ph0 = ((Math.atan2(sn, cs) / (2 * Math.PI)) * Tb + Tb) % Tb;
+    const [g, x, y] = scopeFrame(p, 0.32, 0, 2 * Tb, "ns");
+    g.fillStyle = "rgba(30, 58, 138, 0.22)"; let up = 1e9, dn = -1e9;
+    for (let k = 0; k < n; k++) { const tau = (((k * dt - ph0) % (2 * Tb)) + 2 * Tb) % (2 * Tb), v = c.i[k] - mid; g.fillRect(x(tau) - 1, y(v) - 1, 2, 2);
+      const u = (tau % Tb) / Tb; if (u > 0.4 && u < 0.6) { if (v > 0) up = Math.min(up, v); else dn = Math.max(dn, v); } }
+    const open = up < 1e8 && dn > -1e8 ? up - dn : null;
+    xv.innerHTML = scopeSays(c) + "<br>" + fmt(1000 / Tb) + " Mbaud, " + nc + " transitions; the eye open at its middle by " + (open != null ? Math.round(open * 1000) + " mV" : "-") +
+      " of the " + Math.round(2 * leg * 1000) + " mV between the levels" + (open != null && open < 0.3 * leg ? " (nearly closed: the monitor tap's smoothing at this rate, or noise)" : "");
+  } else {
+    const W = c.width_ns || 200, mid = c.i0 != null ? c.i0 : 1.65, qm = c.q0 != null ? c.q0 : 1.63;
+    // the idle: where I and Q spend most of the time; an event starts where they leave it after a quiet stretch
+    const med = a => a.slice().sort((u, v) => u - v)[Math.floor(a.length / 2)], Ii = med(c.i), Qi = med(c.q), thr = 0.5 * leg;
+    const quietN = Math.max(3, Math.round(0.5 * W / dt)), pre = Math.max(50, 0.3 * W), post = W + Math.max(300, W), on = [];
+    let quiet = 0;
+    for (let k = 0; k < n; k++) { const d = Math.hypot(c.i[k] - Ii, c.q[k] - Qi); if (d > thr && quiet >= quietN) on.push(k); quiet = d > thr ? 0 : quiet + 1; }
+    const [g, x, y] = scopeFrame(p, 0.32, -pre, post, "ns");
+    for (const [arr, m, col] of [[c.q, qm, "rgba(224,123,0,0.35)"], [c.i, mid, "rgba(30,58,138,0.35)"]]) { g.strokeStyle = col; g.lineWidth = 1;
+      for (const k0 of on.slice(0, 60)) { g.beginPath(); let first = true;
+        for (let k = Math.max(0, k0 - Math.round(pre / dt)); k < Math.min(n, k0 + Math.round(post / dt)); k++) { const xx = x((k - k0) * dt), yy = y(arr[k] - m);
+          first ? g.moveTo(xx, yy) : g.lineTo(xx, yy); first = false; } g.stroke(); } }
+    g.strokeStyle = C.ink2; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x(0), 8); g.lineTo(x(0), y(-0.32)); g.moveTo(x(W), 8); g.lineTo(x(W), y(-0.32)); g.stroke(); g.setLineDash([]);
+    xv.innerHTML = scopeSays(c) + "<br>" + on.length + " symbols overlaid (" + (c.scheme || "?") + ", " + fmt(W) + " ns long, the dashed lines its start and end as sent), each cut where I and Q leave the idle; " +
+      "<span style='color:" + C.data + "'>&#9632;</span> I &nbsp; <span style='color:" + SERIES[1] + "'>&#9632;</span> Q";
+  }
+}
+function drawAll() { for (const p of PANELS) { try { ({timeline: drawTimeline, scatter: drawScatter, pullin: drawPullin, scurve: drawSCurve, scope: drawScope, activity: drawActivity, scopewave: drawScopeWave, scopefold: drawScopeFold}[p.kind] || drawSeries)(p); } catch (e) { console.log(p.id, e); } } }
 function status() {
   const st = document.getElementById("status"), r = last;
   if (!r) return;
@@ -426,6 +556,9 @@ function status() {
   if (Ld && Ld.mode == "recovering") { word.textContent = "Recovering"; why.textContent = "The link was lost; the board is bringing it back by itself (it re-centres its loop and starts it just above the carrier)."; todo.textContent = "Wait a few seconds."; }
   if (Ld && /setting up/.test(Ld.mode)) { word.textContent = "Setting up"; why.textContent = "The board has just started and is setting the link up by itself."; todo.textContent = "Wait about half a minute."; }
   if (Ld && Ld.mode == "backing off") todo.textContent = "The automatic recovery could not find the carrier and will try again. Check that the other board is on and transmitting, and that the antennas face each other.";
+  const bn = b210Now(), stt = fk.selftest;
+  document.getElementById("nowline").innerHTML = "<b>Now:</b> the link " + linkText(fk) + (stt && stt.on ? " (the board's self-test, plan '" + stt.plan + "')" : "") +
+    "; <b>the B210</b> " + (bn ? bn.text.replace(/^B210: /, "sends ") : "is quiet") + "." + (fk.own_activity ? " The comparators' activity now is the board's own symbols, not interference." : "");
   const f = fullLast() || r;                    // a busy look has no firmware, carrier or attenuator reading
   document.getElementById("meta").textContent = "firmware " + (f.id || "?") + (f.rx_mhz ? ", carrier " + f.rx_mhz + " MHz" : "") +
      (f.dsa_db != null ? ", attenuator " + f.dsa_db + " dB" : "") + ", updated " + new Date(r.t * 1000).toLocaleTimeString() +

@@ -224,6 +224,10 @@ class LinkD:
     # ---- the recovery (bringup/autolock.py's, on the driver alone) ----
     def recover(self):
         cl = self.server.cl
+        # the idle carrier first: data (the self-test's, selftest.py) keeps this detector from ever reading locked
+        st = getattr(self.server, "selftest", None)
+        if st is not None:
+            st.abort(cl)
         pll = dict(cl._pll)
         dsa = cl._dsa_db
         tx_dis = cl.rd("CTRL") & 1

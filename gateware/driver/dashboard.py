@@ -105,6 +105,16 @@ class Dashboard:
         ih, sh = cl.ihold_state(), cl.shold_state()
         ctrl = cl.rd("CTRL")
         r["ctrl"] = {"tx_dis": ctrl & 1, "loop_hold": ctrl >> 1 & 1}
+        # what the link is asked to do, from its own registers whoever drives it: the transmitter's mode, the receiver
+        # deciding single symbols, the bit check (the page's 'What is being done' lanes)
+        tm, go = cl.rd("TX_MODE"), cl.rd("TX_GO")
+        r["tx"] = {"mode": {v: k for k, v in cl.MODES.items()}.get(tm & 7, str(tm & 7)), "running": go & 1,
+                   "n": (tm >> 8 & 7) + 1, "period": cl.rd("TX_PERIOD")}
+        r["rx_on"] = cl.rd("RX_CTRL") & 1
+        r["ber_on"] = cl.rd("RX_BER_CFG") & 1
+        stt = getattr(self.server, "selftest", None)
+        if stt is not None:
+            r["selftest"] = stt.state()
         r["ihold"] = {k: ih[k] for k in ("on", "holding", "holds", "seconds", "hold_s", "persist_s") if k in ih}
         r["shold"] = {k: sh[k] for k in ("on", "holding", "holds", "seconds")}
         r["cmp"] = cl.rd("CMP_STATE")
@@ -185,6 +195,8 @@ class Dashboard:
              "kind": d.get("kind", "info") if d.get("kind") in ("intervention", "explained", "info") else "info",
              "source": str(d.get("source", ""))[:80], "t_start": float(d.get("t_start", t)),
              "t_end": float(d["t_end"]) if d.get("t_end") is not None else None}
+        if isinstance(d.get("b210"), dict):              # what the B210 sends, for the page's lane: {kind, off_mhz, gain...}
+            n["b210"] = {k: v for k, v in d["b210"].items() if isinstance(v, (int, float, str)) and len(str(k)) < 20}
         self.notes.append(n)
         self.events.append({"t": n["t_start"], "kind": "note-" + n["kind"],
                             "text": n["text"] + ((" (" + n["source"] + ")") if n["source"] else "")})
@@ -197,6 +209,11 @@ class Dashboard:
         n = min(len(d["i"]), len(d["q"]), 6000)
         c = {"t": float(d.get("t", time.time())), "text": str(d.get("text", ""))[:300], "source": str(d.get("source", ""))[:80],
              "dt_ns": float(d.get("dt_ns", 0)), "i0": d.get("i0"), "q0": d.get("q0"),
+             # what it shows: single symbols or data, their timing (for the aligned and folded views), and what the link
+             # and the B210 were doing, in words
+             "kind": str(d.get("kind", ""))[:20], "period_ns": d.get("period_ns"), "width_ns": d.get("width_ns"),
+             "scheme": str(d.get("scheme", ""))[:10], "leg": d.get("leg"), "link": str(d.get("link", ""))[:300],
+             "b210": str(d.get("b210", ""))[:300],
              "i": [round(float(v), 4) for v in d["i"][:n]], "q": [round(float(v), 4) for v in d["q"][:n]]}
         self.scopes.append(c)
         self.write({"t": c["t"], "scope": c})
@@ -333,6 +350,12 @@ class Dashboard:
             # within 8 kHz of the lock: BRINGUP_LOG 4.12, 4.15; the first live page called beacon bursts 'lost')
             if st in ("lost", "unsettled") and off is not None and abs(off) < 8.0:
                 st = "interfered"
+            # the board's own symbols or data move the Q windows (A2, A3) or I (BPSK), which the lock monitor reads
+            # as busy: with the oscillator at the lock that is the link working, not interference
+            tx = r.get("tx") or {}
+            if st == "interfered" and tx.get("running") and tx.get("mode") in ("events", "prbs", "rotate", "trig_in"):
+                st = "locked"
+                r["own_activity"] = True
         r["state"] = st
         # the carrier's level, from the locked idle I arm (I_P = V_MID + I / 2: a = 2 |di|, the differential peak at the
         # comparators) and the attenuator: at the demodulator's input, and at RX ANT (costaslink.received_dBm's sums).
@@ -465,6 +488,9 @@ class Dashboard:
                             self.send(200, f.read(), "application/json")
                     except OSError:
                         self.send(200, "{}", "application/json")
+                elif u.path == "/api/selftest":
+                    st = getattr(dash.server, "selftest", None)
+                    self.send(200, json.dumps(st.state() if st else {"on": False, "absent": True}, default=str), "application/json")
                 elif u.path == "/api/scope":
                     s = float(parse_qs(u.query).get("s", ["7200"])[0])
                     t0 = time.time() - s
@@ -488,13 +514,22 @@ class Dashboard:
 
             def do_POST(self):
                 u = urlparse(self.path)
-                if u.path not in ("/api/note", "/api/scope"):
+                if u.path not in ("/api/note", "/api/scope", "/api/selftest"):
                     self.send(404, "not here", "text/plain")
                     return
                 try:
                     n = int(self.headers.get("Content-Length", "0"))
                     d = json.loads(self.rfile.read(min(n, 1 << 20 if u.path == "/api/scope" else 65536)) or b"{}")
-                    self.send(200, json.dumps(dash.scope(d) if u.path == "/api/scope" else dash.note(d)), "application/json")
+                    if u.path == "/api/selftest":
+                        st = getattr(dash.server, "selftest", None)
+                        if st is None:
+                            raise ValueError("this server runs without --selftest")
+                        out = st.set(d)
+                        dash.note({"text": "the link's self-test %s (plan '%s')" % ("on" if out["on"] else "off", out["plan"]),
+                                   "kind": "info", "source": "the page's API"})
+                    else:
+                        out = dash.scope(d) if u.path == "/api/scope" else dash.note(d)
+                    self.send(200, json.dumps(out, default=str), "application/json")
                 except (ValueError, TypeError, KeyError) as e:
                     self.send(400, "bad %s: %s" % (u.path, e), "text/plain")
 
