@@ -585,6 +585,9 @@ class Dashboard:
                     self.send(200, json.dumps([n for n in ns if (n["t_end"] or 1e18) >= t0], default=str), "application/json")
                 elif u.path == "/api/now":
                     self.send(200, dash.hist_json[-1] if dash.hist_json else "{}", "application/json")
+                elif u.path == "/api/learned":              # the self-test's step 'learn': its choices, for physics runs
+                    st = getattr(dash.server, "selftest", None)
+                    self.send(200, json.dumps((st.profile if st else None) or {}, default=str), "application/json")
                 elif u.path == "/api/page":                 # the page's own file: an open page reloads when it changes
                     self.send(200, json.dumps({"mtime": os.stat(os.path.join(HERE, "dashboard.html")).st_mtime}),
                               "application/json")

@@ -26,7 +26,7 @@ import os
 import threading
 import time
 
-from costaslink import SCHEMES, Scheme, point_code
+from costaslink import SCHEMES, Scheme, point_code, CMP_I, CMP_QP, CMP_QN, CMP_IP, CMP_IN
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATE_FILE = os.path.join(HERE, "selftest.json")
@@ -61,6 +61,10 @@ PLANS = {
                for k in (0, 2, 4, 6, 8, 12, 16)] +
               [{"step": "symbols", "scheme": "A1", "seconds": 4.0, "period": 2000, "width": 20, "delay": 16, "settle": k}
                for k in (0, 2, 4, 8)],
+    # the learning step before physics runs (Jason, 2026-11-01): the windows, then for each single-symbol scheme and the
+    # QPSK rate the decision table and timing with the lowest latency that decides every symbol right, and the data's
+    # timing recovery at each rate; kept in learned.json and used by every step after (once through, then the plan before)
+    "learn": [{"step": "learn"}],
     # the A/B under one interference (TODO, 2026-11-01): A3 and A1 settled (SETTLE's) or at the fixed delay, each with the
     # windows calibrated from the states' levels or by the plain rule (half the leg), in turn
     "ab": [{"step": "symbols", "scheme": name, "seconds": 4.0, "period": 2000, "width": 20, "settle": k, "delay": d,
@@ -78,6 +82,12 @@ SCHEME_ROTA = ("A3", "A1", "A2", "A1w")
 # lasts longer: A3 at k = 4 decided 2.1 % wrong, at 6 none wrong and none undecided at 63.1 ns (fixed at 24: 85.5 ns,
 # none undecided where 2.9 % were before); A1 58.7 ns at 2.  So 6 for the corners
 SETTLE = {"A1": (2, 16), "A1w": (2, 16), "A2": (2, 16), "A3": (6, 24)}
+# the decision table's choices (a symbols step's "table"): "all" every comparator as the scheme's model says (the rule:
+# a vector with a window the state should not light is undecided); "info" only the comparators that carry the scheme's
+# bits, the others read as either (A1's flip with a CW's beat on Q still decided); "learned" the rule's table and every
+# vector it leaves undecided that the board was seen to make for one state alone (the step 'learn')
+INFO_USE = {"A1": (CMP_I,), "A1w": (CMP_IP,), "A2": (CMP_QP, CMP_QN), "A3": (CMP_I, CMP_QP, CMP_QN)}
+LEARN_FILE = os.path.join(HERE, "learned.json")
 SCHEME_TEXT = {"A1": "the BPSK flip (1 of 1)", "A1w": "the BPSK flip seen beside the idle (1 of 1)",
                "A2": "1 bit: the Q step (1 of 2)", "A3": "2 bits: the QPSK corners (1 of 4)"}
 
@@ -114,6 +124,13 @@ class SelfTest:
             pass
         self._cal_tried = 0.0
         self._bad_windows = False            # a quiet run lost over 1 %: calibrate again (the windows may be wrong)
+        self.profile = None                  # the step 'learn''s choices (learned.json beside the server)
+        self._after_learn = None
+        try:
+            with open(LEARN_FILE) as f:
+                self.profile = json.load(f)
+        except (OSError, ValueError):
+            pass
         self.last_levels = None              # the last sweep of the windows' levels (the page's 'own constellation')
         self.now = {"step": "off", "since": time.time(), "text": "off"}
         self.results = collections.deque(maxlen=30)
@@ -142,6 +159,8 @@ class SelfTest:
         if "plan" in d:
             if d["plan"] not in PLANS:
                 raise ValueError("no plan %r (%s)" % (d["plan"], ", ".join(PLANS)))
+            if d["plan"] == "learn" and self.plan_name != "learn":     # once through, then the plan before
+                self._after_learn = self.plan_name
             self.plan_name = d["plan"]
         if "on" in d:
             self.on = bool(d["on"])
@@ -450,6 +469,215 @@ class SelfTest:
         return (L.cal is None or L.cal["side"] != side or self._bad_windows or
                 abs((L.leg or L.leg_windows) - L.cal["leg"]) > 0.15 * L.cal["leg"])
 
+    # ---- the decision tables and the learned profile ----
+    def _rx_scheme(self, name, side, use=None):
+        """scheme `name` as this lock point receives it (the frame's points), its comparators used `use` (all by default)"""
+        tx = SCHEMES[name]
+        rx = _Frame(tx, side)
+        rx_s = Scheme(name, tx.text, rx.rx_point(tx.idle), [rx.rx_point(m) for m in tx.msgs], [], t=tx.t, t2=tx.t2)
+        rx_s.mask, rx_s.use = tx.mask, tx.use if use is None else sum(1 << b for b in use)
+        return rx_s
+
+    def _table(self, name, side, table):
+        """the 32-entry decision table: 'all' (the rule), 'info', 'learned', or a list given"""
+        if isinstance(table, list):
+            return table
+        if table == "info":
+            return self._rx_scheme(name, side, INFO_USE[name]).lut(False)
+        rule = self._rx_scheme(name, side).lut(False)
+        if table == "learned":
+            lt = ((self.profile or {}).get("learned_tables") or {}).get("%s %d" % (name, side))
+            return lt if lt else rule
+        return rule
+
+    def _profile_entry(self, kind, name):
+        """the profile's choice for `kind` ('symbols' or 'qpsk') and scheme `name`, if learned near this level"""
+        p = self.profile
+        L = getattr(self.server, "linkd", None)
+        if not p or L is None or not (L.leg or L.leg_windows):
+            return None
+        e = (p.get(kind) or {}).get(name)
+        if not e or not p.get("leg") or abs((L.leg or L.leg_windows) - p["leg"]) > 0.15 * p["leg"]:
+            return None
+        return dict(e, side=p.get("side"))
+
+    def _quiet_run(self, st, tries=3):
+        """one measuring run, again if the world disturbed it (an announced intervention, the B210 on, interrupted)"""
+        dash = getattr(self.server, "dashboard", None)
+        r = None
+        for _ in range(tries):
+            t_wait = time.time() + 180            # an intervention over and the link locked with linkd standing by
+            while ((dash is not None and dash.active_note(time.time())) or not self._free()) and time.time() < t_wait and self.on:
+                time.sleep(1.0)
+            if not self.on:
+                return None
+            self._aborted = False                 # a run linkd aborted (a loss) is tried again, not the end of learning
+            r = self.symbols(dict(st, profile=False)) if st["step"] == "symbols" else self.data(dict(st, profile=False))
+            t1 = time.time()
+            if (not r.get("interrupted") and r.get("b210", "quiet") == "quiet"
+                    and self._b210(t1 - 10, t1) == "quiet" and not (dash and dash.active_note(t1))):
+                return r
+            time.sleep(2.0)
+        return None
+
+    @staticmethod
+    def _verdict(r, lost_max=1e-5):
+        """a run's standing: every sent symbol right but at most lost_max undecided or missed, no wrong; then the mean
+        latency and the 99.9 % one (lower first)"""
+        sent = r.get("sent") or 1
+        bad, lost = r.get("wrong") or 0, (r.get("undecided") or 0) + (r.get("missed") or 0)
+        ok = bad == 0 and lost <= max(1, lost_max * sent)
+        lat = (r.get("lat_ns") or [None, 1e9, None])[1] or 1e9
+        return (0 if ok else 1, 0 if ok else (10 * bad + lost) / sent, lat, r.get("lat_p999") or 1e9)
+
+    def _learn_table(self, name, side, seconds=2.0, delay=32):
+        """the vectors at the decision for each state sent: 7 vectors a pass, each its own label in the matrix, at a
+        fixed delay (so the vector seen does not depend on the table); the rule's table and every vector it leaves
+        undecided that one state made 90 % of the time, at least 10 times"""
+        tx = SCHEMES[name]
+        rx_s = self._rx_scheme(name, side)
+        iv, rule = rx_s.idle_vector(), rx_s.lut(False)
+        vecs = [v for v in range(32) if v != iv]
+        counts = [[0] * 32 for _ in range(tx.n)]
+        for k0 in range(0, len(vecs), 7):
+            group = vecs[k0:k0 + 7]
+            probe = [0] * 32
+            for lab, v in enumerate(group):
+                probe[v] = 0x8 | lab
+            r = self._quiet_run({"step": "symbols", "scheme": name, "seconds": seconds, "period": 2000, "width": 20,
+                                 "settle": 0, "delay": delay, "table": probe, "full_cm": True})
+            if r is None or not r.get("cm8"):
+                return None, None
+            for m in range(tx.n):
+                for lab, v in enumerate(group):
+                    counts[m][v] += r["cm8"][m][lab]
+        learned = list(rule)
+        added = {}
+        for v in vecs:
+            if rule[v] & 0x8:
+                continue
+            col = [counts[m][v] for m in range(tx.n)]
+            tot = sum(col)
+            if tot >= 10 and max(col) >= 0.9 * tot:
+                learned[v] = 0x8 | col.index(max(col))
+                added[v] = col
+        return learned, {"counts": counts, "added": {str(v): c for v, c in added.items()}}
+
+    def learn(self, st):
+        """the learning step (plan 'learn'): the windows calibrated if they need it; for A1, A1w, A2 and A3 one at a time,
+        every 20 us, the decision table learned, then each table ('all', 'info', 'learned') at each decision timing (a
+        fixed delay of 8-32 samples, or settled on 2-8 held samples within 40 ns), the choice the lowest mean latency
+        that decides every symbol right (no wrong, at most 1e-5 undecided or missed; the 99.9 % latency breaks ties),
+        run again 10 s to confirm; A3 at the QPSK rate likewise; BPSK and OOK data at each rate and the timing
+        recovery's gain, the lowest-error gain kept.  Kept in learned.json, used by every step after"""
+        L = getattr(self.server, "linkd", None)
+        if L is None or not L.cen or not L.leg_windows:
+            return {"step": "learn", "error": "linkd has not set the link up"}
+        t_start = time.time()
+        if self._need_calibration():
+            self.calibrate()
+        side = self._do(self._side)
+        prof = {"t": time.time(), "side": side, "leg": L.leg or L.leg_windows, "window_bias": self.window_bias,
+                "thresholds_v": {w: round(v, 4) for w, v in L.thresholds().items()}, "symbols": {}, "qpsk": {},
+                "data": {}, "learned_tables": {}, "learning": {}}
+        timings = [(0, d) for d in (8, 12, 16, 20, 24, 32)] + [(k, 32) for k in (2, 3, 4, 6, 8)]
+
+        def choose(name, kind, period, seconds, tables, timings_):
+            tried = []
+            for tbl in tables:
+                for k, d in timings_:
+                    self._say("learn", "learning %s%s: table '%s', %s" % (
+                        name, " at the QPSK rate" if kind == "qpsk" else "", tbl,
+                        "decided once held %d samples (within %d)" % (k, d) if k else "decided %d samples after it starts" % d),
+                        scheme=name, step_kind=kind)
+                    r = self._quiet_run({"step": "symbols", "scheme": name, "seconds": seconds, "period": period,
+                                         "width": 20, "settle": k, "delay": d, "table": tbl,
+                                         "label": "QPSK (learning)" if kind == "qpsk" else None})
+                    if r is None:
+                        continue
+                    tried.append({"table": tbl, "settle": k, "delay": d, "sent": r.get("sent"), "right": r.get("right"),
+                                  "wrong": r.get("wrong"), "undecided": r.get("undecided"), "missed": r.get("missed"),
+                                  "false": r.get("false"), "lat_ns": r.get("lat_ns"), "lat_p999": r.get("lat_p999"),
+                                  "rx": r.get("rx")})
+            if not tried:
+                return None
+            best = min(tried, key=self._verdict)
+            # confirmed on a longer run
+            r = self._quiet_run({"step": "symbols", "scheme": name, "seconds": 10.0 if kind == "symbols" else 3.0,
+                                 "period": period, "width": 20, "settle": best["settle"], "delay": best["delay"],
+                                 "table": best["table"], "label": "QPSK (learning)" if kind == "qpsk" else None})
+            conf = None if r is None else {k_: r.get(k_) for k_ in ("sent", "right", "wrong", "undecided", "missed", "false",
+                                                                   "lat_ns", "lat_p999")}
+            rx = best["rx"] or {}
+            return {"table": best["table"], "settle": best["settle"], "delay": best["delay"], "lut": rx.get("lut"),
+                    "lat_ns": best["lat_ns"], "lat_p999": best["lat_p999"], "confirmed": conf,
+                    "ok": self._verdict(conf or best)[0] == 0,
+                    "rx_config": {"idle": rx.get("idle"), "mask": rx.get("mask"), "lut": rx.get("lut"),
+                                  "slow_exp": rx.get("slow_exp"), "delay": best["delay"], "settle": best["settle"],
+                                  "quiet": 4, "confirm": 10, "window": rx.get("window")},
+                    "tried": [{k_: v for k_, v in t.items() if k_ != "rx"} for t in tried]}
+
+        for name in st.get("schemes") or ("A1", "A1w", "A2", "A3"):
+            self._say("learn", "learning %s's decision table: the vectors each state makes" % name, scheme=name)
+            lt, info = self._learn_table(name, side)
+            if lt is not None:
+                prof["learned_tables"]["%s %d" % (name, side)] = lt
+                prof["learning"][name] = info
+            self.profile = dict(self.profile or {}, learned_tables=dict((self.profile or {}).get("learned_tables") or {},
+                                                                       **prof["learned_tables"]))
+            tables = ["all", "info"] + (["learned"] if lt is not None and lt != self._table(name, side, "all") else [])
+            e = choose(name, "symbols", 2000, 2.0, tables, timings)
+            if e is not None:
+                prof["symbols"][name] = e
+            if not self.on:
+                break
+        if self.on:
+            tables = ["all", "info"] + (["learned"] if prof["learned_tables"].get("A3 %d" % side) else [])
+            e = choose("A3", "qpsk", 40, 1.5, tables, [(0, 16), (0, 24), (4, 24), (6, 24), (6, 32), (8, 32)])
+            if e is not None:
+                prof["qpsk"]["A3"] = e
+        for mod, periods in (("bpsk", (50, 10, 5, 4, 2)), ("ook", (50, 10, 4))):
+            if not self.on:
+                break
+            rows = {}
+            for p in periods:
+                for g in (4, 6):
+                    self._say("learn", "learning the %s data's timing recovery at %.3g Mbaud, gain %d" % (
+                        mod.upper(), 100.0 / p, g), mod=mod)
+                    r = self._quiet_run({"step": "data", "mod": mod, "period": p, "seconds": 2.0, "gain": g})
+                    if r is not None:
+                        rows.setdefault(str(p), {})[str(g)] = {"bits": r.get("bits"), "errors": r.get("errors"),
+                                                               "skew_samples": r.get("skew_samples")}
+            best = {}
+            for p, gs in rows.items():
+                g_best = min(gs, key=lambda g: ((gs[g]["errors"] or 0) / max(1, gs[g]["bits"] or 1), int(g)))
+                best[p] = int(g_best)
+            clean = [100.0 / int(p) for p, gs in rows.items() if gs.get(str(best[p]), {}).get("errors") == 0]
+            prof["data"][mod] = {"runs": rows, "gain": best, "max_clean_mbaud": max(clean) if clean else None}
+        prof["seconds"] = round(time.time() - t_start, 1)
+        prof["complete"] = bool(self.on and len(prof["symbols"]) == len(st.get("schemes") or ("A1", "A1w", "A2", "A3")))
+        if prof["complete"]:
+            self.profile = prof
+            try:
+                with open(LEARN_FILE, "w") as f:
+                    json.dump(prof, f, indent=1)
+            except OSError:
+                pass
+        if self._after_learn:                         # once through: back to the plan before
+            self.plan_name, self._after_learn = self._after_learn, None
+            try:
+                with open(STATE_FILE, "w") as f:
+                    json.dump({"on": self.on, "plan": self.plan_name, "calibrate": self.calibrate_on,
+                               "window_bias": self.window_bias}, f)
+            except OSError:
+                pass
+        summ = {n: {k: e.get(k) for k in ("table", "settle", "delay", "lat_ns", "lat_p999", "ok")}
+                for n, e in prof["symbols"].items()}
+        return {"step": "learn", "complete": prof["complete"], "seconds": prof["seconds"], "side": side,
+                "symbols": summ, "qpsk": {n: {k: e.get(k) for k in ("table", "settle", "delay", "lat_ns", "ok")}
+                                          for n, e in prof["qpsk"].items()},
+                "data": {m: {"gain": d["gain"], "max_clean_mbaud": d["max_clean_mbaud"]} for m, d in prof["data"].items()}}
+
     def symbols(self, st):
         # the rota turns only for a step that names no scheme: the QPSK step (A3, named) turned it too, so the round's
         # symbols step took every other one, A3 and A2 only, A1 and A1w never (2026-11-01 12:04)
@@ -462,15 +690,29 @@ class SelfTest:
         # samples from the first comparator to fire to the decision, with settle the longest wait
         settle = st.get("settle")
         delay = st.get("delay")
+        table = st.get("table")
         tx = SCHEMES[name]
         L = getattr(self.server, "linkd", None)
         losses0 = L.counts["losses"] if L else 0
+        kind = "qpsk" if st.get("label") else "symbols"
+        # the learned profile (the step 'learn') when the step asks for nothing of its own and it was learned on this
+        # lock point near this level
+        prof = None
+        if st.get("profile", True) and settle is None and delay is None and table is None:
+            prof = self._profile_entry(kind, name)
         # "windows": "plain" (the A/B): the plain rule's windows for this run alone, the calibration kept and put back
         plain = st.get("windows") == "plain" and L is not None and L.cal is not None and bool(L.cen)
         cal_kept = L.cal if plain else None
 
+        lut_used = {}
+
         def start(cl):
-            nonlocal settle, delay
+            nonlocal settle, delay, table, prof
+            side = self._side(cl)
+            if prof is not None and prof.get("side") != side:
+                prof = None
+            if prof is not None:
+                settle, delay, table = prof["settle"], prof["delay"], prof["lut"]
             if settle is None:
                 settle = SETTLE[name][0] if getattr(cl, "rx_settle", False) else 0
             settle = int(settle)
@@ -482,12 +724,12 @@ class SelfTest:
                 delay = SETTLE[name][1] if settle else 16
             delay = int(delay)
             count = max(10, int(seconds / (period * cl.t_clk)))
-            side = self._side(cl)
-            rx = _Frame(tx, side)
-            rx_s = Scheme(name, tx.text, rx.rx_point(tx.idle), [rx.rx_point(m) for m in tx.msgs], [], t=tx.t, t2=tx.t2)
-            rx_s.mask, rx_s.use = tx.mask, tx.use
+            rx_s = self._rx_scheme(name, side)
+            lut = self._table(name, side, table)
+            lut_used.update(lut=lut, idle=rx_s.idle_vector(), mask=rx_s.mask, slow_exp=rx_s.slow_exp(),
+                            window=max(4, min(100, period - 6)))
             cl.tx_points(tx.tx_idle(), [point_code(i, q) for i, q in tx.msgs])
-            cl.rx_config(rx_s.idle_vector(), rx_s.mask, rx_s.lut(False), rx_s.slow_exp(), delay=delay, settle=settle,
+            cl.rx_config(rx_s.idle_vector(), rx_s.mask, lut, rx_s.slow_exp(), delay=delay, settle=settle,
                          quiet=4, confirm=10,
                          window=max(4, min(100, period - 6)), first_edge=False)     # the window inside the period
             cl.hist_config("ref_to_decision", 0)
@@ -534,7 +776,16 @@ class SelfTest:
             # or missed; every event is one of the first three or false.  The whole matrix: a decision outside the
             # scheme's own messages is wrong too.  From ID 10 these add up exactly ('exact'); before, a false event's
             # decision went into right or wrong (against the last message sent) and 'undecided' was not counted
-            return {"sent": s.get("refs"), "events": s.get("events"), "decided": s.get("decided"),
+            p999 = None
+            if hist:                                      # the latency 99.9 % of the right decisions stay under
+                tot, acc = sum(c for _, c in hist), 0
+                for ns, c in hist:
+                    acc += c
+                    if acc >= 0.999 * tot:
+                        p999 = ns
+                        break
+            return {"sent": s.get("refs"), "events": s.get("events"), "decided": s.get("decided"), "lat_p999": p999,
+                    "cm8": cm if st.get("full_cm") else None,
                     "right": sum(cm[a][a] for a in range(8)),
                     "wrong": sum(cm[a][b] for a in range(8) for b in range(8) if a != b), "undecided": s.get("undec"),
                     "false": s.get("false"), "missed": s.get("missed"), "exact": bool(getattr(cl, "rx_exact", False)),
@@ -547,7 +798,8 @@ class SelfTest:
         res = self._do(finish) if not self._aborted else {}
         return dict({"step": "symbols", "scheme": name, "period": period, "width": width, "count": count, "side": side,
                      "delay": delay, "settle": settle, "windows": "plain" if plain else ("cal" if L and L.cal else "plain"),
-                     "interrupted": not ok}, **res)
+                     "table": prof["table"] if prof is not None else (table if isinstance(table, str) or table is None else "explicit"),
+                     "profile": prof is not None, "rx": lut_used, "interrupted": not ok}, **res)
 
     def data(self, st):
         ps = st.get("periods") or [st.get("period", 4)]
@@ -568,6 +820,12 @@ class SelfTest:
         def check(sd):
             return dict(invert=True, src="IP" if sd > 0 else "IN") if ook else dict(invert=sd > 0)
 
+        gain = st.get("gain")
+        if gain is None and st.get("profile", True):
+            gp = (((self.profile or {}).get("data") or {}).get("ook" if ook else "bpsk") or {}).get("gain") or {}
+            gain = gp.get(str(period))
+        gain = int(gain or 4)
+
         def start(cl):
             sd = side if side is not None else self._side(cl)
             # OOK is read on the I window on the carrier's side, whose threshold the calibration puts a quarter of the
@@ -584,11 +842,11 @@ class SelfTest:
             cl.tx_go()
             self._busy = True
             time.sleep(0.005)
-            cl.ber_config(15, None, enable=True, cdr=True, period=period, **check(sd))
+            cl.ber_config(15, None, enable=True, cdr=True, period=period, gain=gain, **check(sd))
             return sd, cl.t_clk
 
         def stop(cl):
-            cl.ber_config(15, None, enable=False, cdr=True, period=period, **check(side))
+            cl.ber_config(15, None, enable=False, cdr=True, period=period, gain=gain, **check(side))
             r = cl.ber()
             c = cl.cdr_state()
             cl.tx_stop()
@@ -622,7 +880,7 @@ class SelfTest:
             self.level = {"t": time.time(), "i": v}
             self._do(start)
         return {"step": "data", "mod": "ook" if ook else "bpsk", "period": period, "mbaud": mbaud, "seconds": seconds,
-                "side": side, "interrupted": not ok,
+                "side": side, "gain": gain, "interrupted": not ok,
                 "bits": bits, "errors": errors, "ber": (errors / bits) if bits else None, "skew_samples": skew}
 
     # ---- two boards (MONDAY.md 5): one sends, the other checks ----
