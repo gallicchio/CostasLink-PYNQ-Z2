@@ -504,8 +504,12 @@ class SelfTest:
             return None
         return dict(e, side=p.get("side"))
 
-    def _quiet_run(self, st, tries=3):
-        """one measuring run, again if the world disturbed it (an announced intervention, the B210 on, interrupted)"""
+    class _Moved(Exception):
+        """the loop changed lock point during the learning (a recovery): its tables and choices belong to the other"""
+
+    def _quiet_run(self, st, tries=3, side=None):
+        """one measuring run, again if the world disturbed it (an announced intervention, the B210 on, interrupted);
+        on lock point `side` only (another: _Moved, the learning given up)"""
         dash = getattr(self.server, "dashboard", None)
         r = None
         for _ in range(tries):
@@ -516,6 +520,8 @@ class SelfTest:
                 return None
             self._aborted = False                 # a run linkd aborted (a loss) is tried again, not the end of learning
             r = self.symbols(dict(st, profile=False)) if st["step"] == "symbols" else self.data(dict(st, profile=False))
+            if side is not None and r.get("side") is not None and r["side"] != side:
+                raise SelfTest._Moved()
             t1 = time.time()
             if (not r.get("interrupted") and r.get("b210", "quiet") == "quiet"
                     and self._b210(t1 - 10, t1) == "quiet" and not (dash and dash.active_note(t1))):
@@ -548,7 +554,7 @@ class SelfTest:
             for lab, v in enumerate(group):
                 probe[v] = 0x8 | lab
             r = self._quiet_run({"step": "symbols", "scheme": name, "seconds": seconds, "period": 2000, "width": 20,
-                                 "settle": 0, "delay": delay, "table": probe, "full_cm": True})
+                                 "settle": 0, "delay": delay, "table": probe, "full_cm": True}, side=side)
             if r is None or not r.get("cm8"):
                 return None, None
             for m in range(tx.n):
@@ -595,7 +601,7 @@ class SelfTest:
                         scheme=name, step_kind=kind)
                     r = self._quiet_run({"step": "symbols", "scheme": name, "seconds": seconds, "period": period,
                                          "width": 20, "settle": k, "delay": d, "table": tbl,
-                                         "label": "QPSK (learning)" if kind == "qpsk" else None})
+                                         "label": "QPSK (learning)" if kind == "qpsk" else None}, side=side)
                     if r is None:
                         continue
                     tried.append({"table": tbl, "settle": k, "delay": d, "sent": r.get("sent"), "right": r.get("right"),
@@ -608,7 +614,7 @@ class SelfTest:
             # confirmed on a longer run
             r = self._quiet_run({"step": "symbols", "scheme": name, "seconds": 10.0 if kind == "symbols" else 3.0,
                                  "period": period, "width": 20, "settle": best["settle"], "delay": best["delay"],
-                                 "table": best["table"], "label": "QPSK (learning)" if kind == "qpsk" else None})
+                                 "table": best["table"], "label": "QPSK (learning)" if kind == "qpsk" else None}, side=side)
             conf = None if r is None else {k_: r.get(k_) for k_ in ("sent", "right", "wrong", "undecided", "missed", "false",
                                                                    "lat_ns", "lat_p999")}
             rx = best["rx"] or {}
@@ -620,6 +626,16 @@ class SelfTest:
                                   "quiet": 4, "confirm": 10, "window": rx.get("window")},
                     "tried": [{k_: v for k_, v in t.items() if k_ != "rx"} for t in tried]}
 
+        moved = False
+        try:
+            self._learn_body(st, prof, side, choose, timings)
+        except SelfTest._Moved:
+            moved = True
+        prof["seconds"] = round(time.time() - t_start, 1)
+        prof["complete"] = bool(self.on and not moved and len(prof["symbols"]) == len(st.get("schemes") or ("A1", "A1w", "A2", "A3")))
+        return self._learn_end(st, prof, side, moved)
+
+    def _learn_body(self, st, prof, side, choose, timings):
         for name in st.get("schemes") or ("A1", "A1w", "A2", "A3"):
             self._say("learn", "learning %s's decision table: the vectors each state makes" % name, scheme=name)
             lt, info = self._learn_table(name, side)
@@ -647,7 +663,7 @@ class SelfTest:
                 for g in (4, 6):
                     self._say("learn", "learning the %s data's timing recovery at %.3g Mbaud, gain %d" % (
                         mod.upper(), 100.0 / p, g), mod=mod)
-                    r = self._quiet_run({"step": "data", "mod": mod, "period": p, "seconds": 2.0, "gain": g})
+                    r = self._quiet_run({"step": "data", "mod": mod, "period": p, "seconds": 2.0, "gain": g}, side=side)
                     if r is not None:
                         rows.setdefault(str(p), {})[str(g)] = {"bits": r.get("bits"), "errors": r.get("errors"),
                                                                "skew_samples": r.get("skew_samples")}
@@ -657,8 +673,8 @@ class SelfTest:
                 best[p] = int(g_best)
             clean = [100.0 / int(p) for p, gs in rows.items() if gs.get(str(best[p]), {}).get("errors") == 0]
             prof["data"][mod] = {"runs": rows, "gain": best, "max_clean_mbaud": max(clean) if clean else None}
-        prof["seconds"] = round(time.time() - t_start, 1)
-        prof["complete"] = bool(self.on and len(prof["symbols"]) == len(st.get("schemes") or ("A1", "A1w", "A2", "A3")))
+
+    def _learn_end(self, st, prof, side, moved):
         if prof["complete"]:
             # kept per lock point: the other point's choices (learned when the loop sat there) stay
             by_side = dict((self.profile or {}).get("by_side") or {})
@@ -684,6 +700,7 @@ class SelfTest:
         summ = {n: {k: e.get(k) for k in ("table", "settle", "delay", "lat_ns", "lat_p999", "ok")}
                 for n, e in prof["symbols"].items()}
         return {"step": "learn", "complete": prof["complete"], "seconds": prof["seconds"], "side": side,
+                "moved": moved,
                 "symbols": summ, "qpsk": {n: {k: e.get(k) for k in ("table", "settle", "delay", "lat_ns", "ok")}
                                           for n, e in prof["qpsk"].items()},
                 "data": {m: {"gain": d["gain"], "max_clean_mbaud": d["max_clean_mbaud"]} for m, d in prof["data"].items()}}
