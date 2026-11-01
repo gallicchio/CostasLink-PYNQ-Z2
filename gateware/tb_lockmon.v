@@ -6,6 +6,10 @@
 //  * no carrier, every window low: no carrier, LD2 on, a second loss counted (locked, then no carrier)
 //  * locked with 10 us bursts on Q every 100 us: never lost
 //  * the seconds locked count; the software LEDs when auto is off
+//  * ID version 9: this board's own A2-like symbols (Q to +window or -window for 4 clocks every 400, `own` high
+//    during each: with the 64-clock guard 17 % of the time masked, as the self-test's 20 clocks every 2000 against
+//    the real 156 us sub-windows are 4 %): locked (without `own`, the same pattern reads lost); the same with a beat
+//    underneath: lost; denser ones (20 clocks every 200, 42 % masked) over a beat: not locked
 //
 //     iverilog -g2005 -Wall -o tb_lockmon.vvp tb_lockmon.v lockmon.v && vvp -N tb_lockmon.vvp      (ends with PASS)
 `timescale 1ns/1ps
@@ -16,7 +20,7 @@ module tb_lockmon;
     reg rst = 1'b1;
     reg [6*SER-1:0] fs = {6*SER{1'b0}};
     reg [31:0] window = 32'd100000;
-    reg        hold = 1'b0, auto = 1'b1;
+    reg        hold = 1'b0, auto = 1'b1, own = 1'b0, own_en = 1'b1;
     reg [9:0]  led_sw = 10'd0;
     wire [1:0] state;
     wire [31:0] n_losses, n_locked_s, last_ihigh;
@@ -26,7 +30,7 @@ module tb_lockmon;
     wire [5:0] rgb;
     // CLK_HZ 1 MHz for the seconds and the blink, so they come round in simulated milliseconds
     lockmon #(.SER(SER), .CLK_HZ(1_000_000)) dut (.clk(clk), .rst(rst), .fs(fs), .window(window), .locked_below(8'd24),
-        .lost_at(8'd48), .hold(hold), .auto(auto), .led_sw(led_sw), .state(state), .n_losses(n_losses),
+        .lost_at(8'd48), .hold(hold), .own(own), .auto(auto), .led_sw(led_sw), .state(state), .n_losses(n_losses),
         .n_locked_s(n_locked_s), .last_qp(last_qp), .last_qn(last_qn), .last_i(last_i), .last_ihigh(last_ihigh),
         .last_busy(last_busy), .led(led), .rgb(rgb));
 
@@ -53,6 +57,7 @@ module tb_lockmon;
             for (j = 0; j < n; j = j + 1) begin
                 @(negedge clk);
                 lv = 6'd0;
+                own = 1'b0;
                 case (pat)
                     0: begin lv[0] = 1'b1; lv[3] = 1'b1; end
                     1: begin lv[0] = (j / 4) % 2; lv[3] = (j / 4) % 2; lv[4] = !((j / 4) % 2); end
@@ -64,6 +69,20 @@ module tb_lockmon;
                     3: lv = 6'd0;
                     4: begin lv[0] = 1'b1; lv[3] = 1'b1;
                              if ((j % 10000) < 1000) begin lv[1] = (j / 7) % 2; lv[2] = ((j + 3) / 7) % 2; end end
+                    5, 6, 7: begin
+                        if (pat == 6 || pat == 7) begin
+                            ph = 6.2831853 * (j % 2000) / 2000.0;
+                            lv[0] = $cos(ph) > 0; lv[3] = $cos(ph) > 0.5; lv[4] = $cos(ph) < -0.5;
+                            lv[1] = $sin(ph) > 0.5; lv[2] = $sin(ph) < -0.5;
+                        end else begin lv[0] = 1'b1; lv[3] = 1'b1; end
+                        if (pat == 7) begin
+                            own = own_en && (j % 200) < 20;
+                            if ((j % 200) < 20) begin if ((j / 200) % 2) lv[2] = 1'b1; else lv[1] = 1'b1; end
+                        end else begin
+                            own = own_en && (j % 400) < 4;
+                            if ((j % 400) < 4) begin if ((j / 400) % 2) lv[2] = 1'b1; else lv[1] = 1'b1; end
+                        end
+                    end
                     default: lv = 6'd0;
                 endcase
             end
@@ -108,6 +127,17 @@ module tb_lockmon;
         expect("the bursts: still locked", state, 1, 1);
         expect("losses unchanged by the bursts", n_losses, 2, 2);
         expect("seconds locked (CLK_HZ 1 MHz)", n_locked_s, 1, 10);
+        run(5, 250000);
+        expect("own A2-like symbols: state (1 locked)", state, 1, 1);
+        expect("own symbols: busy sub-windows", last_busy, 0, 23);
+        own_en = 1'b0; run(5, 250000); own_en = 1'b1;
+        expect("the same steps not marked own: state (2 lost)", state, 2, 2);
+        run(0, 250000);
+        run(6, 250000);
+        expect("own symbols over a beat: state (2 lost)", state, 2, 2);
+        run(7, 250000);
+        expect("dense own symbols, a beat: not locked", state, 2, 3);
+        run(0, 250000);
         hold = 1'b1; run(0, 1000); hold = 1'b0;
         expect("a hold: LD3 (stretched)", led[3], 1, 1);
         auto = 1'b0; led_sw = 10'b1010000101;

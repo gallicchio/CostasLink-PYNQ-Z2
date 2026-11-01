@@ -41,6 +41,7 @@ module rx_engine #(
     input  wire              tx_event,          // tx_engine: an event's point is on the pins this clock
     input  wire [2:0]        tx_msg,
     input  wire [31:0]       sym_period,        // TX_PERIOD: the PRBS symbol length in clocks
+    input  wire              tx_busy,           // tx_engine: an event's point is out (lockmon.v masks its own Q moves)
     output reg               ev_pulse,          // one clock: an event
     output reg               dec_pulse,         // one clock: a decision
     output reg               valid_pulse,       // one clock: a decision with a valid table entry
@@ -323,7 +324,7 @@ module rx_engine #(
     wire [15:0] lk_qp, lk_qn, lk_i;
     wire [6:0]  lk_busy;
     lockmon #(.SER(SER), .CLK_HZ(CLK_HZ)) u_lock (
-        .clk(clk), .rst(rst), .fs(fs), .window(lk_win), .locked_below(lk_below), .lost_at(lk_at), .hold(ih_act | sh_act),
+        .clk(clk), .rst(rst), .fs(fs), .window(lk_win), .locked_below(lk_below), .lost_at(lk_at), .hold(ih_act | sh_act), .own(tx_busy),
         .auto(led_auto), .led_sw(led_sw), .state(lk_state), .n_losses(lk_losses), .n_locked_s(lk_secs),
         .last_qp(lk_qp), .last_qn(lk_qn), .last_i(lk_i), .last_ihigh(lk_ihigh), .last_busy(lk_busy), .led(led_o),
         .rgb(rgb_o));

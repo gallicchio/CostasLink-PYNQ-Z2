@@ -32,6 +32,7 @@ module lockmon #(
     input  wire [7:0]        locked_below,      // Q busy in fewer of the 64 sub-windows: still (reset 16)
     input  wire [7:0]        lost_at,           // Q busy in this many or more: a beat (reset 48)
     input  wire              hold,              // the loop held (any hold): LD3, blue on LD4
+    input  wire              own,               // this board's own event on the pins (tx_engine's tx_busy): its Q moves
     input  wire              auto,              // LEDs from the state (else from led_sw)
     input  wire [9:0]        led_sw,            // {LD5 RGB, LD4 RGB, LD3..LD0} when not auto; LD5 always from here
     output reg  [1:0]        state,             // 0 no carrier, 1 locked, 2 lost, 3 unsure
@@ -68,6 +69,13 @@ module lockmon #(
         end
     end
 
+    // the board's own single symbols (A2, A3 step Q, A3 and A1 flip I) and their settling are not a beat: the Q windows'
+    // changes during an event and GUARD clocks after are not counted (ID version 9; the self-test's A2 / A3 read lost in
+    // every look on ID 8, 2026-10-31).  A beat changes Q between the events as well, so it still reads lost
+    localparam [7:0] GUARD = 8'd64;
+    reg  [7:0]  own_g;
+    wire        mute = own || own_g != 8'd0;
+    wire        cq1 = chg[1] & ~mute, cq2 = chg[2] & ~mute;
     reg  [31:0] wcnt, ihigh, sec, scnt;
     reg  [15:0] ci, cqp, cqn;
     reg         sqp, sqn;                       // QP / QN changed in this sub-window
@@ -93,19 +101,20 @@ module lockmon #(
     reg  [2:0]  pwm;
     always @(posedge clk) begin
         if (rst) begin
-            prev <= 3'd0; wcnt <= 32'd0; ihigh <= 32'd0; ci <= 16'd0; cqp <= 16'd0; cqn <= 16'd0;
+            prev <= 3'd0; wcnt <= 32'd0; ihigh <= 32'd0; ci <= 16'd0; cqp <= 16'd0; cqn <= 16'd0; own_g <= 8'd0;
             scnt <= 32'd0; sqp <= 1'b0; sqn <= 1'b0; busy <= 7'd0; last_busy <= 7'd0;
             state <= S_NONE; n_losses <= 32'd0; n_locked_s <= 32'd0; sec <= 32'd0;
             last_qp <= 16'd0; last_qn <= 16'd0; last_i <= 16'd0; last_ihigh <= 32'd0;
             blink_cnt <= 32'd0; blink <= 1'b0; pwm <= 3'd0; stretch <= 32'd0;
         end else begin
             prev <= {fs[6*(SER-1) + 2], fs[6*(SER-1) + 1], fs[6*(SER-1)]};
+            own_g <= own ? GUARD : (own_g != 8'd0 ? own_g - 8'd1 : 8'd0);
             // the sub-windows: busy when both Q windows changed in it
             if (scnt + 32'd1 >= sub) begin
                 scnt <= 32'd0; sqp <= 1'b0; sqn <= 1'b0;
-                if ((sqp || chg[1]) && (sqn || chg[2]) && busy != 7'd127) busy <= busy + 1'b1;
+                if ((sqp || cq1) && (sqn || cq2) && busy != 7'd127) busy <= busy + 1'b1;
             end else begin
-                scnt <= scnt + 1'b1; sqp <= sqp | chg[1]; sqn <= sqn | chg[2];
+                scnt <= scnt + 1'b1; sqp <= sqp | cq1; sqn <= sqn | cq2;
             end
             if (wcnt + 32'd1 >= window) begin
                 wcnt <= 32'd0;
@@ -113,10 +122,10 @@ module lockmon #(
                 state <= judge;
                 last_qp <= cqp; last_qn <= cqn; last_i <= ci; last_ihigh <= ihigh; last_busy <= busy;
                 busy <= 7'd0; scnt <= 32'd0; sqp <= 1'b0; sqn <= 1'b0;
-                ci <= {15'd0, chg[0]}; cqp <= {15'd0, chg[1]}; cqn <= {15'd0, chg[2]}; ihigh <= {31'd0, ihi};
+                ci <= {15'd0, chg[0]}; cqp <= {15'd0, cq1}; cqn <= {15'd0, cq2}; ihigh <= {31'd0, ihi};
             end else begin
                 wcnt <= wcnt + 1'b1;
-                ci <= inc16(ci, chg[0]); cqp <= inc16(cqp, chg[1]); cqn <= inc16(cqn, chg[2]);
+                ci <= inc16(ci, chg[0]); cqp <= inc16(cqp, cq1); cqn <= inc16(cqn, cq2);
                 ihigh <= ihigh + {31'd0, ihi};
             end
             if (state == S_LOCKED) begin

@@ -109,9 +109,11 @@ module tx_engine (
         end
     endfunction
 
+    // the random message: only the bits a message takes (as the PRBS symbols below), so the two subtractions of modn
+    // always reach 0..N-1 (unmasked, N = 2 sent messages 2 and 3 a quarter of the time: REVB 22, ID version 9)
     wire [2:0] next_msg = (src == 2'd0) ? msg_fixed :
                           (src == 2'd1) ? ctr :
-                          modn(rnd3, nm1);
+                          modn(rnd3 & ((3'd1 << kbits) - 3'd1), nm1);
 
     // ---- the engine -------------------------------------------------------------------------------------
     // what modes 1-5 put out: the idle point or message p_msg's point, looked up in the pins' stage (the

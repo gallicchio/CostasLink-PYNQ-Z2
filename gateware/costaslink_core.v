@@ -208,7 +208,7 @@ module costaslink_core #(
     rx_engine #(.SER(SER), .CLK_HZ(CLK_HZ)) u_rx (
         .clk(clk), .rst(rst_rx), .bus_addr(a_rx), .bus_wdata(d_rx), .bus_we(we_rx), .bus_re(re_rx),
         .bus_rdata(rx_rdata), .fs(fs), .slow(slow_s2[2:0]), .free_cnt(free_cnt),
-        .tx_event(tx_event), .tx_msg(tx_msg), .sym_period(tx_period_copy),
+        .tx_event(tx_event), .tx_msg(tx_msg), .sym_period(tx_period_copy), .tx_busy(tx_busy),
         .ev_pulse(rx_ev_p), .dec_pulse(rx_dec_p), .valid_pulse(rx_valid_p), .trig_in_rise(trig_in_rise),
         .cfg_idle(rx_cfg_idle), .cfg_mask(rx_cfg_mask), .cfg_lut(rx_cfg_lut), .cfg_first(rx_cfg_first),
         .cfg_dly(rx_cfg_dly), .arm_now(rx_arm_now), .arm_next(rx_arm_next),
@@ -305,6 +305,4 @@ module costaslink_core #(
         endcase
     end
 
-    // unused: the TX busy flag (in TX_GO), the TRIG_IN bit of the slow copy
-    wire _unused = &{1'b0, tx_busy};
 endmodule

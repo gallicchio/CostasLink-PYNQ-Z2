@@ -257,6 +257,22 @@ class TestOnRtl(unittest.TestCase):
         self.assertEqual(h[LAT + delay], 40)
         self.assertEqual(sum(h), 40)
 
+    def test_random_messages_two(self):
+        # ID version 9 (REVB 22): with N = 2 the PRBS source sends messages 0 and 1 only (it sent 2 and 3 a quarter of
+        # the time: A2 decided 75 % on the bench, the self-test's 149 974 of 199 999)
+        cl = self.cl
+        cl.scheme("A2", window=50)
+        cl.events(period=100, width=20, count=64, source="prbs", n=2)
+        cl.rx_clear()
+        cl.tx_go()
+        cl.wait_s((64 * 100 + 200) * cl.t_clk)
+        st = cl.rx_stats()
+        cm = cl.confusion()
+        self.assertEqual(sum(cm[2]) + sum(cm[3]), 0)
+        self.assertEqual((st["events"], st["decided"], st["false"], st["missed"]), (64, 64, 0, 0))
+        self.assertEqual(cm[0][0] + cm[1][1], 64)
+        self.assertGreater(min(cm[0][0], cm[1][1]), 10)
+
     def test_loopback_b1_first_edge(self):
         st = self.run_events("B1", first_edge=True)
         self.assertEqual((st["events"], st["decided"], st["false"], st["missed"]), (40, 40, 0, 0))

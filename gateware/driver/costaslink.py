@@ -44,8 +44,8 @@ from board_constants import (RX_GAIN_DB, DEM_REG_DBM, A_REG_V, DSA_POWER_UP_DB, 
                              NTC_B, NTC_R25, NTC_RTOP, NTC_VDD, VR_I_V, VR_Q_V)
 
 R = regmap.BY_NAME
-ID_EXPECTED = 0x434C0008
-ID_ACCEPTED = (0x434C0003, 0x434C0004, 0x434C0005, 0x434C0006, 0x434C0007, 0x434C0008)   # 3: no timing recovery for the
+ID_EXPECTED = 0x434C0009
+ID_ACCEPTED = (0x434C0003, 0x434C0004, 0x434C0005, 0x434C0006, 0x434C0007, 0x434C0008, 0x434C0009)   # 3: no timing recovery for the
                                                       # BER check (the overlay of 2026-10-29); 4: no interference hold;
                                                       # 5: no one-polarity timing recovery; 6: no hold persistence; 7: no
                                                       # lock monitor, LEDs or scaled release
