@@ -74,7 +74,8 @@ driver files beside it; since 2026-10-31 12:55 the boot service `costaslink-netb
 | 0x434C0005 | `801780a` (the hold's rules changed under the same ID: `1283f89`, `eadd8ae`) | 10-30 19:24, `~/costaslink_holds/` | `ihold.v`: the signal holdover and the interference hold, off at reset; a hold only after a quiet window, max 5 s; two Q comparators busy | Jason 10-30 18:10 (someone walking through the beam); 4.8-4.10 |
 | 0x434C0006 | `8521517` | 10-31 02:36, `~/costaslink_cdrpol/` | the timing recovery on one edge polarity, centred on the measured skew | its false lock between CMP_I's edges, 4.10 |
 | 0x434C0007 | `3c76423` | 10-31 10:05, `~/costaslink_persist/` | the hold's persistence (RX_IHOLD_PERSIST) | holds under bursts, 4.13-4.14 |
-| 0x434C0008 | `816347c` + `97a9d8f` | 10-31 12:52, `~/costaslink_lockmon/` (now) | `lockmon.v`, the lock judged every 10 ms from 64 sub-windows, on the PYNQ-Z2's LEDs; the hold's release scaled to the busy time, registered in three steps | the board judging its own lock, 4.17 |
+| 0x434C0008 | `816347c` + `97a9d8f` | 10-31 12:52, `~/costaslink_lockmon/` | `lockmon.v`, the lock judged every 10 ms from 64 sub-windows, on the PYNQ-Z2's LEDs; the hold's release scaled to the busy time, registered in three steps | the board judging its own lock, 4.17 |
+| 0x434C0009 | `dcc9367` (Vivado 2022.1, Performance_NetDelay_high: WNS +0.084 ns, WHS +0.038 ns; the fast path's worst 13.007 ns; ExplorePostRoutePhysOpt and Explore missed by 0.39-0.43 ns on the route to TX_I1) | 10-31 22:32, `~/costaslink_id9/` (now; the page's logs linked from `~/costaslink_lockmon/dashboard`) | the random message masked before its reduction (REVB 22: A2 sent 2 and 3 a quarter of the time); the lock monitor blind to the Q windows' changes during this board's own events and 64 clocks after | the self-test's A2 decided 75 %, its LEDs read its own A2 / A3 as lost (4.23); after: A2 168 552 right of 168 528, the monitor 'locked, 0 of 64' through them |
 
 **The board's server software** (the driver `costaslink.py`, `netbus.py`, the recovery `linkd.py`, the status page
 `dashboard.py` and `dashboard.html`), 2026-10-31.  A `.py` change takes `sudo systemctl restart costaslink-netbus`
@@ -104,6 +105,9 @@ driver files beside it; since 2026-10-31 12:55 the boot service `costaslink-netb
 | 21:47 | `5410e45`+ | a zero-error BPSK second read '< 1/bits', not a value | the page photographed during soak10 | page |
 | 22:01 | `cf70fbd` | the self-test engine (`selftest.py`: the carrier's level, single symbols, data, beside linkd; POST /api/selftest), linkd clears its data before recovering, 'nodrive' requests; the page: what the link and the B210 are doing (lanes, the Now line), the board's own symbols not called interference, the scope's raw / aligned / eye views, bit errors as ticks when clean, the skew against the bit | Jason's demonstration for Monday | restart |
 | 22:02-22:06 | `0697889` | the self-test's receiver window inside the symbol period; 2 Mbaud in its rounds; the status card's grid, whole sentences, linkd's 'watching' during the board's own data in words, the lock monitor not judged during own symbols, the scope captions | the demo's first photographs; soak10 #10 | restart, page |
+| 22:24 | `5432a15` | a loss linkd mended between two looks shown and counted as 'Recovering' (the strip stayed green) | soak11 #7 | page |
+| 22:32 | `9c434e6` | ID 9's overlay with the driver accepting it; the self-test records what the B210 did during each step; the holdover from the page's API | ID 9 | new directory, restart |
+| 22:36 | `e2b1935` | from ID 9 the page no longer overrides the lock monitor during the board's own symbols (its 'lost' then is real interference) | a CW 0.43 MHz away read 'locked' during A2 | restart |
 
 ## Before power (2026-10-28)
 
