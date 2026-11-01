@@ -72,6 +72,7 @@ class Dashboard:
         self._mid_t = None               # linkd's measurement of the middles last taken
         self.side = None                 # the lock point (the sign of I) of the last locked idle look
         self._gap = False                # a look not locked since then
+        self._lk_gap = None              # linkd's loss count at the last full look
         self.events = collections.deque(maxlen=5000)   # what happened, in words, for the page's list (2 h of a busy test)
         self.notes = collections.deque(maxlen=500)     # notes posted by experiments: interventions, explanations
         self.scopes = collections.deque(maxlen=40)     # I MON / Q MON captures a bench test posted (POST /api/scope)
@@ -387,9 +388,12 @@ class Dashboard:
         # (data averages I towards zero on this slow reading)
         idle = bool(adc) and rate.get("CMP_I", 1e9) < 2000
         # not interference or the holdover: a slip across those counts (a held loop loses its phase across a gap of the
-        # carrier 30-60 % of the time, REVB 24, and nothing else would show it)
-        if st in ("lost", "nocarrier", "held", "firmware", "starting"):
+        # carrier 30-60 % of the time, REVB 24, and nothing else would show it).  A loss linkd mended between two
+        # full looks counts as a break too (its looks were busy: a recovery's lock point is either, not a slip; 00:02)
+        L_ = r.get("linkd") or {}
+        if st in ("lost", "nocarrier", "held", "firmware", "starting") or (self._lk_gap is not None and L_.get("losses", 0) != self._lk_gap):
             self._gap = True
+        self._lk_gap = L_.get("losses", 0)
         if st == "locked":
             self.rx_carrier = r.get("rx_mhz")
             if idle and abs(adc["I"] - self.i0) > 0.05:
