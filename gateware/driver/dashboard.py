@@ -139,8 +139,11 @@ class Dashboard:
                 if c.get("skew_samples") is not None:
                     r["skew_ns"] = abs(c["skew_samples"]) * 1e3 / (cl.clk_mhz * cl.ser)
         if cl.rd("RX_CTRL") & 1:                       # the receive engine on: single symbols decided (rx_engine.v)
-            st = cl.rx_stats()
+            # read while it counts: the matrix first, then the counters, so a symbol decided between the two reads is
+            # in 'refs' and not yet in the matrix (in flight), never the other way round (the counters first gave a
+            # window '150724973 sent: 150724976 right', 2026-11-01 11:54); the self-test's runs, read stopped, are exact
             cm = cl.confusion()
+            st = cl.rx_stats()
             # 'refs' are the symbols sent; from ID 10 each is right, wrong, undecided ('undec') or missed ('exact'),
             # before a false event's decision counted as right or wrong too (rx_engine.v, ID 10)
             r["rx"] = {k: st.get(k) for k in ("events", "decided", "false", "missed", "refs", "undec", "confirm", "veto", "lat_n",

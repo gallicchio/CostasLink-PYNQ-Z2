@@ -347,8 +347,10 @@ function drawSeries(p) {
     if (p.id == "symbols") { const tot = {events: 0, sent: 0, right: 0, wrong: 0, undec: 0, false: 0, missed: 0}; let noSent = false, noUndec = false, inexact = false;
       for (const r of hist) if (r.t >= t0 && r._rx && (r._rx.events || r._rx.sent)) { for (const k in tot) tot[k] += r._rx[k] || 0;
         noSent = noSent || r._rx.sent == null; noUndec = noUndec || r._rx.undec == null; inexact = inexact || !r._rx.exact; }
+      const flying = noSent || noUndec || inexact ? 0 : tot.sent - tot.right - tot.wrong - tot.undec - tot.missed;
       xv.innerHTML = (tot.events || tot.sent ? "In this window: " + symText({sent: noSent ? null : tot.sent, events: tot.events, right: tot.right, wrong: tot.wrong,
-          undecided: noUndec ? null : tot.undec, missed: tot.missed, false: tot.false}) + "." +
+          undecided: noUndec ? null : tot.undec, missed: tot.missed, false: tot.false}) +
+          (flying > 0 ? "; " + flying + " in flight when last read (read while counting; each finished run adds up exactly)" : "") + "." +
           (inexact ? " <i>This firmware (ID 9 or older) also counts a false decision as right or wrong: under interference those two can add to more than was sent (ID 10 counts them apart).</i>" : "") + "<br>" :
         "No single symbols in this window (only while a test sends them).<br>") + xv.innerHTML; }
     return; }
