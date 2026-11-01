@@ -187,10 +187,14 @@ class Stream:
         self.underflows = 0                              # UHD's async reports: gaps in what went out
         self.t_first = None                              # time.time() of the first buffer handed to UHD
 
-    def shape(self, base):
+    def shape(self, base, min_s=0.02):
         """complex baseband (unit scale) to the buffer streamed: amp times it, shifted by park_hz; the length is cut to a
-        whole number of park cycles"""
+        whole number of park cycles.  A buffer shorter than min_s is repeated to at least that: a 400-sample buffer at
+        20 Ms/s took 50 000 sends a second from Python, which underflowed (each a jump in the carrier's phase that slipped
+        the board's loop to its other lock point, 2026-11-01)"""
         base = np.asarray(base, dtype=np.complex128)
+        if len(base) and len(base) // self.cyc * self.cyc == len(base) and len(base) < min_s * self.rate:
+            base = np.tile(base, int(np.ceil(min_s * self.rate / len(base))))
         n = len(base) // self.cyc * self.cyc
         t = np.arange(n) / self.rate
         return (self.amp * base[:n] * np.exp(2j * np.pi * self.park * t)).astype(np.complex64).reshape(1, -1)

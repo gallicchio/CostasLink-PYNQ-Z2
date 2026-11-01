@@ -30,7 +30,7 @@ the B210 to the Costas board and also vice versa").  The bench of weekend.py (fo
                                                           mode 3 on A3's corners, two PRBS bits a symbol)
     --rate 20e6                                           'to': the B210's stream rate; at 10 Ms/s or more 'to' also sends
                                                           A3's corners at the self-test's QPSK rate (2.5 M a second, the
-                                                          idle between), one corner a run, every symbol decided
+                                                          idle between), the four in turn (one alone pulls the loop)
 
 Data go to bringup/data/board_A/b210link/.  The board is left muted and held, the B210 silent.
 """
@@ -332,6 +332,42 @@ class Link(W.Weekend):
         fig.savefig(os.path.join(OUT, "pattern_%s_%s.png" % (name, LT.O.stamp())), dpi=90)
         plt.close(fig)
 
+    def corners_turn(self, mhz, st, period_s=0.4e-6, width_s=0.2e-6, seconds=0.2, delay=96, settle=6):
+        """A3's four corners in turn at the self-test's QPSK rate (2.5 M a second, the idle between): one corner sent
+        alone at that rate pulls the Costas loop (its mean, (1, 0.5) at half duty, turns the loop 27 degrees and the idle's
+        Q with it), so the corners go in turn, the mean on the idle's axis.  The decisions in one row of the matrix: every
+        symbol decided, a quarter on each corner, none undecided, is the pass (which symbol went where is not known)"""
+        out = []
+        rate = self.stream.rate
+        P, Wd = int(round(period_s * rate)), max(1, int(round(width_s * rate)))
+        tx = C.SCHEMES["A3"]
+        for mirror in (True, False):
+            rx = C.Frame0(tx, st["side"], mirror=mirror)
+            rx_s = C.Scheme("A3", tx.text, rx.rx_point(tx.idle), [rx.rx_point(m) for m in tx.msgs], [], t=tx.t, t2=tx.t2)
+            rx_s.mask, rx_s.use = tx.mask, tx.use
+            base = np.full(P * 4 * 25, complex(*tx.idle))
+            for k in range(4 * 25):
+                base[k * P: k * P + Wd] = complex(*tx.msgs[k % 4])
+            self.stream.set(base)
+            self.cl.rx_config(rx_s.idle_vector(), rx_s.mask, rx_s.lut(False), rx_s.slow_exp(), delay=delay, quiet=4,
+                              confirm=10, window=100, row=0, settle=settle)
+            time.sleep(0.05)
+            self.cl.rx_clear()
+            time.sleep(seconds)
+            self.cl.rx_enable(False)
+            s_ = self.cl.rx_stats()
+            dec = self.cl.confusion()[0][:4]
+            self.stream.set(np.full(P * 50, complex(*tx.idle)))
+            sent = seconds / period_s
+            r = {"mirror": mirror, "sent_about": sent, "events": s_["events"], "decided": s_["decided"], "decoded": dec,
+                 "delay": delay, "settle": settle}
+            out.append(r)
+            print("%d B210 -> board A3's corners in turn at %.2f M a second (Q %s, delay %d settle %d): %d events for about "
+                  "%d sent, %d decided, each corner %s" % (mhz, 1e-6 / period_s, "mirrored" if mirror else "as is", delay,
+                                                           settle, s_["events"], sent, s_["decided"], dec), flush=True)
+            time.sleep(0.1)
+        return out
+
     # ---- B210 -> board ----
     def lock_ext(self, mhz, delta_hz, gain=80, rate=4e6, park_hz=-1e6, target=0.15):
         """the board's TX muted, its centres taken with the B210 silent, then the B210's carrier at the board's RX LO
@@ -500,8 +536,7 @@ class Link(W.Weekend):
             if events:
                 out["events"] = self.events_ext(mhz, st, names=("A1", "A1w", "A2", "A3"))
                 if self.stream.rate >= 10e6:          # the self-test's QPSK rate: 40 clocks a symbol, 20 of them the corner
-                    out["events"] += self.events_ext(mhz, st, names=("A3",), period_s=0.4e-6, width_s=0.2e-6, seconds=0.2,
-                                                     delay=96, settle=6, label=" at 2.5 M a second")
+                    out["corners_turn"] = self.corners_turn(mhz, st)
             out["ber"] = [self.ber_ext(mhz, st, baud=1e6)] if fixed else []
             if fixed and ppm_clk is not None:
                 out["ber"].append(self.ber_ext(mhz, st, baud=1e6, trim_ppm=-ppm_clk))

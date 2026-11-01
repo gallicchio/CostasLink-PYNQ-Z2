@@ -61,6 +61,13 @@ PLANS = {
                for k in (0, 2, 4, 6, 8, 12, 16)] +
               [{"step": "symbols", "scheme": "A1", "seconds": 4.0, "period": 2000, "width": 20, "delay": 16, "settle": k}
                for k in (0, 2, 4, 8)],
+    # the A/B under one interference (TODO, 2026-11-01): A3 and A1 settled (SETTLE's) or at the fixed delay, each with the
+    # windows calibrated from the states' levels or by the plain rule (half the leg), in turn
+    "ab": [{"step": "symbols", "scheme": name, "seconds": 4.0, "period": 2000, "width": 20, "settle": k, "delay": d,
+            "windows": w}
+           for name, fixed in (("A3", 24), ("A1", 16))
+           for k, d in ((None, None), (0, fixed))
+           for w in ("cal", "plain")],
 }
 SCHEME_ROTA = ("A3", "A1", "A2", "A1w")
 # ID 11's settled decision by default (a step's "settle" not given): samples a vector must hold, and the longest wait.
@@ -401,12 +408,19 @@ class SelfTest:
         tx = SCHEMES[name]
         L = getattr(self.server, "linkd", None)
         losses0 = L.counts["losses"] if L else 0
+        # "windows": "plain" (the A/B): the plain rule's windows for this run alone, the calibration kept and put back
+        plain = st.get("windows") == "plain" and L is not None and L.cal is not None and bool(L.cen)
+        cal_kept = L.cal if plain else None
 
         def start(cl):
             nonlocal settle, delay
             if settle is None:
                 settle = SETTLE[name][0] if getattr(cl, "rx_settle", False) else 0
             settle = int(settle)
+            if plain:
+                L.cal = None
+                for w, v in L.thresholds().items():
+                    cl.threshold(w, min(2.499, max(0.0, v)))
             if delay is None:
                 delay = SETTLE[name][1] if settle else 16
             delay = int(delay)
@@ -453,6 +467,10 @@ class SelfTest:
                 hist = [[round(k * t_sample * 1e9, 2), c] for k, c in enumerate(h) if c]
             cl.tx_stop()
             cl.hold_point(1, 0)
+            if plain:
+                L.cal = cal_kept
+                for w, v in L.thresholds().items():
+                    cl.threshold(w, min(2.499, max(0.0, v)))
             self._busy = False
             n = tx.n
             # each symbol sent (a reference) is right, wrong, undecided (the receiver fired, its vector no message's)
@@ -467,9 +485,12 @@ class SelfTest:
                     "lat_ns": [s[k] * t_sample * 1e9 if s.get(k) is not None else None
                                for k in ("lat_min", "lat_mean", "lat_max")] if s.get("lat_n") else None,
                     "lat_hist": hist}
+        # aborted (linkd recovering): the windows left plain with cal cleared, as linkd's own setup leaves them; the
+        # self-test calibrates again when it next finds no calibration
         res = self._do(finish) if not self._aborted else {}
         return dict({"step": "symbols", "scheme": name, "period": period, "width": width, "count": count, "side": side,
-                     "delay": delay, "settle": settle, "interrupted": not ok}, **res)
+                     "delay": delay, "settle": settle, "windows": "plain" if plain else ("cal" if L and L.cal else "plain"),
+                     "interrupted": not ok}, **res)
 
     def data(self, st):
         ps = st.get("periods") or [st.get("period", 4)]
