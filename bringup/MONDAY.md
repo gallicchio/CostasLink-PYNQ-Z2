@@ -36,9 +36,9 @@ Open the page full screen.  What to show, in order:
    on, every block up to about 100 s rides through as 'Carrier interrupted: holding' (BRINGUP_LOG 4.22; half of them
    come back half a cycle over, listed as a slip): turning it on is your call, and the demo can show both:
 
-       ssh xilinx@192.168.8.142 "cd ~/costaslink_current && python3 -c 'import netbus; c = netbus.RemoteCostasLink(\"localhost\"); c.shold(True)'"
+       curl -X POST -d '{"holdover": true}' http://192.168.8.142:8080/api/selftest     # and false to turn it off
 
-   (that request pauses linkd for a minute; `c.shold(False)` turns it off; a server restart also clears it).
+   (from inside the board's server, so linkd is not paused; a server restart also turns it off).
 6. Afterwards: `{"on": false}` (or leave it on: it pauses whenever a bench program drives the board).
 
 ## 2. Board A to the VNA (the RACON room, 1-2 h with the move)

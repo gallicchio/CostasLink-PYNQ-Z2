@@ -5,6 +5,8 @@ path, TODO 'the eye, latency and bit errors need data on the link').
 
     netbus.py serve --dashboard 8080 --linkd --selftest
     POST /api/selftest {"on": true, "plan": "cycle" | "data" | "symbols" | "carrier"}      (the page's server)
+    POST /api/selftest {"holdover": true | false}     the signal holdover on or off (off at reset and after a restart:
+                                                      whether deployment keeps it on is Jason's call, BRINGUP_LOG 4.22)
 
 A plan is a list of steps run in turn, round and round, each only while linkd stands by with the link locked:
     idle     the carrier alone for `seconds`: the page reads the carrier's level then (RX ANT, the demodulator)
@@ -79,7 +81,9 @@ class SelfTest:
         return {"on": self.on, "plan": self.plan_name, "now": dict(self.now), "results": list(self.results)[-6:]}
 
     def set(self, d):
-        """POST /api/selftest: {"on": bool, "plan": name}"""
+        """POST /api/selftest: {"on": bool, "plan": name, "holdover": bool}"""
+        if "holdover" in d:                              # from inside the server: linkd is not paused by it
+            self._do(lambda cl: cl.shold(bool(d["holdover"])))
         if "plan" in d:
             if d["plan"] not in PLANS:
                 raise ValueError("no plan %r (%s)" % (d["plan"], ", ".join(PLANS)))
@@ -134,6 +138,15 @@ class SelfTest:
                                                                     or L.mode not in ("locked", "watching"))):
                 return False
         return True
+
+    def _b210(self, t0, t1):
+        """what the B210 was announced to send during [t0, t1] (the page's notes), in words, or 'quiet'"""
+        d = getattr(self.server, "dashboard", None)
+        if d is None:
+            return None
+        said = [n["text"] for n in list(d.notes) if (n.get("b210") or n.get("text", "").startswith("B210"))
+                and n["t_start"] <= t1 and (n.get("t_end") or t1) >= t0]
+        return "; ".join(said)[:300] if said else "quiet"
 
     def _say(self, step, text, **kw):
         self.now = dict({"step": step, "since": time.time(), "text": text}, **kw)
@@ -260,6 +273,7 @@ class SelfTest:
             if self._aborted:
                 res["interrupted"] = True
             res.update(t0=t0, t1=time.time())
+            res["b210"] = self._b210(t0, res["t1"])
             self.results.append(res)
 
     def start(self):

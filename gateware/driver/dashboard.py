@@ -48,6 +48,7 @@ EDGE_REGS = ("EDGE_CNT0", "EDGE_CNT1", "EDGE_CNT2", "EDGE_CNT3", "EDGE_CNT4", "E
 class Dashboard:
     def __init__(self, server, port=8080, period_s=1.0, slow_every=1, keep_s=7200, log_dir=None, keep_days=14, min_free_mb=1000):
         self.server = server
+        server.dashboard = self                          # the self-test reads the notes (what the B210 did meanwhile)
         self.port = port
         self.period_s = period_s
         self.slow_every = slow_every
@@ -525,7 +526,8 @@ class Dashboard:
                         if st is None:
                             raise ValueError("this server runs without --selftest")
                         out = st.set(d)
-                        dash.note({"text": "the link's self-test %s (plan '%s')" % ("on" if out["on"] else "off", out["plan"]),
+                        dash.note({"text": ("the signal holdover switched %s" % ("on" if d["holdover"] else "off")) if "holdover" in d and len(d) == 1
+                                   else "the link's self-test %s (plan '%s')" % ("on" if out["on"] else "off", out["plan"]),
                                    "kind": "info", "source": "the page's API"})
                     else:
                         out = dash.scope(d) if u.path == "/api/scope" else dash.note(d)

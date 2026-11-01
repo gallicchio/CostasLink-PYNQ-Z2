@@ -239,7 +239,8 @@ function drawActivity(p) {
   const res = st && st.results ? st.results.filter(x => x.step != "idle" && !x.error).slice(-2) : [];
   document.getElementById("x_" + p.id).innerHTML = "<b>Now</b>: the link " + linkText(fl) + "; the B210 " + (bn ? bn.text.replace(/^B210: /, "sends ") : "quiet") + "." +
     (res.length ? "<br>The self-test's last: " + res.map(x => x.step == "symbols" ? x.scheme + ": " + x.events + " symbols, " + x.right + " right, " + x.wrong + " wrong, " + x.false + " false, " + x.missed + " missed" + (x.lat_ns ? ", " + fmt(x.lat_ns[1]) + " ns" : "") :
-       fmt(x.mbaud) + " Mbaud: " + (x.bits ? x.bits.toExponential(1) + " bits, " + Math.round(x.errors) + " errors" : "no count") + (x.interrupted ? " (interrupted)" : "")).join("; ") + "." : "") +
+       fmt(x.mbaud) + " Mbaud: " + (x.bits ? x.bits.toExponential(1) + " bits, " + Math.round(x.errors) + " errors" : "no count") + (x.interrupted ? " (interrupted)" : "") +
+       (x.b210 && x.b210 != "quiet" ? " (the B210 meanwhile: " + x.b210.replace(/^B210: /, "") + ")" : x.b210 == "quiet" ? " (the B210 quiet)" : "")).join("; ") + "." : "") +
     "<br>" + Object.entries(ACT).map(([k, [c, t]]) => "<span style='color:" + c + "'>&#9632;</span> " + t).join(" &nbsp; ") + "<br>" +
     Object.entries(B2).map(([k, [c, t]]) => "<span style='color:" + c + "'>&#9632;</span> " + t).join(" &nbsp; ");
 }
