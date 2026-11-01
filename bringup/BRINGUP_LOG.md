@@ -113,6 +113,7 @@ driver files beside it; since 2026-10-31 12:55 the boot service `costaslink-netb
 | 22:57 | `9c106e0` | the self-test's data reads the carrier's level in a 0.1 s gap each second: signal strength and bit errors together | Jason: live strength and BER for the physical demo | restart |
 | 23:07 | `399577d` | 'Unwanted power in Q' and 'Comparator activity' not judged while the board's own symbols or data run | the 23:03 photograph | page |
 | 23:22-23:24 | `ae5a532` | the latency's spread (the self-test's histogram, a new panel); the B210 from its own announcements only | the demo | restart |
+| 23:27 | `fa554b7` | the bench scope's captures into the day log once a minute a kind, thinned (they were 55 MB of a 90 MB day) | the SD card's growth | restart |
 
 ## Before power (2026-10-28)
 
