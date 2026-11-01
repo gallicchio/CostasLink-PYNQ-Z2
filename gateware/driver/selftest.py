@@ -43,6 +43,8 @@ PLANS = {
     "symbols": [{"step": "idle", "seconds": 2.0}, {"step": "symbols", "seconds": 13.0, "period": 2000, "width": 20}],
     # the carrier alone: the level every second
     "carrier": [{"step": "idle", "seconds": 10.0}],
+    # each state of A3 and A2 held still, the comparators' levels at each (the margins on this lock point)
+    "corners": [{"step": "corners", "scheme": "A3"}, {"step": "corners", "scheme": "A2"}, {"step": "idle", "seconds": 5.0}],
     # A3 decided 8-48 samples (10-60 ns) after its first comparator fired: how many of each corner stay undecided while
     # the arms are still crossing (2026-11-01: one corner of four lost 10 % to 'undecided' at the usual 16)
     "a3delay": [{"step": "symbols", "scheme": "A3", "seconds": 4.0, "period": 2000, "width": 20, "delay": d}
@@ -179,6 +181,78 @@ class SelfTest:
         L = getattr(self.server, "linkd", None)
         ok = self._watch(st["seconds"], L.counts["losses"] if L else 0)
         return {"step": "idle", "seconds": st["seconds"], "interrupted": not ok}
+
+    def corners(self, st):
+        """each state of a scheme held still on the TX (the loop held, so nothing turns: TX and RX share the TCXO) and,
+        at each, every fast comparator's duty and every window comparator's level (where it flips, found by halving
+        its threshold): which comparator decides a state with how much margin, on this lock point (2026-11-01: one A3
+        corner 5 % undecided on one lock point even 60 ns after the event, none on the other).  A state at a time
+        under the lock (about 0.3 s each, so the page's looks go on); linkd's windows put back after"""
+        name = st.get("scheme", "A3")
+        tx = SCHEMES[name]
+        L = getattr(self.server, "linkd", None)
+        if L is None or not L.cen or not L.leg_windows:
+            return {"step": "corners", "scheme": name, "error": "linkd has not set the windows up"}
+        frac = float((L.cfg or {}).get("window_frac", 0.5))
+        thr = {w: L.cen[w] + frac * L.leg_windows for w in L.cen}
+        names = {"I": "CMP_I", "QP": "CMP_QP", "QN": "CMP_QN", "IP": "CMP_IP", "IN": "CMP_IN"}
+
+        def start(cl):
+            self._busy = True
+            cl.ctrl(loop_hold=1)
+            return self._side(cl)
+
+        def at(cl, point):
+            cl.hold_point(*point)
+            time.sleep(0.02)
+            g = cl.gate(seconds=0.01, inputs=tuple(names.values()))
+            out = {"duty": {k: round(g[n]["duty"], 4) for k, n in names.items()}, "level_v": {}}
+            for w in ("QP", "QN", "IP", "IN"):
+                lo, hi = L.cen[w] - 0.35, L.cen[w] + 0.35          # the input above the threshold: the comparator high
+                if self._duty(cl, w, names[w], lo) < 0.5 or self._duty(cl, w, names[w], hi) > 0.5:
+                    out["level_v"][w] = None                        # outside the range
+                    continue
+                for _ in range(9):
+                    mid = 0.5 * (lo + hi)
+                    if self._duty(cl, w, names[w], mid) > 0.5:
+                        lo = mid
+                    else:
+                        hi = mid
+                out["level_v"][w] = round(0.5 * (lo + hi), 4)
+            for w, v in thr.items():
+                cl.threshold(w, v)
+            return out
+
+        def finish(cl):
+            for w, v in thr.items():
+                cl.threshold(w, v)
+            cl.hold_point(1, 0)
+            time.sleep(0.005)
+            cl.ctrl(loop_hold=0)
+            self._busy = False
+
+        side = self._do(start)
+        self._say("corners", "each state of %s held still in turn, the comparators' levels read (the loop held ~2 s)" % name,
+                  scheme=name)
+        res = {"step": "corners", "scheme": name, "side": side, "leg_v": round(L.leg_windows, 4),
+               "thresholds_v": {w: round(v, 4) for w, v in thr.items()}, "centres_v": {w: round(v, 4) for w, v in L.cen.items()},
+               "states": []}
+        try:
+            for k, m in enumerate([tx.idle] + list(tx.msgs)):
+                r = self._do(lambda cl: at(cl, m))
+                r.update(state="idle" if k == 0 else k - 1, tx=list(m))
+                # the level in the leg's units from each window's centre (+ toward its threshold)
+                r["margin_leg"] = {w: (round((v - thr[w]) / L.leg_windows, 3) if v is not None else None)
+                                   for w, v in r["level_v"].items()}
+                res["states"].append(r)
+        finally:
+            self._do(finish)
+        return res
+
+    @staticmethod
+    def _duty(cl, w, name, v):
+        cl.threshold(w, v)
+        return cl.gate(seconds=0.005, inputs=(name,))[name]["duty"]
 
     def symbols(self, st):
         name = st.get("scheme") or SCHEME_ROTA[self._k["scheme"] % len(SCHEME_ROTA)]
