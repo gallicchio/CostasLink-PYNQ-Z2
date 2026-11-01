@@ -140,8 +140,11 @@ class Dashboard:
         if cl.rd("RX_CTRL") & 1:                       # the receive engine on: single symbols decided (rx_engine.v)
             st = cl.rx_stats()
             cm = cl.confusion()
-            r["rx"] = {k: st.get(k) for k in ("events", "decided", "false", "missed", "confirm", "veto", "lat_n", "lat_min",
-                                              "lat_max", "lat_mean")}
+            # 'refs' are the symbols sent; from ID 10 each is right, wrong, undecided ('undec') or missed ('exact'),
+            # before a false event's decision counted as right or wrong too (rx_engine.v, ID 10)
+            r["rx"] = {k: st.get(k) for k in ("events", "decided", "false", "missed", "refs", "undec", "confirm", "veto", "lat_n",
+                                              "lat_min", "lat_max", "lat_mean")}
+            r["rx"]["exact"] = bool(getattr(cl, "rx_exact", False))
             r["rx"]["right"] = sum(cm[a][a] for a in range(8))
             r["rx"]["wrong"] = sum(cm[a][b] for a in range(8) for b in range(8) if a != b)
             r["rx"]["sample_ns"] = cl.t_sample * 1e9

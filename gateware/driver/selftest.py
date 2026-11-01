@@ -85,8 +85,8 @@ class SelfTest:
         out = {"on": self.on, "plan": self.plan_name, "now": dict(self.now), "results": res}
         if full:
             last = next((r for r in reversed(self.results) if r.get("lat_hist")), None)
-            out["last_hist"] = {k: last.get(k) for k in ("scheme", "events", "right", "wrong", "false", "missed", "lat_ns", "lat_hist",
-                                                         "b210", "t1", "period", "width")} if last else None
+            out["last_hist"] = {k: last.get(k) for k in ("scheme", "sent", "events", "right", "wrong", "undecided", "false", "missed",
+                                                         "exact", "lat_ns", "lat_hist", "b210", "t1", "period", "width")} if last else None
         return out
 
     def set(self, d):
@@ -202,6 +202,9 @@ class SelfTest:
             ok = self._watch(1.3, losses0)                      # a look of the page's with the counts final
 
         def finish(cl):
+            # the engine stopped first: running, it goes on counting (a CW's false events, 2 M/s) between the counters'
+            # reads, and 'events' and 'false' no longer belonged together (602 references unaccounted in a run)
+            cl.rx_enable(False)
             s = cl.rx_stats()
             cm = cl.confusion()
             # the latency's spread, not only its mean: the histogram's bins (one sample each) up to the slowest
@@ -211,15 +214,19 @@ class SelfTest:
                 n_b = min(1024, int(s["lat_max"]) + 2)
                 h = cl.histogram(n_b)
                 hist = [[round(k * t_sample * 1e9, 2), c] for k, c in enumerate(h) if c]
-            cl.rx_enable(False)
             cl.tx_stop()
             cl.hold_point(1, 0)
             self._busy = False
-            n = tx.n
-            return {"events": s.get("events"), "right": sum(cm[a][a] for a in range(n)),
-                    "wrong": sum(cm[a][b] for a in range(n) for b in range(n) if a != b), "false": s.get("false"),
-                    "missed": s.get("missed"), "lat_ns": [s[k] * t_sample * 1e9 if s.get(k) is not None else None
-                                                         for k in ("lat_min", "lat_mean", "lat_max")] if s.get("lat_n") else None,
+            # each symbol sent (a reference) is right, wrong, undecided (the receiver fired, its vector no message's)
+            # or missed; every event is one of the first three or false.  The whole matrix: a decision outside the
+            # scheme's own messages is wrong too.  From ID 10 these add up exactly ('exact'); before, a false event's
+            # decision went into right or wrong (against the last message sent) and 'undecided' was not counted
+            return {"sent": s.get("refs"), "events": s.get("events"), "decided": s.get("decided"),
+                    "right": sum(cm[a][a] for a in range(8)),
+                    "wrong": sum(cm[a][b] for a in range(8) for b in range(8) if a != b), "undecided": s.get("undec"),
+                    "false": s.get("false"), "missed": s.get("missed"), "exact": bool(getattr(cl, "rx_exact", False)),
+                    "lat_ns": [s[k] * t_sample * 1e9 if s.get(k) is not None else None
+                               for k in ("lat_min", "lat_mean", "lat_max")] if s.get("lat_n") else None,
                     "lat_hist": hist}
         res = self._do(finish) if not self._aborted else {}
         return dict({"step": "symbols", "scheme": name, "period": period, "width": width, "count": count, "side": side,
