@@ -585,6 +585,9 @@ class Dashboard:
                     self.send(200, json.dumps([n for n in ns if (n["t_end"] or 1e18) >= t0], default=str), "application/json")
                 elif u.path == "/api/now":
                     self.send(200, dash.hist_json[-1] if dash.hist_json else "{}", "application/json")
+                elif u.path == "/api/page":                 # the page's own file: an open page reloads when it changes
+                    self.send(200, json.dumps({"mtime": os.stat(os.path.join(HERE, "dashboard.html")).st_mtime}),
+                              "application/json")
                 elif u.path == "/api/events":
                     s = float(parse_qs(u.query).get("s", ["7200"])[0])     # the page's span (it listed only the last 30)
                     t0 = time.time() - s

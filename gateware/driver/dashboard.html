@@ -794,6 +794,10 @@ async function tick() { try { const r = await (await fetch("/api/now")).json(); 
     const t0 = Date.now() / 1000 - span; while (hist.length && hist[0].t < t0) hist.shift(); } status(); drawAll(); holdHeights(); }
   catch (e) { document.getElementById("meta").textContent = "cannot reach the board's server (restarting, or the network?)"; } }
 (async () => { try { pullin = await (await fetch("/api/pullin")).json(); } catch (e) {} })();
+// a page left open reloads itself when its file on the board changes (it kept drawing the old way: Jason, 2026-11-01)
+let pageV = null;
+setInterval(async () => { try { const v = (await (await fetch("/api/page")).json()).mtime;
+  if (pageV == null) pageV = v; else if (v != pageV) location.reload(); } catch (e) {} }, 30000);
 // the demonstration's controls, only with ?controls=1 in the page's address (the page is otherwise read-only)
 if (new URLSearchParams(location.search).get("controls") == "1") {
   document.getElementById("controls").style.display = "flex";

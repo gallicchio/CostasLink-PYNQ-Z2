@@ -384,6 +384,63 @@ class Link(W.Weekend):
             time.sleep(0.1)
         return out
 
+    # ---- B210 -> board: the board's receiver against the B210's exact states ----
+    RX_PATTERNS = {"axes": [(0, 1), (0, -1)], "flip": [(-1, 0)], "corners": [(1, 1), (1, -1), (-1, 1), (-1, -1)]}
+
+    @staticmethod
+    def duty_steps(pts, floor=0.002):
+        """a comparator's duty against its threshold (it falls as the threshold rises past each level the signal spends
+        time at): the steps, each [its middle (V), its height (the share of time at that level)]"""
+        v = np.array([p[0] for p in pts])
+        d = np.array([p[1] for p in pts])
+        fall = -np.diff(d)
+        mids = 0.5 * (v[1:] + v[:-1])
+        steps, run = [], []
+        for k in range(len(fall) + 1):
+            if k < len(fall) and fall[k] > floor:
+                run.append(k)
+                continue
+            if run:
+                w = fall[run]
+                steps.append([float(np.sum(mids[run] * w) / np.sum(w)), float(np.sum(w))])
+                run = []
+        return [s_ for s_ in steps if s_[1] > 0.03]
+
+    def rx_accuracy(self, mhz, st, period_s=4e-6, width_s=2e-6, span=0.26, step=0.001, seconds=0.004):
+        """the B210's states (its DAC's numbers, its I and Q matched to about a percent) as the board's receiver sees
+        them: each pattern the idle half the time and its states in turn (balanced, so the loop, about 3 kHz wide, sees
+        the idle's axis), each window's threshold swept in 1 mV steps and its comparator's duty read; each state's level
+        is where the duty steps by its share.  Q's scale against I's (the axes), a pure-Q state's I (the quadrature
+        error), an exact flip's Q (the receiver's own part of A1's Q, REVB 35)"""
+        rate = self.stream.rate
+        P, Wd = int(round(period_s * rate)), int(round(width_s * rate))
+        cen = {w: st["cen"][w]["v0"] for w in ("QP", "QN", "IP", "IN")}
+        out = {"mhz": mhz, "cen": cen, "a": st["a"], "side": st["side"], "period_s": period_s, "width_s": width_s,
+               "patterns": {}}
+        try:
+            for pname, states in self.RX_PATTERNS.items():
+                base = np.full(P * len(states) * 20, complex(1, 0))
+                for k in range(len(states) * 20):
+                    base[k * P: k * P + Wd] = complex(*states[k % len(states)])
+                self.stream.set(base)
+                time.sleep(0.5)
+                sweeps, steps = {}, {}
+                for w in ("QP", "QN", "IP", "IN"):
+                    vs = [float(x) for x in np.arange(cen[w] - span, cen[w] + span + 1e-9, step)]
+                    pts = [(v, d) for v, r, d in self.cl.threshold_scan(w, vs, seconds=seconds)]
+                    sweeps[w] = [[round(v, 4), round(d, 5)] for v, d in pts]
+                    steps[w] = [[round(1e3 * (m - cen[w]), 2), round(h, 3)] for m, h in self.duty_steps(pts)]
+                o = self.observe(st["cen"], st["a"])
+                out["patterns"][pname] = {"states": states, "sweeps": sweeps, "steps_mv": steps,
+                                          "lock_after": {k: o[k] for k in ("state", "di", "vc")}}
+                print("%d rxcal %-7s %s: %s; then %s" % (mhz, pname, states, "; ".join(
+                    "%s %s" % (w, " ".join("%+.1f mV x%.2f" % (m, h) for m, h in steps[w])) for w in steps), o["state"]),
+                    flush=True)
+        finally:
+            self.stream.set(np.ones(P * 50))
+            self.thresholds(st["cen"], st["a"], 0.5)
+        return out
+
     # ---- B210 -> board ----
     def lock_ext(self, mhz, delta_hz, gain=80, rate=4e6, park_hz=-1e6, target=0.15):
         """the board's TX muted, its centres taken with the B210 silent, then the B210's carrier at the board's RX LO
@@ -570,7 +627,7 @@ class Link(W.Weekend):
 
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("what", nargs="+", choices=["offset", "from", "to", "pattern", "self"])
+    ap.add_argument("what", nargs="+", choices=["offset", "from", "to", "pattern", "self", "rxcal"])
     ap.add_argument("--mhz", type=float, default=None, help="5200 (5400 for 'self' alone: 200 MHz from the board's link)")
     ap.add_argument("--gain", type=float, default=80)
     ap.add_argument("--no-fixed", action="store_true", help="skip the fixed-phase BER runs")
@@ -611,6 +668,11 @@ def main(argv):
                                    events=not a.no_events, rate=a.rate)
         if "self" in a.what:
             out["self"] = b210_self(mhz + 200, mods=mods, bb=L.bb)
+        if "rxcal" in a.what:                          # the board's receiver against the B210's exact states
+            if "offset" not in out:
+                out["offset"] = L.offset(mhz)
+            st = L.lock_ext(mhz, out["offset"]["delta_hz"], gain=a.gain, rate=a.rate)
+            out["rxcal"] = L.rx_accuracy(mhz, st) if st else {"error": "no lock to the B210"}
     finally:
         try:
             L.cl.dac(S.DAC2, V_T2=S.V_MID)
