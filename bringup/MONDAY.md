@@ -75,6 +75,17 @@ Needs: **board B brought up first** (never powered: stages 1-3 of BRINGUP.md, as
 first power with the current limit, the rails, the synthesizers, the TX, the receive chain; `stages.py` does them with
 verdicts, a few hours), and **a second PYNQ-Z2** with the PYNQ 3.0.1 image and the overlay (ID 8) deployed beside a
 second board server (its own IP; bench.py's config names the host).  Then:
+* **the frequency plan: one one-way link each way, apart in frequency** (PLAN.md section on duplex, docs/SYSTEM.md:
+  frequency-division duplex needs 52 dB of isolation, separate antennas give 30-40, so the split must be wide): A
+  transmits at 5.2 GHz to B, B at 5.8 GHz to A, each board's RX on the other's TX frequency.  That needs C102 lifted on
+  **both** boards (step 3: the RX at 5.8 GHz) and each board's two synthesizers on different frequencies; until then,
+  one direction only (A to B at 5.2 GHz, B's TX muted);
+* the software for it (to do before Monday where it can be tested on one board): `link.json` with separate `tx_mhz`
+  and `rx_mhz` (linkd sets both synthesizers to one `mhz` today, and the TX's carrier null is per TX frequency); the
+  self-test's roles across boards: one board sending data continuously, the other checking every bit (the check
+  needs no local copy of the data: `ber_cdr.v` recovers the remote TX's timing); single symbols across boards count
+  decisions but not right / wrong without the sender's sequence, so latency across boards is the turnaround's: B
+  answers on the fast path, A times the round trip (BRINGUP_LOG 3.4g-h);
 * each board's TX to the other's RX over the air (A's TX antenna toward B's RX antenna and back; the two TCXOs differ by
   about 1 ppm, 5 kHz at 5.2 GHz: inside linkd's starts from above);
 * each board locks to the other's carrier; the BER check works across boards (`ber_cdr.v` recovers the remote TX's
