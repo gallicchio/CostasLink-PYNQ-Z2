@@ -206,7 +206,7 @@ function drawSeries(p) {
      "the I comparator is toggling: bursts of interference, or data on the link, spoil this slow reading";
   xv.textContent = (lv == null ? "no reading yet" : nowNull ? "not measurable now (" + why + "); the last reading shown, in grey" : ({good:"good", warn:"marginal", bad:"bad"}[k] || "")) + (nowNull ? "" : extra);
   if (p.also || p.nm) xv.innerHTML = xv.innerHTML + "<br>" + (p.also ? "<span style='color:" + C.data + "'>&#9632;</span> the carrier &nbsp; <span style='color:" + SERIES[p.also[1]] + "'>&#9632;</span> " + p.also[2] +
-      (fl.state && fl.state != "locked" && fl.state != "interfered" ? " (not locked now, so it includes the carrier itself)" : "") + " &nbsp; " : "") +
+      (fl.state == "lost" || fl.state == "unsettled" ? " (not locked now, so it includes the carrier itself)" : "") + " &nbsp; " : "") +
     "<span class='hz'></span> not measurable then";
 }
 function drawTimeline(p) {
@@ -286,6 +286,8 @@ function drawPullin(p) {
   const off = lastValue(r => r.off_khz);
   let lastSt = null; for (let i = hist.length - 1; i >= 0; i--) if (!hist[i].busy && hist[i].state) { lastSt = hist[i].state; break; }
   if (busyNow()) el.textContent = "black: measured at " + k + " MHz; no reading now: " + busyWhy();
+  else if (lastSt == "holdover") el.textContent = "black: measured at " + k + " MHz; now held by the holdover while the carrier is gone" +
+      (off != null ? ", " + fmt(off) + " kHz from the lock" : "") + ": the map does not apply until the carrier is back, when the loop picks up where it was";
   else if (lastSt == "nocarrier") el.textContent = "black: measured at " + k + " MHz; now no carrier: the map is how an unlocked loop drifts with the carrier there. " +
       "With none, the oscillator runs to the end of its range (in about 2 s), and the recovery brings it back once the carrier returns";
   else if (off != null) { const xo = x(off); g.strokeStyle = C.data; g.lineWidth = 1; g.beginPath(); g.moveTo(xo, T); g.lineTo(xo, T + ph); g.stroke();
