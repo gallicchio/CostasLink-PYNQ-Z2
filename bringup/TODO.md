@@ -34,6 +34,13 @@ experiments; pictures, not one-word states, each with what led to it and how to 
    monitor and the PYNQ-Z2's LEDs in ID 8 (`lockmon.v`, building); 3's page v1 at http://192.168.8.142:8080/ (since
    11:07).  Next: `bringup/unattended.py` overnight (the B210 throwing random interference, nothing touching the
    board, linkd and the page doing the work); the page's eye, latency and history plots.
+   **Status 2026-11-01 01:30:** the board runs ID 0x434C000A (`~/costaslink_id10/`: the single symbols' counts add
+   up, sent = right + wrong + undecided + missed); linkd moves the receiver's windows with the level; the page shows each
+   symbol run's table of states sent and decided.  The night's rehearsal (BRINGUP_LOG 4.24): 98 random disturbances
+   through 01:25 beside the self-test, every loss recovered, 470 data runs with the B210 quiet and no bit error in
+   7.5e10; what it found is fixed (REVB 32-33 new).  Running: soak14 (`--world`, to about 10:40), the scope watcher,
+   the 10-minute photographs.  Open, for the demo: the holdover on or off (Jason's call, 4.22); ID 11's decision on
+   the settled pattern (IMPROVEMENTS 3).
    **Status 2026-10-31 23:00:** the board runs ID 0x434C0009 (REVB 22 fixed, the lock monitor blind to its own
    symbols) and its own self-test beside linkd (`selftest.py`: the carrier's level, single symbols A3/A1/A2/A1w with
    their decisions and latency, BPSK data at 2-50 Mbaud with every bit checked and the level read in a gap each
