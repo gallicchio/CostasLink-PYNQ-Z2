@@ -64,8 +64,11 @@ SCHEME_ROTA = ("A3", "A1", "A2", "A1w")
 # ID 11's settled decision by default (a step's "settle" not given): samples a vector must hold, and the longest wait.
 # The plan 'settle' (2026-11-01, 01:10-01:20 PST, the B210 quiet): A1 62.4 ns at k = 2 against 76.2 fixed, all right; A3
 # 66-67 ns at k = 4 against 80 fixed at 16 (90 at 24), no wrong decision and fewer undecided; A3 at k = 2 decided 0.8-1.3 %
-# wrong (a corner passing through another's vector), so 4 for the corners; A1, A1w and A2 have no state between
-SETTLE = {"A1": (2, 16), "A1w": (2, 16), "A2": (2, 16), "A3": (4, 24)}
+# wrong (a corner passing through another's vector), so 4 for the corners; A1, A1w and A2 have no state between.
+# With the windows calibrated from the states' levels (01:28 PST: a quarter of the leg out, not half) the passing vector
+# lasts longer: A3 at k = 4 decided 2.1 % wrong, at 6 none wrong and none undecided at 63.1 ns (fixed at 24: 85.5 ns,
+# none undecided where 2.9 % were before); A1 58.7 ns at 2.  So 6 for the corners
+SETTLE = {"A1": (2, 16), "A1w": (2, 16), "A2": (2, 16), "A3": (6, 24)}
 SCHEME_TEXT = {"A1": "the BPSK flip (1 of 1)", "A1w": "the BPSK flip seen beside the idle (1 of 1)",
                "A2": "1 bit: the Q step (1 of 2)", "A3": "2 bits: the QPSK corners (1 of 4)"}
 
