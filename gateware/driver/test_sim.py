@@ -296,6 +296,28 @@ class TestOnRtl(unittest.TestCase):
         self.assertGreater(st["false"], 10)
         self.assertEqual(st["false"], st["events"])
 
+    def test_counts_add_up_under_noise(self):
+        # ID version 10: single symbols with the comparators flipping at random, so some events are false and some
+        # decide no message; every reference is one of right, wrong, undecided, missed, every event one of those or
+        # false (before, a false event's decision went into the matrix and a reference could count twice)
+        cl, bus = self.cl, self.bus
+        cl.scheme("A3", window=50)
+        cl.events(period=100, width=20, count=200, source="prbs", n=4)
+        cl.rx_clear()
+        bus.knob("noise_mask", (1 << CMP_QP) | (1 << CMP_I))
+        bus.knob("noise_ppm", 3000)
+        cl.tx_go()
+        cl.wait_s((200 * 100 + 200) * cl.t_clk)
+        bus.knob("noise_ppm", 0)
+        cl.rx_enable(False)
+        st, cm = cl.rx_stats(), cl.confusion()
+        in_cm = sum(map(sum, cm))
+        self.assertEqual(st["refs"], 200)
+        self.assertEqual(st["refs"], in_cm + st["undec"] + st["missed"])
+        self.assertEqual(st["events"], in_cm + st["undec"] + st["false"])
+        self.assertGreater(st["false"], 0)
+        self.assertGreater(st["undec"] + st["missed"] + sum(cm[a][b] for a in range(8) for b in range(8) if a != b), 0)
+
     def test_capture_tx_event(self):
         cl = self.cl
         cl.scheme("A3")

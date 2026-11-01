@@ -88,11 +88,12 @@ REGS = [
     (0x47, "RX_LUT3", "RW", "rx", "vectors 24-31"),
     (0x48, "RX_SLOW_EXP", "RW", "rx", "message k in [4k+3:4k]: {care, CMP_QN_S CMP_QP_S CMP_I_S} expected at confirm time"),
     (0x49, "RX_EVENTS", "R", "rx", "events"),
-    (0x4A, "RX_DECIDED", "R", "rx", "decisions with a valid table entry"),
+    (0x4A, "RX_DECIDED", "R", "rx", "decisions with a valid table entry (false events' included)"),
     (0x4B, "RX_CONFIRM", "R", "rx", "decisions the slow comparators confirmed"),
     (0x4C, "RX_VETO", "R", "rx", "decisions the slow comparators vetoed"),
     (0x4D, "RX_FALSE", "R", "rx", "events with no reference in the window before them"),
-    (0x4E, "RX_MISSED", "R", "rx", "references with no event in the window after them"),
+    (0x4E, "RX_MISSED", "R", "rx", "references with no event in the window after them (from ID 10 an event on the clock a "
+                                   "reference runs out is false, not also its pair)"),
     (0x4F, "RX_REFS", "R", "rx", "references seen"),
     (0x50, "RX_LAST", "R", "rx", "[2:0] message, [3] valid, [8:4] vector at the decision, [13:9] first fired, [14] confirmed, "
                                  "[15] vetoed, [16] had a reference"),
@@ -101,7 +102,10 @@ REGS = [
     (0x53, "RX_LAT_MAX", "R", "rx", "[15:0] the most"),
     (0x54, "RX_LAT_SUM", "R", "rx", "the sum of reference -> decision (samples), for the mean (with RX_LAT_N)"),
     (0x55, "RX_LAT_N", "R", "rx", "the number summed"),
-    (0x56, "RX_CM_ADDR", "RW", "rx", "[5:0] confusion-matrix cell row*8 + message (row = TX message, column = decoded)"),
+    (0x56, "RX_CM_ADDR", "RW", "rx", "[5:0] confusion-matrix cell row*8 + message (row = TX message, column = decoded); "
+                                    "from ID 10, with RX_CTRL[19] (the row from this board's TX), only events with a "
+                                    "reference are counted (before, a false event's decision counted against the last "
+                                    "message sent)"),
     (0x57, "RX_CM_DATA", "R", "rx", "the cell's count; the address steps on by one after each read"),
     (0x58, "RX_HIST_CFG", "RW", "rx", "[1:0] what: 0 ref -> event, 1 ref -> decision, 2 event -> the next event; "
                                       "[7:4] bin = 2^n samples"),
@@ -227,11 +231,14 @@ REGS = [
     (0xA6, "RT_MISS", "R", "lat", "references whose second arrival did not come (a new reference first, or the window ran out)"),
     (0xA7, "RT_MARKS", "R", "lat", "arrivals since the clear (with RT_CFG[2] inside the fast path's armed window: the ring's hops)"),
     (0xA8, "RT_SPAN", "R", "lat", "samples from the first of those arrivals to the last"),
+    (0xB0, "RX_UNDEC", "R", "rx4", "ID 10: events with a reference whose vector no single message makes (no decision: "
+                                  "references = the confusion matrix's count + RX_UNDEC + RX_MISSED)"),
 ]
 
 BLOCKS = {"regs": (0x00, 0x2F), "tx": (0x30, 0x3F), "rx": (0x40, 0x5F), "seq": (0x60, 0x6F), "cdr": (0x70, 0x77),
           "cap": (0x78, 0x7F),
-          "core": (0x80, 0x80), "rx3": (0x81, 0x8F), "lat": (0x90, 0xAF)}
+          "core": (0x80, 0x80), "rx3": (0x81, 0x8F), "lat": (0x90, 0xAF),
+          "rx4": (0xB0, 0xBF)}
 
 BY_NAME = {name: addr for addr, name, *_ in REGS}
 

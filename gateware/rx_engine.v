@@ -108,6 +108,7 @@ module rx_engine #(
     reg        clr;
 
     reg [31:0] n_events, n_decided, n_confirm, n_veto, n_false, n_missed, n_refs;
+    reg [31:0] n_undec;                          // events with a reference that decided nothing (ID 10)
     reg [31:0] lat_sum, lat_n, ber_bits, ber_err;
     reg [15:0] lat_min, lat_max;
     reg [14:0] last;                             // {had a reference, fired[4:0], vector[4:0], {valid, msg}}: RX_LAST
@@ -187,6 +188,7 @@ module rx_engine #(
     reg [31:0] ref_age;
     reg [2:0]  ref_msg;
     wire       ref_now  = ref_trig ? tr_found1 : tx_event1;
+    wire       ref_live = ref_pend && !ref_now && ref_age < window;   // an event now takes this reference
     // a fine time is FREE_CNT x SER + the sample: SER a power of two, so the sample index ORs into the low bits
     // (no carry chain behind the priority encoder: the Icepi's first build closed at 44 MHz with an adder here)
     wire [31:0] t_ref_now = t01 | (ref_trig ? {28'd0, tr_s1} : 32'd0);
@@ -346,7 +348,7 @@ module rx_engine #(
             sh_en <= 1'b0; sh_wlog <= 3'd5; sh_th <= 8'd64; sh_mask <= 5'b11110;
             sh_hold <= CLK_HZ / 1000; sh_max <= 10 * CLK_HZ;
             n_events <= 32'd0; n_decided <= 32'd0; n_confirm <= 32'd0; n_veto <= 32'd0; n_false <= 32'd0;
-            n_missed <= 32'd0; n_refs <= 32'd0; lat_sum <= 32'd0; lat_n <= 32'd0; ber_bits <= 32'd0; ber_err <= 32'd0;
+            n_missed <= 32'd0; n_refs <= 32'd0; n_undec <= 32'd0; lat_sum <= 32'd0; lat_n <= 32'd0; ber_bits <= 32'd0; ber_err <= 32'd0;
             lat_min <= 16'hFFFF; lat_max <= 16'd0; last <= 15'd0; last_lat <= 32'd0; evt_ts <= 32'd0;
             ref_pend <= 1'b0; t_ref <= 32'd0; ref_age <= 32'd0; ref_msg <= 3'd0;
             st <= S_ARMED; t_ev <= 32'd0; fired <= 5'd0; remain <= 9'd0; ccnt <= 8'd0; qcnt <= 8'd0;
@@ -408,7 +410,7 @@ module rx_engine #(
 
             if (clr) begin
                 n_events <= 32'd0; n_decided <= 32'd0; n_confirm <= 32'd0; n_veto <= 32'd0; n_false <= 32'd0;
-                n_missed <= 32'd0; n_refs <= 32'd0; lat_sum <= 32'd0; lat_n <= 32'd0; ber_bits <= 32'd0;
+                n_missed <= 32'd0; n_refs <= 32'd0; n_undec <= 32'd0; lat_sum <= 32'd0; lat_n <= 32'd0; ber_bits <= 32'd0;
                 ber_err <= 32'd0; lat_min <= 16'hFFFF; lat_max <= 16'd0; ref_pend <= 1'b0;
             end
 
@@ -434,9 +436,11 @@ module rx_engine #(
                 fired     <= fired1;
                 n_events  <= n_events + 1'b1;
                 ev_pulse  <= 1'b1;
-                ev_has_ref <= ref_pend && !ref_now;
+                // paired with the reference only while it is inside its window: on the clock it runs out it is
+                // counted missed (above), so the event is false (before ID 10 it was both: references counted twice)
+                ev_has_ref <= ref_live;
                 ev_tref   <= t_ref;
-                if (ref_pend && !ref_now) ref_pend <= 1'b0;
+                if (ref_live) ref_pend <= 1'b0;
                 else n_false <= n_false + 1'b1;
                 remain <= {5'd0, out_s1} + {1'b0, dly};
                 st     <= S_DECIDE;
@@ -509,10 +513,14 @@ module rx_engine #(
                     if (ld > lat_max) lat_max <= ld;
                 end
                 p3_hv <= {16'd0, (hist_what == 2'd0) ? pq_le : (hist_what == 2'd2) ? pq_dt : ld};
-                if (pq_e[3]) begin
+                // the confusion matrix: with the row from this board's TX, only events that had a reference (a
+                // false event's decision went against the last message sent: under interference 'right' and 'wrong'
+                // ran to millions for 200 000 sent); with the row software's (a remote TX), every decision
+                if (pq_e[3] && (pq_hr || !cm_row_tx)) begin
                     cm_inc <= 1'b1;
                     cm_iaddr <= {pq_row, pq_e[2:0]};
                 end
+                if (pq_hr && !pq_e[3]) n_undec <= n_undec + 1'b1;   // sent, the receiver fired, no message's vector
             end
             // p3: the histogram's bin
             if (p3_v) begin
@@ -569,6 +577,7 @@ module rx_engine #(
         R_RX_FALSE:    bus_rdata = n_false;
         R_RX_MISSED:   bus_rdata = n_missed;
         R_RX_REFS:     bus_rdata = n_refs;
+        R_RX_UNDEC:    bus_rdata = n_undec;
         R_RX_LAST:     bus_rdata = {15'd0, last[14], last_cv, last[13:0]};
         R_RX_LAST_LAT: bus_rdata = last_lat;
         R_RX_LAT_MIN:  bus_rdata = {16'd0, lat_min};

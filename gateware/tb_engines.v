@@ -106,6 +106,24 @@ module tb_engines;
     endtask
 
     reg [31:0] v, v2;
+    integer w, n_ev, n_fa, n_mi, n_rf;
+
+    // the confusion matrix's count: row r alone (r < 8) or all of it (r = 8)
+    task cm_sum;
+        input integer r;
+        output integer total;
+        integer a, b;
+        reg [31:0] c;
+        begin
+            wr(R_RX_CM_ADDR, 32'd0); idle_clocks(3);
+            total = 0;
+            for (a = 0; a < 8; a = a + 1)
+                for (b = 0; b < 8; b = b + 1) begin
+                    rd(R_RX_CM_DATA, c);
+                    if (r == 8 || r == a) total = total + c;
+                end
+        end
+    endtask
     integer    n, i, j, bin, sumcm;
 
     // the pins' changes, sample by sample (the model's samples), for the reply tests
@@ -156,7 +174,7 @@ module tb_engines;
         repeat (5) @(posedge clk);
 
         // ---- identification ----
-        rd(R_ID, v); expect("ID", v, 32'h434C0009);
+        rd(R_ID, v); expect("ID", v, 32'h434C000A);
         rd(R_BUILD, v); expect("BUILD", v, {16'd100, RP_REG != 0, 3'b111, 4'd0, 8'd4});   // early lane, read-back, fast path
         rd(R_RX_INFO, v); expect("RX_INFO", v, {16'd100, 8'd6, 8'd4});
 
@@ -237,6 +255,53 @@ module tb_engines;
         idle_clocks(5 * 60 + 100);
         mute = 1'b0;
         rd(R_RX_MISSED, v); expect("missed", v, 5);
+        rd(R_RX_UNDEC, v); expect("undecided (none)", v, 0);
+
+        // ---- ID 10: the counts add up (references = the matrix + undecided + missed; events = that + false) ----
+        // false events (the window shorter than the path: every reference runs out first) stay out of the matrix
+        // when its row is this board's TX message (ID 9 counted their decisions against the last message sent)
+        wr(R_TX_COUNT, 32'd40); wr(R_RX_WINDOW, 32'd1);
+        wr(R_RX_CTRL, {12'd0, 1'b1, 3'd0, 11'd0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1});
+        idle_clocks(1100);
+        wr(R_TX_GO, 32'd1);
+        idle_clocks(40 * 60 + 200);
+        rd(R_RX_FALSE, v); expect("window 1: false", v, 40);
+        rd(R_RX_MISSED, v); expect("window 1: missed", v, 40);
+        rd(R_RX_DECIDED, v); expect("window 1: decided", v, 40);
+        cm_sum(8, n_ev); expect("window 1: no false decision in the matrix", n_ev, 0);
+        // with the row software's (a remote transmitter: no reference), every decision goes in its row
+        wr(R_RX_CTRL, {12'd0, 1'b0, 3'd5, 11'd0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1});
+        idle_clocks(1100);
+        wr(R_TX_GO, 32'd1);
+        idle_clocks(40 * 60 + 200);
+        cm_sum(5, n_ev); expect("row 5 from software: every decision", n_ev, 40);
+        // a message whose vector the table does not hold: sent, the receiver fired, nothing decided
+        set_lut(V0, V1, V2, V_IDLE);
+        wr(R_RX_WINDOW, 32'd30);
+        wr(R_RX_CTRL, {12'd0, 1'b1, 3'd0, 11'd0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1});
+        idle_clocks(1100);
+        wr(R_TX_GO, 32'd1);
+        idle_clocks(40 * 60 + 200);
+        rd(R_RX_UNDEC, v); expect("message 3 undecided", v, 10);
+        rd(R_RX_DECIDED, v); expect("messages 0-2 decided", v, 30);
+        cm_sum(8, n_ev); expect("the matrix: 30", n_ev, 30);
+        set_lut(V0, V1, V2, V3);
+        // every window length, the one where the reference runs out on the event's own clock included: no
+        // reference both paired and missed (ID 9 counted it twice there)
+        wr(R_TX_COUNT, 32'd4);
+        for (w = 1; w <= 12; w = w + 1) begin
+            wr(R_RX_WINDOW, w);
+            wr(R_RX_CTRL, {12'd0, 1'b1, 3'd0, 11'd0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1});
+            idle_clocks(1100);
+            wr(R_TX_GO, 32'd1);
+            idle_clocks(4 * 60 + 200);
+            rd(R_RX_REFS, v); n_rf = v;
+            rd(R_RX_EVENTS, v); n_ev = v;
+            rd(R_RX_FALSE, v); n_fa = v;
+            rd(R_RX_MISSED, v); n_mi = v;
+            expect("references = paired + missed", n_rf, n_ev - n_fa + n_mi);
+        end
+        wr(R_RX_WINDOW, 32'd30);
 
         // ---- the capture buffer: trigger on a TX event, 64 words after ----
         wr(R_CAP_POST, 32'd64);

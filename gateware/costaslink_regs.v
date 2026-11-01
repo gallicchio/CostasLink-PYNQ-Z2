@@ -76,7 +76,10 @@ module costaslink_regs #(
                      A_DAC_AB = 8'h18, A_DAC_CD = 8'h19, A_DAC_GO = 8'h1A, A_ADC_CFG = 8'h1B, A_ADC_READ = 8'h1C,
                      A_CMP_STATE = 8'h20, A_FREE_CNT = 8'h21, A_EDGE0 = 8'h22, A_EDGE5 = 8'h27, A_CMP_I_TS = 8'h28,
                      A_LAT = 8'h29, A_CNT_CTRL = 8'h2A, A_MORSE = 8'h2B, A_EDGE6 = 8'h2C, A_EDGE7 = 8'h2D;
-    localparam [31:0] ID_WORD = 32'h434C_0009;          // "CL", version 9: the random message reduced right for
+    localparam [31:0] ID_WORD = 32'h434C_000A;          // "CL", version 10: the single symbols' counts add up
+                                                        // (RX_UNDEC, the confusion matrix only for events with a
+                                                        // reference, no reference both paired and missed); 9: the
+                                                        // random message reduced right for
                                                         // N = 2 (REVB 22), the lock monitor blind to this board's
                                                         // own events' Q moves; 8: the lock's state in gateware and the
                                                         // PYNQ-Z2's LEDs (lockmon.v, RX_LOCK_*, LED_CTRL), the

@@ -44,11 +44,14 @@ from board_constants import (RX_GAIN_DB, DEM_REG_DBM, A_REG_V, DSA_POWER_UP_DB, 
                              NTC_B, NTC_R25, NTC_RTOP, NTC_VDD, VR_I_V, VR_Q_V)
 
 R = regmap.BY_NAME
-ID_EXPECTED = 0x434C0009
-ID_ACCEPTED = (0x434C0003, 0x434C0004, 0x434C0005, 0x434C0006, 0x434C0007, 0x434C0008, 0x434C0009)   # 3: no timing recovery for the
+ID_EXPECTED = 0x434C000A
+ID_ACCEPTED = (0x434C0003, 0x434C0004, 0x434C0005, 0x434C0006, 0x434C0007, 0x434C0008, 0x434C0009,
+               0x434C000A)                            # 3: no timing recovery for the
                                                       # BER check (the overlay of 2026-10-29); 4: no interference hold;
                                                       # 5: no one-polarity timing recovery; 6: no hold persistence; 7: no
-                                                      # lock monitor, LEDs or scaled release
+                                                      # lock monitor, LEDs or scaled release; 8: the monitor reads this
+                                                      # board's own symbols as lost; 9: the single symbols' counts do
+                                                      # not add up (false decisions in the matrix, no RX_UNDEC)
 BOARDS = {0: "simulation", 1: "PYNQ-Z2", 2: "Icepi Zero"}
 
 # the fast comparators: their bit in the receiver's vectors (RX_IDLE, RX_LUT, RX_LAST), as rx_engine.v
@@ -347,6 +350,7 @@ class CostasLink:
             self.ihold_persist = ident >= 0x434C0007
             self.lockmon = ident >= 0x434C0008
             self.lockmon_own = ident >= 0x434C0009      # it masks this board's own events' Q moves (lockmon.v)
+            self.rx_exact = ident >= 0x434C000A         # RX_UNDEC, the matrix only for events with a reference
         b = self.rd("BUILD")
         self.ser = bits(b, 7, 0) or 1
         self.board = bits(b, 11, 8)
@@ -719,7 +723,12 @@ class CostasLink:
         self.wr("RX_CTRL", self._rx_ctrl)
 
     def rx_stats(self):
+        """the receive engine's counts.  From ID 10 they add up: refs = the confusion matrix (right + wrong) + undec +
+        missed (+ one still in its window), events = that + false; before, 'undec' is None, a false event's decision
+        went into the matrix against the last message sent, and a reference could be both paired and missed.  Read
+        them with the engine stopped (rx_enable(False)): while it runs, events go on counting between the reads"""
         s = {k.lower(): self.rd("RX_" + k) for k in ("EVENTS", "DECIDED", "CONFIRM", "VETO", "FALSE", "MISSED", "REFS")}
+        s["undec"] = self.rd("RX_UNDEC") if getattr(self, "rx_exact", False) else None
         n = self.rd("RX_LAT_N")
         s["lat_n"] = n
         s["lat_min"] = self.rd("RX_LAT_MIN") & 0xFFFF

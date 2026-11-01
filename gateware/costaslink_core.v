@@ -290,6 +290,7 @@ module costaslink_core #(
         else if (a_core == R_BUILD) rsel <= 3'd5;
         else if (a_core <= 8'h8F) rsel <= 3'd2;          // the receiver's third window (the signal holdover)
         else if (a_core >= 8'h90 && a_core <= 8'hAF) rsel <= 3'd6;
+        else if (a_core >= 8'hB0 && a_core <= 8'hBF) rsel <= 3'd2;   // the receiver's fourth window (RX_UNDEC)
         else rsel <= 3'd7;
     end
     always @(posedge clk) begin

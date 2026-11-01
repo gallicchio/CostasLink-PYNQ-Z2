@@ -139,4 +139,5 @@ localparam [7:0] R_RT_N         = 8'hA5;
 localparam [7:0] R_RT_MISS      = 8'hA6;
 localparam [7:0] R_RT_MARKS     = 8'hA7;
 localparam [7:0] R_RT_SPAN      = 8'hA8;
+localparam [7:0] R_RX_UNDEC     = 8'hB0;
 /* verilator lint_on UNUSEDPARAM */
