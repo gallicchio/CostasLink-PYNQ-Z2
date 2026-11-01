@@ -26,6 +26,9 @@ h1 { font-size:18px; margin:0 12px 0 0; }
 .panel { background:var(--card); border-radius:10px; padding:10px 12px 8px; border:1px solid var(--line); min-width:0; }
 .panel h2 { font-size:15px; margin:0; display:flex; align-items:center; gap:8px; }
 .panel h2 .val { margin-left:auto; font-size:19px; font-weight:700; white-space:nowrap; }
+table.cmt { border-collapse:collapse; margin-top:6px; font-size:13px; font-variant-numeric:tabular-nums; }
+table.cmt td { border:1px solid var(--line); padding:1px 6px; text-align:right; }
+table.cmt tr:first-child td, table.cmt td:first-child { color:var(--ink2); }
 .help { border:1px solid var(--ink2); color:var(--ink2); background:none; border-radius:50%; width:22px; height:22px;
         font-weight:700; cursor:pointer; padding:0; flex:none; }
 canvas { width:100%; height:190px; display:block; margin-top:6px; }
@@ -168,7 +171,7 @@ const PANELS = [
   absent:"measured only while a test sends single symbols",
   help:"<p>While a test sends single symbols: the mean time from each symbol leaving the transmitter to the receiver's decision, in nanoseconds (the receiver's settling delay included). No judgement: it is set by the scheme and the receiver's settings.</p>"},
  {id:"lathist", title:"Single symbols: latency, the last run's spread", kind:"lathist",
-  help:"<p>The last self-test run of single symbols: how many decisions came after each latency, from the symbol leaving the transmitter to the receiver's decision (one bar per receiver sample, 1.25 ns; counts on a log scale). Without interference they fall in a narrow spike (the receiver's settling and the path); interference spreads them out, and a stray decision long after shows a symbol decided late or a false one.</p><p class='k'>Good: one narrow spike.</p>"},
+  help:"<p>The last self-test run of single symbols: how many decisions came after each latency, from the symbol leaving the transmitter to the receiver's decision (one bar per receiver sample, 1.25 ns; counts on a log scale). Without interference they fall in a narrow spike (the receiver's settling and the path); interference spreads them out, and a stray decision long after shows a symbol decided late or a false one.</p><p>Below it, for schemes of 2 or 4 states, the run's table: a row for each state sent, a column for each state decided (green the right ones, red the wrong).  A row that totals less than the others lost its symbols to 'undecided' or 'missed': that state's pattern sits near a comparator's threshold.</p><p class='k'>Good: one narrow spike; the table's counts on its diagonal.</p>"},
  {id:"fastconst", title:"Constellation (fast: the bench scope)", kind:"scope",
   help:"<p>The received I and Q as the bench oscilloscope saw them on I MON and Q MON (thousands of samples, a few nanoseconds apart), posted here by a bench test while it sends data or symbols: the real constellation, which the slow plot cannot show (its readings average a millisecond). Denser blue where the signal spends more time; the circles mark the locked idle carrier.</p><p>BPSK data: two clusters, left and right. Single symbols (A3): the idle cluster, and dots toward the four corners. Noise spreads the clusters; a CW near the carrier draws circles; a lost loop smears a ring.</p><p>Only on the bench: the deployed board has no scope (rev B: a dual ADC on I and Q, REVB U2).</p>"},
  {id:"sym_raw", title:"Single symbols, raw: I and Q (the bench scope)", kind:"scopewave", which:"symbols",
@@ -587,6 +590,18 @@ function drawLatHist(p) {
   const age = Date.now() / 1000 - (lh.t1 || 0);
   xv.textContent = lh.scheme + ", " + dur(Math.max(0, age)) + " ago: " + symText(lh) + "; " +
     (lh.lat_ns ? "from " + fmt(lh.lat_ns[0]) + " to " + fmt(lh.lat_ns[2]) + " ns, mean " + fmt(lh.lat_ns[1]) + " ns" : "") + "; the B210 " + (lh.b210 && lh.b210 != "quiet" ? lh.b210.replace(/^B210: /, "sent ") : "was quiet") + ".";
+  // the run's states as decided: a row per state sent, a column per state decided (the self-test's 'cm', ID 10: only
+  // symbols that were sent); a row's shortfall from the others is its undecided and missed ones
+  if (lh.cm && lh.cm.length > 1) {
+    const t = document.createElement("table"); t.className = "cmt";
+    const tr0 = t.insertRow(); tr0.insertCell().textContent = "sent \u2193 decided \u2192";
+    lh.cm.forEach((_, j) => { tr0.insertCell().textContent = j; });
+    tr0.insertCell().textContent = "decided";
+    lh.cm.forEach((row, i) => { const tr = t.insertRow(); tr.insertCell().textContent = i;
+      row.forEach((c, j) => { const td = tr.insertCell(); td.textContent = c; if (c) td.style.color = i == j ? C.good : C.bad; });
+      tr.insertCell().textContent = row.reduce((a, b) => a + b, 0); });
+    xv.appendChild(t);
+  }
 }
 function drawAll() { for (const p of PANELS) { try { ({timeline: drawTimeline, scatter: drawScatter, pullin: drawPullin, scurve: drawSCurve, scope: drawScope, activity: drawActivity, scopewave: drawScopeWave, scopefold: drawScopeFold, lathist: drawLatHist}[p.kind] || drawSeries)(p); } catch (e) { console.log(p.id, e); } } }
 function status() {

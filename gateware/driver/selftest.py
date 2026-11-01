@@ -43,6 +43,10 @@ PLANS = {
     "symbols": [{"step": "idle", "seconds": 2.0}, {"step": "symbols", "seconds": 13.0, "period": 2000, "width": 20}],
     # the carrier alone: the level every second
     "carrier": [{"step": "idle", "seconds": 10.0}],
+    # A3 decided 8-48 samples (10-60 ns) after its first comparator fired: how many of each corner stay undecided while
+    # the arms are still crossing (2026-11-01: one corner of four lost 10 % to 'undecided' at the usual 16)
+    "a3delay": [{"step": "symbols", "scheme": "A3", "seconds": 4.0, "period": 2000, "width": 20, "delay": d}
+                for d in (8, 12, 16, 20, 24, 32, 48)],
 }
 SCHEME_ROTA = ("A3", "A1", "A2", "A1w")
 SCHEME_TEXT = {"A1": "the BPSK flip (1 of 1)", "A1w": "the BPSK flip seen beside the idle (1 of 1)",
@@ -86,7 +90,7 @@ class SelfTest:
         if full:
             last = next((r for r in reversed(self.results) if r.get("lat_hist")), None)
             out["last_hist"] = {k: last.get(k) for k in ("scheme", "sent", "events", "right", "wrong", "undecided", "false", "missed",
-                                                         "exact", "lat_ns", "lat_hist", "b210", "t1", "period", "width")} if last else None
+                                                         "exact", "cm", "lat_ns", "lat_hist", "b210", "t1", "period", "width")} if last else None
         return out
 
     def set(self, d):
@@ -174,6 +178,7 @@ class SelfTest:
         name = st.get("scheme") or SCHEME_ROTA[self._k["scheme"] % len(SCHEME_ROTA)]
         self._k["scheme"] += 1
         period, width, seconds = int(st["period"]), int(st["width"]), float(st["seconds"])
+        delay = int(st.get("delay", 16))                     # samples from the first comparator to fire to the decision
         tx = SCHEMES[name]
         L = getattr(self.server, "linkd", None)
         losses0 = L.counts["losses"] if L else 0
@@ -185,7 +190,7 @@ class SelfTest:
             rx_s = Scheme(name, tx.text, rx.rx_point(tx.idle), [rx.rx_point(m) for m in tx.msgs], [], t=tx.t, t2=tx.t2)
             rx_s.mask, rx_s.use = tx.mask, tx.use
             cl.tx_points(tx.tx_idle(), [point_code(i, q) for i, q in tx.msgs])
-            cl.rx_config(rx_s.idle_vector(), rx_s.mask, rx_s.lut(False), rx_s.slow_exp(), delay=16, quiet=4, confirm=10,
+            cl.rx_config(rx_s.idle_vector(), rx_s.mask, rx_s.lut(False), rx_s.slow_exp(), delay=delay, quiet=4, confirm=10,
                          window=max(4, min(100, period - 6)), first_edge=False)     # the window inside the period
             cl.hist_config("ref_to_decision", 0)
             cl.events(period=period, width=width, count=count, n=tx.n, source="prbs" if tx.n > 1 else "count")
@@ -217,6 +222,7 @@ class SelfTest:
             cl.tx_stop()
             cl.hold_point(1, 0)
             self._busy = False
+            n = tx.n
             # each symbol sent (a reference) is right, wrong, undecided (the receiver fired, its vector no message's)
             # or missed; every event is one of the first three or false.  The whole matrix: a decision outside the
             # scheme's own messages is wrong too.  From ID 10 these add up exactly ('exact'); before, a false event's
@@ -225,12 +231,13 @@ class SelfTest:
                     "right": sum(cm[a][a] for a in range(8)),
                     "wrong": sum(cm[a][b] for a in range(8) for b in range(8) if a != b), "undecided": s.get("undec"),
                     "false": s.get("false"), "missed": s.get("missed"), "exact": bool(getattr(cl, "rx_exact", False)),
+                    "cm": [row[:n] for row in cm[:n]],                # [sent][decided], the scheme's own states
                     "lat_ns": [s[k] * t_sample * 1e9 if s.get(k) is not None else None
                                for k in ("lat_min", "lat_mean", "lat_max")] if s.get("lat_n") else None,
                     "lat_hist": hist}
         res = self._do(finish) if not self._aborted else {}
         return dict({"step": "symbols", "scheme": name, "period": period, "width": width, "count": count, "side": side,
-                     "interrupted": not ok}, **res)
+                     "delay": delay, "interrupted": not ok}, **res)
 
     def data(self, st):
         ps = st.get("periods") or [st.get("period", 4)]
