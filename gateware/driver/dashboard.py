@@ -648,7 +648,8 @@ class Dashboard:
                         out = st.set(d)
                         dash.note({"text": ("the signal holdover switched %s" % ("on" if d["holdover"] else "off")) if "holdover" in d and len(d) == 1
                                    else "the link's self-test %s (plan '%s')" % ("on" if out["on"] else "off", out["plan"]),
-                                   "kind": "info", "source": "the page's API"})
+                                   # a moment, not a span: left open, an hour of every plot was tinted (22:09-23:09)
+                                   "kind": "info", "source": "the page's API", "t_end": time.time()})
                     else:
                         out = dash.scope(d) if u.path == "/api/scope" else dash.note(d)
                     self.send(200, json.dumps(out, default=str), "application/json")
