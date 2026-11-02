@@ -113,6 +113,14 @@ Grouped by what each buys; within a group, in order.  None needs new hardware.
     calibration that maximises the least corner's margin rather than the plateau's place.  The learning step's verdict
     reads p99.9, which hides a 1e-7 tail: for the QPV latency bound it should record each choice's worst latency and
     the count past a bound, and choose against them.
+19. **The level held where it was calibrated (an AGC on the DSA)**: a stronger carrier makes QPSK decide *wrong*, not
+    just lose: 19-235 wrong in 7.5 M with the attenuator 2-3.75 dB down, 526 at 4 dB (soak15 #195, 2026-11-01 23:49:56).
+    The windows follow a weaker carrier down but not a stronger one up (raised, they lost A3's corners: the corners do
+    not grow with the idle's I leg), and the learned profile is used only within 15 % of its level.  linkd could step
+    the DSA (0.25 dB, 0-31.75; 15.75 now) to keep the I leg at the level the windows and the profile were learned at,
+    so both always apply: +-15 dB of path change absorbed.  Trade-offs: a step moves every level at once (between the
+    self-test's runs or slowly, e.g. after 1 s more than 1 dB off; never during a physics run's symbols unless asked);
+    the DSA's floor is capped by the TX's leak (REVB 10) on the strong side; the page's levels then read the DSA too.
 
 ## 2. Rev A hardware: rework by hand
 
