@@ -296,7 +296,8 @@ function drawActivity(p) {
   document.getElementById("x_" + p.id).innerHTML = "<b>Now</b>: the link " + linkText(nowR) + "; the B210 " + (bn ? bn.text.replace(/^B210: /, "sends ") : "quiet") + "." +
     (res.length ? "<br>The self-test's last: " + res.map(x => x.step == "symbols" ? schemeWords(x.scheme) + ": " + symText(x) + (x.lat_ns ? ", " + fmt(x.lat_ns[1]) + " ns" : "") :
        fmt(x.mbaud) + " Mbaud: " + (x.bits ? x.bits.toExponential(1) + " bits, " + Math.round(x.errors) + " errors" : "no count") + (x.interrupted ? " (interrupted)" : "") +
-       (x.b210 && x.b210 != "quiet" ? " (the B210 meanwhile: " + x.b210.replace(/^B210: /, "") + ")" : x.b210 == "quiet" ? " (the B210 quiet)" : "")).join("; ") + "." : "") +
+       (x.b210 && x.b210 != "quiet" ? " (the B210 meanwhile: " + x.b210.replace(/^B210: /, "") + ")" : x.b210 == "quiet" ? " (the B210 quiet)" : "") +
+       (x.during ? " (meanwhile: " + x.during + ")" : "")).join("; ") + "." : "") +
     "<br>" + Object.entries(ACT).map(([k, [c, t]]) => "<span style='color:" + c + "'>&#9632;</span> " + t).join(" &nbsp; ") + "<br>" +
     Object.entries(B2).map(([k, [c, t]]) => "<span style='color:" + c + "'>&#9632;</span> " + t).join(" &nbsp; ");
 }

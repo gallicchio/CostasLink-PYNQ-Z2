@@ -255,6 +255,18 @@ class SelfTest:
         said = list(dict.fromkeys(said))
         return "; ".join(said)[:300] if said else "quiet"
 
+    def _during(self, t0, t1):
+        """the other interventions announced during [t0, t1] (the carrier cut, the attenuator stepped, a deploy), in words,
+        or None: a run they touched is not quiet though the B210 was (an OOK run's last 0.3 s inside a carrier cut, 3.9 %
+        of its bits wrong, read 'the B210 quiet', 2026-11-02 02:27)"""
+        d = getattr(self.server, "dashboard", None)
+        if d is None:
+            return None
+        said = [n["text"] for n in list(d.notes) if n.get("kind") == "intervention" and not n.get("b210")
+                and not n.get("text", "").startswith("B210") and n["t_start"] <= t1 and (d.note_end(n) or t1) >= t0]
+        said = list(dict.fromkeys(said))
+        return "; ".join(said)[:300] if said else None
+
     def _say(self, step, text, **kw):
         self.now = dict({"step": step, "since": time.time(), "text": text}, **kw)
 
@@ -1057,11 +1069,14 @@ class SelfTest:
                 res["interrupted"] = True
             res.update(t0=t0, t1=time.time())
             res["b210"] = self._b210(t0, res["t1"])
+            dur = self._during(t0, res["t1"])
+            if dur:
+                res["during"] = dur
             # a quiet run of symbols that lost over 1 % (missed or undecided) says the windows are wrong for the link
             # now: calibrate again (13:41 a calibration taken during an attenuator step left A2, A3 and QPSK 60 % missed)
             dash = getattr(self.server, "dashboard", None)
             if (res.get("step") in ("symbols", "qpsk") and res.get("sent") and not res.get("interrupted")
-                    and res["b210"] == "quiet" and not (dash and dash.active_note(t0))
+                    and res["b210"] == "quiet" and not res.get("during") and not (dash and dash.active_note(t0))
                     and ((res.get("missed") or 0) + (res.get("undecided") or 0)) > 0.01 * res["sent"]):
                 self._bad_windows = True
             self.results.append(res)
