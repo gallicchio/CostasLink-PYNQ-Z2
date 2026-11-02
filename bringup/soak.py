@@ -405,8 +405,10 @@ def audit(t0, t_end, t_back, note_id=None, kind=None, params=None, marks=None, t
             check("dem_follows_attn", abs(dem + dd) < 1.0 + 0.1 * abs(dd), "the attenuator %+.2f dB, the demodulator %+.2f dB" % (dd, dem))
             check("ant_stays", ant is not None and abs(ant) < 1.0 + 0.1 * abs(dd), "RX ANT %s dB" % ("%+.2f" % ant if ant is not None else "-"))
             # linkd's windows follow the level (2026-11-01): a step of 1.5 dB or more (the leg 16 % or more) moves them
-            # within one round of the self-test (it learns the leg on the idle carrier: its idle step, 3 s in 16)
-            if abs(dd) >= 1.5 and marks["back"] - marks["up"] >= 20:
+            # within one round of the self-test (it learns the leg on the idle carrier: its idle step, 3 s in 16).  Down
+            # only (71163c3: raised with a stronger carrier they lost A3's corners), so only a step that weakens it
+            # (soak15 #59 flagged -2.50 dB, the carrier stronger, where no move is right)
+            if dd >= 1.5 and marks["back"] - marks["up"] >= 20:
                 check("windows_followed", any(e["kind"] == "windows" and marks["up"] <= e["t"] <= marks["back"] + 2 for e in ev_log),
                       "no 'windows' event while the attenuator was %+.2f dB" % dd)
         else:
