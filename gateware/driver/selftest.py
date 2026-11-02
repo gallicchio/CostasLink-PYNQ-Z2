@@ -88,6 +88,7 @@ SETTLE = {"A1": (2, 16), "A1w": (2, 16), "A2": (2, 16), "A3": (6, 24)}
 # vector it leaves undecided that the board was seen to make for one state alone (the step 'learn')
 INFO_USE = {"A1": (CMP_I,), "A1w": (CMP_IP,), "A2": (CMP_QP, CMP_QN), "A3": (CMP_I, CMP_QP, CMP_QN)}
 LEARN_FILE = os.path.join(HERE, "learned.json")
+LEVELS_FILE = os.path.join(HERE, "levels.json")   # the last sweep of the windows on each lock point (the page's panel)
 SCHEME_TEXT = {"A1": "the BPSK flip (1 of 1)", "A1w": "the BPSK flip seen beside the idle (1 of 1)",
                "A2": "1 bit: the Q step (1 of 2)", "A3": "2 bits: the QPSK corners (1 of 4)"}
 
@@ -132,6 +133,13 @@ class SelfTest:
         except (OSError, ValueError):
             pass
         self.last_levels = None              # the last sweep of the windows' levels (the page's 'own constellation')
+        self.levels_by_side = {}             # each lock point's, kept across a restart (one put back from windows.json
+        try:                                 # takes none, and the panel stayed empty: 2026-11-01 22:04)
+            with open(LEVELS_FILE) as f:
+                self.levels_by_side = {int(k): v for k, v in (json.load(f).get("by_side") or {}).items()}
+            self.last_levels = max(self.levels_by_side.values(), key=lambda v: v.get("t") or 0, default=None)
+        except (OSError, ValueError, TypeError, AttributeError):
+            pass
         self.now = {"step": "off", "since": time.time(), "text": "off"}
         self.results = collections.deque(maxlen=30)
         self._k = {"scheme": 0, "period": 0}
@@ -147,7 +155,8 @@ class SelfTest:
         out = {"on": self.on, "plan": self.plan_name, "now": dict(self.now), "results": res}
         if full:
             last = next((r for r in reversed(self.results) if r.get("lat_hist")), None)
-            out["last_levels"] = self.last_levels
+            side = getattr(getattr(self.server, "dashboard", None), "side", None)
+            out["last_levels"] = self.levels_by_side.get(side) or self.last_levels
             out["last_hist"] = {k: last.get(k) for k in ("scheme", "sent", "events", "right", "wrong", "undecided", "false", "missed",
                                                          "exact", "cm", "lat_ns", "lat_hist", "b210", "t1", "period", "width")} if last else None
         return out
@@ -269,6 +278,7 @@ class SelfTest:
             self.last_levels = {"t": time.time(), "scheme": name, "side": res["side"], "leg_v": res["leg_v"],
                                 "centres_v": res["centres_v"], "before_v": res["thresholds_v"], "after_v": None,
                                 "sweeps": res["sweeps"], "b210": self._b210(time.time() - 10, time.time())}
+            self._keep_levels()
         return res
 
     def qpsk(self, st):
@@ -451,12 +461,26 @@ class SelfTest:
         self.last_levels = {"t": time.time(), "scheme": "A3", "side": side, "leg_v": round(leg, 4),
                             "centres_v": sw["A3"]["centres_v"], "before_v": plain, "after_v": res["after_v"],
                             "sweeps": sw["A3"]["sweeps"], "b210": self._b210(time.time() - 10, time.time())}
+        self._keep_levels()
         if len(new) == 4:
             self._do(lambda cl: L.set_windows(cl, new, side))
             self._bad_windows = False
         else:
             res["error"] = "no plateau for %s: the windows left as they were" % ", ".join(w for w in k_of if w not in new)
         return res
+
+    def _keep_levels(self):
+        """the last sweep kept for its lock point, beside the server"""
+        lv = self.last_levels
+        if not lv or lv.get("side") not in (1, -1):
+            return
+        self.levels_by_side[lv["side"]] = lv
+        try:
+            with open(LEVELS_FILE + ".tmp", "w") as f:
+                json.dump({"by_side": {str(k): v for k, v in self.levels_by_side.items()}}, f)
+            os.replace(LEVELS_FILE + ".tmp", LEVELS_FILE)
+        except (OSError, TypeError, ValueError):
+            pass
 
     def _need_calibration(self):
         """the windows calibrated on this lock point and near this level (and not tried within the last minute)"""
