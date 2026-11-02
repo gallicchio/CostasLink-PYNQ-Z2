@@ -325,11 +325,27 @@ class Dashboard:
                                 "; it tries again after a pause."})
                 if (L.get("window_moves") or 0) > self._lk.get("window_moves", 0) and L.get("leg"):
                     lw = L.get("leg_windows") or L["leg"]
-                    self.event({"t": r["t"], "kind": "windows",
-                                "text": "The carrier's level changed (now %.0f mV on the I arm): the receiver's decision "
-                                        "windows moved to %.0f mV%s." % (
-                                            1e3 * L["leg"], 1e3 * lw * float((L.get("config") or {}).get("window_frac", 0.5)),
-                                            " (no higher than at setup)" if lw < 0.95 * L["leg"] else "")})
+                    cal = L.get("cal")
+                    side_was = getattr(self, "_cal_side", None)
+                    if cal and side_was is not None and cal.get("side") != side_was:
+                        # the loop changed lock point and linkd put that point's own calibration back (it used to say
+                        # 'the level changed' and the plain rule's number, half the leg, 2026-11-01 17:34)
+                        t = cal.get("thresholds_mv") or {}
+                        txt = ("The loop is on its other lock point: that point's own decision windows put back (%s mV "
+                               "out from their centres)." % ", ".join("%s %.0f" % (w, t[w]) for w in ("QP", "QN", "IP", "IN") if w in t))
+                    elif cal:
+                        t = cal.get("thresholds_mv") or {}
+                        txt = ("The carrier's level changed (now %.0f mV on the I arm): the calibrated decision windows "
+                               "scaled with it (%s mV out)." % (1e3 * L["leg"], ", ".join(
+                                   "%s %.0f" % (w, t[w]) for w in ("QP", "QN", "IP", "IN") if w in t)))
+                    else:
+                        txt = ("The carrier's level changed (now %.0f mV on the I arm): the receiver's decision windows "
+                               "moved to %.0f mV, the plain rule's%s." % (
+                                   1e3 * L["leg"], 1e3 * lw * float((L.get("config") or {}).get("window_frac", 0.5)),
+                                   " (no higher than at setup)" if lw < 0.95 * L["leg"] else ""))
+                    self.event({"t": r["t"], "kind": "windows", "text": txt})
+                if L.get("cal"):
+                    self._cal_side = L["cal"].get("side")
                 if (L.get("calibrations") or 0) > self._lk.get("calibrations", 0) and L.get("cal"):
                     t = L["cal"].get("thresholds_mv") or {}
                     self.event({"t": r["t"], "kind": "windows",

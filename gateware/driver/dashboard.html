@@ -698,7 +698,10 @@ function drawLearned(p) {
   const cv = document.getElementById("c_" + p.id), [g, w, h] = sizeCanvas(cv), xv = document.getElementById("x_" + p.id);
   document.getElementById("v_" + p.id).textContent = "";
   g.clearRect(0, 0, w, h);
-  const P = learnedP;
+  // the lock point the loop is on (the self-test's last run says): its own choices, each point learned apart
+  const res = (stFull && stFull.results) || [], sideNow = (res.filter(r => r.side != null).pop() || {}).side;
+  const bySide = (learnedP && learnedP.by_side) || {};
+  const P = (sideNow != null && bySide[String(sideNow)]) || learnedP;
   if (!P || !P.symbols) { xv.textContent = "Nothing learned yet: run the learning step (plan 'learn') with the link quiet."; return; }
   const rows = Object.entries(P.symbols).map(([n, e]) => [n, e]).concat(Object.entries(P.qpsk || {}).map(([n, e]) => [n + " QPSK", e]));
   const L = 84, R = 70, T = 6, bh = Math.min(22, (h - T - 22) / Math.max(1, rows.length) - 4), xmax = Math.max(80, ...rows.map(([, e]) => (e.lat_p999 || 0) + 5));
@@ -721,7 +724,10 @@ function drawLearned(p) {
       .forEach((v, j) => { const td = tr.insertCell(); td.textContent = v; if (j == 5 && c.sent) td.style.color = e.ok ? C.good : C.bad; }); });
   const dt = Object.entries(P.data || {}).map(([m, d]) => m.toUpperCase() + " clean to " + (d.max_clean_mbaud != null ? fmt(d.max_clean_mbaud) + " Mbaud" : "-") +
     " (the timing recovery's gain " + [...new Set(Object.values(d.gain || {}))].join(" / ") + ")").join("; ");
-  xv.textContent = "Learned " + dur(Math.max(0, age)) + " ago on lock point " + (P.side > 0 ? "+" : "-") + " with the carrier at " +
+  const others = Object.keys(bySide).filter(k => String(P.side) != k).map(k => (+k > 0 ? "+" : "-"));
+  xv.textContent = (sideNow != null && P.side != sideNow ? "Nothing learned on the lock point the loop is on now (" + (sideNow > 0 ? "+" : "-") +
+    "): the choices below are the other point's. " : "") + (others.length ? "Lock point " + others.join(", ") + " learned too (shown when the loop is there). " : "") +
+    "Learned " + dur(Math.max(0, age)) + " ago on lock point " + (P.side > 0 ? "+" : "-") + " with the carrier at " +
     fmt((P.leg || 0) * 1000) + " mV on the I arm, the windows' bias " + P.window_bias + ", in " + fmt(P.seconds || 0) + " s" + (P.complete ? "" : " (incomplete)") + ". " + dt + ".";
   xv.appendChild(t);
 }
