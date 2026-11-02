@@ -651,7 +651,8 @@ class SelfTest:
             if not self.on:
                 break
         if self.on:
-            tables = ["all", "info"] + (["learned"] if prof["learned_tables"].get("A3 %d" % side) else [])
+            lt3 = prof["learned_tables"].get("A3 %d" % side)
+            tables = ["all", "info"] + (["learned"] if lt3 and lt3 != self._table("A3", side, "all") else [])
             e = choose("A3", "qpsk", 40, 1.5, tables, [(0, 16), (0, 24), (4, 24), (6, 24), (6, 32), (8, 32)])
             if e is not None:
                 prof["qpsk"]["A3"] = e
