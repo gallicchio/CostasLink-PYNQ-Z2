@@ -91,19 +91,22 @@ Grouped by what each buys; within a group, in order.  None needs new hardware.
 11. **The FPGA reads the ADS1115 itself** (REVB U3): VC, I, Q and the detectors round-robin into registers at the
     ADC's 860 S/s, so the lock monitor can use VC and the page gets VC and the level at 100 S/s without contending for
     the I2C bus; the level read in the data's gaps by gateware.
-12. **The carrier null per carrier** (REVB 19, 23): VR_I / VR_Q from a table in `link.json`, and the arms' offsets
+12. **The calibrations kept across a restart**: linkd's per-lock-point windows (and the learned profile, kept already)
+    saved beside the server and put back after setup when the level is within 15 %; today a restart runs on the plain
+    windows until the self-test calibrates again (QPSK lost 2.2 % a run for a minute after a deploy, soak15 17:47).
+13. **The carrier null per carrier** (REVB 19, 23): VR_I / VR_Q from a table in `link.json`, and the arms' offsets
     (I_OFF_F) likewise (REVB 15).
-13. **The TX's I and Q swing trimmed against the receiver's measured corners**: not possible on rev A (the ladders' swing
+14. **The TX's I and Q swing trimmed against the receiver's measured corners**: not possible on rev A (the ladders' swing
     is fixed by the logic levels and resistors; VR_I / VR_Q set the null), so the calibration's per-window thresholds
     stay the compensation for the TX's saturation (REVB 35) and the receiver's corner error (REVB 38).
 
 **Visibility and operations (firmware)**
-14. **A fast constellation from the board itself**: the capture (`capture.v`) records the five comparators at 800 Ms/s;
+15. **A fast constellation from the board itself**: the capture (`capture.v`) records the five comparators at 800 Ms/s;
     a 3 x 3 grid of where the signal spends its samples from a capture each look, for a deployed page with no scope.
-15. **The learning step's choices on the page** (each scheme's table, timing, latency, and when it was learned).
-16. **Authentication on the page's actions** (`POST /api/selftest`, notes, scope captures) before the boards leave the
+16. **The learning step's choices on the page** (each scheme's table, timing, latency, and when it was learned).
+17. **Authentication on the page's actions** (`POST /api/selftest`, notes, scope captures) before the boards leave the
     lab network; the page is read-only otherwise.
-17. **Time**: NTP on every PYNQ (the page's logs and the PC's records are compared by time).
+18. **Time**: NTP on every PYNQ (the page's logs and the PC's records are compared by time).
 
 ## 2. Rev A hardware: rework by hand
 
