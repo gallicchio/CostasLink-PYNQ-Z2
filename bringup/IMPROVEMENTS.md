@@ -48,7 +48,7 @@ BRINGUP_LOG ('What runs on the board') has every deploy; REVB.md is the list of 
 | the B210 as a full link partner: BPSK, OOK, QPSK and FSK received in software (`sdr_rx.py`), its own loop (`b210link.py self`), its stream's buffers long enough not to underflow | `bringup/` | 4.29 |
 | the calibration's place in each window's plateau a setting (`window_bias`, 0.6: under a CW 10 dB down far fewer false events and wrong decisions than the plateau's middle, every symbol right when quiet) | `selftest.py` | 4.30 |
 | the calibration not while an intervention is announced and only at the level the windows are kept for (one taken during an attenuator step left A2, A3 and QPSK 60 % missed); a quiet run that loses over 1 % calls for a new one; the soak checks the self-test's symbols after each disturbance | `selftest.py`, `soak.py` | 2026-11-01 13:41-13:44 |
-| **the learning step before physics runs** (plan 'learn'): the decision table learned from the vectors each state makes, every table and timing tried for A1, A1w, A2, A3 and the QPSK rate, the lowest-latency choice that decides every symbol right kept with its `rx_config`; the data's timing recovery per rate; `learned.json`, `GET /api/learned` | `selftest.py`, `dashboard.py` | 4.32 |
+| **the learning step before physics runs** (plan 'learn'): the decision table learned from the vectors each state makes, every table and timing tried for A1, A1w, A2, A3 and the QPSK rate, the lowest-latency choice that decides every symbol right kept with its `rx_config`; the data's timing recovery per rate; per lock point; `learned.json`, `GET /api/learned`, the page's 'Learned settings' | `selftest.py`, `dashboard.*` | 4.32 |
 
 ### Next: the best rev A can do in gateware and firmware
 
@@ -103,10 +103,9 @@ Grouped by what each buys; within a group, in order.  None needs new hardware.
 **Visibility and operations (firmware)**
 15. **A fast constellation from the board itself**: the capture (`capture.v`) records the five comparators at 800 Ms/s;
     a 3 x 3 grid of where the signal spends its samples from a capture each look, for a deployed page with no scope.
-16. **The learning step's choices on the page** (each scheme's table, timing, latency, and when it was learned).
-17. **Authentication on the page's actions** (`POST /api/selftest`, notes, scope captures) before the boards leave the
+16. **Authentication on the page's actions** (`POST /api/selftest`, notes, scope captures) before the boards leave the
     lab network; the page is read-only otherwise.
-18. **Time**: NTP on every PYNQ (the page's logs and the PC's records are compared by time).
+17. **Time**: NTP on every PYNQ (the page's logs and the PC's records are compared by time).
 
 ## 2. Rev A hardware: rework by hand
 
