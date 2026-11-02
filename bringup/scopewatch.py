@@ -49,10 +49,11 @@ def b210_now():
     return "quiet"
 
 
-def capture(sc, tdiv, trig=None):
+def capture(sc, tdiv, trig=None, still=None):
     """trig: (channel, level, slope) for this capture, else the bench's (ch2, I, through its middle); put back after.
     A2 moves only Q, so it triggers on Q's step up: on I the single shot waited out its 3 s and the capture came after
-    the symbols had ended (2026-11-01 07:32)"""
+    the symbols had ended (2026-11-01 07:32).  still(): whether the step is still on once the scope has acquired; if
+    not, None (nothing read)"""
     old = sc.q(":TIMebase:SCALe?")
     old_trig = (sc.q(":TRIGger:EDGE:SOURce?"), sc.q(":TRIGger:EDGE:LEVel?"), sc.q(":TRIGger:EDGE:SLOPe?"))
     if trig:
@@ -70,10 +71,14 @@ def capture(sc, tdiv, trig=None):
             sc.w(":TRIGger:EDGE:SOURce %s" % old_trig[0])
             sc.w(":TRIGger:EDGE:LEVel %s" % old_trig[1])
             sc.w(":TRIGger:EDGE:SLOPe %s" % old_trig[2])
-    t2, v2, _ = sc.waveform(2)
-    t3, v3, _ = sc.waveform(3)
+    ok = still is None or still()
+    if ok:
+        t2, v2, _ = sc.waveform(2)
+        t3, v3, _ = sc.waveform(3)
     sc.run()
     sc.timebase(scale=float(old))
+    if not ok:
+        return None
     k = max(1, len(v2) // 6000)
     return [float(v) for v in v2[::k]], [float(v) for v in v3[::k]], (float(t2[1] - t2[0]) * 1e9 * k if len(t2) > 1 else 0.0)
 
@@ -128,8 +133,29 @@ def main(argv):
         b2 = b210_now()
         try:
             leg = (r.get("leg_ref_mv") or 160) / 1000.0
-            trig = (3, (r.get("q0") or 1.63) + 0.3 * leg, "RISing") if now.get("scheme") == "A2" and now["step"] == "symbols" else None
-            i, q, dt = capture(sc, tdiv, trig)
+            side = next((x.get("side") for x in reversed(st.get("results") or []) if x.get("side") in (1, -1)), None)
+            if now.get("scheme") == "A2" and now["step"] == "symbols":
+                trig = (3, (r.get("q0") or 1.63) + 0.3 * leg, "RISing")
+            elif now["step"] == "data" and now.get("mod") == "ook" and side:
+                # OOK's two levels are the carrier and the middle: through the middle (the bench's) it seldom
+                # triggered, the shot waited out its 1.5 s, and half the captures came after the 4 s step had ended
+                # (the carrier alone, shown as OOK's raw I and its eye, 2026-11-01 19:30-20:03): half the leg out
+                trig = (2, (r.get("i0") or 1.65) + side * 0.5 * leg - off["i"], "RISing")
+            else:
+                trig = None
+
+            def still(since=now["since"], t_end=now["since"] + now.get("seconds", 10) - 0.1):
+                try:
+                    return ((get("/api/now").get("selftest") or {}).get("now") or {}).get("since") == since and \
+                        time.time() < t_end
+                except Exception:                                # noqa: BLE001
+                    return False
+            got = capture(sc, tdiv, trig, still)
+            if got is None:
+                print("%s %s: the step had ended when the scope acquired: not posted" % (
+                    time.strftime("%H:%M:%S"), now.get("text", "")[:60]), flush=True)
+                continue
+            i, q, dt = got
             i, q = [v + off["i"] for v in i], [v + off["q"] for v in q]
         except Exception as e:                                   # noqa: BLE001 - the next step tries again
             print("%s capture failed: %s" % (time.strftime("%H:%M:%S"), e), flush=True)

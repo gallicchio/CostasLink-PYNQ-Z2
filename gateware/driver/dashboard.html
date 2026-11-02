@@ -373,8 +373,11 @@ function drawSeries(p) {
   if (p.id == "ber") { const b = lastValue(r => r._ber); if (b) extra = " (the last second: " + Math.round(b.errs) + " errors in " + b.bits.toExponential(1) + " bits" + (b.errs ? "" : ": the rate is below one in that many") + "; green ticks along the bottom: seconds with no error)"; }
   if (p.id == "interference" && ownTx(fl)) extra = " (the board's own symbols or data show in it now: not judged)";
   if (p.id == "latency") { const x = lastValue(r => r._rx && r._rx.lat_ns != null ? r._rx : null); if (x) extra = " (from " + fmt(x.lat_min_ns) + " to " + fmt(x.lat_max_ns) + " ns in this run)"; }
+  // the self-test's own symbols move I with CMP_I quiet: no level then (the page read 0.5 dB off from them, 2026-11-01)
+  const ownStep = last && last.selftest && last.selftest.now && /^(symbols|qpsk|data|pattern)$/.test(last.selftest.now.step);
   const why = stale ? busyWhy() : {lost: "not locked", nocarrier: "no carrier", interfered: "interference", held: "a program holds the loop", holdover: last && last.gw_lock && last.gw_lock.state != "no carrier" ? "held through interference" : "the carrier interrupted"}[last && last.state] ||
-     "the I comparator is toggling: bursts of interference, or data on the link, spoil this slow reading";
+     (ownStep ? "the board's self-test is sending; the level is read in its gaps of carrier alone, and between its steps" :
+     "the I comparator is toggling: bursts of interference, or data on the link, spoil this slow reading");
   xv.textContent = (lv == null ? "no reading yet" : nowNull ? "not measurable now (" + why + "); the last reading shown, in grey" : ({good:"good", warn:"marginal", bad:"bad"}[k] || "")) + (nowNull ? "" : extra);
   if (p.also || p.nm) xv.innerHTML = xv.innerHTML + "<br>" + (p.also ? "<span style='color:" + C.data + "'>&#9632;</span> the carrier &nbsp; <span style='color:" + SERIES[p.also[1]] + "'>&#9632;</span> " + p.also[2] +
       (fl.state == "lost" || fl.state == "unsettled" ? " (not locked now, so it includes the carrier itself)" :
