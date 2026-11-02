@@ -271,6 +271,9 @@ class LinkD:
             return False
         if abs(dsa - got[0]) > 1e-9:                      # the last step did not lock: back to the best one
             self.release_at(VC_NOMINAL + 60e3 / self.kv(), pll, got[0], 0)
+        kept = self._load_cal(cfg)
+        if kept:                                          # back to the level the kept calibrations were taken at
+            self._fine_dsa(cl, got[0], sum(c["leg"] for c in kept.values()) / len(kept), floor)
         di = self.observe()["di"]
         a = abs(di)
         frac = float(cfg.get("window_frac", 0.5))
@@ -281,9 +284,34 @@ class LinkD:
         self.leg = self.leg_windows = self.leg_setup = a
         # the calibrations kept across a restart: this lock point's put back now, near its level (waiting for an idle
         # look, with the self-test sending at once, left a QPSK run 6.4 % lost on the plain windows, 19:35:57)
-        self.cal_by_side = self._load_cal(cfg)
+        self.cal_by_side = kept
         self.track_windows(cl, 1 if di > 0 else -1)
         return True
+
+    def _fine_dsa(self, cl, dsa, want, floor):
+        """the attenuator in 0.25 dB steps, locked all along, until the idle's I leg is within 3 % of `want`.  Setup's
+        2 dB steps stop at the first that gives leg_target: a carrier 0.4 dB stronger made that 17.75 dB, not 15.75, the
+        leg 150 mV for the 171-178 the windows and the profile were learned at, and QPSK lost 22-46 symbols a run where
+        it lost 0-2 (2026-11-02 03:03)"""
+        prev = None
+        for _ in range(32):
+            o = self.observe()
+            leg = abs(o["di"])
+            if not o["locked"]:
+                if prev is not None:                      # the last step's doing, or the carrier's: back one
+                    cl.dsa(prev)
+                    dsa = prev
+                break
+            if abs(leg - want) <= 0.03 * want:
+                break
+            prev = dsa
+            nd = dsa + (-0.25 if leg < want else 0.25)
+            if nd < floor - 1e-9 or nd > 31.75:
+                break
+            cl.dsa(nd)
+            time.sleep(0.05)
+            dsa = nd
+        return dsa
 
     def _cal_link(self, cfg):
         return {k: (cfg or {}).get(k) for k in ("mhz", "tx_mhz", "rx_mhz", "vr")}
