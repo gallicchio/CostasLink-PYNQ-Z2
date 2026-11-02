@@ -106,6 +106,13 @@ Grouped by what each buys; within a group, in order.  None needs new hardware.
 16. **Authentication on the page's actions** (`POST /api/selftest`, notes, scope captures) before the boards leave the
     lab network; the page is read-only otherwise.
 17. **Time**: NTP on every PYNQ (the page's logs and the PC's records are compared by time).
+18. **QPSK's latency tail, and a learning step that sees it**: on lock point - (only), 2-3e-7 of QPSK decisions come
+    80-214 ns after the symbol where the rest take 59-77 ns, right but late, with every table and both 24 and 32
+    samples (the self-test's plan 'qpsktail', 2026-11-01 23:37; on + none in 1e9).  Likely a corner's Q near a Q window
+    on that point (its calibrated QP 50 mV, +'s 57): find which corner (the latency histogram per corner), then a
+    calibration that maximises the least corner's margin rather than the plateau's place.  The learning step's verdict
+    reads p99.9, which hides a 1e-7 tail: for the QPV latency bound it should record each choice's worst latency and
+    the count past a bound, and choose against them.
 
 ## 2. Rev A hardware: rework by hand
 
