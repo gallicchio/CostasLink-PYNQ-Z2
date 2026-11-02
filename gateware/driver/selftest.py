@@ -736,6 +736,10 @@ class SelfTest:
 
         def start(cl):
             nonlocal settle, delay, table, prof
+            # the carrier alone, before the symbols: its level, for the page while they run (they move I with CMP_I
+            # quiet, so it reads none from its own looks then: a 13 s attenuator step went unmeasured, soak15 #150)
+            time.sleep(0.03)
+            self.level = {"t": time.time(), "i": sum(cl.adc("I") for _ in range(3)) / 3.0}
             side = self._side(cl)
             if use_profile:
                 prof = self._profile_entry(kind, name, side)

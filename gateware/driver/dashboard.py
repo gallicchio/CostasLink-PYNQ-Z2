@@ -481,7 +481,7 @@ class Dashboard:
                     # data or the self-test's symbols on the link: the level it read in its last gap of carrier alone
                     # (each second of a data step; a symbol step has none, and the look shows no level)
                     lv = getattr(getattr(self.server, "selftest", None), "level", None)
-                    if lv and time.time() - lv["t"] < 2.5:
+                    if lv and time.time() - lv["t"] < (5.0 if own else 2.5):    # a symbol step's, read at its start
                         a_g = 2.0 * abs(lv["i"] - (self.i0 + (self.i_delta or 0.0)))
                         if a_g > 0.004:
                             r["dem_dbm"] = DEM_REG_DBM + 20.0 * math.log10(a_g / A_REG_V)
