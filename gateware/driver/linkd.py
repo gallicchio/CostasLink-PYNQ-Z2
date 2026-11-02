@@ -42,6 +42,7 @@ VC_NOMINAL = 1.861                       # VC with the VCXO on the TCXO's freque
 KV_HZ_PER_V_5800 = 457e3
 RELOCK_S = 0.2
 DAC1, DAC2 = 0x60, 0x61                 # the two AD5696R (costaslink.DAC1, DAC2)
+CAL_FILE = os.path.join(HERE, "windows.json")    # each lock point's calibration, kept across a restart
 
 
 class LinkD:
@@ -81,6 +82,7 @@ class LinkD:
     def state(self):
         return {"mode": self.mode, "enabled": self.enabled, "vc_lock": self.vc_lock, "leg": self.leg, "leg_windows": self.leg_windows, "leg_setup": self.leg_setup,
                 "cal": ({"side": self.cal["side"], "leg": self.cal["leg"], "t": self.cal["t"],
+                         "restored": bool(self.cal.get("restored")),
                          "thresholds_mv": {w: round(1e3 * (v - self.cen[w]), 1) for w, v in self.thresholds().items()}}
                         if self.cal else None), "config": self.cfg, "idle_s": self.idle_s,
                 "lost_for_s": (time.time() - self.lost_since) if self.lost_since else None,
@@ -269,14 +271,50 @@ class LinkD:
             return False
         if abs(dsa - got[0]) > 1e-9:                      # the last step did not lock: back to the best one
             self.release_at(VC_NOMINAL + 60e3 / self.kv(), pll, got[0], 0)
-        a = abs(self.observe()["di"])
+        di = self.observe()["di"]
+        a = abs(di)
         frac = float(cfg.get("window_frac", 0.5))
         for w, v0 in cen.items():
             cl.threshold(w, min(2.499, max(0.0, v0 + frac * a)))
         cl.dac(DAC2, V_T2=float(cfg.get("v_t2", 2.9)))
         self.vc_lock = cl.adc("VC")
         self.leg = self.leg_windows = self.leg_setup = a
+        # the calibrations kept across a restart: this lock point's put back now, near its level (waiting for an idle
+        # look, with the self-test sending at once, left a QPSK run 6.4 % lost on the plain windows, 19:35:57)
+        self.cal_by_side = self._load_cal(cfg)
+        self.track_windows(cl, 1 if di > 0 else -1)
         return True
+
+    def _cal_link(self, cfg):
+        return {k: (cfg or {}).get(k) for k in ("mhz", "tx_mhz", "rx_mhz", "vr")}
+
+    def _save_cal(self):
+        """each lock point's calibration beside the server, as offsets from the window comparators' centres (setup
+        measures those again), for the link it was taken on"""
+        try:
+            with open(CAL_FILE + ".tmp", "w") as f:
+                json.dump({"link": self._cal_link(self.cfg), "by_side": {str(s): {k: c[k] for k in ("side", "leg", "off", "t")}
+                                                                          for s, c in self.cal_by_side.items()}}, f)
+            os.replace(CAL_FILE + ".tmp", CAL_FILE)
+        except OSError:
+            pass
+
+    def _load_cal(self, cfg):
+        """the calibrations kept by _save_cal, if taken on this link (frequencies, VR).  A restart used to start on the
+        plain rule's windows until the self-test calibrated again, which the soak's announced trials put off for
+        minutes: QPSK lost 6.6-6.9 % a run after a deploy (2026-11-01 19:24), 2.2 % for a minute before (17:47)"""
+        try:
+            with open(CAL_FILE) as f:
+                d = json.load(f)
+            if d.get("link") != self._cal_link(cfg):
+                return {}
+            out = {}
+            for s, c in (d.get("by_side") or {}).items():
+                if set(c.get("off") or {}) == set(self.cen) and c.get("leg"):
+                    out[int(s)] = dict(c, side=int(s), restored=True)
+            return out
+        except (OSError, ValueError, TypeError, AttributeError):
+            return {}
 
     def thresholds(self):
         """the window thresholds as linkd sets them: calibrated (the self-test's 'calibrate': each between its states'
@@ -296,6 +334,7 @@ class LinkD:
         for w, v in self.thresholds().items():
             cl.threshold(w, min(2.499, max(0.0, v)))
         self.counts["calibrations"] += 1
+        self._save_cal()
 
     def track_windows(self, cl, side=None):
         """the windows follow the carrier's level.  Setup puts them at window_frac of the leg it found; a level that
@@ -309,13 +348,15 @@ class LinkD:
         right only for a weaker carrier.  The windows from the states' own levels (the self-test's 'corners') next"""
         if not self.cfg or not self.cfg.get("track_windows", True) or not self.cen or not self.leg_windows or not self.leg:
             return
-        if self.cal and side is not None and side != self.cal["side"]:
-            # the calibration belongs to the other lock point (the loop slipped or was recovered there): this point's
-            # own, if it has one near this level, else the plain windows until the self-test calibrates it (the plain
-            # rule's Q sits past the corners' plateau: QPSK lost 4-11 % after each soak recovery that changed point,
-            # 2026-11-01 14:36-14:50, the calibration put off by the soak's announced trials)
-            own = self.cal_by_side.get(side)
-            if own is not None and abs(self.leg - own["leg"]) <= 0.15 * own["leg"]:
+        own = self.cal_by_side.get(side) if side is not None else None
+        near = own is not None and abs(self.leg - own["leg"]) <= 0.15 * own["leg"]
+        if side is not None and ((self.cal and side != self.cal["side"]) or (not self.cal and near)):
+            # the calibration belongs to the other lock point (the loop slipped or was recovered there), or there is
+            # none yet (a restart: the ones kept in windows.json): this point's own, if it has one near this level,
+            # else the plain windows until the self-test calibrates it (the plain rule's Q sits past the corners'
+            # plateau: QPSK lost 4-11 % after each soak recovery that changed point, 2026-11-01 14:36-14:50, the
+            # calibration put off by the soak's announced trials)
+            if near:
                 self.cal = own
                 self.leg_windows = min(self.leg, own["leg"])
             else:

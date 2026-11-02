@@ -49,6 +49,8 @@ BRINGUP_LOG ('What runs on the board') has every deploy; REVB.md is the list of 
 | the calibration's place in each window's plateau a setting (`window_bias`, 0.6: under a CW 10 dB down far fewer false events and wrong decisions than the plateau's middle, every symbol right when quiet) | `selftest.py` | 4.30 |
 | the calibration not while an intervention is announced and only at the level the windows are kept for (one taken during an attenuator step left A2, A3 and QPSK 60 % missed); a quiet run that loses over 1 % calls for a new one; the soak checks the self-test's symbols after each disturbance | `selftest.py`, `soak.py` | 2026-11-01 13:41-13:44 |
 | **the learning step before physics runs** (plan 'learn'): the decision table learned from the vectors each state makes, every table and timing tried for A1, A1w, A2, A3 and the QPSK rate, the lowest-latency choice that decides every symbol right kept with its `rx_config`; the data's timing recovery per rate; per lock point; `learned.json`, `GET /api/learned`, the page's 'Learned settings' | `selftest.py`, `dashboard.*` | 4.32 |
+| **the calibrations kept across a restart**: each lock point's windows saved beside the server (`windows.json`, as offsets from the comparators' centres, for its link's frequencies and VR) and put back at setup, or when the loop reaches that point, near its level; the page says so.  A restart used to run on the plain rule's windows until the self-test calibrated again, which the soak's announced trials put off: QPSK 6.6-6.9 % lost a run for 3.5 min | `linkd.py`, `dashboard.py` | 2026-11-01 19:23-19:53 |
+| the page's carrier level and the lock points' middle not learned during the self-test's own steps (CMP_I quiet under A1w's and A3's symbols: an A1w symbol's I kept as the + point's moved the middle 11 mV and read the carrier 0.5 dB high on the other point for 13 min, flagging soak15 #112; the single -46 dBm looks likewise) | `dashboard.py` | 2026-11-01 19:13-19:23 |
 
 ### Next: the best rev A can do in gateware and firmware
 
@@ -91,9 +93,7 @@ Grouped by what each buys; within a group, in order.  None needs new hardware.
 11. **The FPGA reads the ADS1115 itself** (REVB U3): VC, I, Q and the detectors round-robin into registers at the
     ADC's 860 S/s, so the lock monitor can use VC and the page gets VC and the level at 100 S/s without contending for
     the I2C bus; the level read in the data's gaps by gateware.
-12. **The calibrations kept across a restart**: linkd's per-lock-point windows (and the learned profile, kept already)
-    saved beside the server and put back after setup when the level is within 15 %; today a restart runs on the plain
-    windows until the self-test calibrates again (QPSK lost 2.2 % a run for a minute after a deploy, soak15 17:47).
+12. **The calibrations kept across a restart**: done (the table above, 2026-11-01 19:53).
 13. **The carrier null per carrier** (REVB 19, 23): VR_I / VR_Q from a table in `link.json`, and the arms' offsets
     (I_OFF_F) likewise (REVB 15).
 14. **The TX's I and Q swing trimmed against the receiver's measured corners**: not possible on rev A (the ladders' swing

@@ -327,7 +327,16 @@ class Dashboard:
                     lw = L.get("leg_windows") or L["leg"]
                     cal = L.get("cal")
                     side_was = getattr(self, "_cal_side", None)
-                    if cal and side_was is not None and cal.get("side") != side_was:
+                    if cal and cal.get("restored") and side_was is None:
+                        # the server restarted: linkd put back the calibration kept for this lock point (windows.json)
+                        t = cal.get("thresholds_mv") or {}
+                        age = (r["t"] - cal["t"]) / 60.0 if cal.get("t") else None
+                        txt = ("The board server restarted: this lock point's decision windows, calibrated %s, put back "
+                               "(%s mV out from their centres)." % (
+                                   "before" if age is None else ("%.0f min before" % age) if age < 90 else
+                                   ("%.1f h before" % (age / 60.0)),
+                                   ", ".join("%s %.0f" % (w, t[w]) for w in ("QP", "QN", "IP", "IN") if w in t)))
+                    elif cal and side_was is not None and cal.get("side") != side_was:
                         # the loop changed lock point and linkd put that point's own calibration back (it used to say
                         # 'the level changed' and the plain rule's number, half the leg, 2026-11-01 17:34)
                         t = cal.get("thresholds_mv") or {}
@@ -431,6 +440,9 @@ class Dashboard:
         # Only locked (a near interferer or a beat adds to it: a CW 20 kHz off read 8 dB high) and while CMP_I is quiet
         # (data averages I towards zero on this slow reading)
         idle = bool(adc) and rate.get("CMP_I", 1e9) < 2000
+        # the self-test's own step on the link: CMP_I can be quiet while its symbols move I (A1w's wider I, A3's corners
+        # at 0.77 of the leg), so a look then is no level.  Its level is the one it reads in a gap of carrier alone
+        own = getattr(getattr(self.server, "selftest", None), "_busy", False)
         # not interference or the holdover: a slip across those counts (a held loop loses its phase across a gap of the
         # carrier 30-60 % of the time, REVB 24, and nothing else would show it).  A loss linkd mended between two
         # full looks counts as a break too (its looks were busy: a recovery's lock point is either, not a slip; 00:02)
@@ -447,9 +459,13 @@ class Dashboard:
                 if self.side is not None and sd != self.side and not self._gap:
                     r["slip"] = True
                 self.side, self._gap = sd, False
-                self.side_i[sd] = (adc["I"], r.get("dsa_db"), r["t"])
+                # learned off the idle carrier alone: an A1w symbol's I (1.848 V for a 1.820 V carrier) kept as the +
+                # point's, then paired with each - look, moved the middle 11 mV and read the carrier 0.5 dB high on -
+                # for 13 minutes (soak15 #108-#112, 2026-11-01 19:00)
+                if not own:
+                    self.side_i[sd] = (adc["I"], r.get("dsa_db"), r["t"])
                 o = self.side_i[-sd]                  # the other side's latest, at the same attenuator, comparable
-                if o and o[1] == r.get("dsa_db") and r["t"] - o[2] < 1800:
+                if not own and o and o[1] == r.get("dsa_db") and r["t"] - o[2] < 1800:
                     a1, a2 = abs(adc["I"] - self.i0), abs(o[0] - self.i0)
                     if abs(a1 - a2) < 0.15 * max(a1, a2):
                         dlt = (adc["I"] + o[0]) / 2.0 - self.i0
@@ -457,12 +473,13 @@ class Dashboard:
             try:
                 from board_constants import RX_GAIN_DB, DEM_REG_DBM, A_REG_V
                 a_diff = 2.0 * abs(di)
-                if idle and a_diff > 0.004:
+                if idle and not own and a_diff > 0.004:
                     r["dem_dbm"] = DEM_REG_DBM + 20.0 * math.log10(a_diff / A_REG_V)
                     if r.get("dsa_db") is not None:
                         r["rx_ant_dbm"] = r["dem_dbm"] - RX_GAIN_DB + r["dsa_db"]
                 else:
-                    # data on the link: the level the self-test read in its last gap of carrier alone (each second)
+                    # data or the self-test's symbols on the link: the level it read in its last gap of carrier alone
+                    # (each second of a data step; a symbol step has none, and the look shows no level)
                     lv = getattr(getattr(self.server, "selftest", None), "level", None)
                     if lv and time.time() - lv["t"] < 2.5:
                         a_g = 2.0 * abs(lv["i"] - (self.i0 + (self.i_delta or 0.0)))
@@ -477,7 +494,6 @@ class Dashboard:
             self.vc_lock = vc if self.vc_lock is None else 0.95 * self.vc_lock + 0.05 * vc
             # learned off the idle carrier alone: the self-test's QPSK and A3 steps (the corners at 0.77 of the leg on
             # I, half the time) pulled it to 145-167 mV for a 176 mV carrier, and the scope's captures took it with them
-            own = getattr(getattr(self.server, "selftest", None), "_busy", False)
             if abs(di) > 0.05 and r.get("ber") is None and idle and not own:
                 self.leg_ref = abs(di) if self.leg_ref is None else 0.9 * self.leg_ref + 0.1 * abs(di)
         if off is not None and st != "held":        # held, a program sets VC (and re-centres it at 5.8 GHz): no offset
