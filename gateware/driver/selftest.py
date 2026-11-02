@@ -65,6 +65,10 @@ PLANS = {
     # QPSK rate the decision table and timing with the lowest latency that decides every symbol right, and the data's
     # timing recovery at each rate; kept in learned.json and used by every step after (once through, then the plan before)
     "learn": [{"step": "learn"}],
+    # QPSK's latency tail (2026-11-01 23:05: on lock point - a decision or two in 7.5 M past 100 ns, to 256, with the
+    # learned 'info' table within 24; on + almost never): each table at settle 6, within 24 and 32 samples
+    "qpsktail": [{"step": "qpsk", "seconds": 3.0, "table": t, "settle": 6, "delay": d}
+                 for t in ("all", "info", "learned") for d in (24, 32)],
     # the A/B under one interference (TODO, 2026-11-01): A3 and A1 settled (SETTLE's) or at the fixed delay, each with the
     # windows calibrated from the states' levels or by the plain rule (half the leg), in turn
     "ab": [{"step": "symbols", "scheme": name, "seconds": 4.0, "period": 2000, "width": 20, "settle": k, "delay": d,
