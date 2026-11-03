@@ -207,10 +207,13 @@ Everything slow (the three slow comparators' outputs, the mux controls, LOOP_SEL
 sensors) goes through the port's I2C (the DNA bus: whether a pod may hang its own devices on it is the question for
 Opal Kelly in section 6; the Eclypse gives each port its own address, 0x30 and 0x31, so other addresses look free)
 or through the pod's DNA microcontroller as a bridge.  **The field I/O (four BME outputs, four detector inputs) does
-not fit beside the radio**: on the Brain-1 it is a second port's worth, so either one pod variant per node carries it
-(SYSTEM.md 5) or a small separate SYZYGY "field" pod does (a trivial board: the SN74ACT04 drivers and the detector
-comparators, no RF; it fits a Standard port or, on the Brain-1, the transceiver port's ten single-ended signals
-S0-S9: and then the field I/O is swappable too, and a node is radios + one field pod).
+not fit beside nine comparators on one Standard port.**  It goes on a small separate SYZYGY **field pod** (a
+trivial board: the SyzygyRadioBoard's SN74ACT04 drivers and ADCMP605 detector comparators, no RF) on the Brain-1's
+fourth port, the Transceiver (TXR4) port, whose connector carries ten single-ended signals (S0-S9) and two clock
+pairs beside its four lanes (the SYZYGY TXR template): a Brain-1 node is three radio pods and one field pod, with
+the field I/O swappable like the radios.  The fallback, if the transceiver port is not to be used, is one radio pod
+variant per node that gives up its four diagonal comparators (1 of 4 on that link) to free eight pins for the field
+I/O, which is SYSTEM.md 5's original plan with five comparators.
 **A fast instrumentation ADC does not fit at all** on one Standard port: a serial-LVDS ADC would need a pair, and the
 pairs are spent.  That is the real cost of the 28-pin port and the argument for D's carrier with wider sockets (5.4) when the Brain-1 is replaced.
 
