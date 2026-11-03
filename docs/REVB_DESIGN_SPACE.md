@@ -148,7 +148,13 @@ of the I and Q arms).  What 1 of 8 costs:
 * **The second-order error** (REVB 38, about 10 % in the corners) halves the diagonal margins unless found and fixed
   (it is in the demodulator or the arms; the VNA and a B210 test on rev A can locate it before rev B's layout).
 * **Pins**: four more LVDS pairs (3.5).
-* **Money**: four comparators and two FDAs, under $15.
+* **Money**: four comparators and, if the diagonals get their own arms, two FDAs: under $15.  **But the extra arms
+  may not be needed**: each arm is differential (I_P = V_MID + I/2, I_N = V_MID - I/2; the same for Q), so a comparator
+  with its inputs on **I_P and Q_N** sees (I + Q)/2 and one on **I_P and Q_P** sees (I - Q)/2, the diagonals with no
+  amplifier at all; the window's threshold enters as a resistive offset from its DAC into one input (off the signal
+  path, so the RC of R5 lands there).  Four TLV3604s, four DAC channels and a few resistors, loading the existing arms'
+  outputs with high-impedance inputs only.  The margin this gives is the same as the explicit sum's, at half the
+  swing of a dedicated arm; worth a bench check on rev A's I MON / Q MON before choosing.
 
 So: lay out the nine windows and the linear drive, run the experiment on four, and have eight when the margins are
 measured.  The slow path (the 7.5 MHz veto) stays on I and Q.
@@ -165,6 +171,14 @@ measured.  The slow path (the 7.5 MHz veto) stays on I and Q.
 geometry), S3 only if the survey of UIUC's roofs says the band is crowded.**  S2's filter also protects the LNA from
 the site's own transmitters.  The sync links (V0 -> V1, V2) can be as narrow as a 20-40 MHz filter lets them, since
 their latency does not count.
+
+**Parts for S2** (looked up tonight; stock moves): for 5.8 GHz the Mini-Circuits **BFCN-5750+** (5650-5850 MHz,
+1.84 dB, SMD 3216, LCSC C4989833, 237 in stock at $8.65) and Johanson's 5800BP18A0100 (5750-5850 MHz, 2.0 dB,
+preliminary, no stock found); the wider CBP-5800AG+ is 4 dB and 18 weeks.  For 5.2 GHz the Johanson
+**5235CR45A0180001E** (5.24 GHz, 180 MHz wide, 2.5 dB, Digikey), the BAW parts Skyworks SKY85916-11 and Qorvo
+QPQ1903 (5170-5330 MHz: the sharpest, WiFi-grade, 1.8 x 1.6 mm), and Taoglas DBP.5200 (5150-5250, 2.8 dB).  A whole-band
+part (Johanson 5550BP14E0800001T, 5150-5950 MHz, 0603) is the S1 fallback that at least keeps WiFi's 2.4 GHz and the
+cellular bands out of the LNA.  The group delay of the 100-200 MHz-wide ones is a few ns; the BAW ones more.
 
 ### 3.4 Instrumentation and operations (the software exists; rev B feeds it)
 
@@ -283,7 +297,8 @@ SYZYGY SFP pod, at 3.75 Gb/s), not on the radio.
 
 ### 4.4 A cheap experiment, if the modem idea is worth settling
 
-A Kria KR260 ($372, two SFP+ cages, PYNQ) and an SFP+-to-SMA breakout: the GT sends the 1.45 GHz pattern out of one
+A Kria KR260 ($372, two SFP+ cages, PYNQ) and an SFP+-to-SMA breakout (Trenz TE0422 / TEC0106-01, or Osmocom's
+open one: the two pairs to four SMAs): the GT sends the 1.45 GHz pattern out of one
 cage into a limiter and back into the other; the fabric steps the phase and measures how the deserialized words move
 and how long the CDR takes to re-track; then a mixer pair takes it to 5.8 GHz over the air against rev A.  Two weeks
 of someone's time and $500 answer 4.2's questions.  Not on rev B's path.
@@ -500,5 +515,7 @@ GTs as RF: [a SerDes as a pulse-density modulator driving a PA (Maynooth, transm
 Zynq 7012S: [four GTP (UG585)](https://docs.amd.com/r/en-US/ug585-zynq-7000-SoC-TRM/GTP-Low-Power-Serial-Transceivers).
 5 GHz PAs on LCSC: [Qorvo QPF4519 PA/SP2T/LNA, +23 dBm](https://www.lcsc.com/product-detail/C471156.html),
 [Skyworks SKY85735-11 FEM](https://www.lcsc.com/product-detail/C2654426.html), [SKY85402-11 PA, +25 dBm](https://www.skyworksinc.com/en/Products/Amplifiers/SKY85402-11).
+Filters: [Mini-Circuits BFCN-5750+ at LCSC](https://www.lcsc.com/product-detail/C4989833.html), [Johanson 5235CR45A0180001E at Digikey](https://www.digikey.at/en/products/detail/johanson-technology-inc/5235CR45A0180001E/7943540), [Qorvo QPQ1903 BAW 5170-5330 MHz](https://qorvo.com/products/p/QPQ1903), [Skyworks SKY85916-11](https://www.skyworksinc.com/-/media/SkyWorks/Documents/Products/Product-Summary/SKY85916-11_207528A_PS.pdf), [Johanson 5550BP14E0800001T 5150-5950 MHz](https://www.johansontechnology.com/products/integrated-passives/band-pass-filters/5550bp14e0800001t/).
+SFP+ breakouts: [Trenz TE0422 schematic](https://shop.trenz-electronic.de/trenzdownloads/Trenz_Electronic/Accessories/SFP/TE0422/REV02/Documents/SCH-TE0422-02.PDF), [Osmocom's SFP breakout](https://projects.osmocom.org/projects/misc-hardware/wiki/Sfp-breakout).
 SFP+ cages at LCSC: [JLCPCB's optical-module connector library](https://jlcpcb.com/parts/2nd/Connectors/Optical_Module_Connector_2051).
 FCC 15.407: [eCFR: fixed point-to-point, 23 dBi without reduction](https://www.ecfr.gov/current/title-47/chapter-I/subchapter-A/part-15/subpart-E/section-15.407).
