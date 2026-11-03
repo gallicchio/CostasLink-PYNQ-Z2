@@ -22,8 +22,9 @@ results ([`../bringup/FINDINGS.md`](../bringup/FINDINGS.md), [`../bringup/REVB.m
    deployment the Brain-1 ($450, three Standard ports, Linux, in stock) does the job with 7.0 ns events (HOSTS.md).
    The better carrier when the Brain-1's age bites is **a small custom carrier for the Kria K26 SOM with three SYZYGY
    sockets** ($351-550 for the SOM, a modest board with no RF and no DDR on it, PYNQ supported on Kria): one
-   UltraScale+ box per site, rugged, cheap, and the radios unchanged.  Section 5 compares all the options; note
-   that P and V0 need four ports' worth (three radios and the field I/O) and the Brain-1 has three Standard ports.
+   UltraScale+ box per site, rugged, cheap, and the radios unchanged.  Section 5 compares all the options; P and
+   V0 need four pods (three radios and a field pod), which fill a Brain-1's three Standard ports and its
+   transceiver port exactly.
 3. **FMC buys no sourcing advantage.**  The FMC connectors are Samtec parts too (ASP-134486/134488), not in JLCPCB's
    own library; JLCPCB's Global Sourcing service buys from the distributors for assembly in 9-20 business days,
    which is how to get a Samtec QTE (SYZYGY) or ASP (FMC) onto an assembled board without consigning it.  What FMC
@@ -194,7 +195,8 @@ Opal Kelly in section 6; the Eclypse gives each port its own address, 0x30 and 0
 or through the pod's DNA microcontroller as a bridge.  **The field I/O (four BME outputs, four detector inputs) does
 not fit beside the radio**: on the Brain-1 it is a second port's worth, so either one pod variant per node carries it
 (SYSTEM.md 5) or a small separate SYZYGY "field" pod does (a trivial board: the SN74ACT04 drivers and the detector
-comparators on a Standard port, no RF: and then the field I/O is swappable too, and a node is radios + one field pod).
+comparators, no RF; it fits a Standard port or, on the Brain-1, the transceiver port's ten single-ended signals
+S0-S9: and then the field I/O is swappable too, and a node is radios + one field pod).
 **A fast instrumentation ADC does not fit at all** on one Standard port: a serial-LVDS ADC would need a pair, and the
 pairs are spent.  That is the real cost of the 28-pin port and the argument for D's carrier with wider sockets (5.4) when the Brain-1 is replaced.
 
@@ -286,11 +288,11 @@ of someone's time and $500 answer 4.2's questions.  Not on rev B's path.
   I/O goes to a field pod or an expander, and no fast ADC fits); 4 GTP at 3.75 Gb/s (an SFP for the fibre, not 10G); one A9 core (the page
   and linkd are light; fine); no PYNQ (the driver's MMIO and the overlay loading move to PetaLinux's `/dev/mem` and
   `fpgautil`: a few days); the per-port power is not published (a pod draws 1.4 A at 5 V: check with Opal Kelly);
-  Opal Kelly is one small vendor, 31 boards in stock today.  **And P and V0 need three radios plus the field I/O**:
-  four Standard ports' worth on a carrier with three Standard ports and one transceiver port, so there the field I/O
-  must share a radio pod (that pod giving up its diagonal comparators: 1 of 4 on it) or ride the transceiver port,
-  if that port has spare single-ended pins (not verified tonight; the TXR4 pinout is in the specification behind
-  its licence click-through).  This is the strongest argument for D's carrier.
+  Opal Kelly is one small vendor, 31 boards in stock today.  **P and V0 need three radios plus the field I/O**, four
+  ports' worth: the three Standard ports take the radio pods, and the transceiver (TXR4) port takes a **field pod**,
+  since a TXR4 port carries ten single-ended signals (S0-S9) and two clock pairs beside its four lanes (the SYZYGY
+  TXR template in `../../SyzygyRadioDrivers/pcb-templates/KiCAD/SZG-TEMPLATE-TXR/`): eight are the BME outputs and
+  the detector inputs.  So a Brain-1 node is three radio pods and one field pod, with no port to spare.
 * **First-run likelihood**: the pod high (rev A came up first time, the pod is smaller and better understood); the
   deployment medium-high (the carrier is bought; the risk is the software port and the pin budget's compromises).
 
