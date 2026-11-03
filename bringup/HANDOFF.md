@@ -50,7 +50,8 @@ for the page's panel).  The board's clock is UTC; the PC is PST.
 
 **Power (the E3646A, USB serial):** output 1 the board at 5.30 V, 1.5 A limit (the board draws about 0.9 A); output 2
 the PYNQ at 12.0 V, 1.5 A limit, OVP 13.5 V.  One switch serves both outputs; the board is switched by its output's
-voltage (0 V or 5.3 V).  `python3 bringup/bench.py --board A psu up | cycle | pynq-off | pause --minutes 10`.
+voltage (0 V or 5.3 V).  `python3 bringup/bench.py --board A psu up | cycle | pynq-off`; the watchdog's pause is
+`python3 bringup/bench.py pause --minutes 10` (a top-level command, not under `psu`).
 
 **Running on the bench PC** (started from the chat; they survive it as background shells until the PC is restarted or
 they time out; stop them with `pkill -f <name>` before the board is moved):

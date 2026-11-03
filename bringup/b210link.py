@@ -456,7 +456,7 @@ class Link(W.Weekend):
             self.thresholds(st["cen"], st["a"], 0.5)
         return out
 
-    def rx_scope(self, mhz, st, period_s=4e-6, width_s=2e-6, caps=5, tdiv=5e-6, only=None):
+    def rx_scope(self, mhz, st, period_s=4e-6, width_s=2e-6, caps=5, tdiv=5e-6, only=None, extra=None):
         """the same states on the bench scope (I MON, Q MON at 50 ohm, probe factor 21: volts at the arm): each state's
         cluster from thousands of samples, the samples between states dropped; relative to the idle on the same channel,
         so a channel's gain error cancels in the flip's Q (the receiver's own share of A1's 30 mV, REVB 35).  Q's scale
@@ -476,7 +476,9 @@ class Link(W.Weekend):
                 "corners_noiwin": (C4, 1), "corners_nowin": (C4, 1)}
         if only:
             pats = {k: v for k, v in pats.items() if k in only}
-        out = {"mhz": mhz, "side": st["side"], "a": st["a"], "patterns": {}}
+        if extra:                                     # a caller's own patterns, name: (states, rot), after 'idle'
+            pats.update(extra)
+        out = {"mhz": mhz, "side": st["side"], "a": st["a"], "period_s": period_s, "width_s": width_s, "patterns": {}}
         try:
             for pname, (states, rot) in pats.items():
                 if states:
@@ -505,10 +507,13 @@ class Link(W.Weekend):
                     idle_alone = z_idle
                 else:
                     z_idle = idle_alone
-                # the patterns' mean is the middle plus half the idle's vector times (1 + the states' mean direction):
-                # the corners average to the middle (2 mean - idle), a flip half the time is the middle itself
-                ub = 1.0 + (np.mean([complex(a_, b_) for a_, b_ in states]) if states else 0)
-                origin = (complex(np.mean(I), np.mean(Q)) - 0.5 * ub * z_idle) / (1 - 0.5 * ub) if states else 0j
+                # the patterns' mean is the middle plus the idle's vector times ((1 - d) + d x the states' mean
+                # direction), d the share of each period a state is on (width / period: 0.5 as the patterns were
+                # first run; the 0.5 that was written in left the seeds wrong at any other width, 2026-11-02 22:30):
+                # the corners average to the middle, a flip half the time is the middle itself
+                d_on = width_s / period_s
+                u_ = (1.0 - d_on) + d_on * (np.mean([complex(a_, b_) for a_, b_ in states]) if states else 0)
+                origin = (complex(np.mean(I), np.mean(Q)) - u_ * z_idle) / (1 - u_) if states else 0j
                 v = z_idle - origin
                 cents = np.array([z_idle] + [origin + v * complex(a_, b_) for a_, b_ in states], dtype=complex)
                 r_keep = 0.25 * abs(v) if states else 0.05
