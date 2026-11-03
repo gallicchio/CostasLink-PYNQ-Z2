@@ -174,8 +174,9 @@ measured.  The slow path (the 7.5 MHz veto) stays on I and Q.
 | S2: **a fixed RF band-pass per radio** (a ceramic or cavity filter at RX ANT: 5.725-5.850 GHz, or 5.15-5.35, 1-2 dB, 50-100 MHz wide; Johanson/Taoglas/Mini-Circuits parts on LCSC and Digikey) | the radio hears its sub-band only; U-NII-1 radios deaf to U-NII-3 and the reverse | a filter's group delay: 5-15 ns for 100 MHz wide | $3-30; a part to choose and a footprint; the frequency menu shrinks to the filter's sub-band per radio (two board variants, or a switched pair of filters) |
 | S3: **a superheterodyne receiver**: a second LO (one more MAX2871 or the RX synthesizer's second output) mixing the RF to an IF of about 1 GHz, a 100 MHz-wide IF filter (LC or SAW), the demodulator and the Costas loop at the IF | sharp, and tunable: the LO moves, the filter stays; any channel from a menu | 10-20 ns in the filter and the extra mixer | $20-40 and a redesigned chain; the loop's frequency plan changes; highest risk on a first run |
 
-**For rev B: S1 always, S2 on the prover's three links (two fixed sub-bands, which the three links share with the
-geometry), S3 only if the survey of UIUC's roofs says the band is crowded.**  S2's filter also protects the LNA from
+**For rev B: S1 always, S2 as a switched pair of sub-band filters on every pod (two SPDTs, about 1 dB, chosen from
+software: no pod variants, Jason's rule), external connectorized filters as the fallback, S3 only if the survey of
+UIUC's roofs says the band is crowded.**  S2's filter also protects the LNA from
 the site's own transmitters.  The sync links (V0 -> V1, V2) can be as narrow as a 20-40 MHz filter lets them, since
 their latency does not count.
 
@@ -320,6 +321,22 @@ share one cable tray:
 
 So the SFP cage belongs on the **carrier** (the K26 carrier of 5.4 has one; the Brain-1's TXR4 port can take a
 SYZYGY SFP pod, at 3.75 Gb/s), not on the radio.
+
+**The prover has the same problem** (Jason, 22:45: no quantum optics on the roof), and there its latency counts.
+Three ways to bridge 30 m between the prover's dishes and its optics:
+
+| | on the roof | in the lab | added to the prover's turnaround |
+|---|---|---|---|
+| P1: the radios on the roof, **bits over fibre** (SYZYGY-to-SFP on each Brain-1's TXR4 port) | a Brain-1, three radio pods, an SFP pod | a Brain-1, an SFP pod, a colleague's boards without their radios as field pods | 2 x 150 ns of fibre and four transceiver crossings (a GTP crossing about 40-60 ns at 3.75 Gb/s, to measure): **450-550 ns** |
+| P2: the radios in the lab, **RF over coax**, a mast-head LNA and PA at each dish | a small amplifier unit per dish | a Brain-1, three radio pods, the field I/O | 2 x 120 ns of coax, no electronics; a second small RF board to design |
+| P3: the radios and the decision on the roof, **logic pulses over coax** down to the BME and up from the detectors | a Brain-1, three radio pods, the field pod on the TXR4 port | cables only (the SN74ACT04 bank drives 50 ohm over 30 m) | 2 x 120 ns of coax, **no transceiver**, no second FPGA; the SFP only for telemetry |
+
+P3 for the prover, P1 for V0 (where the latency does not count and the fibre's isolation is welcome), and the
+Brain-1 fibre experiment (Jason has the carriers and the SYZYGY-to-SFP pods) gives the GTP crossing's fixed latency
+and jitter that P1's and P3's comparison needs.  **The Brain-1's GTP (7-series, 3.75 Gb/s at the -1 grade) is not a
+reason to go to the KR260 for that experiment**: the rate is irrelevant to a few bits a round, the bypass modes are
+the same architecture as the GTH's (UG482 against UG576), and the number that matters is the fixed latency, which
+the GTH halves but the 300 ns of fibre swamps.
 
 ### 4.4 A cheap experiment, if the modem idea is worth settling
 
@@ -466,29 +483,38 @@ pairs: the field I/O goes to a small field pod (3.5), and the ADC waits for D's 
 7. **The K26 carrier** after the pods are back: a KV260 ($245) meanwhile runs PYNQ and one pod through an adapter for
    the fabric's timing.
 
-## 7. Decisions for Jason
+## 7. Decisions for Jason (his answers of 2026-11-02 22:45 in bold)
 
-1. Pods on SYZYGY (10 + spares) with the carrier bought: yes or no.  (Everything below assumes yes.)
-2. The first carrier: the Brain-1 ($450 each, order 5), or go straight to the K26 carrier (one more board design before
-   anything is deployed, 2-3 months later).
-3. 1 of 8 in the receiver's hardware now (nine comparators) or 1 of 4 with the pins kept for general fast I/O:
-   **deferred (Jason, 22:15), leaning to 1 of 4**; the linear TX either way.
-4. Selectivity: S2's fixed sub-band filters on the prover links (two pod variants, or a switched pair), or S1 alone
-   until the UIUC survey.
-5. The PA: a WiFi FEM on the pod (+23 dBm, the band fixed at 5.15-5.85) or a connectorized PA outside (any band under
-   a Part 5 licence).
-6. The field I/O on every pod (simplest; pins) or on one pod variant per node.
-7. The V0 lab-to-roof link: fibre + SFP (the radio on the roof) or RF over coax.
-8. The transceiver-modem experiment (4.4): fund two weeks and a KR260, or shelve it.
+1. Pods on SYZYGY (10 + spares) with the carrier bought: **yes**, despite the pin count; Brain-1 carriers are in hand
+   and PYNQ is being ported to them for the SyzygyRadioBoard.
+2. The first carrier: **the Brain-1**; the K26 carrier would put a new board between us and any deployment ("risky").
+3. 1 of 8 or 1 of 4: **still torn** over the fast digital I/O; but with every node's optics in a lab (P and V0 over
+   fibre or coax, V1 and V2 without optics) **no radio pod needs field I/O**, so the nine pairs fit the Standard port
+   and the pin argument against 1 of 8 falls away (3.5).
+4. Selectivity: **no pod variants**: external connectorized modules, or on-board switched filters (a pair of SPDTs
+   around two sub-band filters, chosen from software: the recommendation).
+5. The PA: **the FEM on the pod** (reliability and power-up order in the field; 5.15-5.85 GHz is seven 80-100 MHz
+   channels, enough), not an external PA.
+6. The field I/O: **no pod variants**: a colleague's boards without their radios as field pods in the lab (P1), or a field
+   pod on the roof Brain-1's TXR4 port (P3).
+7. The lab-to-roof link: **fibre with SYZYGY-to-SFP pods at V0**, the same considered for the prover; this study's
+   answer for the prover is P3 (4.3).  **The transceiver experiment first, on two Brain-1s with SYZYGY-to-SFP or
+   TXR4-to-SMA pods, in the office within days.**
+8. The transceiver-modem experiment (4.4): can ride on the same pair of Brain-1s at a 0.94 GHz IF.
+
+**The pod's shape** (Jason): two pods side by side on a Brain-1, so the pod is a colleague's width (about 45 mm) and as
+long as it needs to be (200-250 mm): a complete re-layout of rev A's 120 x 100 mm, the RF in a line (section 8).
 
 ## 8. The pod's first cut (what a schematic would start from)
 
-**Form.**  A SYZYGY Standard pod on the template (`../../SyzygyRadioDrivers/pcb-templates/KiCAD/SZG-TEMPLATE-STD/`:
+**Form.**  Two pods side by side on a Brain-1 set the width: a colleague's 45 mm, and the length free.  A SYZYGY Standard pod on the template (`../../SyzygyRadioDrivers/pcb-templates/KiCAD/SZG-TEMPLATE-STD/`:
 the QTE-020 connector, the ATtiny44A DNA microcontroller and its Tag-Connect pads, the mounting holes; "board length
 can be adjusted as necessary").  Rev A is 120 x 100 mm on 6 layers; the pod keeps the RF half's layout where the VNA
-says it is right and re-lays the rest: about 60 x 140 mm, 6 layers (F.Cu RF and fast, In1 GND, In2 power, In3 GND,
-In4 slow, B.Cu), the SMAs along one long edge (TX ANT, RX ANT, REF IN, REF OUT, 10 MHz / PPS in and out, the monitors
-through the mux), the connector at the short end.  A colleague's board is 45 x 200 mm for the same connector.
+says it is right and re-lays everything in a line: about 45 x 220 mm, 6 layers (F.Cu RF and fast, In1 GND, In2
+power, In3 GND, In4 slow, B.Cu), the antenna SMAs at the far end, the receive chain and the arms toward the
+connector with the comparators within a few cm of it, the synthesizers mid-board, the TX chain on the opposite
+edge from the RX chain, the other SMAs (REF IN / OUT, 10 MHz / PPS, the monitor mux) along one long edge.  A colleague's
+board is 45 x 200 mm for the same connector; more layout work than rev A, not more risk.
 
 **Sheets, from the two boards:**
 
