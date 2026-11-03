@@ -89,7 +89,7 @@ Rev A's own +3.8 dBm at 5.8 GHz (REVB 6) would be -58 dBm at 1 km: **rev B needs
 
 ## 2. What the bench taught that shapes rev B
 
-Four things, in order of weight (the rest is in REVB.md's 43 rows):
+Four things, in order of weight (the rest is in REVB.md's 47 rows):
 
 1. **The architecture is right.**  A hardware Costas loop with a comparator receiver locks over the air, recovers from
    every loss by itself (92 of 92 in the last soak), carries BPSK at 50 Mbaud and QPSK at 2.5 Msym/s with 1e-10 and
@@ -120,10 +120,10 @@ HMC536 T/R switch, REF IN / REF OUT, the detectors.
 | 2 | **Channel selectivity** (3.3) | three radios a metre apart | see 3.3 |
 | 3 | **Fix the LNA input** (C102 lifted, the match redone for 5.15-5.9 GHz: REVB 8), the TX chain's roll-off (REVB 6), LO TX MON's 116 mm trace (REVB 4), the DC blocks' pad capacitance and the bias chokes (REVB 11-13), the FDA mid-points (REVB 17), the decoupling in the fan band (R2) | the receive chain's gain at 5.8 GHz is 7 dB instead of 37; the TX is 6 dB short | the VNA tests of 2026-11-03 (tests A and F, then C102 lifted) decide how much of this is layout and how much the parts: low risk, it is the same chips laid out as the models say |
 | 4 | **The transmitter linear**: the ladders' drive attenuated into the ADL5375's linear range (its baseband input wants ~0.5-1 V p-p differential about 500 mV; the 3.3 V ladders through 300/348 ohm overdrive it: REVB 1, 35), VR_I/VR_Q from a DAC with the right range | the corners at 45 degrees and 1.41 of the idle; 1 of 8 possible | low risk: resistors and a DAC range; the levels at the comparators then change and the calibration follows |
-| 5 | **Four more window comparators on the diagonals** ((I+Q) and (I-Q), a resistive sum/difference into two more THS4541 stages or the comparators' own differential inputs), all nine fast comparators **TLV3604 (LVDS, 0.8 ns)**, 100 ohm terminations at the connector | 1 of 8; HOSTS.md 3 (LVDS saves 1.7 ns + the RC) | 9 pairs = 18 pins (3.5 on the pin budget).  Low risk in parts; the diagonal windows' margins depend on the second-order error (REVB 38) being found |
+| 5 | **Four more window comparators on the diagonals** ((I+Q) and (I-Q), a resistive sum/difference into two more THS4541 stages or the comparators' own differential inputs), all nine fast comparators **TLV3604 (LVDS, 0.8 ns)**, 100 ohm terminations at the connector | 1 of 8; HOSTS.md 3 (LVDS saves 1.7 ns + the RC) | nine pairs: eight data pairs and a clock pair on a Standard port (3.5).  Low risk in parts; the diagonal windows' margins depend on the second-order error (REVB 38) being found |
 | 6 | **The windows' hysteresis from software** (REVB Q6) and an RC at each threshold pin (R5) | the latency tail on one lock point looks like a comparator chattering near a window (IMPROVEMENTS 18) | nothing |
 | 7 | **An integrator reset switch** across C130 and VC_OFF covering the VCXO's whole range (REVB U4) | the recovery's 1 s of I2C trims becomes gateware alone: a loss recovered in well under a second | an analog switch |
-| 8 | **A dual ADC on I and Q into the FPGA** (12 bits, 20-65 MS/s: AD9248 / LTC2292 / AD9238 class, $5-15, 26 pins, or an SPI/serial-LVDS one at 10-20 MS/s on fewer pins) and the RF detectors (log and peak) into it | the live constellation, the eye, an RSSI that works unlocked, a digital AGC, a digital confirm (REVB U2, U3) | pins (3.5); an ADC's pipeline (~100 ns) keeps it out of the fast decision |
+| 8 | **A dual ADC on I and Q into the FPGA** (12 bits, 20-65 MS/s: AD9248 / LTC2292 / AD9238 class, $5-15, 26 pins, or an SPI/serial-LVDS one at 10-20 MS/s on fewer pins) and the RF detectors (log and peak) into it | the live constellation, the eye, an RSSI that works unlocked, a digital AGC, a digital confirm (REVB U2, U3) | pins: on a Standard port only a slow serial ADC fits (3.5); the parallel one wants D's wider socket.  An ADC's pipeline (~100 ns) keeps it out of the fast decision |
 | 9 | **The FPGA owns the slow sensors**: the ADS1115 and the DACs on an I2C/SPI bus the FPGA drives round-robin into registers; the page reads registers (REVB U3) | no bus contention; the dashboard never waits for a test | gateware |
 | 10 | **A locked reference out**: the VCXO's 25 MHz (or a 10 MHz derived from it) and a PPS on SMAs, and the carrier's clock to the FPGA's clock pins (SYZYGY P2C_CLK) | the verifiers' synchronization (SYSTEM.md 4): V1's and V2's instruments run on V0's frequency | a clock buffer and a divider |
 | 11 | **GPS PPS and 10 MHz in** (the coarse alignment; the Pockels timing between rounds) | SYSTEM.md 4 | two SMAs, a mux into the PLL reference (REVB Q3) |
@@ -172,24 +172,31 @@ synthesizer stepped across the band with the detector read: `survey()` in minute
 AGC, the eye without a scope.  The menu before a run: frequency per link from the survey, constellation (1 of 4 or 8,
 BPSK or QPSK data), the learning step's tables and timings.  A fleet page shows the four sites.
 
-### 3.5 The pin budget on one SYZYGY Standard port (28 signals)
+### 3.5 The pin budget on one SYZYGY Standard port
 
-| pins | signals |
-|---|---|
-| 18 | nine LVDS pairs: CMP_I, QP, QN, IP, IN, D1P, D1N, D2P, D2N |
-| 6 | TX_I1, TX_I0, TX_Q1, TX_Q0 (the ladders; a third bit each for 1 of 8 would be 2 more), TRIG_IN, TX_EN |
-| 3 | SPI (SCLK, SDATA) and one LE, the others through the expander |
-| 1 | LOOP_HOLD |
-| **28** | |
+A Standard port is not 28 interchangeable pins (the SYZYGY template in `../../SyzygyRadioDrivers/pcb-templates/`,
+and the specification): **S0-S15 are eight impedance-controlled differential pairs (D0-D7), S16-S27 are twelve
+single-ended signals, and two more pairs are the clocks, P2C_CLK (pod to carrier, to a clock-capable pin) and
+C2P_CLK (carrier to pod), which may also be used as I/O.**  Ten pairs at most, then.  The nine LVDS comparators
+and the locked reference make eleven, so something gives:
 
-Everything slow (the three slow comparators, the mux controls, LOOP_SEL, the LEs, the ADC's serial data, the DACs) goes
-through the port's I2C (the DNA bus, with the pod's own devices on it, if the specification allows: check first, as
-HOSTS.md 3 says) or through the pod's DNA microcontroller.  **The ADC's parallel bus does not fit** on a Standard port
-beside nine LVDS pairs: use a serial-LVDS ADC (2 pairs), or put the diagonal comparators' decision through a small
-on-pod encoder, or accept a second port for the instrumentation, or (the K26 carrier's advantage) give each socket
-more than 28.  The field I/O (four BME outputs, four detector inputs) needs 8 more pins: on the Brain-1 that is a
-second port's worth, which is why SYSTEM.md 5 suggests two pod variants (one with the field I/O per node) or the
-expander.  **This budget is the Brain-1 option's real weakness** (5.1).
+| pins | signals | note |
+|---|---|---|
+| D0-D7 (16) | eight LVDS comparators: CMP_I, QP, QN, IP, IN, D1P, D1N, D2P | |
+| P2C_CLK (2) | the ninth, D2N, **or** the locked 25 MHz reference to the carrier's clock pin | one or the other on the Brain-1; the reference can also reach the carrier through its own SMA (REF OUT, 3.1 item 10) |
+| C2P_CLK (2) | spare: a TDC calibration clock from the carrier, or TRIG_IN as a pair | |
+| S16-S27 (12) | TX_I1, TX_I0, TX_Q1, TX_Q0, TRIG_IN, TX_EN, SPI SCLK, SPI SDATA, one LE (the rest of the LEs through the expander), LOOP_HOLD; two spare (the instrumentation ADC's serial clock and data at a few MS/s single-ended, or TX_I2/TX_Q2 for 1 of 8's five levels) | |
+
+Everything slow (the three slow comparators' outputs, the mux controls, LOOP_SEL, the other LEs, the DACs, the
+sensors) goes through the port's I2C (the DNA bus: whether a pod may hang its own devices on it is the question for
+Opal Kelly in section 6; the Eclypse gives each port its own address, 0x30 and 0x31, so other addresses look free)
+or through the pod's DNA microcontroller as a bridge.  **The field I/O (four BME outputs, four detector inputs) does
+not fit beside the radio**: on the Brain-1 it is a second port's worth, so either one pod variant per node carries it
+(SYSTEM.md 5) or a small separate SYZYGY "field" pod does (a trivial board: the SN74ACT04 drivers and the detector
+comparators on a Standard port, no RF: and then the field I/O is swappable too, and a node is radios + one field pod).
+**A fast instrumentation ADC does not fit at all** on one Standard port: a serial-LVDS ADC would need a pair, and the
+pairs are spent.  That is the real cost of the 28-pin port and the argument for D's carrier with wider sockets (a
+TXR4 socket beside each Standard one, or a carrier of our own pinout) when the Brain-1 is replaced.
 
 ## 4. The FPGA's transceivers: what they could do, and what they should do
 
@@ -275,8 +282,8 @@ of someone's time and $500 answer 4.2's questions.  Not on rev B's path.
 * **For it**: cheap, small (fits a box with three pods), Linux and Ethernet on board, SYZYGY's SmartVIO and DNA, 7.0 ns
   events with LVDS comparators (HOSTS.md 3), exactly SYSTEM.md 5's plan, and nothing new to learn about the carrier.
 * **Against it**: a 2017-class fabric at the -1 grade (fine for 100-200 MHz gateware; an 800 Ms/s ISERDES and a TDC
-  fit); **28 pins a port** (3.5: the nine LVDS pairs plus the field I/O do not fit on one port, so the field I/O takes
-  the node's third port or an expander); 4 GTP at 3.75 Gb/s (an SFP for the fibre, not 10G); one A9 core (the page
+  fit); **28 pins a port** (3.5: eight data pairs and two clock pairs, so the nine comparators spend a clock pair, the field
+  I/O goes to a field pod or an expander, and no fast ADC fits); 4 GTP at 3.75 Gb/s (an SFP for the fibre, not 10G); one A9 core (the page
   and linkd are light; fine); no PYNQ (the driver's MMIO and the overlay loading move to PetaLinux's `/dev/mem` and
   `fpgautil`: a few days); the per-port power is not published (a pod draws 1.4 A at 5 V: check with Opal Kelly);
   Opal Kelly is one small vendor, 31 boards in stock today.
@@ -347,10 +354,10 @@ central node, it is the best SYZYGY carrier sold; for V1 and V2 in a box it is a
 
 **My ranking: D's pods first (designed to run on A today), A as the first carrier, D's carrier as the second, F for
 the lab, C not at all, B only as a lab carrier.**  The one thing to settle before the pod's layout is the pin budget
-(3.5): whether the pod's slow devices may hang on the SYZYGY DNA I2C bus, and whether the instrumentation ADC rides on
-two LVDS pairs.  If the 28 pins truly cannot hold nine LVDS pairs plus the ladders and the field I/O, the fallback is
-a pod that uses a **Standard port plus the adjacent TXR4 port's spare pins**, or D's carrier with a wider socket
-(SYZYGY's TXR4 has 18 more signals), at the cost of the Brain-1's third radio.
+(3.5): whether the pod's slow devices may hang on the SYZYGY DNA I2C bus, and whether the ninth comparator or the
+locked reference takes P2C_CLK.  The field I/O and a fast instrumentation ADC do not fit a Standard port beside nine
+pairs: the field I/O goes to a small field pod (3.5), and the ADC waits for D's carrier with a wider socket (a TXR4
+beside each Standard socket: 18 more signals) or rides a slow serial ADC meanwhile.
 
 ## 6. What to do first (in order), and what each settles
 
@@ -363,7 +370,7 @@ a pod that uses a **Standard port plus the adjacent TXR4 port's spare pins**, or
 4. **Find REVB 38's second-order error** on rev A (the B210 against the demodulator's output directly, bypassing the
    arms: an afternoon): it decides whether 1 of 8 is a layout change or a part change.
 5. **The pod's schematic**: rev A's with 3.1's fourteen changes, the SyzygyRadioBoard's field I/O sheets, on the
-   SYZYGY template (`../SyzygyRadioDrivers/pcb-templates/`), the DNA microcontroller as that board has it.  A first
+   SYZYGY template (`../../SyzygyRadioDrivers/pcb-templates/`), the DNA microcontroller as that board has it.  A first
    layout in the pod's form factor at 4-6 layers.  JLCPCB assembly with Global Sourcing for the QTE, the TLV3604s and
    the FEM if LCSC's stock is thin (9-20 business days, plan for it).
 6. **Order a Brain-1 now** ($450, in stock): the software port (PetaLinux, `/dev/mem`, `fpgautil`) and the pod's
@@ -385,6 +392,37 @@ a pod that uses a **Standard port plus the adjacent TXR4 port's spare pins**, or
 6. The field I/O on every pod (simplest; pins) or on one pod variant per node.
 7. The V0 lab-to-roof link: fibre + SFP (the radio on the roof) or RF over coax.
 8. The transceiver-modem experiment (4.4): fund two weeks and a KR260, or shelve it.
+
+## 8. The pod's first cut (what a schematic would start from)
+
+**Form.**  A SYZYGY Standard pod on the template (`../../SyzygyRadioDrivers/pcb-templates/KiCAD/SZG-TEMPLATE-STD/`:
+the QTE-020 connector, the ATtiny44A DNA microcontroller and its Tag-Connect pads, the mounting holes; "board length
+can be adjusted as necessary").  Rev A is 120 x 100 mm on 6 layers; the pod keeps the RF half's layout where the VNA
+says it is right and re-lays the rest: about 60 x 140 mm, 6 layers (F.Cu RF and fast, In1 GND, In2 power, In3 GND,
+In4 slow, B.Cu), the SMAs along one long edge (TX ANT, RX ANT, REF IN, REF OUT, 10 MHz / PPS in and out, the monitors
+through the mux), the connector at the short end.  A colleague's board is 45 x 200 mm for the same connector.
+
+**Sheets, from the two boards:**
+
+| sheet | from | changes |
+|---|---|---|
+| synthesizers (2 x MAX2871, TCXO, VCXO, the reference mux) | rev A | the mux from software (Q3); the 25 MHz out through a clock buffer and a divider to 10 MHz and a PPS (3.1 item 10) |
+| transmitter (ADL5375, the ladders, the T/R switch) | rev A | the ladders' drive attenuated (item 4), a third bit per ladder for 1 of 8, the PA / FEM after the modulator with its switch (item 1), the TX chain's roll-off fixed (REVB 6) |
+| receiver (LNA, DSA, gain blocks, ADL5380) | rev A | the LNA's input match and C102 (REVB 8), a fixed sub-band filter at RX ANT (3.3), a limiter, the leak path found and blocked (REVB 10) |
+| the arms and the loop (2 x THS4541, the integrator, the sign mux, VC) | rev A | two more THS4541 stages for (I+Q) and (I-Q), the integrator reset switch (U4), the loop sign and mode from the expander (Q1), the mid-points unified (REVB 17) |
+| comparators (9 fast + 3 slow) and their DACs | rev A, with the SyzygyRadioBoard's LVDS practice | TLV3604 for the nine fast ones (LCSC C2916042, stock 3-204 in the snapshots: Global Sourcing or Digikey), or the ADCMP605 a colleague's board uses (LVDS/CML, in her consignment); 100 ohm at the connector; an RC at each threshold (R5); hysteresis switched (Q6) |
+| instrumentation (the ADS1115 or a faster SPI ADC, the detectors, the I2C expander, the DVM mux, current monitors, temperature) | rev A + REVB Q | all behind the FPGA's own bus (U3) |
+| field I/O (4 BME outputs, 4 detector inputs) | the SyzygyRadioBoard's `fast_digital` and `comparator_dac` sheets (SN74ACT04 drivers, SN74LVC1T45 level shifters, ADCMP605 + AD5621 threshold DACs) | as its review 3 left them; on the field pod or the node's one variant (3.5) |
+| SYZYGY, DNA, power (the connector, the ATtiny44A, SmartVIO, the rails) | the template and the SyzygyRadioBoard's `SYZYGY` sheet | the pod's regulators sized for 1.4 A at 5 V (REVB 2-3); PoE or 12-24 V only if the pod is to live without a carrier's 5 V (unlikely: the carrier feeds it) |
+| LEDs and the signal bar | REVB U1 | |
+
+**Parts to confirm in stock before the order** (JLCPCB's library first, Global Sourcing second): the two MAX2871 and
+the ADL5375 / ADL5380 / ADL5611 / PE43711 / THS4541 as rev A bought them (their LCSC codes are in rev A's BOM,
+`mfg/`); the TLV3604 (thin at LCSC); the QPF4519 FEM (LCSC C471156, small stock) or an alternative PA; the QTE-020
+(Samtec, Global Sourcing); the sub-band filters (a part to choose); the ATtiny44A (a colleague's consignment has them).
+
+**What the first cut does not decide, and the VNA tomorrow does:** how much of the receive chain's shortfall at 5.8
+GHz is C102 alone (then the pod's RF layout is rev A's), and whether the TX chain's 6 dB are the chain or its layout.
 
 ## Sources (looked up 2026-11-02)
 
