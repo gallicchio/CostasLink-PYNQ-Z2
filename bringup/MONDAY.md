@@ -1,4 +1,7 @@
-# Monday 2026-11-02: the plan
+# Monday 2026-11-02: the plan (not run that day; it is the plan for Tuesday 2026-11-03 unchanged)
+
+2026-11-02 evening: Jason could not come in, so none of the six steps ran; board A kept running its self-test all day
+(BRINGUP_LOG 4.33).  Start from [`HANDOFF.md`](HANDOFF.md), which says what is running and what changed.
 
 Jason's list (2026-10-31 22:00), each step with what it needs, what to do, and what it tells us.  The state at the
 start: board A on the bench in the office, over the air at 5.2 GHz (FPV antennas 30-40 cm apart, the B210 beside
