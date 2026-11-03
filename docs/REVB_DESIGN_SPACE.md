@@ -232,8 +232,12 @@ data and one LE, LOOP_HOLD; the rest behind the expander):
 | **1 of 4** (5 comparators) | 5 of 10 | 10 + 2 = **12** | 6 out + 6 in (a colleague's 4 + 4 with 4 spare) | **18 + 18**, and 10 more: more than today's 12 + 12 |
 | **1 of 8** (9 comparators) | 9 of 10 | 2 + 2 = **4** | 2 + 2 | 6 + 6, and 10 more: about half of today's |
 
+Plainly (Jason, 23:00): 1 of 8 in the receiver alone leaves 2 + 2 of field I/O on the pod; with 3-bit ladders for
+the transmitter's five levels as well, 1 + 1, or none if the locked reference takes the last clock pair.  Everything
+slow (the DACs, the ADS1115-class sensors, the detectors, the switches, the LEDs) goes through the FPGA-owned I2C and
+costs no port pins in any case; only the fast constellation ADC needs a pair of its own, whichever constellation.
 So on a Brain-1, 1 of 4 keeps more general fast I/O than the three SyzygyRadioBoards give and needs no field pod;
-1 of 8 halves it.  Two ways to have 1 of 8 later without that cost: **an encoder on the pod** (the nine comparators
+1 of 8 halves it, and with the field I/O in the lab (P2) or on a field pod, a radio pod with none is no loss.  Two ways to have 1 of 8 later without that cost: **an encoder on the pod** (the nine comparators
 into a small fast CPLD or lookup that emits four bits, so the port sees four pairs; about 5 ns and the decision
 table off the FPGA), or **the K26 carrier** (58 pairs: every slot gets nine pairs and the field I/O).  Jason,
 2026-11-02 22:15: the decision is deferred, leaning to 1 of 4 and more I/O; 1 of 8 would come with more bases and
@@ -331,9 +335,17 @@ Three ways to bridge 30 m between the prover's dishes and its optics:
 | P2: the radios in the lab, **RF over coax**, a mast-head LNA and PA at each dish | a small amplifier unit per dish | a Brain-1, three radio pods, the field I/O | 2 x 120 ns of coax, no electronics; a second small RF board to design |
 | P3: the radios and the decision on the roof, **logic pulses over coax** down to the BME and up from the detectors | a Brain-1, three radio pods, the field pod on the TXR4 port | cables only (the SN74ACT04 bank drives 50 ohm over 30 m) | 2 x 120 ns of coax, **no transceiver**, no second FPGA; the SFP only for telemetry |
 
-P3 for the prover, P1 for V0 (where the latency does not count and the fibre's isolation is welcome), and the
-Brain-1 fibre experiment (Jason has the carriers and the SYZYGY-to-SFP pods) gives the GTP crossing's fixed latency
-and jitter that P1's and P3's comparison needs.  **The Brain-1's GTP (7-series, 3.75 Gb/s at the -1 grade) is not a
+**P2 for the prover** (Jason, 23:00: a small amplifier board on the roof rather than eight coax runs).  With two
+dishes per link (TX and RX cross-polarized, as S1 wants) the mast-head unit needs no switch and no control line: the
+TX coax feeds the PA into the TX dish, the RX dish feeds the LNA into the RX coax, each amplifier powered through a
+bias-T on its own coax: **two coax per link, six for the prover, no control wires** (P3 would be eight signal coax,
+the fibre and power to a roof box).  The unit is the pod's FEM section on its own board: one QPF4519-class FEM (its
+switch unused), a bias-T, a 5.15-5.85 GHz band filter, in a small weatherproof box at the dish: one chip and passives,
+a reference design, low risk; the same unit serves V1 and V2 if their boxes sit at a mast's foot.  The 10 dB of coax
+each way sits behind the roof LNA and ahead of the roof PA, where it costs nothing, and the lab holds everything in one
+indoor box (the Brain-1, three pods, the field pod on the transceiver port).  P1 for V0 if its optics lab prefers the
+fibre's isolation, or P2 there too; the Brain-1 fibre experiment (Jason has the carriers and the SYZYGY-to-SFP pods)
+gives the GTP crossing's fixed latency and jitter for telemetry and for V0's choice.  **The Brain-1's GTP (7-series, 3.75 Gb/s at the -1 grade) is not a
 reason to go to the KR260 for that experiment**: the rate is irrelevant to a few bits a round, the bypass modes are
 the same architecture as the GTH's (UG482 against UG576), and the number that matters is the fixed latency, which
 the GTH halves but the 300 ns of fibre swamps.
@@ -497,8 +509,8 @@ pairs: the field I/O goes to a small field pod (3.5), and the ADC waits for D's 
    channels, enough), not an external PA.
 6. The field I/O: **no pod variants**: a colleague's boards without their radios as field pods in the lab (P1), or a field
    pod on the roof Brain-1's TXR4 port (P3).
-7. The lab-to-roof link: **fibre with SYZYGY-to-SFP pods at V0**, the same considered for the prover; this study's
-   answer for the prover is P3 (4.3).  **The transceiver experiment first, on two Brain-1s with SYZYGY-to-SFP or
+7. The lab-to-roof link: **P2 for the prover** (a mast-head LNA/PA unit at each dish, two coax per link, the radios
+   and the field I/O indoors), fibre with SYZYGY-to-SFP pods where the latency does not count (V0, telemetry).  **The transceiver experiment first, on two Brain-1s with SYZYGY-to-SFP or
    TXR4-to-SMA pods, in the office within days.**
 8. The transceiver-modem experiment (4.4): can ride on the same pair of Brain-1s at a 0.94 GHz IF.
 
@@ -529,6 +541,7 @@ board is 45 x 200 mm for the same connector; more layout work than rev A, not mo
 | field I/O (4 BME outputs, 4 detector inputs) | the SyzygyRadioBoard's `fast_digital` and `comparator_dac` sheets (SN74ACT04 drivers, SN74LVC1T45 level shifters, ADCMP605 + AD5621 threshold DACs) | as its review 3 left them; on the field pod or the node's one variant (3.5) |
 | SYZYGY, DNA, power (the connector, the ATtiny44A, SmartVIO, the rails) | the template and the SyzygyRadioBoard's `SYZYGY` sheet | the pod's regulators sized for 1.4 A at 5 V (REVB 2-3); PoE or 12-24 V only if the pod is to live without a carrier's 5 V (unlikely: the carrier feeds it) |
 | LEDs and the signal bar | REVB U1 | |
+| **the mast-head unit** (a second small board, P2): the FEM, a bias-T, the band filter, in a box at the dish | the pod's FEM section | two per link at any node whose radios are indoors |
 
 **Parts to confirm in stock before the order** (JLCPCB's library first, Global Sourcing second): the two MAX2871 and
 the ADL5375 / ADL5380 / ADL5611 / PE43711 / THS4541 as rev A bought them (their LCSC codes are in rev A's BOM,
