@@ -37,8 +37,10 @@ results ([`../bringup/FINDINGS.md`](../bringup/FINDINGS.md), [`../bringup/REVB.m
    between V0's optics lab and its roof**: the radio and its FPGA go on the roof behind the dishes, and the lab's
    digital signals (the basis, the herald, the detector pulses) travel as bits over fibre or as pulses over coax, not
    as 5.8 GHz over 30 m of coax (10 dB).  A cheap experiment to settle the transceiver-modem question is in 4.4.
-5. **Design the receiver for 1 of 8 and the transmitter linear; use 1 of 4.**  Four more window comparators on the
-   diagonals cost a few dollars and ten pins; the saturated transmitter (REVB 35) is what has to go.
+5. **The transmitter linear; 1 of 4 now, 1 of 8 deferred.**  The saturated transmitter (REVB 35) is what has to go in
+   any case.  Four more window comparators on the diagonals cost a few dollars but eight of a Standard port's pins,
+   which on a Brain-1 are the node's general fast digital I/O (12 out + 12 in today): Jason leans to 1 of 4 and
+   more I/O, with an on-pod encoder or the K26 carrier as the way to 1 of 8 later (3.5).
 
 ## 1. What the experiment asks of the radios
 
@@ -70,6 +72,11 @@ Rev B brings the locked reference out as a clean 10 MHz and a PPS for the site's
 Part 5 licence), the three transmitters a metre from the three receivers, plus the campus's WiFi.  Rev A has no
 channel selectivity after the LNA (the loop is narrow, but the LNA and the demodulator see everything): a transmitter
 at +20 dBm a metre away would saturate the neighbouring receiver.  This is the one new hardware requirement (3.3).
+
+**General fast digital I/O** (Jason, 22:15).  The BME outputs and the detector inputs on the SyzygyRadioBoard are
+treated as general fast digital I/O for whatever the experiment needs; P and V0 have three of those boards, so
+**12 outputs and 12 inputs per node** is what the plan gives today, not all in use at once, and rev B should not
+give fewer.  This is the requirement that decides between 1 of 4 and 1 of 8 on a Brain-1 (3.5).
 
 **Operations.**  Boxes on roofs and parking structures, weather, nobody who knows a PLL: lock and level on LEDs, the
 page, the survey of every channel before a run, the frequencies and the constellation chosen from a menu, the
@@ -214,6 +221,22 @@ pairs beside its four lanes (the SYZYGY TXR template): a Brain-1 node is three r
 the field I/O swappable like the radios.  The fallback, if the transceiver port is not to be used, is one radio pod
 variant per node that gives up its four diagonal comparators (1 of 4 on that link) to free eight pins for the field
 I/O, which is SYSTEM.md 5's original plan with five comparators.
+
+**The arithmetic that decides 1 of 4 against 1 of 8 on a Brain-1** (the port's 32 signals: 10 pairs usable
+single-ended, 12 single-ended; the radio's fixed 10 single-ended: the four ladder bits, TRIG_IN, TX_EN, SPI clock,
+data and one LE, LOOP_HOLD; the rest behind the expander):
+
+| per radio pod | pairs used | pins left for fast I/O | field I/O per pod | three pods, plus a field pod on the TXR4 port (10) |
+|---|---|---|---|---|
+| **1 of 4** (5 comparators) | 5 of 10 | 10 + 2 = **12** | 6 out + 6 in (a colleague's 4 + 4 with 4 spare) | **18 + 18**, and 10 more: more than today's 12 + 12 |
+| **1 of 8** (9 comparators) | 9 of 10 | 2 + 2 = **4** | 2 + 2 | 6 + 6, and 10 more: about half of today's |
+
+So on a Brain-1, 1 of 4 keeps more general fast I/O than the three SyzygyRadioBoards give and needs no field pod;
+1 of 8 halves it.  Two ways to have 1 of 8 later without that cost: **an encoder on the pod** (the nine comparators
+into a small fast CPLD or lookup that emits four bits, so the port sees four pairs; about 5 ns and the decision
+table off the FPGA), or **the K26 carrier** (58 pairs: every slot gets nine pairs and the field I/O).  Jason,
+2026-11-02 22:15: the decision is deferred, leaning to 1 of 4 and more I/O; 1 of 8 would come with more bases and
+more Pockels control, which asks for more field I/O at the same time.
 **A fast instrumentation ADC does not fit at all** on one Standard port: a serial-LVDS ADC would need a pair, and the
 pairs are spent.  That is the real cost of the 28-pin port and the argument for D's carrier with wider sockets (5.4) when the Brain-1 is replaced.
 
@@ -448,7 +471,8 @@ pairs: the field I/O goes to a small field pod (3.5), and the ADC waits for D's 
 1. Pods on SYZYGY (10 + spares) with the carrier bought: yes or no.  (Everything below assumes yes.)
 2. The first carrier: the Brain-1 ($450 each, order 5), or go straight to the K26 carrier (one more board design before
    anything is deployed, 2-3 months later).
-3. 1 of 8 in the receiver's hardware now (nine comparators, the linear TX): yes (my recommendation) or 1 of 4 only.
+3. 1 of 8 in the receiver's hardware now (nine comparators) or 1 of 4 with the pins kept for general fast I/O:
+   **deferred (Jason, 22:15), leaning to 1 of 4**; the linear TX either way.
 4. Selectivity: S2's fixed sub-band filters on the prover links (two pod variants, or a switched pair), or S1 alone
    until the UIUC survey.
 5. The PA: a WiFi FEM on the pod (+23 dBm, the band fixed at 5.15-5.85) or a connectorized PA outside (any band under
