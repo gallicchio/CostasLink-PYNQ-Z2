@@ -309,7 +309,7 @@ central node, it is the best SYZYGY carrier sold; for V1 and V2 in a box it is a
 
 ### 5.4 D: a custom Kria K26 carrier with SYZYGY sockets (the recommended second step)
 
-* **What it is**: a board of about 120 x 160 mm carrying the K26 SOM (two 240-pin Samtec ADM6 sockets, 0.635 mm
+* **What it is**: a board of about 120 x 160 mm carrying the K26 SOM (two 240-pin Samtec AcceleRate HD terminals, ADM6-60-01.5-L-4-0-A, 0.635 mm
   pitch), its power sequencing (UG1091, the carrier design guide: a few regulators and a reset supervisor; the DDR,
   flash and eMMC are on the SOM), Gigabit Ethernet (a PHY), USB, an SFP+ cage on one GTH, three SYZYGY Standard sockets
   with SmartVIO (the SOM's PL I/O, about a hundred on the two connectors per DS987, cover three ports' 84 with room for the field I/O), a PoE+ or 12-24 V input, the
@@ -439,7 +439,7 @@ ZCU106: [Avnet $3,451](https://www.avnet.com/americas/manufacturers/m/c/amd/kits
 Kria: [KR260 $372, 240-262 in stock](https://www.digikey.de/en/product-highlight/a/amd-xilinx/kria-kr260-robotics-starter-kit),
 [K26 SOM commercial $351 / industrial £434](https://www.digikey.co.uk/en/products/detail/amd/SM-K26-XCL2GI/13985243),
 [KV260 $223-284](https://www.digikey.nl/nl/product-highlight/x/xilinx/kv260-vision-ai-starter-kit),
-[the SOM's connectors: ADM6-60-01.5-L-4-2-A, GTH on SOM240_2 (UG1091)](https://docs.amd.com/r/en-US/ug1091-carrier-card-design/SOM-Connector-Overview),
+[the SOM's connectors: the carrier terminal ADM6-60-01.5-L-4-0-A / ASP-246100-01 per DS987 (UG1091's page shows -4-2-A: confirm before ordering), GTH on SOM240_2](https://docs.amd.com/r/en-US/ds987-k26-som/SOM-Connector-Overview),
 [ADM6-60 about $12-18, 3,789 in stock](https://www.digikey.co.nz/en/products/detail/samtec-inc/ADM6-60-01-5-L-4-2-A-TR/11688975),
 [KR260's ports: 4 Pmod, a 40-pin header with 26 I/O, SFP+ (UG1092, the product brief)](https://www.avnet.com/opasdata/d120001/medias/docus/205/kr260-product-brief.pdf).
 RFSoC 4x2: [AMD University Program, $2,499](https://www.amd.com/en/corporate/university-program/aup-boards/rfsoc4x2.html),
