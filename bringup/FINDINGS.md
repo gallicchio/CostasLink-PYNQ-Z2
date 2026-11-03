@@ -102,6 +102,9 @@ platform question is [`../docs/REVB_DESIGN_SPACE.md`](../docs/REVB_DESIGN_SPACE.
   (soak15 #195, #275, #201).  Single symbols at 20 us spacing are unaffected; QPSK's corners at 0.4 us are, because
   a passing corner holds another's comparator pattern longer at a higher level.  IMPROVEMENTS 19 proposes holding the
   level with the DSA (an AGC).
+* **A calibration is good to about 2 % of its level.**  Put back from `windows.json` and scaled to a leg 1.8 % lower
+  (170.6 to 167.6 mV), the windows lost QPSK 1.0-1.6e-6 undecided or missed for two hours; calibrated afresh at that
+  level, 1e-8 (2026-11-03 01:08).  The self-test now calibrates again at 2 % off, not 15 %.
 * **`window_bias`**: at 0.5 (the plateau's middle) a CW 10 dB down made 150 times more false events than at 0.7; at 0.7
   quiet QPSK lost 3e-5; **0.6** loses nothing quiet and keeps most of the robustness (4.30).
 

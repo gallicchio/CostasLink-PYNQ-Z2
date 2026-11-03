@@ -506,8 +506,11 @@ class SelfTest:
         if time.time() - self._cal_tried < 60.0:
             return False
         side = self._do(self._side)
+        # 2 %, not 15 %: a calibration put back from windows.json and scaled to a leg 1.8 % lower (170.6 -> 167.6 mV)
+        # left QPSK losing 1.0-1.6e-6 undecided or missed for two hours; calibrated afresh at that level it lost 1e-8
+        # (2026-11-03 01:08).  linkd's leg wobbles well under 1 %, and a calibration is a few seconds between steps
         return (L.cal is None or L.cal["side"] != side or self._bad_windows or
-                abs((L.leg or L.leg_windows) - L.cal["leg"]) > 0.15 * L.cal["leg"])
+                abs((L.leg or L.leg_windows) - L.cal["leg"]) > 0.02 * L.cal["leg"])
 
     # ---- the decision tables and the learned profile ----
     def _rx_scheme(self, name, side, use=None):
