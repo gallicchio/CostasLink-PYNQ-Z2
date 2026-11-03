@@ -4479,4 +4479,21 @@ pods, $6.5-10k K26 carrier pods, $11-13k XEM8320, $14-16k FMC beasts; complexity
 deployment first-run likelihood; ruggedness; spares; software), the pod's pin budget as the Brain-1 option's weak point
 (28 pins against nine LVDS pairs, the ladders, the field I/O and an ADC), what to do first in order, and eight decisions
 for Jason.  The night continues with the pod's first cut (the SYZYGY template's pinout, the BOM deltas with LCSC stock).
-Nothing on the board changed; it keeps running its self-test.
+Nothing on the board changed at that point; it kept running its self-test.
+
+**Later in the night (21:10-23:15 PST), in the chat and the study:** Jason's questions answered and folded in: what Kria
+is (the K26 SOM, KV260/KR260, our own carrier, "wider sockets"; the SOM's I/O counted from DS987: 185 PL I/O, 58
+LVDS-capable pairs, 4 GTH), the XEM8320; the linear against saturated transmitter (3.6: constant envelope by the choice
+of constellation, the linear drive for the angles); the Brain-1's four ports (three Standard, one TXR4 with ten
+single-ended signals: the field pod there, from the SYZYGY TXR template); the general fast I/O requirement (12 + 12 per
+node) and the pin arithmetic for 1 of 4 against 1 of 8; the sub-band filter parts; the diagonal windows from the arms'
+own differential outputs.  **Jason's decisions** (section 7): SYZYGY pods on the Brain-1 first (carriers in hand, PYNQ
+being ported), the FEM on the pod, switched filters, no pod variants, 1 of 8 still open, the prover's roof-to-lab
+bridge as a mast-head LNA/PA unit with two coax per link (P2), fibre only where latency does not count, the GTP fibre
+experiment on two Brain-1s first; the pod at a colleague's width for two side by side.  **REVB 38 on the bench** (Jason
+22:10: "learn as much as you can"): three B210 campaigns (`bringup/revb38/`), BRINGUP_LOG 4.34 and REVB 48: the
+corner error is not the RF chain, it is a bilinear I x Q term that grows with the corner's duration over microseconds
+(2 % at 0.5 us, 9-13 % at 2-3.5 us, the same in the board's frame on both lock points), about 1 % at the link's 200 ns
+symbols; the held-loop test is impossible on rev A (the hold's charge injection, 600 Hz); the loop's error path's
+coupling into the arms is the candidate, for tomorrow's probe.  The campaigns parked the loop; the server restarted to
+bring the link back, and setup's attenuator fine-tune now lands on the nearest step (`a977064`).
