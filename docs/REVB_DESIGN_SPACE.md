@@ -200,6 +200,31 @@ S0-S9: and then the field I/O is swappable too, and a node is radios + one field
 **A fast instrumentation ADC does not fit at all** on one Standard port: a serial-LVDS ADC would need a pair, and the
 pairs are spent.  That is the real cost of the 28-pin port and the argument for D's carrier with wider sockets (5.4) when the Brain-1 is replaced.
 
+### 3.6 Linear or saturated: the transmitter (Jason, 21:30)
+
+Rev A is a phase-only transmitter by accident: the ladders' logic levels drive the ADL5375's baseband inputs and the
+chain compresses somewhere between those inputs and TX ANT (the B210 heard every state at the idle's amplitude, the
+corners at 40 degrees, the flip at 190: REVB 35; tomorrow's TX ANT to TX MON sweep and a drive-level sweep would say
+where).  What each choice gives this link:
+
+| | saturated (rev A as built) | linear drive (resistive attenuation into the modulator's range; no latency cost) |
+|---|---|---|
+| the PA | constant envelope: the PA runs hard (class AB/C, no back-off): 3-6 dB more power from the same part, less heat, no AM-AM/AM-PM distortion of data that has no AM | the square constellation's corners are 1.41x the idle (3 dB PAPR): a linear PA backed off 3 dB, or the PA re-compresses them and the saturated case returns downstream |
+| the constellation's geometry | the angles are wrong and drift (40 and 190 degrees from asymmetric compression and AM-PM; with drive, temperature, frequency): a fixed 5 degrees the calibration absorbs for 1 of 4, a quarter of 1 of 8's 22.5 degree margin | as designed: 45 degrees, equal margins; 1 of 8 with correct geometry |
+| the receiver's margins | a corner on the circle moves Q by 0.71 of the leg and drops I by 0.29 (measured about 0.6): the thinnest margins are A2's and A3's, which is why the Q windows needed calibrating | a corner at (1, 1) moves Q by the whole leg: larger margins, earlier crossings, a little less latency for the corner schemes |
+| amplitude as information | none: OOK only as the null, A2's step becomes a 45 degree phase step, nothing beyond 8 points; no pulse shaping (the spectrum is a 1 ns edge's sinc) | OOK, shaped pulses for a spectral mask (three radios on one roof), the pilot-plus-corners scheme at full excursion |
+| level behaviour | the corners' excursions do not scale with the idle's leg (REVB 33): the windows cannot simply follow the level; the AGC must hold the calibrated level | scales: the windows and the AGC are one rule |
+| amplitude immunity | the transmitted level is independent of the ladders, the supply and the temperature | the states' amplitudes follow the drive (the calibration and the learning step already handle amplitude) |
+| the LO feedthrough | small relative to a hard-driven output | larger relative to a smaller drive; the VR null handles the static part |
+| 8 points | free: three levels per axis through a per-axis limiter give the eight 45 degree phases at one amplitude | five levels per axis (0, +-0.707, +-1), a 3-bit ladder, or the circle chosen deliberately |
+
+**Both at once, for QPV.**  The messages that count (the three "1 of 4" shares, the four-message answer) are
+phase-only: put their points on a circle (8-PSK with the idle as one point, or 1 of 4 at +-45 / +-135 degrees) and
+the signal is constant-envelope by choice, so the PA may be saturated for range, while the linear drive guarantees
+45.0 degrees instead of 40.  Keep the square constellations and OOK as menu options for runs that want the larger
+Q margins and can spare 3 dB of PA.  Hence 3.1 item 4 (the linear drive), 3.2 (nine windows, so either geometry
+decodes) and item 1 (a PA whose class the run's constellation chooses).
+
 ## 4. The FPGA's transceivers: what they could do, and what they should do
 
 ### 4.1 What a transceiver is
