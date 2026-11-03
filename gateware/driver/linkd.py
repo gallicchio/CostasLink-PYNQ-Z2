@@ -303,6 +303,19 @@ class LinkD:
                     dsa = prev
                 break
             if abs(leg - want) <= 0.03 * want:
+                # within a step: take the neighbouring step if it lands nearer (a 0.25 dB step is 2.9 % of the leg,
+                # so the first step inside 3 % can sit a whole step off: 164 mV for 171 wanted, QPSK 2.5e-6 lost, 22:46)
+                nd = dsa + (-0.25 if leg < want else 0.25)
+                nxt = leg * (10 ** (0.0125) if leg < want else 10 ** (-0.0125))
+                if abs(nxt - want) < abs(leg - want) and floor - 1e-9 <= nd <= 31.75:
+                    cl.dsa(nd)
+                    time.sleep(0.05)
+                    o2 = self.observe()
+                    if o2["locked"] and abs(abs(o2["di"]) - want) < abs(leg - want):
+                        dsa = nd
+                    else:
+                        cl.dsa(dsa)
+                        time.sleep(0.05)
                 break
             prev = dsa
             nd = dsa + (-0.25 if leg < want else 0.25)
