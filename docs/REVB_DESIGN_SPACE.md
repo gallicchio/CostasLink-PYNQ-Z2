@@ -22,7 +22,8 @@ results ([`../bringup/FINDINGS.md`](../bringup/FINDINGS.md), [`../bringup/REVB.m
    deployment the Brain-1 ($450, three Standard ports, Linux, in stock) does the job with 7.0 ns events (HOSTS.md).
    The better carrier when the Brain-1's age bites is **a small custom carrier for the Kria K26 SOM with three SYZYGY
    sockets** ($351-550 for the SOM, a modest board with no RF and no DDR on it, PYNQ supported on Kria): one
-   UltraScale+ box per site, rugged, cheap, and the radios unchanged.  Section 5 compares all the options.
+   UltraScale+ box per site, rugged, cheap, and the radios unchanged.  Section 5 compares all the options; note
+   that P and V0 need four ports' worth (three radios and the field I/O) and the Brain-1 has three Standard ports.
 3. **FMC buys no sourcing advantage.**  The FMC connectors are Samtec parts too (ASP-134486/134488), not in JLCPCB's
    own library; JLCPCB's Global Sourcing service buys from the distributors for assembly in 9-20 business days,
    which is how to get a Samtec QTE (SYZYGY) or ASP (FMC) onto an assembled board without consigning it.  What FMC
@@ -195,8 +196,7 @@ not fit beside the radio**: on the Brain-1 it is a second port's worth, so eithe
 (SYSTEM.md 5) or a small separate SYZYGY "field" pod does (a trivial board: the SN74ACT04 drivers and the detector
 comparators on a Standard port, no RF: and then the field I/O is swappable too, and a node is radios + one field pod).
 **A fast instrumentation ADC does not fit at all** on one Standard port: a serial-LVDS ADC would need a pair, and the
-pairs are spent.  That is the real cost of the 28-pin port and the argument for D's carrier with wider sockets (a
-TXR4 socket beside each Standard one, or a carrier of our own pinout) when the Brain-1 is replaced.
+pairs are spent.  That is the real cost of the 28-pin port and the argument for D's carrier with wider sockets (5.4) when the Brain-1 is replaced.
 
 ## 4. The FPGA's transceivers: what they could do, and what they should do
 
@@ -286,7 +286,11 @@ of someone's time and $500 answer 4.2's questions.  Not on rev B's path.
   I/O goes to a field pod or an expander, and no fast ADC fits); 4 GTP at 3.75 Gb/s (an SFP for the fibre, not 10G); one A9 core (the page
   and linkd are light; fine); no PYNQ (the driver's MMIO and the overlay loading move to PetaLinux's `/dev/mem` and
   `fpgautil`: a few days); the per-port power is not published (a pod draws 1.4 A at 5 V: check with Opal Kelly);
-  Opal Kelly is one small vendor, 31 boards in stock today.
+  Opal Kelly is one small vendor, 31 boards in stock today.  **And P and V0 need three radios plus the field I/O**:
+  four Standard ports' worth on a carrier with three Standard ports and one transceiver port, so there the field I/O
+  must share a radio pod (that pod giving up its diagonal comparators: 1 of 4 on it) or ride the transceiver port,
+  if that port has spare single-ended pins (not verified tonight; the TXR4 pinout is in the specification behind
+  its licence click-through).  This is the strongest argument for D's carrier.
 * **First-run likelihood**: the pod high (rev A came up first time, the pod is smaller and better understood); the
   deployment medium-high (the carrier is bought; the risk is the software port and the pin budget's compromises).
 
@@ -309,10 +313,26 @@ central node, it is the best SYZYGY carrier sold; for V1 and V2 in a box it is a
 
 ### 5.4 D: a custom Kria K26 carrier with SYZYGY sockets (the recommended second step)
 
+**What Kria is** (Jason, 21:15: "walk me through the Kria/K/KR space").  Kria is AMD's system-on-module line.
+The **K26 SOM** is the module: 77 x 60 mm, a Zynq UltraScale+ MPSoC (XCK26, a ZU5EV-class part: quad A53, dual R5,
+256k-cell fabric), 4 GB DDR4, QSPI, eMMC and its regulators on board, and two 240-pin Samtec AcceleRate HD connectors
+underneath that bring out, counted from DS987: **185 PL I/O (58 differential HP pairs on banks 64-66 and 69 HD
+single-ended on banks 43-45), 4 GTH lanes with 2 reference clocks (SOM240_2), 4 PS-GTR lanes (SOM240_1: USB 3,
+DisplayPort, PCIe, SATA) and 52 MIO.**  It is sold alone ($351 commercial, $434-550 industrial) for a carrier of one's
+own, and AMD publishes the carrier design guide (UG1091) and its own carriers' schematics.  **KV260** ($245) and
+**KR260** ($372) are AMD's own carriers sold with a K26 on them (the "starter kits"): KV260 for vision (MIPI cameras,
+HDMI, DisplayPort, a Raspberry Pi header, Pmods), KR260 for robotics (4 x GbE, 2 x SFP+, 4 x Pmods, the Raspberry Pi
+header, SLVS-EC).  They expose only those headers, so neither hosts three radio pods (option E); they are the cheap
+way to have a K26 running PYNQ on a desk.  **"The K26 carrier" of this option is a board of our own** carrying the SOM
+with three SYZYGY sockets for the pods; it is not the KR260.  **"Wider sockets"** means that on our own carrier a
+radio's slot need not be SYZYGY's Standard socket (8 pairs + 2 clock pairs + 12 single-ended): with 58 HP pairs on the
+SOM, each slot can be a Standard socket plus a second connector beside it, or a larger socket of our own pinout, so the
+nine comparators, the ladders, a fast ADC and the field I/O all reach the FPGA, which on the Brain-1 they cannot.
+
 * **What it is**: a board of about 120 x 160 mm carrying the K26 SOM (two 240-pin Samtec AcceleRate HD terminals, ADM6-60-01.5-L-4-0-A, 0.635 mm
   pitch), its power sequencing (UG1091, the carrier design guide: a few regulators and a reset supervisor; the DDR,
   flash and eMMC are on the SOM), Gigabit Ethernet (a PHY), USB, an SFP+ cage on one GTH, three SYZYGY Standard sockets
-  with SmartVIO (the SOM's PL I/O, about a hundred on the two connectors per DS987, cover three ports' 84 with room for the field I/O), a PoE+ or 12-24 V input, the
+  with SmartVIO (the SOM's 58 HP pairs and 69 HD lines cover three Standard ports' 30 pairs and 36 single-ended twice over, with a fourth socket for the field I/O and a wider one for the ADC), a PoE+ or 12-24 V input, the
   LEDs, the PPS and 10 MHz, a temperature sensor.  No RF, no high-speed memory: the hard parts of a carrier are on the
   SOM already.  PYNQ runs on Kria (the KV260 and KR260 images), so the board server moves as it is.
 * **For it**: an UltraScale+ fabric (2-3 ns faster paths, an 800 Ms/s ISERDES with margin, GTH at 10 Gb/s for the
@@ -356,8 +376,7 @@ central node, it is the best SYZYGY carrier sold; for V1 and V2 in a box it is a
 the lab, C not at all, B only as a lab carrier.**  The one thing to settle before the pod's layout is the pin budget
 (3.5): whether the pod's slow devices may hang on the SYZYGY DNA I2C bus, and whether the ninth comparator or the
 locked reference takes P2C_CLK.  The field I/O and a fast instrumentation ADC do not fit a Standard port beside nine
-pairs: the field I/O goes to a small field pod (3.5), and the ADC waits for D's carrier with a wider socket (a TXR4
-beside each Standard socket: 18 more signals) or rides a slow serial ADC meanwhile.
+pairs: the field I/O goes to a small field pod (3.5), and the ADC waits for D's carrier with a wider socket (5.4) or rides a slow serial ADC meanwhile.
 
 ## 6. What to do first (in order), and what each settles
 
@@ -440,6 +459,7 @@ Kria: [KR260 $372, 240-262 in stock](https://www.digikey.de/en/product-highlight
 [K26 SOM commercial $351 / industrial £434](https://www.digikey.co.uk/en/products/detail/amd/SM-K26-XCL2GI/13985243),
 [KV260 $223-284](https://www.digikey.nl/nl/product-highlight/x/xilinx/kv260-vision-ai-starter-kit),
 [the SOM's connectors: the carrier terminal ADM6-60-01.5-L-4-0-A / ASP-246100-01 per DS987 (UG1091's page shows -4-2-A: confirm before ordering), GTH on SOM240_2](https://docs.amd.com/r/en-US/ds987-k26-som/SOM-Connector-Overview),
+[the K26's pinout: SOM240_1 (32 HPIO, 21 HDIO, 4 PS-GTR, 52 MIO) and SOM240_2 (84 HPIO, 48 HDIO, 4 GTH + 2 refclks), DS987](https://docs.amd.com/r/en-US/ds987-k26-som/SOM240_2-Connector-Pinout),
 [ADM6-60 about $12-18, 3,789 in stock](https://www.digikey.co.nz/en/products/detail/samtec-inc/ADM6-60-01-5-L-4-2-A-TR/11688975),
 [KR260's ports: 4 Pmod, a 40-pin header with 26 I/O, SFP+ (UG1092, the product brief)](https://www.avnet.com/opasdata/d120001/medias/docus/205/kr260-product-brief.pdf).
 RFSoC 4x2: [AMD University Program, $2,499](https://www.amd.com/en/corporate/university-program/aup-boards/rfsoc4x2.html),
