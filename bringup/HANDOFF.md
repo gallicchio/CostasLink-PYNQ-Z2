@@ -116,8 +116,11 @@ What the laptop needs that the bench PC has:
   on USB alone, lab-instrument-control); no Fluke, DSA875, SDG or B210.  The udev rule is installed.
 * **What is not on this laptop:** the October VNA files (`~/DroneSDR/vna/vna_measurements/` holds only the 2025
   filter sweeps here), the vendors' manuals (`~/lab-instrument-control/manuals_untracked/`), and `bringup/data/`.
-  So the 8720ES's lowest source power is not known here: tomorrow set `vna.power(-30)` and read it back (the driver
-  raises when the analyzer refuses); if it will not go that low, calibrate with the kit's measured pads on port 1.
+  The 8720ES goes to -40 dBm without pads (`vna.power(-40)` read back, no error; 2026-11-03, BRINGUP_LOG 4.36).
+* **The 8720ES's calibration here: register 29** (`RECAREG29;`): full 2-port, 85052D (3.5mmD), 3-6.5 GHz, 1601
+  points, 1 kHz IF bandwidth (4.2 s a sweep), -40 dBm, isolation omitted, at the ends of the two test cables.  Park it
+  in `HOLD;` between measurements: with the 2-port correction on, every sweep throws option 085's mechanical transfer
+  switch (an audible click every 4-8 s; `hp.md`).
 * **Vivado:** 2021.2, 2022.1, 2022.2, 2023.1 and 2024.1 under `~/Downloads/Xilinx/Vivado/`.  PYNQ 3.0.1's overlays are
   2022.1's (section 1): `source ~/Downloads/Xilinx/Vivado/2022.1/settings64.sh`, then from `gateware/`
   `nice vivado -mode batch -source pynq/build.tcl -tclargs -strategy Performance_NetDelay_high -out <name>`.  This
