@@ -1,3 +1,10 @@
 # The bench's full record stays on the bench PC: only code, docs and a few examples go to git (Jason, 2026-10-31)
 bringup/data/*
 !bringup/data/examples/
+# the VNA's Touchstone files and level tables are kept (they took real work: Jason, 2026-11-03); their plots are
+# made again from them (vna_measure.py plot, vna_tests.py tdr), and the soaks' records stay out
+!bringup/data/board_A/
+bringup/data/board_A/*
+!bringup/data/board_A/vna/
+bringup/data/board_A/vna/*.png
+bringup/data/board_A/vna/*_INVALID*
