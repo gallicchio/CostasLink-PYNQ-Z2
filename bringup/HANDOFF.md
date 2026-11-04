@@ -144,12 +144,13 @@ before any physics-style run: the profile in use is from 2026-11-01 15:58.
 * **Test A: RX ANT's S11**, powered and unpowered.  Expected (`sim/aslaid/REPORT.md`, `layout/lna_input_model.py`):
   about -0.8 dB at 5.8 GHz, above -2 dB over 5.5-6.1 GHz, a sharp feature near 5.9 GHz: C102's branch (0.5 pF at the
   LNA's input, series-resonant with its 1.8 mm trace) shorts the input there.
-* **Test F: S21 RX ANT to RX MON** at DSA 0 and 31.75 dB (`bench.py --board A board dsa 0` / `31.75`; the DSA is
+* **Test F: S21 RX ANT to RX MON** at DSA 0 and 31.75 dB (`bench.py --board A board call dsa 0` / `31.75`, or `vna_tests.py measure NAME --dsa 0`, which holds it; the DSA is
   software), -40 dBm in: the chain's gain without the TX leak.  The bench's map (BRINGUP_LOG 3.3, REVB 8) read 37-44 dB
   at 3.0-4.4 GHz, 30 at 5.0, about 7 at 5.7-5.8.  **TX ANT to TX MON** too (REVB 4, 6: the TX makes +3.8 dBm at 5.8 GHz
   against +9.8 planned, and LO TX MON reads 25.7 dB low).
 * Save every trace as Touchstone into `bringup/data/board_A/vna/` (not committed); the plots and the numbers go into a
-  BRINGUP_LOG row (4.34).
+  BRINGUP_LOG row.  `bringup/vna_tests.py` does it (2026-11-03: rows 4.36-4.37): the calibration's checks, the DSA or the
+  TX's carrier null held through the sweeps, the spot numbers and the plot.
 
 **Step 3: lift C102 (MONDAY.md section 3, TODO row 9).**  The 0.5 pF shunt from the LNA's input (U101 RF_IN) to ground:
 lift it, or only its ground end, and leave the pads empty.  Prediction: **+24-25 dB of receive gain at 5.8 GHz**, S11
