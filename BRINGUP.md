@@ -67,7 +67,9 @@ Two caveats on the room link, for the first measurement with a board to close.  
 the calibration's port-2 cable (the Mini-Circuits CBL-3FT) out of the fixture, and the delay says so: 135.6 ns measured
 against 85.3 ns of feed cable plus 54.7 ns for 16.4 m of air is 4.4 ns short, a 3 ft cable's worth; so the pair's true loss
 is about 1 dB more than the files say, **-47.7 dB**, and the grids about 22 dBi.  Re-measure with the blue cable in place
-(barrel 6 between it and the feed cable's SMA) when the grids are next on the analyser.  (2) The number is for 5.800 GHz
+(barrel 6 between it and the feed cable's SMA) when the grids are next on the analyser.  **Done 2026-11-03**
+(BRINGUP_LOG 4.43, calibrated at both test cables' ends): 139.75 ns between the two SMA ends and -50.0 dB mean over
+5.15-5.25 GHz (-48.8 at 5.800): the 140.0 ns and about -49 dB predicted here.  (2) The number is for 5.800 GHz
 exactly; the ripple moves it a dB over 20 MHz, so read the file at the carrier frequency in use, not the band mean.
 
 Still wanted from the VNA before the field, in the order they matter: the two "H" grids with their feeds turned back,
