@@ -4,12 +4,14 @@ saved as Touchstone into bringup/data/board_A/vna/ (gitignored) with its plot, a
     python3 bringup/vna_tests.py measure rxant_unpowered             # port 1 RX ANT, port 2 RX MON, the board off
     python3 bringup/vna_tests.py measure rxant_dsa20 --dsa 20        # the board on: the DSA held at 20 dB throughout
     python3 bringup/vna_tests.py measure txant_txmon --tx-null       # port 1 TX ANT, port 2 TX MON: the TX nulled
+    python3 bringup/vna_tests.py measure sw_ant_swrx_tx --ctrl tr_a=0   # the switch block held in transmit
     python3 bringup/vna_tests.py summary FILE.s2p [FILE2.s2p ...]    # the numbers again, no instrument
 
 It needs the calibration in force (register 29, BRINGUP_LOG 4.36: full 2-port, 3-6.5 GHz, 1601 points, -40 dBm) and
 refuses a source above -30 dBm (RX ANT's absolute maximum is +1 dBm).  With --dsa it sets the board's DSA before each
 of the four sweeps, and with --tx-null holds the TX at its carrier null (hold_point(0, 0)) the same way, so the
-TX's own carrier does not land in port 1: every such call is a client driving the board, which keeps linkd paused (its idle_s, 60 s) so it
+TX's own carrier does not land in port 1, and with --ctrl holds CTRL bits (tr_a=0: the antenna switch in transmit,
+ANT to SW TX; tr_a=1, its rest: ANT to SW RX; tx_dis=1: the modulator off): every such call is a client driving the board, which keeps linkd paused (its idle_s, 60 s) so it
 cannot retune or re-level the board while the analyzer sweeps.  The analyzer is left in HOLD: with the 2-port
 correction on, every sweep throws option 085's mechanical transfer switch (lab-instrument-control hp/hp.md).
 """
@@ -51,13 +53,13 @@ def summary(f, data, name=""):
     return "\n".join(lines)
 
 
-def measure(name, dsa=None, board="A", tx_null=False):
+def measure(name, dsa=None, board="A", tx_null=False, ctrl=None):
     out = os.path.join(HERE, "data", "board_%s" % board, "vna")
     os.makedirs(out, exist_ok=True)
     stamp = time.strftime("%Y-%m-%d_%H%M")
     path = os.path.join(out, "%s_%s.s2p" % (stamp, name))
     bench = None
-    if dsa is not None or tx_null:
+    if dsa is not None or tx_null or ctrl:
         from bench import Bench
         bench = Bench(board, "vna")
     with HP87xxES() as vna:
@@ -73,6 +75,8 @@ def measure(name, dsa=None, board="A", tx_null=False):
                     bench.board_call("dsa", dsa)
                 if tx_null:
                     bench.board_call("hold_point", 0, 0)
+                if ctrl:
+                    bench.board_call("ctrl", **ctrl)
                 f, data[p] = vna.trace(p)
         finally:
             vna.w("HOLD;")
@@ -85,6 +89,8 @@ def measure(name, dsa=None, board="A", tx_null=False):
                 fh.write("! board %s, DSA %.2f dB (set before each sweep)\n" % (board, dsa))
             if tx_null:
                 fh.write("! board %s, the TX held at its carrier null, hold_point(0, 0), before each sweep\n" % board)
+            if ctrl:
+                fh.write("! board %s, CTRL bits %s set before each sweep\n" % (board, ctrl))
             fh.write("# HZ S RI R 50\n")
             for n, fr in enumerate(f):
                 fh.write("%.0f " % fr + " ".join("%.6e %.6e" % (data[p][n].real, data[p][n].imag) for p in PARAMETERS)
@@ -102,10 +108,12 @@ def main():
     ap.add_argument("names", nargs="+", help="measure: the test's name; summary: .s2p files")
     ap.add_argument("--dsa", type=float, help="hold the board's DSA at this attenuation (dB) during the sweeps")
     ap.add_argument("--tx-null", action="store_true", help="hold the TX at its carrier null during the sweeps")
+    ap.add_argument("--ctrl", help="CTRL bits to hold during the sweeps, e.g. tr_a=0 or tr_a=1,tx_dis=1")
     ap.add_argument("--board", default="A")
     a = ap.parse_args()
     if a.action == "measure":
-        measure(a.names[0], a.dsa, a.board, a.tx_null)
+        ctrl = {k: int(v) for k, v in (kv.split("=") for kv in a.ctrl.split(","))} if a.ctrl else None
+        measure(a.names[0], a.dsa, a.board, a.tx_null, ctrl)
     else:
         for p in a.names:
             f, data, _ = vna_measure.read_s2p(p)
