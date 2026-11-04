@@ -32,7 +32,9 @@ should be communicated to that agent through .md files in the repo."
 * **The board:** never VR_I / VR_Q above 0.6 V; never a bare TX ANT to RX ANT cable (pads: RX ANT's absolute maximum is
   +1 dBm); do not overdrive the SMA outputs; do not change the PYNQ's network settings or the board's calibration
   unless asked (avahi on the PYNQ needs Jason's OK).  Power order: the PYNQ, then the overlay loaded (the server
-  answering with an accepted ID), then the board (`bench.py --board A psu up` does it in order).
+  answering with an accepted ID), then the board (`bench.py --board A psu up` does it in order).  **Off: the boards' 5 V
+  first, then `sudo poweroff` on each PYNQ (its console, 'reboot: System halted'), then the PYNQs' supply** (Jason
+  2026-11-04: 'Sometimes they don't boot properly if you don't do that'; `psu pynq-off` / `cycle` cut it without).
 * **The PYNQ:** PYNQ 3.0.1, every overlay from Vivado 2022.1, builds run `nice`d (the PC is shared).  If the PYNQ has to
   be rebooted more than a few times for no known reason, keep things powered off (Jason, 2026-11-01).
 * Everything measured is logged: `BRINGUP_LOG.md` (a row per result, with the file names), `REVB.md` (what rev B
