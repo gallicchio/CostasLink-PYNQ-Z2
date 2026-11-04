@@ -163,9 +163,14 @@ class Locked:
     """An instrument on a serial line that several bench.py processes share (the watchdog and a stage): every call
     holds an exclusive lock on the port, and so does opening it, so two processes' messages never interleave.  On
     2026-10-29 they did: a stage's psu_read and the watchdog's, both on the E3646A, and the watchdog died on a reply
-    that was the other's *IDN?.  The lock is bringup/.locks/<port>.lock (git-ignored)."""
+    that was the other's *IDN?.  The lock is bringup/.locks/<port>.lock (git-ignored).
+    reassert: a command written before every call, inside the lock.  The E36xxA's driver sends SYSTem:LOCal when it
+    closes, and over RS-232 a supply in local answers nothing (error 550 but for SYSTem:REMote; the manual: "can cause
+    unpredictable results"), so on 2026-11-04 a stage's psu_read, closing, cut the running watchdog off its supply:
+    three readings timed out and it switched the boards off blind (BRINGUP_LOG 4.57).  'SYSTem:REMote' puts it back."""
 
-    def __init__(self, port, factory):
+    def __init__(self, port, factory, reassert=None):
+        self._reassert = reassert
         d = os.path.join(HERE, ".locks")
         os.makedirs(d, exist_ok=True)
         self._lockf = open(os.path.join(d, os.path.basename(port) + ".lock"), "a")
@@ -186,6 +191,8 @@ class Locked:
 
         def locked(*args, **kwargs):
             with self:
+                if self._reassert:
+                    self._inst.w(self._reassert)
                 return a(*args, **kwargs)
         return locked
 
@@ -221,7 +228,7 @@ class Bench:
             from agilent_E36xxA import AgilentE36xxA
             c = self.cfg["psu"]
             if c.get("serial"):
-                return Locked(c["serial"], lambda: AgilentE36xxA(serial=c["serial"]))
+                return Locked(c["serial"], lambda: AgilentE36xxA(serial=c["serial"]), reassert="SYSTem:REMote")
             if c.get("gpib") is not None:
                 return AgilentE36xxA(int(c["gpib"]))
             raise IOError("bench_config.json: psu has no serial port or GPIB address (python3 %s/scpi_link.py identify)" % LIC)
@@ -302,7 +309,7 @@ class Bench:
         if c.get("pynq_serial"):
             def make():
                 from agilent_E36xxA import AgilentE36xxA
-                return Locked(c["pynq_serial"], lambda: AgilentE36xxA(serial=c["pynq_serial"]))
+                return Locked(c["pynq_serial"], lambda: AgilentE36xxA(serial=c["pynq_serial"]), reassert="SYSTem:REMote")
             return self._get("pynq_psu", make), 1
         if c.get("pynq_out"):
             return self.psu, c["pynq_out"]
