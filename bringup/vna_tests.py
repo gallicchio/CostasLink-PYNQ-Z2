@@ -6,6 +6,7 @@ saved as Touchstone into bringup/data/board_A/vna/ (gitignored) with its plot, a
     python3 bringup/vna_tests.py measure txant_txmon --tx-null       # port 1 TX ANT, port 2 TX MON: the TX nulled
     python3 bringup/vna_tests.py measure sw_ant_swrx_tx --ctrl tr_a=0   # the switch block held in transmit
     python3 bringup/vna_tests.py compress rx_dsa0 --dsa 0 --cw 4.0 5.2 --window -58 -40   # gain against drive (P1dB)
+    python3 bringup/vna_tests.py levels rx_dsa0 --dsa 0 --powers -46 -40 -34   # S21 sweeps at several drives
     python3 bringup/vna_tests.py summary FILE.s2p [FILE2.s2p ...]    # the numbers again, no instrument
 
 It needs the calibration in force (register 29, BRINGUP_LOG 4.36: full 2-port, 3-6.5 GHz, 1601 points, -40 dBm) and
@@ -123,6 +124,11 @@ def compress(name, cws_ghz, start, stop, dsa=None, board="A", ctrl=None, registe
         try:
             for g in cws_ghz:
                 vna.power_sweep(cw_hz=g * 1e9, start_dbm=start, stop_dbm=stop)
+                if not vna.corrected():
+                    # 2026-11-03: a power sweep needing another source power range than the calibration's turned the
+                    # correction off (error 66, 'CAUTION: CORRECTION TURNED OFF'); uncorrected gains are not usable
+                    raise SystemExit("the power sweep %+.0f to %+.0f dBm turned the correction off (%s): this window is "
+                                     "outside the calibration's power range" % (start, stop, vna.errors()))
                 if dsa is not None:
                     bench.board_call("dsa", dsa)
                 if ctrl:
@@ -148,20 +154,73 @@ def compress(name, cws_ghz, start, stop, dsa=None, board="A", ctrl=None, registe
     return rows
 
 
+def levels(name, powers, dsa=None, board="A", ctrl=None, register=29, home=-40.0):
+    """S21 frequency sweeps at several source powers (POWE in the calibrated frequency sweep, which kept the
+    correction on where a power sweep in another power range turned it off: 2026-11-03): gain against drive at
+    every frequency at once.  Stops (and recalls the register) if the correction drops.  Back at `home`, HOLD."""
+    if max(powers) > MAX_SOURCE_DBM:
+        raise SystemExit("%+.1f dBm: above %+.0f, not into this board" % (max(powers), MAX_SOURCE_DBM))
+    out = os.path.join(HERE, "data", "board_%s" % board, "vna")
+    os.makedirs(out, exist_ok=True)
+    stamp = time.strftime("%Y-%m-%d_%H%M")
+    bench = None
+    if dsa is not None or ctrl:
+        from bench import Bench
+        bench = Bench(board, "vna")
+    res = {}
+    with HP87xxES() as vna:
+        if not vna.corrected():
+            raise SystemExit("correction is off: recall the calibration first (RECAREG29;)")
+        ok = False
+        try:
+            for pw in powers:
+                vna.power(pw)
+                if not vna.corrected():
+                    raise SystemExit("at %+.1f dBm the correction went off (%s)" % (pw, vna.errors()))
+                if dsa is not None:
+                    bench.board_call("dsa", dsa)
+                if ctrl:
+                    bench.board_call("ctrl", **ctrl)
+                f, s21 = vna.trace("S21")
+                res[pw] = s21
+                print("%+6.1f dBm: " % pw + "  ".join("%g:%+.2f" % (g, db(np.interp(g * 1e9, f, s21))) for g in SPOT_GHZ),
+                      flush=True)
+            ok = True
+        finally:
+            vna.power(home)
+            if not ok or not vna.corrected():
+                vna._opc("RECAREG%d;" % register, sweeps=2, floor=30)
+            vna.w("HOLD;")
+            print("back at %+.1f dBm, held; corrected %s" % (vna.power(), vna.corrected()))
+    path = os.path.join(out, "%s_%s_levels.csv" % (stamp, name))
+    with open(path, "w") as fh:
+        fh.write("# %s: |S21| dB against port 1's power%s\nfreq_Hz,%s\n" % (
+            name, "" if dsa is None else ", DSA %.2f dB" % dsa, ",".join("%+.1fdBm" % p for p in sorted(res))))
+        for n_, fr in enumerate(f):
+            fh.write("%.0f," % fr + ",".join("%.3f" % db(res[p][n_]) for p in sorted(res)) + "\n")
+    print("wrote", path)
+    return f, res
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("action", choices=("measure", "compress", "summary"))
+    ap.add_argument("action", choices=("measure", "compress", "levels", "summary"))
     ap.add_argument("names", nargs="+", help="measure: the test's name; summary: .s2p files")
     ap.add_argument("--dsa", type=float, help="hold the board's DSA at this attenuation (dB) during the sweeps")
     ap.add_argument("--tx-null", action="store_true", help="hold the TX at its carrier null during the sweeps")
     ap.add_argument("--ctrl", help="CTRL bits to hold during the sweeps, e.g. tr_a=0 or tr_a=1,tx_dis=1")
     ap.add_argument("--cw", type=float, nargs="+", default=[5.2], help="compress: the CW frequencies, GHz")
     ap.add_argument("--window", type=float, nargs=2, default=[-58.0, -40.0], help="compress: start and stop, dBm")
+    ap.add_argument("--powers", type=float, nargs="+", default=[-46, -43, -40, -37, -34, -31],
+                    help="levels: source powers, dBm (none above -30)")
     ap.add_argument("--board", default="A")
     a = ap.parse_args()
     if a.action == "measure":
         ctrl = {k: int(v) for k, v in (kv.split("=") for kv in a.ctrl.split(","))} if a.ctrl else None
         measure(a.names[0], a.dsa, a.board, a.tx_null, ctrl)
+    elif a.action == "levels":
+        ctrl = {k: int(v) for k, v in (kv.split("=") for kv in a.ctrl.split(","))} if a.ctrl else None
+        levels(a.names[0], a.powers, a.dsa, a.board, ctrl)
     elif a.action == "compress":
         ctrl = {k: int(v) for k, v in (kv.split("=") for kv in a.ctrl.split(","))} if a.ctrl else None
         compress(a.names[0], a.cw, a.window[0], a.window[1], a.dsa, a.board, ctrl)
