@@ -7,6 +7,7 @@ saved as Touchstone into bringup/data/board_A/vna/ (gitignored) with its plot, a
     python3 bringup/vna_tests.py measure sw_ant_swrx_tx --ctrl tr_a=0   # the switch block held in transmit
     python3 bringup/vna_tests.py compress rx_dsa0 --dsa 0 --cw 4.0 5.2 --window -58 -40   # gain against drive (P1dB)
     python3 bringup/vna_tests.py levels rx_dsa0 --dsa 0 --powers -46 -40 -34   # S21 sweeps at several drives
+    python3 bringup/vna_tests.py tdr CABLE.s2p [...] --length 10    # delay, velocity factor, reflections by distance
     python3 bringup/vna_tests.py summary FILE.s2p [FILE2.s2p ...]    # the numbers again, no instrument
 
 It needs the calibration in force (register 29, BRINGUP_LOG 4.36: full 2-port, 3-6.5 GHz, 1601 points, -40 dBm) and
@@ -202,9 +203,69 @@ def levels(name, powers, dsa=None, board="A", ctrl=None, register=29, home=-40.0
     return f, res
 
 
+C = 299792458.0
+
+
+def delay_s(f, s21):
+    """the group delay from S21's unwrapped phase, a straight-line fit over the band"""
+    ph = np.unwrap(np.angle(s21))
+    return -np.polyfit(2 * np.pi * f, ph, 1)[0]
+
+
+def time_response(f, s, n_fft=1 << 15, beta=6.0):
+    """the band-pass time response (as the analyzer's time-domain band-pass mode): a Kaiser window over the
+    band, zero-padded; scaled so that one broadband reflection of |G| peaks at |G|.  Returns (t in s, h)"""
+    w = np.kaiser(len(f), beta)
+    h = np.fft.ifft(s * w, n_fft) * n_fft / w.sum()
+    df = (f[-1] - f[0]) / (len(f) - 1)
+    return np.arange(n_fft) / (n_fft * df), h
+
+
+def peaks(t, h, floor_db=-45.0, t_max=None, min_sep=0.4e-9):
+    a = db(h)
+    idx = [k for k in range(1, len(a) - 1) if a[k] >= a[k - 1] and a[k] > a[k + 1] and a[k] > floor_db
+           and (t_max is None or t[k] <= t_max)]
+    idx.sort(key=lambda k: -a[k])
+    keep = []
+    for k in idx:
+        if all(abs(t[k] - t[j]) > min_sep for j in keep):
+            keep.append(k)
+    return sorted(keep)
+
+
+def tdr(paths, length_m=10.0, board="A"):
+    """each 2-port file's electrical delay (S21's phase), the velocity factor for `length_m`, and the band-pass
+    time responses of S11 and S22 with their reflections listed by one-way distance; a plot beside the first"""
+    import matplotlib.pyplot as plt
+    fig, axs = plt.subplots(2, 1, figsize=(10.5, 7.5), sharex=True)
+    for n_, p in enumerate(paths):
+        f, data, _ = vna_measure.read_s2p(p)
+        tau = delay_s(f, data["S21"])
+        vf = length_m / (C * tau)
+        name = os.path.basename(p)[:-4]
+        print("%s: delay %.3f ns, velocity factor %.3f for %.2f m (adapters included)" % (name, tau * 1e9, vf, length_m))
+        for ax, sp in zip(axs, ("S11", "S22")):
+            t, h = time_response(f, data[sp])
+            m = t <= 2.4 * tau
+            d = t * C * vf / 2
+            ax.plot(d[m], db(h[m]), color=vna_measure.SERIES[n_ % 3], label=name[16:] or name)
+            pk = peaks(t, h, t_max=2.4 * tau)
+            print("  %s reflections (one-way m, ns round trip, dB): " % sp + ";  ".join(
+                "%.3f m %.2f ns %+.1f" % (d[k], t[k] * 1e9, db(h[k])) for k in pk))
+    for ax, sp, end in zip(axs, ("S11", "S22"), ("port 1 (the SMA end)", "port 2 (the N end)")):
+        ax.set_title("%s time response, from %s" % (sp, end), loc="left")
+        ax.set_ylabel("reflection (dB)")
+        ax.set_ylim(-80, 0)
+        ax.legend(loc="upper right")
+    axs[-1].set_xlabel("one-way distance along the cable (m, at each cable's own velocity factor)")
+    png = paths[0][:-4] + "_tdr.png"
+    fig.savefig(png)
+    print("wrote", png)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("action", choices=("measure", "compress", "levels", "summary"))
+    ap.add_argument("action", choices=("measure", "compress", "levels", "summary", "tdr"))
     ap.add_argument("names", nargs="+", help="measure: the test's name; summary: .s2p files")
     ap.add_argument("--dsa", type=float, help="hold the board's DSA at this attenuation (dB) during the sweeps")
     ap.add_argument("--tx-null", action="store_true", help="hold the TX at its carrier null during the sweeps")
@@ -213,11 +274,14 @@ def main():
     ap.add_argument("--window", type=float, nargs=2, default=[-58.0, -40.0], help="compress: start and stop, dBm")
     ap.add_argument("--powers", type=float, nargs="+", default=[-46, -43, -40, -37, -34, -31],
                     help="levels: source powers, dBm (none above -30)")
+    ap.add_argument("--length", type=float, default=10.0, help="tdr: the cable's physical length, m")
     ap.add_argument("--board", default="A")
     a = ap.parse_args()
     if a.action == "measure":
         ctrl = {k: int(v) for k, v in (kv.split("=") for kv in a.ctrl.split(","))} if a.ctrl else None
         measure(a.names[0], a.dsa, a.board, a.tx_null, ctrl)
+    elif a.action == "tdr":
+        tdr(a.names, a.length)
     elif a.action == "levels":
         ctrl = {k: int(v) for k, v in (kv.split("=") for kv in a.ctrl.split(","))} if a.ctrl else None
         levels(a.names[0], a.powers, a.dsa, a.board, ctrl)
