@@ -22,7 +22,11 @@ Parts (the loop held unless said; the windows as linkd set them; times from the 
             ADC against the carrier's, and against the arms' zero measured with both mutes (needs the lock:
             VC within 4 mV of linkd's vc_lock, else the state is skipped)
     quiet   nothing switching, per mute state: the windows' edges and high samples in 8 forced captures
-    det     the log detector's band power (detectors()) in each state: carrier, null, DSOP off, both
+    det     the log detector's band power (detectors()) in each state: carrier, null, DSOP off, both.  The detector
+            is the Q arm AC-coupled at 16 kHz (PATHS.md): noise reaches it, a locked and held carrier does not
+    lo      the null with the TX synthesizer's RFOUTA off (register 4 resent with RFA_EN clear, then as it was, at
+            the server's tx_mhz, the link's 25 MHz PFD): the windows' edges and the band power, LO on and off.
+            A server restart reprograms both synthesizers whatever this leaves
 Records go to bringup/data/board_A/switch/<time>_probe.jsonl (gitignored).  CTRL, the TX registers and the DSA are
 put back afterwards; with the dishes cabled again, restart the server (night.py).
 """
@@ -285,11 +289,45 @@ def det_part(dsa, tr_a):
             dsa, tr_a, name, [round(x, 1) for x in lg], round(statistics.median(lg), 1) if lg else None), flush=True)
 
 
+def lo_part(dsa, tx_mhz):
+    """the null's noise against the TX LO: RFOUTA off (DSOP on), the windows' edges and the band power"""
+    sys.path.insert(0, os.path.join(HERE, "..", "gateware"))
+    import max2871_regs
+    r4_on = [w for w in max2871_regs.regs(tx_mhz) if w & 7 == 4][0]
+    r4_off = r4_on & ~(1 << 5)                                       # RFA_EN
+    cl("tx_points", CARR, [NULL])
+    cl("tx_msg", 0)
+    cl("tx_mode", "hold")
+    try:
+        for tr_a in (0, 1):
+            for label, word, dis in (("LO on", r4_on, 0), ("LO off", r4_off, 0), ("DSOP off", r4_on, 1)):
+                cl("ctrl", tx_dis=dis, loop_hold=1, tr_a=tr_a)
+                cl("spi", 0, word)
+                time.sleep(0.05)
+                n_edges = {w: 0 for w in WIN}
+                us = 0.0
+                for _ in range(12):
+                    cl("cap_arm", "none", 0)
+                    cl("cap_force")
+                    c = cl("cap_read", 1.0)
+                    s0 = c["valid_from"] * (len(c["CMP_IP"]) // len(c["words"]))
+                    for w in WIN:
+                        x = c[w][s0:]
+                        n_edges[w] += sum(1 for k in range(1, len(x)) if x[k] and not x[k - 1])
+                    us += (len(c["CMP_IP"]) - s0) * 1.25e-3
+                lg = [d["log_dbm"] for d in (cl("detectors") for _ in range(4)) if d.get("log_dbm") is not None]
+                rec("lo", dsa=dsa, tr_a=tr_a, state="null, " + label, edges=n_edges, us=us, log_dbm=lg)
+                print("LO dsa %5.2f tr_a %d null, %-8s %.0f us: edges %s; log_dbm %s" % (
+                    dsa, tr_a, label, us, n_edges, round(statistics.median(lg), 1) if lg else None), flush=True)
+    finally:
+        cl("spi", 0, r4_on)
+
+
 def main():
     global cl, t_clk, depth, log, VC_LOCK
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cabled", action="store_true", help="the cabling above is in place (required)")
-    ap.add_argument("--parts", nargs="+", default=["dsop", "switch", "null", "depth", "quiet", "det"])
+    ap.add_argument("--parts", nargs="+", default=["dsop", "switch", "null", "depth", "quiet", "det", "lo"])
     ap.add_argument("--dsa", type=float, nargs="+", default=[31.75, 20.0])
     a = ap.parse_args()
     if not a.cabled:
@@ -360,6 +398,8 @@ def main():
                 quiet_part(dsa, tr_a)
             for tr_a in ((1, 0) if "det" in parts else ()):
                 det_part(dsa, tr_a)
+            if "lo" in parts:
+                lo_part(dsa, now.get("tx_mhz") or 5200)
     finally:
         try:
             cl("seq_stop")
