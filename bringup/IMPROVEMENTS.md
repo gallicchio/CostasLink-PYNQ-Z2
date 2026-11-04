@@ -53,6 +53,11 @@ BRINGUP_LOG ('What runs on the board') has every deploy; REVB.md is the list of 
 | the windows calibrated again when the level moves 2 % from the calibration's (was 15 %): a calibration put back and scaled to a leg 1.8 % lower left QPSK losing 1.0-1.6e-6 for two hours; fresh at that level, 1e-8 | `selftest.py` | 2026-11-03 01:08 |
 | the page's carrier level and the lock points' middle not learned during the self-test's own steps (CMP_I quiet under A1w's and A3's symbols: an A1w symbol's I kept as the + point's moved the middle 11 mV and read the carrier 0.5 dB high on the other point for 13 min, flagging soak15 #112; the single -46 dBm looks likewise) | `dashboard.py` | 2026-11-01 19:13-19:23 |
 
+- **linkd after a slow fade** (2026-11-04, BRINGUP_LOG 4.47): the lock test's Q tolerance scaled by the learned leg
+  alone, so a carrier back from a gradual fade to DSA 24-27 left linkd 'watching' with its leg 13.7 mV and the windows set
+  for 15 mV for good.  observe() now scales by the larger of the learned leg and the I arm's deflection; the same fade
+  learned again to 130 mV within 60 s.
+
 ### Next: the best rev A can do in gateware and firmware
 
 Grouped by what each buys; within a group, in order.  None needs new hardware.
@@ -123,6 +128,21 @@ Grouped by what each buys; within a group, in order.  None needs new hardware.
     so both always apply: +-15 dB of path change absorbed.  Trade-offs: a step moves every level at once (between the
     self-test's runs or slowly, e.g. after 1 s more than 1 dB off; never during a physics run's symbols unless asked);
     the DSA's floor is capped by the TX's leak (REVB 10) on the strong side; the page's levels then read the DSA too.
+
+20. **The windows' calibration applied where it can**: when one window finds no plateau, the self-test leaves all four on
+    the plain rule ('no plateau for QP: the windows left as they were', once a minute at 5000 MHz over the grids, QN, IP
+    and IN found; A3 75.0 %, QPSK 93.6 % for the six minutes), where a calibrated set gives A3 97-100 % and QPSK 99 %
+    (BRINGUP_LOG 4.48).  Apply the windows that found plateaus and keep only the failing one on the plain rule; and look
+    at why QP has none there (the corners' Q 0.27 of the leg, 4.47: the plateau may be narrower than the sweep's step).
+21. **The AGC of item 19, over the air** (BRINGUP_LOG 4.47): at 5.2 GHz BPSK holds <= 3.5e-7 at every rate only within
+    about 6 dB of setup's level; 6 dB weaker, A1 sits at 50 % and 25-50 Mbaud fail while the loop reads locked.  A slow
+    loop on the DSA from linkd's leg (night.py's `agc`, outside linkd, as the first try), with the windows following by
+    their own rules; and setup's floor: its 2 dB steps stop at 7.75 for dsa_min 6.0, so above 5.4 GHz the carrier is left
+    too weak (4.48).
+22. **The driver's survey() scans V_T2 from V_MID upward only**: with the Q arm's middle 23 mV below V_MID (the board
+    over the grids, 2026-11-03) no frequency resolved.  Scan both sides of the middle measured with the loop held
+    (night.py's `survey` does, 4.47); and switch the TX synthesizer's output off for the scan (its own LO and spurs were
+    the loudest things in the band with TX_DIS set: REVB 49).
 
 ## 2. Rev A hardware: rework by hand
 

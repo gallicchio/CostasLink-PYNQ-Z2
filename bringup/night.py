@@ -121,9 +121,8 @@ def restart_server(wait_s=300.0):
         if s.get("state") == "locked" and s.get("mode") in ("locked", "watching"):
             s["setup_s"] = time.time() - t0
             return s, seen
-        if s.get("mode") and "no carrier" in str(s.get("mode")):
-            s["setup_s"] = time.time() - t0
-            return s, seen
+        # 'setup found no carrier: trying again' is not the end: linkd tries again after its back-off (4500 MHz's first
+        # setup failed and the sweep moved on, 2026-11-04 00:33)
     s = now_state()
     s["setup_s"] = time.time() - t0
     return s, seen
@@ -339,12 +338,12 @@ def survey_driver(step=5, lo=5150, hi=5850, chunk=8):
     return rows, wifi
 
 
-def carriers(mhzs, minutes=8.0):
+def carriers(mhzs, minutes=8.0, dsa_min=None):
     log = Log("carriers")
     out = []
     try:
         for mhz in mhzs:
-            cfg = dict(LINK, mhz=mhz, note="night.py %s: the carrier sweep; the original is link.json.bak_20261103" %
+            cfg = dict(LINK, mhz=mhz, **({} if dsa_min is None else {"dsa_min": dsa_min}), note="night.py %s: the carrier sweep; the original is link.json.bak_20261103" %
                        time.strftime("%Y-%m-%d %H:%M"))
             write_link(cfg)
             st, seen = restart_server()
@@ -526,6 +525,7 @@ def main():
     ap.add_argument("--step", type=int, default=5)
     ap.add_argument("--n", type=int, default=20)
     ap.add_argument("--holdover", action="store_true")
+    ap.add_argument("--dsa-min", type=float, default=None, help="carriers: link.json's dsa_min (setup's floor) for the run")
     ap.add_argument("--target", type=float, default=None, help="agc: the leg to hold, V (default linkd's setup leg)")
     ap.add_argument("--world", type=float, nargs=4, default=None, help="agc: path changes lo_db hi_db gap_lo_s gap_hi_s")
     ap.add_argument("--park-tx", type=int, default=None, help="survey: the TX synthesizer parked here meanwhile (MHz)")
@@ -533,7 +533,7 @@ def main():
     if a.section == "survey":
         survey(a.step, park_tx=a.park_tx)
     elif a.section == "carriers":
-        carriers([int(m) for m in a.mhz], a.minutes or 8.0)
+        carriers([int(m) for m in a.mhz], a.minutes or 8.0, a.dsa_min)
     elif a.section == "levels":
         levels(a.dsa, a.minutes or 3.0)
     elif a.section == "gaps":
