@@ -173,7 +173,7 @@ def rails_walk(b, order=("+5V_IN", "+5V_RF", "+3V3_PLL_TX", "+3V3_PLL_RX", "+3V3
     return b.record("verdict", test="rails", ok=not bad, text=text, rails=[(g["label"], g["volts"]) for g in got])
 
 
-def watch(b, hours=3.0, dt_s=10.0, amps_lo=0.6, amps_hi=1.2, pynq_misses=3, det_every=3, v5_lo=4.75, v5_hi=5.30,
+def watch(b, hours=3.0, dt_s=10.0, amps_lo=None, amps_hi=None, pynq_misses=3, det_every=3, v5_lo=4.75, v5_hi=5.30,
           temp_hi=85.0, pynq_cycles=0):
     """Unattended: the supply read every dt_s and the PYNQ's server pinged; the board switched OFF on a current
     outside amps_lo-amps_hi, a mode other than CV, an OVP trip, or the PYNQ silent for pynq_misses pings in a row
@@ -185,6 +185,9 @@ def watch(b, hours=3.0, dt_s=10.0, amps_lo=0.6, amps_hi=1.2, pynq_misses=3, det_
     PYNQ more than a few times and don't know why, just keep things powered off').  While B.WATCH_PAUSE holds a
     time still to come (bench.py pause: a deliberate restart of the server) silence is not counted."""
     b.stage = b.stage or "watch"
+    n_units = b.units()                                     # boards on the supply: 0.6-1.2 A each
+    amps_lo = 0.6 * n_units if amps_lo is None else amps_lo
+    amps_hi = 1.2 * n_units if amps_hi is None else amps_hi
     p = b.psu
     out = b.cfg["psu"].get("out", 1)
     t_end, misses, n, why = time.time() + hours * 3600, 0, 0, None

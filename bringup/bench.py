@@ -51,6 +51,10 @@ DEFAULTS = {
     # pynq_serial: the PYNQ on a supply of its own (an E3632A on RS-232, output 1; the lab laptop, 2026-11-03): then
     # the board's supply switches the board alone, and psu up / cycle / pynq-on / pynq-off drive the PYNQ's supply
     "psu": {"serial": None, "gpib": None, "out": 1, "pynq_out": None, "pynq_serial": None},
+    # units_per_supply: how many boards share the board's supply and how many PYNQs the PYNQ's (2 from 2026-11-04:
+    # boards A and B and their PYNQs on the lab laptop's two E3632As); the current limits, the power-up's current
+    # checks and the watchdog's window scale with it
+    "units_per_supply": 1,
     "dmm": {"serial": None},              # the Fluke 45 on RS-232
     "sa": {"host": "192.168.8.114", "usb": False},     # the Rigol DSA875 (9 kHz-7.5 GHz): N input, +30 dBm max
     "scope": {"host": "192.168.8.203"},  # the Siglent SDS2104X Plus
@@ -321,7 +325,13 @@ class Bench:
             return False
         return not self.cfg["psu"].get("pynq_out") or p.setting(self.cfg["psu"].get("out", 1))["volts"] > 0.05
 
-    def psu_setup(self, volts=SUPPLY_V, amps=SUPPLY_A, ovp=OVP_V):
+    def units(self):
+        """how many boards (and PYNQs) each supply feeds: the config's units_per_supply"""
+        return max(1, int(self.cfg.get("units_per_supply", 1)))
+
+    def psu_setup(self, volts=SUPPLY_V, amps=None, ovp=OVP_V):
+        if amps is None:
+            amps = SUPPLY_A * self.units()
         p = self.psu
         out = self.cfg["psu"].get("out", 1)
         pynq = self.cfg["psu"].get("pynq_out")
@@ -382,12 +392,15 @@ class Bench:
         self.record("psu_output", on=bool(on), got=got, out=out, pynq_left_on=True)
         return got
 
-    def psu_pynq(self, on, volts=PYNQ_V, amps=PYNQ_A, ovp=PYNQ_OVP_V):
+    def psu_pynq(self, on, volts=PYNQ_V, amps=None, ovp=PYNQ_OVP_V):
         """The PYNQ's output (psu.pynq_out, or its own supply: psu.pynq_serial).  On: the board's output at 0 V, the PYNQ's set up (20 V range, OVP) at
         1.5 V and 0.1 A first (a plug reversed conducts there; the right way round draws about 1 mA), the switch on,
         then 12 V, its draw checked (CV, 0.03-1.2 A).  Off: the board's output to 0 V first, then the switch (both).
         Anything out of bounds switches both off and raises."""
         p, pynq = self.pynq_supply()           # the E3646A and its other output, or the PYNQ's own supply and 1
+        n = self.units()                       # PYNQs on this output: the limit and the draw's window scale
+        if amps is None:
+            amps = PYNQ_A * n
         if p is None:
             raise IOError("bench_config.json: neither psu.pynq_out nor psu.pynq_serial is set (the PYNQ is on its own adapter)")
 
@@ -416,10 +429,10 @@ class Bench:
         p.set(1.5, 0.10, out=pynq)
         p.output(True)
         time.sleep(1.5)
-        check("polarity, 1.5 V", lambda v, i, m: m == "CV" and i < 0.05)
+        check("polarity, 1.5 V", lambda v, i, m: m == "CV" and i < 0.05 * n)
         p.set(volts, amps, out=pynq)
         time.sleep(2.0)
-        r = check("on", lambda v, i, m: m == "CV" and 0.03 <= i <= 1.2 and abs(v - volts) < 0.2)
+        r = check("on", lambda v, i, m: m == "CV" and 0.03 * n <= i <= 1.2 * n and abs(v - volts) < 0.2)
         self.record("psu_pynq", on=True, setting=p.setting(pynq))
         return r
 
@@ -444,12 +457,51 @@ class Bench:
             time.sleep(5)
         return None
 
-    def psu_up(self, volts=SUPPLY_V, amps=SUPPLY_A):
-        """The cold start in its order: the PYNQ, its overlay (the server answering with our ID), then the board."""
+    def other_pynqs_ready(self, timeout_s=PYNQ_BOOT_S):
+        """With units_per_supply > 1, the other PYNQs on the supply (psu.other_pynqs: [[host, port], ...]) each with
+        our overlay (an ID the driver accepts), up to timeout_s: {host: ID or None}"""
+        import costaslink
+        from netbus import RemoteCostasLink
+        got = {}
+        t_end = time.time() + timeout_s
+        for host, port in self.cfg["psu"].get("other_pynqs") or []:
+            got[host] = None
+            while got[host] is None and time.time() < t_end:
+                if reachable(host, port, timeout=3):
+                    try:
+                        r = RemoteCostasLink(host, port)
+                        try:
+                            ident = r.rd("ID")
+                        finally:
+                            r.close()
+                        if ident in costaslink.ID_ACCEPTED:
+                            got[host] = ident
+                            break
+                    except Exception:                                   # noqa: BLE001 - its server still starting
+                        pass
+                time.sleep(5)
+        return got
+
+    def psu_up(self, volts=SUPPLY_V, amps=None):
+        """The cold start in its order: the PYNQ, its overlay (the server answering with our ID), then the board.
+        With units_per_supply > 1 every PYNQ on the supply must answer with our ID first (psu.other_pynqs lists the
+        others), since one output powers all the boards at once."""
         self.psu_pynq(True)
         ident = self.pynq_ready()
         if ident is None:
             raise IOError("the PYNQ's server did not answer with our overlay in %d s: the board left off" % PYNQ_BOOT_S)
+        n = self.units()
+        if n > 1:
+            others = self.cfg["psu"].get("other_pynqs") or []
+            if len(others) < n - 1:
+                raise IOError("units_per_supply %d but psu.other_pynqs lists %d other PYNQs: the boards left off "
+                              "(every PYNQ on the supply needs our overlay before the boards are powered)" % (n, len(others)))
+            got = self.other_pynqs_ready()
+            missing = [h for h, v in got.items() if v is None]
+            if missing:
+                raise IOError("the PYNQ(s) %s did not answer with our overlay in %d s: the boards left off"
+                              % (", ".join(missing), PYNQ_BOOT_S))
+            self.note("the other PYNQs' servers up %s" % {h: "0x%08X" % v for h, v in got.items()})
         self.note("the PYNQ's server up, ID 0x%08X: the board powered" % ident)
         self.psu_setup(volts, amps)
         self.psu_output(True)
@@ -565,7 +617,7 @@ def main():
                    help="with the PYNQ on the supply (psu.pynq_out): up = the PYNQ, its overlay, then the board; "
                         "pynq-off = the board, then both; cycle = pynq-off, 10 s, up; off = the board only")
     p.add_argument("--volts", type=float, default=SUPPLY_V)
-    p.add_argument("--amps", type=float, default=SUPPLY_A)
+    p.add_argument("--amps", type=float, default=None, help="the board supply's limit (default %.1f A per board, units_per_supply)" % SUPPLY_A)
     p.add_argument("--n", type=int, default=1)
     p.add_argument("--dt", type=float, default=2.0)
     p.add_argument("--seconds", type=float, default=600.0)
