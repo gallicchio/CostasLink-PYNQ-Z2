@@ -85,7 +85,8 @@ def ramp(b, volts=B.SUPPLY_V, limits=(0.10, 0.25, 0.50, 0.80, 1.10, B.SUPPLY_A),
     out = b.cfg["psu"].get("out", 1)
     if b.board_on():
         raise IOError("the %s's output is already on: psu off first (and say what was connected)" % p.model)
-    hi = CURRENT_BEFORE_PLL_A[1] * 1.10                       # 1.42 A: the budget's top plus 10 %
+    n_units = b.units()                                       # boards on the supply (units_per_supply)
+    hi = CURRENT_BEFORE_PLL_A[1] * 1.10 * n_units             # 1.42 A a board: the budget's top plus 10 %
     b.psu_setup(volts, limits[0])
     steps, why, ok = [], None, False
     b.psu_output(True)
@@ -118,7 +119,7 @@ def ramp(b, volts=B.SUPPLY_V, limits=(0.10, 0.25, 0.50, 0.80, 1.10, B.SUPPLY_A),
         if not ok:
             b.psu_output(False)
     smoke = steps[0]
-    lo, top = CURRENT_BEFORE_PLL_A[0] * 0.90, hi
+    lo, top = CURRENT_BEFORE_PLL_A[0] * 0.90 * n_units, hi
     if ok:
         i = steps[-1]["amps"]
         within = lo <= i <= top

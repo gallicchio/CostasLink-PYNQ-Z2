@@ -1,5 +1,5 @@
 {
- "note": "the lab laptop zmash (2026-11-03): COSTAS_BENCH_CONFIG=bringup/bench_config_laptop.json. The board on the 'top' E3632A (FTER3DQU, cal count 29), the PYNQ on the 'bottom' E3632A (FTEP2CPY, cal count 20), each by RS-232; the PYNQ on a direct cable at its static 192.168.2.99 (the laptop 192.168.2.119 on enp0s31f6); the 8720ES at GPIB 16 through the Prologix PXAESUX9; the scope here is an SDS1104X-E on USB, not bench.py's SDS2104X; no Fluke, DSA875 or SDG on this bench; from 2026-11-04 14:20 each E3632A feeds two (units_per_supply 2: the top one boards A and B, the bottom one both PYNQs)",
+ "note": "the lab laptop zmash (2026-11-03): COSTAS_BENCH_CONFIG=bringup/bench_config_laptop.json. The board on the 'top' E3632A (FTER3DQU, cal count 29), the PYNQ on the 'bottom' E3632A (FTEP2CPY, cal count 20), each by RS-232; the PYNQ on a direct cable at its static 192.168.2.99 (the laptop 192.168.2.119 on enp0s31f6); the 8720ES at GPIB 16 through the Prologix PXAESUX9; the scope here is an SDS1104X-E on USB, not bench.py's SDS2104X; no Fluke, DSA875 or SDG on this bench; from 2026-11-04 14:20 each E3632A feeds two (units_per_supply 2: the top one boards A and B, the bottom one both PYNQs); PYNQ B (board B's, MAC 00:00:05:6b:04:30, a fresh PYNQ 3.0 card) at its DHCP 192.168.2.178 from 2026-11-04 14:40, its image's static 192.168.2.99 removed (Jason: both by DHCP); for board B: COSTAS_PYNQ_HOST=192.168.2.178 ... --board B",
  "board": "A",
  "pynq_host": "192.168.2.99",
  "pynq_port": 5800,
@@ -8,7 +8,13 @@
   "gpib": null,
   "out": 1,
   "pynq_out": null,
-  "pynq_serial": "/dev/serial/by-id/usb-FTDI_USB_Serial_Converter_FTEP2CPY-if00-port0"
+  "pynq_serial": "/dev/serial/by-id/usb-FTDI_USB_Serial_Converter_FTEP2CPY-if00-port0",
+  "other_pynqs": [
+   [
+    "192.168.2.178",
+    5800
+   ]
+  ]
  },
  "units_per_supply": 2,
  "dmm": {
