@@ -17,6 +17,12 @@ TX's own carrier does not land in port 1, and with --ctrl holds CTRL bits (tr_a=
 ANT to SW TX; tr_a=1, its rest: ANT to SW RX; tx_dis=1: the modulator off): every such call is a client driving the board, which keeps linkd paused (its idle_s, 60 s) so it
 cannot retune or re-level the board while the analyzer sweeps.  The analyzer is left in HOLD: with the 2-port
 correction on, every sweep throws option 085's mechanical transfer switch (lab-instrument-control hp/hp.md).
+
+After --ctrl the board's CTRL register is put back as it was found (2026-11-03: a run's tx_dis=1 stayed set, linkd keeps
+TX_DIS as it finds it, and the link over the dishes had no carrier).  The DSA is not put back: linkd's recovery reuses
+whatever attenuation it finds (a run left at 31.75 dB failed 32 recoveries with the I leg at 25 mV), so after a session
+with --dsa restart the board's server (`sudo systemctl restart costaslink-netbus` on the PYNQ: linkd's setup steps the
+DSA down to the leg it wants, BRINGUP_LOG 4.45).
 """
 import argparse
 import os
@@ -72,6 +78,15 @@ def measure(name, dsa=None, board="A", tx_null=False, ctrl=None):
     if dsa is not None or tx_null or ctrl:
         from bench import Bench
         bench = Bench(board, "vna")
+    ctrl0 = bench.board_call("rd", "CTRL") if ctrl else None
+    try:
+        return _measure(name, dsa, board, tx_null, ctrl, out, stamp, path, bench)
+    finally:
+        if ctrl0 is not None:
+            bench.board_call("wr", "CTRL", ctrl0 & ~0x80)
+
+
+def _measure(name, dsa, board, tx_null, ctrl, out, stamp, path, bench):
     with HP87xxES() as vna:
         pw = vna.power()
         if pw > MAX_SOURCE_DBM:
