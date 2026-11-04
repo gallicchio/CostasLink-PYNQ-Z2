@@ -264,13 +264,18 @@ def survey(step=5, lo=4900, hi=6000, seconds=0.005, park_tx=None):
             pts = b.board_call("noise_scan", "slow", volts=volts, seconds=seconds)
             row = {"f_mhz": f, "q0": q0, "sigma": None, "v0": None, "dbm": None, "inr_db": None, "tail": None}
             z = [(v, nd.inv_cdf(1.0 - d)) for v, d in pts if 0.1 < d < 0.9]
-            if len(z) >= 2:
+            # three points at least, and the fit's middle inside the scan and its sigma under the scan's half-span: two
+            # points made 5885 MHz '-44.1 dBm' with v0 5.05 V and sigma 3.2 V (2026-11-04 07:26), a line through anything
+            if len(z) >= 3:
                 n = len(z)
                 mz, mv = sum(a for _, a in z) / n, sum(v for v, _ in z) / n
                 szz = sum((a - mz) ** 2 for _, a in z)
                 if szz > 0:
                     slope = sum((v - mv) * (a - mz) for v, a in z) / szz      # volts per unit z
                     sigma, v0 = abs(slope), mv - slope * mz
+                if szz > 0 and not (volts[0] <= v0 <= volts[-1] and sigma < (volts[-1] - volts[0]) / 2):
+                    row["fit"] = "implausible: v0 %.3f V, sigma %.3f V" % (v0, sigma)
+                elif szz > 0:
                     dbm = b.board_call("sigma_to_dbm", sigma, "slow")
                     past = [d for v, d in pts if v > v0 + 4.0 * sigma]
                     row.update(sigma=sigma, v0=v0, dbm=dbm, inr_db=dbm - b.board_call("thermal_dbm", "slow"),
