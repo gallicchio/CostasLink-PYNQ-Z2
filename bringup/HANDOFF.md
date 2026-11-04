@@ -55,7 +55,7 @@ the page at http://192.168.2.99:8080/).  The PYNQ's `linkd.py` was patched twice
 backup beside it in `~/costaslink_id13/`: the fade fix (4.47, before it `linkd.py.bak_20261104`) and setup's second
 release from 20 kHz above (4.51, before it `linkd.py.bak_20261104b`); the deployed file is the repository's (sha256
 602d93f1c1b91596...).  `link.json` there is the 5200 MHz link (its original `link.json.bak_20261103`).
-On 2026-11-04 08:57-09:25 the dishes were off for the one-board T/R switch test (4.54: TX ANT -> SW TX, SW RX -> RX ANT, ANT on a load; `switch_recovery.py`, `switch_probe.py`, both refuse without `--cabled`); the AGC, the loggers and scopewatch were stopped for it.  With the dishes back, restart the server (`night.restart_server()`) before trusting the page.
+On 2026-11-04 08:57-09:25 the dishes were off for the one-board T/R switch test (4.54: TX ANT -> SW TX, SW RX -> RX ANT, ANT on a load; `switch_recovery.py`, `switch_probe.py`, both refuse without `--cabled`); the AGC, the loggers and scopewatch were stopped for it.  At 11:10-11:55 the DSA875 (on the laptop's USB) took the TX's spectrum, first on ANT with that cabling, then on TX ANT itself with RX ANT on 50 ohm and the switch's jacks open (4.55, `tx_spectrum.py`, which also refuses without `--cabled`).  With the dishes back, restart the server (`night.restart_server()`) before trusting the page.
 
 **Power (the E3646A, USB serial):** output 1 the board at 5.30 V, 1.5 A limit (the board draws about 0.9 A); output 2
 the PYNQ at 12.0 V, 1.5 A limit, OVP 13.5 V.  One switch serves both outputs; the board is switched by its output's
