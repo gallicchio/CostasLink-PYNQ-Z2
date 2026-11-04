@@ -28,7 +28,7 @@ from siglent_SDS1104XE import SDS1104XE, USB_VENDOR, USB_PRODUCT       # noqa: E
 PROBE_FACTOR = 21.0          # a 1 k tap into 50 ohm: (1000 + 50) / 50
 CHANNELS = {1: "TRIG A", 2: "I MON", 3: "Q MON", 4: "ERR MON"}
 # (V/div, offset) for each channel: offsets centre the expected level
-SETUP = {1: (0.5, -0.85), 2: (0.02, -0.078), 3: (0.02, -0.078), 4: (0.05, -1.63)}
+SETUP = {1: (0.5, -0.85), 2: (0.005, -0.078), 3: (0.005, -0.078), 4: (0.05, -1.63)}   # 5 mV/div = 0.1 V/div at the arm, the bench's
 
 
 def open_scope():

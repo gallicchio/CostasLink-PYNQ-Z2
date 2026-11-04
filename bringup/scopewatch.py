@@ -5,6 +5,7 @@ constellation) with what the link and the B210 were doing then (Jason, 2026-10-3
 one of N' tests and from a PRBS burst, raw and with the timing recovered, each saying what the board and the B210 did).
 
     python3 bringup/scopewatch.py [--hours 60]
+    python3 bringup/scopewatch.py --scope sds1104xe --dash http://192.168.2.99:8080   # the lab laptop (BRINGUP_LOG 4.46)
 
 It reads the page (HTTP) and the scope only: no request to the board, so linkd and the self-test go on.  The scope's
 timebase is set for each capture and put back after; its channels, offsets and trigger are left as they are (ch2 and
@@ -26,6 +27,40 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 DASH = "http://192.168.8.142:8080"
 SCOPE = "192.168.8.203"
+# the lab laptop's SDS1104X-E (USB, the older command set, 1 Mohm inputs with external 50 ohm, so the 1 k taps arrive /21
+# with no probe factor to set: FACTOR multiplies its readings back to the arm and divides trigger levels on the way in)
+SCOPE_E = False
+FACTOR = 21.0
+
+
+def _trig_get(sc):
+    """the scope's edge trigger as it stands: (source, level, slope), to put back exactly"""
+    if SCOPE_E:
+        t = sc.trigger()
+        return (t["source"], t["level"], t["slope"])
+    return (sc.q(":TRIGger:EDGE:SOURce?"), sc.q(":TRIGger:EDGE:LEVel?"), sc.q(":TRIGger:EDGE:SLOPe?"))
+
+
+def _trig_set(sc, src, level, slope, at_arm=True):
+    """src 'C2' or 2; level in volts at the arm (at_arm) or at the scope's input (as _trig_get gave it)"""
+    if SCOPE_E:
+        ch = int(str(src).upper().lstrip("C"))
+        up = str(slope).upper()
+        sl = "rising" if up.startswith(("RIS", "POS")) else "falling" if up.startswith(("FAL", "NEG")) else "alternate"
+        sc.trigger(source=ch, level=float(level) / (FACTOR if at_arm else 1.0), slope=sl)
+        return
+    sc.w(":TRIGger:EDGE:SOURce %s" % (src if str(src).upper().startswith("C") else "C%d" % src))
+    sc.w(":TRIGger:EDGE:LEVel %s" % (("%.4f" % level) if isinstance(level, float) else level))
+    sc.w(":TRIGger:EDGE:SLOPe %s" % slope)
+
+
+def _tdiv(sc):
+    return sc.qf("TDIV?") if SCOPE_E else float(sc.q(":TIMebase:SCALe?"))
+
+
+def _wave(sc, ch):
+    t, v, info = sc.waveform(ch)
+    return t, (v * FACTOR if SCOPE_E else v), info
 
 
 def get(path):
@@ -54,12 +89,10 @@ def capture(sc, tdiv, trig=None, still=None):
     A2 moves only Q, so it triggers on Q's step up: on I the single shot waited out its 3 s and the capture came after
     the symbols had ended (2026-11-01 07:32).  still(): whether the step is still on once the scope has acquired; if
     not, None (nothing read)"""
-    old = sc.q(":TIMebase:SCALe?")
-    old_trig = (sc.q(":TRIGger:EDGE:SOURce?"), sc.q(":TRIGger:EDGE:LEVel?"), sc.q(":TRIGger:EDGE:SLOPe?"))
+    old = _tdiv(sc)
+    old_trig = _trig_get(sc)
     if trig:
-        sc.w(":TRIGger:EDGE:SOURce C%d" % trig[0])
-        sc.w(":TRIGger:EDGE:LEVel %.4f" % trig[1])
-        sc.w(":TRIGger:EDGE:SLOPe %s" % trig[2])
+        _trig_set(sc, trig[0], trig[1], trig[2])
     sc.timebase(scale=tdiv)
     time.sleep(0.3)
     try:
@@ -68,13 +101,11 @@ def capture(sc, tdiv, trig=None, still=None):
         sc.acquire_now()
     finally:
         if trig:
-            sc.w(":TRIGger:EDGE:SOURce %s" % old_trig[0])
-            sc.w(":TRIGger:EDGE:LEVel %s" % old_trig[1])
-            sc.w(":TRIGger:EDGE:SLOPe %s" % old_trig[2])
+            _trig_set(sc, *old_trig, at_arm=False)
     ok = still is None or still()
     if ok:
-        t2, v2, _ = sc.waveform(2)
-        t3, v3, _ = sc.waveform(3)
+        t2, v2, _ = _wave(sc, 2)
+        t3, v3, _ = _wave(sc, 3)
     sc.run()
     sc.timebase(scale=float(old))
     if not ok:
@@ -84,12 +115,23 @@ def capture(sc, tdiv, trig=None, still=None):
 
 
 def main(argv):
+    global DASH, SCOPE_E
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--hours", type=float, default=60.0)
+    ap.add_argument("--dash", default=DASH, help="the status page's address (default the bench's)")
+    ap.add_argument("--scope", default=SCOPE, help="the SDS2104X's address, or 'sds1104xe' (the laptop's, on USB)")
     a = ap.parse_args(argv)
+    DASH = a.dash
+    sys.path.insert(0, os.path.expanduser("~/lab-instrument-control"))
     sys.path.insert(0, os.path.expanduser("~/lab-instrument-control/siglent"))
-    from siglent_SDS2104X import SDS2104X
-    sc = SDS2104X(SCOPE)
+    if a.scope == "sds1104xe":
+        from scpi_link import usbtmc_node
+        from siglent_SDS1104XE import SDS1104XE, USB_VENDOR, USB_PRODUCT
+        SCOPE_E = True
+        sc = SDS1104XE(usb=usbtmc_node(USB_VENDOR, USB_PRODUCT))
+    else:
+        from siglent_SDS2104X import SDS2104X
+        sc = SDS2104X(a.scope)
     done, t_stop = set(), time.time() + 3600 * a.hours
     off = {"i": 0.0, "q": 0.0, "t": None}            # the scope's DC error at 50 ohm, in volts at the arm
     print("%s watching the self-test for symbols and data" % time.strftime("%H:%M:%S"), flush=True)
@@ -166,7 +208,8 @@ def main(argv):
                                   "leg": (r.get("leg_ref_mv") or 160) / 1000.0, "i0": r.get("i0"), "q0": r.get("q0"),
                                   "link": now.get("text", ""), "b210": b2, "text": now.get("text", ""),
                                   "source": "scopewatch.py", "dt_ns": dt, "i": i, "q": q,
-                                  "input": "50 ohm, the 1 k taps /21 (the arm's own edge)"})
+                                  "input": "50 ohm, the 1 k taps /21 (the arm's own edge)" + (
+                                      "; SDS1104X-E, external 50 ohm" if SCOPE_E else "")})
         except Exception as e:                                   # noqa: BLE001 - the server restarting: the next step
             out = "not posted: %s" % e
         print("%s %s: %d samples %.2f ns apart; the B210 %s -> %s" % (time.strftime("%H:%M:%S"), now.get("text", ""), len(i), dt, b2, out),
