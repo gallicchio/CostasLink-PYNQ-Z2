@@ -98,7 +98,10 @@ Grouped by what each buys; within a group, in order.  None needs new hardware.
    the data needs to carry its sign (item 9).  Over the dishes (4.50): off, 20 of 20 gaps lost (from 11 ms), 2-7 s
    each; on, 19 of 20 held to 22 s (one slip), and one let go 1.7 s into a 15.8 s gap: a hold that a burst can
    release wants a second guard (linkd holding the loop while lockmon says 'no carrier', or the hold re-taken
-   whenever the windows go quiet again).
+   whenever the windows go quiet again).  **And as set it slips the loop under OOK**: 12 of 36 OOK rounds (and 2 of
+   15 calibrations) were followed by a half-cycle slip with it on, none of 123 with it off (4.50): OOK's runs of off
+   symbols read as the carrier gone.  Before deployment: a window longer than the longest off run of any modulation
+   in use (256 clocks now), or the hold suspended while the board's own OOK and calibrations run.
 9. **The 180-degree ambiguity in the data**: differential encoding of BPSK (and of A3's I bit), or a known preamble
    word the receiver checks after every gap; today a slip inverts every bit until software notices (REVB 24, 4.21).
 10. **The re-acquisition in gateware** (REVB 18, 26, U4): linkd's recovery from above in milliseconds instead of 2-3 s
