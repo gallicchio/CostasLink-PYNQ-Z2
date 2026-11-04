@@ -104,7 +104,12 @@ class LinkD:
         g = cl.gate(seconds=0.01, inputs=("CMP_I", "CMP_QP", "CMP_QN"))
         i, q, vc = cl.adc("I"), cl.adc("Q"), cl.adc("VC")
         di, dq = i - self.i0, q - self.q0
-        a = self.leg or 0.1
+        # the test's scale: the learned leg, or the I arm's own deflection now when that is larger.  With the learned
+        # leg alone, a carrier back from a deep fade stayed 'not locked' for good (2026-11-04 00:08, BRINGUP_LOG 4.47:
+        # the leg learned as 13.7 mV at DSA 27, the carrier back at 156 mV, Q's ordinary offset past 0.35 of 13.7 mV, so
+        # the leg was never learned again and the windows stayed set for 15 mV).  A loss or a false lock still fails:
+        # there I falls to its middle (the beat averaged), so |di| is not the larger
+        a = max(self.leg or 0.1, abs(di))
         e_i, e_q = g["CMP_I"]["edges"], g["CMP_QP"]["edges"] + g["CMP_QN"]["edges"]
         locked = (e_i < 50 and abs(di) > 0.5 * a and abs(dq) < 0.35 * a) or (e_q < 20 and abs(dq) < 0.35 * a and abs(di) > 0.03)
         return {"locked": locked, "di": di, "dq": dq, "vc": vc, "e_i": e_i, "e_q": e_q}
