@@ -55,6 +55,7 @@ the page at http://192.168.2.99:8080/).  The PYNQ's `linkd.py` was patched twice
 backup beside it in `~/costaslink_id13/`: the fade fix (4.47, before it `linkd.py.bak_20261104`) and setup's second
 release from 20 kHz above (4.51, before it `linkd.py.bak_20261104b`); the deployed file is the repository's (sha256
 602d93f1c1b91596...).  `link.json` there is the 5200 MHz link (its original `link.json.bak_20261103`).
+On 2026-11-04 08:57-09:25 the dishes were off for the one-board T/R switch test (4.54: TX ANT -> SW TX, SW RX -> RX ANT, ANT on a load; `switch_recovery.py`, `switch_probe.py`, both refuse without `--cabled`); the AGC, the loggers and scopewatch were stopped for it.  With the dishes back, restart the server (`night.restart_server()`) before trusting the page.
 
 **Power (the E3646A, USB serial):** output 1 the board at 5.30 V, 1.5 A limit (the board draws about 0.9 A); output 2
 the PYNQ at 12.0 V, 1.5 A limit, OVP 13.5 V.  One switch serves both outputs; the board is switched by its output's
@@ -62,7 +63,7 @@ voltage (0 V or 5.3 V).  `python3 bringup/bench.py --board A psu up | cycle | py
 `python3 bringup/bench.py pause --minutes 10` (a top-level command, not under `psu`).
 
 **Running on the bench PC** (started from the chat; they survive it as background shells until the PC is restarted or
-they time out; stop them with `pkill -f <name>` before the board is moved):
+they time out; before the board is moved, stop each by its PID after `ps -o pid,lstart,args -p <pid>` shows it is the one, never `pkill -f` (OpticsPCBs/CLAUDE.md, 'Finding, waiting on and stopping your own processes')):
 * `bringup/bench.py --board A --stage watch run watch --hours 64 --pynq-misses 6 --amps-hi 1.5 --pynq-cycles 3`: the
   watchdog (since 2026-11-01 11:02): logs the current, power-cycles a silent PYNQ at most 3 times, else switches both
   outputs off.  **Pause it (`bench.py pause --minutes 10`) before any deliberate server restart or move.**
