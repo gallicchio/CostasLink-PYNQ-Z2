@@ -5,6 +5,7 @@ saved as Touchstone into bringup/data/board_A/vna/ (gitignored) with its plot, a
     python3 bringup/vna_tests.py measure rxant_dsa20 --dsa 20        # the board on: the DSA held at 20 dB throughout
     python3 bringup/vna_tests.py measure txant_txmon --tx-null       # port 1 TX ANT, port 2 TX MON: the TX nulled
     python3 bringup/vna_tests.py measure sw_ant_swrx_tx --ctrl tr_a=0   # the switch block held in transmit
+    python3 bringup/vna_tests.py compress rx_dsa0 --dsa 0 --cw 4.0 5.2 --window -58 -40   # gain against drive (P1dB)
     python3 bringup/vna_tests.py summary FILE.s2p [FILE2.s2p ...]    # the numbers again, no instrument
 
 It needs the calibration in force (register 29, BRINGUP_LOG 4.36: full 2-port, 3-6.5 GHz, 1601 points, -40 dBm) and
@@ -102,18 +103,68 @@ def measure(name, dsa=None, board="A", tx_null=False, ctrl=None):
     return path
 
 
+def compress(name, cws_ghz, start, stop, dsa=None, board="A", ctrl=None, register=29):
+    """S21 against source power at each CW frequency (the analyzer's power sweep, the 2-port correction applied at
+    the CW frequency), then the calibrated frequency sweep back (RECAREG<register>) and HOLD.  The powers are the
+    analyzer's at port 1, so the board's input; never above MAX_SOURCE_DBM."""
+    if stop > MAX_SOURCE_DBM:
+        raise SystemExit("a power sweep to %+.1f dBm: above %+.0f, not into this board" % (stop, MAX_SOURCE_DBM))
+    out = os.path.join(HERE, "data", "board_%s" % board, "vna")
+    os.makedirs(out, exist_ok=True)
+    stamp = time.strftime("%Y-%m-%d_%H%M")
+    bench = None
+    if dsa is not None or ctrl:
+        from bench import Bench
+        bench = Bench(board, "vna")
+    rows = []
+    with HP87xxES() as vna:
+        if not vna.corrected():
+            raise SystemExit("correction is off: recall the calibration first (RECAREG29;)")
+        try:
+            for g in cws_ghz:
+                vna.power_sweep(cw_hz=g * 1e9, start_dbm=start, stop_dbm=stop)
+                if dsa is not None:
+                    bench.board_call("dsa", dsa)
+                if ctrl:
+                    bench.board_call("ctrl", **ctrl)
+                r = vna.compression("S21")
+                path = os.path.join(out, "%s_%s_%gGHz_%+.0f_%+.0fdBm.csv" % (stamp, name, g, start, stop))
+                with open(path, "w") as fh:
+                    fh.write("# %s, S21 against port 1's power at %.4f GHz%s\npower_dBm,gain_dB,phase_deg\n"
+                             % (name, g, "" if dsa is None else ", DSA %.2f dB" % dsa))
+                    for pw, ga, ph in zip(r["power"], r["gain"], r["phase"]):
+                        fh.write("%.3f,%.4f,%.3f\n" % (pw, ga, ph))
+                sm = r["smooth"]
+                line = ("%s %.3f GHz, %+.0f to %+.0f dBm: small-signal %+.2f dB, at the top %+.2f dB (%.2f dB down), "
+                        "noise %.3f dB, P1dB in %s" % (name, g, start, stop, r["small_signal"], sm[-1],
+                                                      r["small_signal"] - sm[-1], r["noise"],
+                                                      "none" if r["p_in"] is None else "%+.1f dBm" % r["p_in"]))
+                print(line)
+                rows.append(line)
+        finally:
+            vna._opc("RECAREG%d;" % register, sweeps=2, floor=30)
+            vna.w("HOLD;")
+            print("recalled register %d, held; corrected %s, power %+.1f dBm" % (register, vna.corrected(), vna.power()))
+    return rows
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("action", choices=("measure", "summary"))
+    ap.add_argument("action", choices=("measure", "compress", "summary"))
     ap.add_argument("names", nargs="+", help="measure: the test's name; summary: .s2p files")
     ap.add_argument("--dsa", type=float, help="hold the board's DSA at this attenuation (dB) during the sweeps")
     ap.add_argument("--tx-null", action="store_true", help="hold the TX at its carrier null during the sweeps")
     ap.add_argument("--ctrl", help="CTRL bits to hold during the sweeps, e.g. tr_a=0 or tr_a=1,tx_dis=1")
+    ap.add_argument("--cw", type=float, nargs="+", default=[5.2], help="compress: the CW frequencies, GHz")
+    ap.add_argument("--window", type=float, nargs=2, default=[-58.0, -40.0], help="compress: start and stop, dBm")
     ap.add_argument("--board", default="A")
     a = ap.parse_args()
     if a.action == "measure":
         ctrl = {k: int(v) for k, v in (kv.split("=") for kv in a.ctrl.split(","))} if a.ctrl else None
         measure(a.names[0], a.dsa, a.board, a.tx_null, ctrl)
+    elif a.action == "compress":
+        ctrl = {k: int(v) for k, v in (kv.split("=") for kv in a.ctrl.split(","))} if a.ctrl else None
+        compress(a.names[0], a.cw, a.window[0], a.window[1], a.dsa, a.board, ctrl)
     else:
         for p in a.names:
             f, data, _ = vna_measure.read_s2p(p)
