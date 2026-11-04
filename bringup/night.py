@@ -64,7 +64,8 @@ def now_state():
             "leg_setup": L.get("leg_setup"), "losses": L.get("losses"), "recoveries": L.get("recoveries"),
             "failed": L.get("failed"), "log_dbm": det.get("log_dbm"), "peak_dbm": det.get("peak_dbm"),
             "temp_c": det.get("temp_c"), "v5_rf": det.get("v5_rf"), "tx_mhz": d.get("tx_mhz"), "rx_mhz": d.get("rx_mhz"),
-            "adc": d.get("adc"), "step": ((d.get("selftest") or {}).get("now") or {}).get("step")}
+            "adc": d.get("adc"), "step": ((d.get("selftest") or {}).get("now") or {}).get("step"),
+            "shold": d.get("shold")}
 
 
 def note(text, kind="info"):
@@ -434,6 +435,10 @@ def gaps(n=20, holdover=False, gap_s=(30, 60), seed=None):
                    "losses": (after.get("losses") or 0) - (before.get("losses") or 0),
                    "recoveries": (after.get("recoveries") or 0) - (before.get("recoveries") or 0),
                    "failed": (after.get("failed") or 0) - (before.get("failed") or 0),
+                   # the holdover's own counts across the gap (gap 13 of 2026-11-04 04:51, held on, lost 1.7 s into a
+                   # 15.8 s mute: whether the hold let go or never took could not be told from the page's states)
+                   "holds": ((after.get("shold") or {}).get("holds") or 0) - ((before.get("shold") or {}).get("holds") or 0),
+                   "held_s": ((after.get("shold") or {}).get("seconds") or 0) - ((before.get("shold") or {}).get("seconds") or 0),
                    "events": [(round(e["t"] - t0, 2), e.get("kind"), e.get("text", "")[:90]) for e in ev], "looks": looks[:8]}
             log(kind="gap", **row)
             out.append(row)

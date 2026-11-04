@@ -40,6 +40,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 V_MID = 1.65
 VC_NOMINAL = 1.861                       # VC with the VCXO on the TCXO's frequency (bringup/linktests.py VC_LOCK)
 KV_HZ_PER_V_5800 = 457e3
+SETUP_RELEASE_HZ = (60e3, 20e3)          # setup's releases above the carrier, in order (BRINGUP_LOG 4.51)
 RELOCK_S = 0.2
 DAC1, DAC2 = 0x60, 0x61                 # the two AD5696R (costaslink.DAC1, DAC2)
 CAL_FILE = os.path.join(HERE, "windows.json")    # each lock point's calibration, kept across a restart
@@ -265,17 +266,23 @@ class LinkD:
         self.vc_lock = VC_NOMINAL
         dsa, floor, got = 31.75, float(cfg.get("dsa_min", 6.0)), None
         while dsa >= floor - 1e-9:
-            if self.release_at(VC_NOMINAL + 60e3 / self.kv(), pll, dsa, 0):
-                leg = abs(self.observe()["di"])
-                got = (dsa, leg)
-                if leg >= target:
+            # from 60 kHz above, and when that does not lock from 20 kHz above: at 4500-4525 MHz a false lock 34-45 kHz
+            # above the carrier caught every release from 60 kHz at every step (the false lock 40-50 kHz below, REVB
+            # 31, is the reason for releasing above at all), and setup never finished; from 20 kHz it locked every time
+            # (2026-11-04 05:39, BRINGUP_LOG 4.51)
+            for off_hz in SETUP_RELEASE_HZ:
+                if self.release_at(VC_NOMINAL + off_hz / self.kv(), pll, dsa, 0):
+                    leg = abs(self.observe()["di"])
+                    got = (dsa, leg, off_hz)
                     break
+            if got is not None and got[0] == dsa and got[1] >= target:
+                break
             dsa -= 2.0
         if got is None:
             cl.ctrl(loop_hold=1, tx_dis=1)
             return False
         if abs(dsa - got[0]) > 1e-9:                      # the last step did not lock: back to the best one
-            self.release_at(VC_NOMINAL + 60e3 / self.kv(), pll, got[0], 0)
+            self.release_at(VC_NOMINAL + got[2] / self.kv(), pll, got[0], 0)
         kept = self._load_cal(cfg)
         if kept:                                          # back to the level the kept calibrations were taken at
             self._fine_dsa(cl, got[0], sum(c["leg"] for c in kept.values()) / len(kept), floor)

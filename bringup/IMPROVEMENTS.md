@@ -57,6 +57,10 @@ BRINGUP_LOG ('What runs on the board') has every deploy; REVB.md is the list of 
   alone, so a carrier back from a gradual fade to DSA 24-27 left linkd 'watching' with its leg 13.7 mV and the windows set
   for 15 mV for good.  observe() now scales by the larger of the learned leg and the I arm's deflection; the same fade
   learned again to 130 mV within 60 s.
+- **linkd's setup at 4500-4525 MHz** (2026-11-04, BRINGUP_LOG 4.51): setup released the loop from 60 kHz above the
+  carrier only, and there a false lock 34-45 kHz above caught every release at every DSA step: setup never finished.  It
+  now tries 20 kHz above when 60 does not lock (`SETUP_RELEASE_HZ`); 4500 and 4525 MHz set up and ran clean, 5200 as
+  before.  The recovery already started at 20 kHz.
 
 ### Next: the best rev A can do in gateware and firmware
 
@@ -91,7 +95,10 @@ Grouped by what each buys; within a group, in order.  None needs new hardware.
 **Robustness (gateware and firmware)**
 8. **Turn the signal holdover on in deployment** (Jason's call): every carrier gap up to about 100 s rides through
    instead of costing a 2-3 s recovery after 44 ms (4.21-4.22).  With it, half the gaps come back half a cycle over:
-   the data needs to carry its sign (item 9).
+   the data needs to carry its sign (item 9).  Over the dishes (4.50): off, 20 of 20 gaps lost (from 11 ms), 2-7 s
+   each; on, 19 of 20 held to 22 s (one slip), and one let go 1.7 s into a 15.8 s gap: a hold that a burst can
+   release wants a second guard (linkd holding the loop while lockmon says 'no carrier', or the hold re-taken
+   whenever the windows go quiet again).
 9. **The 180-degree ambiguity in the data**: differential encoding of BPSK (and of A3's I bit), or a known preamble
    word the receiver checks after every gap; today a slip inverts every bit until software notices (REVB 24, 4.21).
 10. **The re-acquisition in gateware** (REVB 18, 26, U4): linkd's recovery from above in milliseconds instead of 2-3 s
@@ -143,6 +150,10 @@ Grouped by what each buys; within a group, in order.  None needs new hardware.
     over the grids, 2026-11-03) no frequency resolved.  Scan both sides of the middle measured with the loop held
     (night.py's `survey` does, 4.47); and switch the TX synthesizer's output off for the scan (its own LO and spurs were
     the loudest things in the band with TX_DIS set: REVB 49).
+23. **Setup's release, faster and surer** (4.51): at 4500 MHz the 60 kHz release fails into the false lock above at
+    every one of ten DSA steps before the 20 kHz one locks, so setup takes 2.5-3 minutes; start each step from the
+    offset that locked at the last one.  And tell a false lock from no carrier: VC settled while CMP_I chatters
+    (6 000-15 000 edges in 10 ms) is a false lock, to be released from elsewhere, not a missing carrier to back off from.
 
 ## 2. Rev A hardware: rework by hand
 
