@@ -50,7 +50,7 @@ from rigol_DSA875 import DSA875, usbtmc_node, USB_VENDOR, USB_PRODUCT  # noqa: E
 sys.path.insert(0, os.path.join(HERE, "..", "gateware"))
 import max2871_regs                                                  # noqa: E402
 
-SERVER = "http://192.168.2.99:8080"
+SERVER = "http://%s:8080" % os.environ.get("COSTAS_PYNQ_HOST", "192.168.2.99")   # board B: COSTAS_PYNQ_HOST=192.168.2.98
 OUT_DIR = os.path.join(HERE, "data", "board_A", "switch")
 CARR, NULL, NULL2 = 0b0111, 0b0101, 0b1010   # ladder codes {Q1 Q0 I1 I0}: (+a, 0), (0, 0), (0, 0)
 # name: (tr_a, tx_dis, code, tx RFOUTA, rx RFOUTA)
@@ -112,6 +112,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cabled", action="store_true", help="the cabling above is in place (required)")
     ap.add_argument("--at", choices=("ant", "txant"), required=True, help="where the analyzer is (above)")
+    ap.add_argument("--board", default="A", help="A or B (with COSTAS_PYNQ_HOST its PYNQ; the records say which)")
     ap.add_argument("--states", nargs="+", default=None)
     ap.add_argument("--spans", nargs="+", default=list(SPANS))
     ap.add_argument("--avg", type=int, default=8, help="sweeps power-averaged per trace")
@@ -125,7 +126,7 @@ def main():
     states = a.states or [s for s in STATES if (a.at == "ant" or s != "rx_side") and (a.null_vr or s != "null_trim")]
     if "null_trim" in states and not a.null_vr:
         sys.exit("null_trim needs --null-vr VR_I VR_Q")
-    b = B.Bench("A", "switch")
+    b = B.Bench(a.board, "switch")
     cl = b.board_call
     sa = DSA875(usb=usbtmc_node(USB_VENDOR, USB_PRODUCT))
     now = json.loads(urllib.request.urlopen(SERVER + "/api/now", timeout=5).read())
@@ -141,8 +142,9 @@ def main():
     vr0 = (dac0["VR_I"], dac0["VR_Q"])
     sa_prev = sa.status()
     stamp = time.strftime("%Y-%m-%d_%H%M%S")
-    os.makedirs(OUT_DIR, exist_ok=True)
-    base = os.path.join(OUT_DIR, "%s_spectrum_%s" % (stamp, a.at))
+    out_dir = OUT_DIR.replace("board_A", "board_" + a.board)
+    os.makedirs(out_dir, exist_ok=True)
+    base = os.path.join(out_dir, "%s_spectrum_%s" % (stamp, a.at))
     print("TX %s MHz RX %s MHz, DSA %s; saved %s; the analyzer was %s" % (
         tx_mhz, rx_mhz, dsa0, {k: hex(v) for k, v in regs.items()}, sa_prev["frequency"]), flush=True)
     traces, summary = {}, {"at": a.at, "tx_mhz": tx_mhz, "rx_mhz": rx_mhz, "dsa0": dsa0, "avg": a.avg,
