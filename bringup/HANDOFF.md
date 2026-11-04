@@ -24,7 +24,8 @@ should be communicated to that agent through .md files in the repo."
   (Jason's call); do not work around a permission denial.
 * **Commit code and docs; never push.**  Bench data stays on the PC (`bringup/data/` is gitignored); a few example
   pieces of data may go in.  Nothing copyrighted into the repo (datasheets stay out; their text extracts are fine).
-  Do not commit `OpticsPCBs/CLAUDE_PCB.md` (Jason's working copy is modified) and do not `git stash`.
+  Commit `OpticsPCBs/CLAUDE_PCB.md` when you add something substantial to it (Jason, 2026-11-04; it was "do not commit"
+  while his working copy was modified: look at its diff first, and commit only your own lines), and do not `git stash`.
 * **Instruments:** no `*RST` on the Siglents (scope, generator); outputs off when done; ask what is cabled before any
   signal test; the spectrum analyzer is left sweeping continuously at full span when handed back; a low level or a spur
   is investigated across the hardware's whole frequency range, not only 5-6 GHz.
