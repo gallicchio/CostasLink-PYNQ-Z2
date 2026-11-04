@@ -48,6 +48,13 @@ files beside it that hold learned state: `link.json` (the link at 5200 MHz with 
 `windows.json` (each lock point's calibrated windows, put back at setup), `levels.json` (each point's last sweep,
 for the page's panel).  The board's clock is UTC; the PC is PST.
 
+**Since 2026-11-03 evening** (BRINGUP_LOG 4.36-4.51): board A is in the lab on the two 24 dBi dishes across the room
+(10 m cables, 139.75 ns end to end, about -41 dBm at RX ANT), driven from the lab laptop (`bench_config_laptop.json`,
+the page at http://192.168.2.99:8080/).  The PYNQ's `linkd.py` was patched twice that night, each deployed with a
+backup beside it in `~/costaslink_id13/`: the fade fix (4.47, before it `linkd.py.bak_20261104`) and setup's second
+release from 20 kHz above (4.51, before it `linkd.py.bak_20261104b`); the deployed file is the repository's (sha256
+602d93f1c1b91596...).  `link.json` there is the 5200 MHz link (its original `link.json.bak_20261103`).
+
 **Power (the E3646A, USB serial):** output 1 the board at 5.30 V, 1.5 A limit (the board draws about 0.9 A); output 2
 the PYNQ at 12.0 V, 1.5 A limit, OVP 13.5 V.  One switch serves both outputs; the board is switched by its output's
 voltage (0 V or 5.3 V).  `python3 bringup/bench.py --board A psu up | cycle | pynq-off`; the watchdog's pause is
@@ -191,6 +198,8 @@ between the SMA ends to subtract), the latency line from three distances.
 * **QPSK's latency tail on lock point -** (2-3e-7 of decisions 80-214 ns, right but late; none on +; every table
   alike): IMPROVEMENTS 18, plan 'qpsktail' reproduces it in 10 minutes.
 * **The holdover** (carrier gaps up to ~100 s ridden through, half of them a half-cycle slip): off; on is Jason's call.
+  As set it also slips the loop under OOK (12 of 36 OOK rounds over the dishes, BRINGUP_LOG 4.50): not with OOK in the
+  traffic until its window outlasts OOK's off runs (IMPROVEMENTS 8).
 * **The B210's self-loop at 5240 / 5400 MHz** disturbed the board's own data once (soak15 notes, not re-checked).
 * The 8720ES tests, C102, 5.8 GHz, board B, two boards, the long lab: this file's section 4.
 * Rev B: [`REVB.md`](REVB.md) (what rev A teaches, 47 rows), [`../docs/REVB_DESIGN_SPACE.md`](../docs/REVB_DESIGN_SPACE.md)

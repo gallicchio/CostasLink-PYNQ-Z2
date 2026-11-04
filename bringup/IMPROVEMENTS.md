@@ -144,6 +144,15 @@ Grouped by what each buys; within a group, in order.  None needs new hardware.
     and IN found; A3 75.0 %, QPSK 93.6 % for the six minutes), where a calibrated set gives A3 97-100 % and QPSK 99 %
     (BRINGUP_LOG 4.48).  Apply the windows that found plateaus and keep only the failing one on the plain rule; and look
     at why QP has none there (the corners' Q 0.27 of the leg, 4.47: the plateau may be narrower than the sweep's step).
+    **The night's 89 calibrations say it is the level** (4.52): none failed with the I leg at 160 mV or more (0 of 38,
+    4450-5300 MHz), 8 of 15 failed at 150-160 mV, 13 of 14 at 130-150, 18 of 22 below 130; at 5200 MHz itself 152-153 mV failed 5 times and 165-182 mV passed 24 times (one pass at 131 mV).
+    Setup's `leg_target` is 150 mV and its 2 dB steps leave the leg anywhere from 150 to 190 mV, so whether a carrier
+    gets calibrated windows (and A3 / QPSK near 100 %) has been the luck of the step (5000 MHz: 134 mV, 6 of 6 failed).
+    Then at 5200 MHz by the DSA alone (4.52): the calibration failed 8 of 8 with its leg at 147-163 mV and passed 10 of
+    10 at 179-182, minutes apart, and A3's single symbols fell from 97-99.97 % to 77 % on the plain windows.  Cheapest
+    fix: `leg_target` 0.185 in `link.json` (0.175 would sit at the edge) with `_fine_dsa` trimming to it at every setup
+    (not only when a kept calibration exists), and the AGC (item 21) holding it; Jason's call, it is the link's
+    configuration.  Why QP's plateau closes below about 170 mV is still to see (a fixed offset against the leg, REVB 48?).
 21. **The AGC of item 19, over the air** (BRINGUP_LOG 4.47): at 5.2 GHz BPSK holds <= 3.5e-7 at every rate only within
     about 6 dB of setup's level; 6 dB weaker, A1 sits at 50 % and 25-50 Mbaud fail while the loop reads locked.  A slow
     loop on the DSA from linkd's leg (night.py's `agc`, outside linkd, as the first try), with the windows following by
