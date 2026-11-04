@@ -179,8 +179,8 @@ GHz if the antennas favour it, then `soak.py run` overnight at both carriers.
   A times the round trip, BRINGUP_LOG 3.4g-h).  Two pages, one per PYNQ.
 
 **Step 6: across the long lab (MONDAY.md section 6):** the two VV 24 dBi grids on their 10 m cables (the VNA's link
-between them was -48.2 dB, RX ANT about -39 dBm), the lock, the schemes, the turnaround (135.6 ns of flight to
-subtract), the latency line from three distances.
+between them -50.3 dB at 5.2 GHz, RX ANT about -41 dBm: BRINGUP_LOG 4.43), the lock, the schemes, the turnaround (139.75 ns
+between the SMA ends to subtract), the latency line from three distances.
 
 ## 5. What is open (in one place)
 

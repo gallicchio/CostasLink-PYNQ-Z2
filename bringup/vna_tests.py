@@ -41,10 +41,17 @@ def db(x):
     return 20 * np.log10(np.maximum(np.abs(x), 1e-10))
 
 
+def spot_db(f, s, ghz):
+    """|S| in dB at a frequency between the sweep's points: the magnitude interpolated, never the complex value
+    (a long path turns its phase 110 degrees a point on the dish link, and the chord between two such points is
+    up to 4.8 dB short: the error this replaced, 2026-11-03)"""
+    return float(np.interp(ghz * 1e9, f, db(s)))
+
+
 def summary(f, data, name=""):
     lines = ["%s: %d points, %.3f-%.3f GHz" % (name, len(f), f[0] / 1e9, f[-1] / 1e9)]
     for p in PARAMETERS:
-        lines.append("  %s  " % p + "  ".join("%g:%+.2f" % (g, db(np.interp(g * 1e9, f, data[p]))) for g in SPOT_GHZ))
+        lines.append("  %s  " % p + "  ".join("%g:%+.2f" % (g, spot_db(f, data[p], g)) for g in SPOT_GHZ))
     m = (f >= S11_BAND[0]) & (f <= S11_BAND[1])
     s11 = db(data["S11"])
     k_hi, k_lo = np.argmax(s11[m]), np.argmin(s11[m])
@@ -184,7 +191,7 @@ def levels(name, powers, dsa=None, board="A", ctrl=None, register=29, home=-40.0
                     bench.board_call("ctrl", **ctrl)
                 f, s21 = vna.trace("S21")
                 res[pw] = s21
-                print("%+6.1f dBm: " % pw + "  ".join("%g:%+.2f" % (g, db(np.interp(g * 1e9, f, s21))) for g in SPOT_GHZ),
+                print("%+6.1f dBm: " % pw + "  ".join("%g:%+.2f" % (g, spot_db(f, s21, g)) for g in SPOT_GHZ),
                       flush=True)
             ok = True
         finally:

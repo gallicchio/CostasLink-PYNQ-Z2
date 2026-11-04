@@ -134,6 +134,6 @@ second board server (its own IP; bench.py's config names the host).  Then:
 ## 6. Across the long lab (TODO step 8)
 
 The VV 24 dBi grids at 5.15-5.2 GHz (5.15-5.85 GHz band), each on its 10 m cable to TX ANT / RX ANT, no pads: the VNA's
-link was -48.2 dB, so RX ANT sees about -39 dBm.  Measure the lock, the schemes, the turnaround (subtract 135.6 ns of
-flight), then the latency line: move one grid to two more distances; the slope is c, the intercept the electronics.
+link is -50.3 dB at 5.2 GHz (BRINGUP_LOG 4.43, 2026-11-03), so RX ANT sees about -41 dBm.  Measure the lock, the schemes, the
+turnaround (subtract 139.75 ns, the setup's delay between the two SMA ends: 4.43; October's 135.6 was 4.4 ns short), then the latency line: move one grid to two more distances; the slope is c, the intercept the electronics.
 With two boards, one at each end, each with its own PYNQ and its own page.
