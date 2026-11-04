@@ -197,8 +197,7 @@ def watch_for(seconds, every=5.0):
             "dsa": sorted({r.get("dsa") for r in rows if r.get("dsa") is not None}),
             "leg_min": min([r["leg"] for r in rows if r.get("leg")], default=None),
             "leg_max": max([r["leg"] for r in rows if r.get("leg")], default=None),
-            "log_dbm_med": sorted([r["log_dbm"] for r in rows if r.get("log_dbm")] or [None])[len(rows) // 2 if rows else 0]
-            if any(r.get("log_dbm") for r in rows) else None,
+            "log_dbm_med": (lambda v: v[len(v) // 2] if v else None)(sorted(r["log_dbm"] for r in rows if r.get("log_dbm"))),
             "temp_c": rows[-1].get("temp_c") if rows else None}
 
 
