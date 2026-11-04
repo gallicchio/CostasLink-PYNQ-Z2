@@ -1,0 +1,17 @@
+{
+ "note": "the lab laptop zmash (2026-11-03): COSTAS_BENCH_CONFIG=bringup/bench_config_laptop.json. The board on the 'top' E3632A (FTER3DQU, cal count 29), the PYNQ on the 'bottom' E3632A (FTEP2CPY, cal count 20), each by RS-232; the PYNQ on a direct cable at its static 192.168.2.99 (the laptop 192.168.2.119 on enp0s31f6); the 8720ES at GPIB 16 through the Prologix PXAESUX9; the scope here is an SDS1104X-E on USB, not bench.py's SDS2104X; no Fluke, DSA875 or SDG on this bench",
+ "board": "A",
+ "pynq_host": "192.168.2.99",
+ "pynq_port": 5800,
+ "psu": {
+  "serial": "/dev/serial/by-id/usb-FTDI_USB_Serial_Converter_FTER3DQU-if00-port0",
+  "gpib": null,
+  "out": 1,
+  "pynq_out": null,
+  "pynq_serial": "/dev/serial/by-id/usb-FTDI_USB_Serial_Converter_FTEP2CPY-if00-port0"
+ },
+ "dmm": {"serial": null},
+ "sa": {"host": null, "usb": false},
+ "scope": {"host": null},
+ "gen": {"host": null}
+}

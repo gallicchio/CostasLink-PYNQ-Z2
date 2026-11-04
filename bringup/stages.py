@@ -190,7 +190,7 @@ def watch(b, hours=3.0, dt_s=10.0, amps_lo=0.6, amps_hi=1.2, pynq_misses=3, det_
     t_end, misses, n, why = time.time() + hours * 3600, 0, 0, None
     psu_fails = 0
     cycles, all_off = 0, False
-    pynq = b.cfg["psu"].get("pynq_out")
+    pynq = b.cfg["psu"].get("pynq_out") or b.cfg["psu"].get("pynq_serial")     # the PYNQ's power is ours to cycle
     board_set = (p.setting(out)["volts"], p.setting(out)["amps"])     # what the board is brought back to
     while time.time() < t_end:
         try:

@@ -95,6 +95,38 @@ What the laptop needs that the bench PC has:
 * The bench's `bench_config.json` names USB serial ports by their FTDI IDs; on the laptop they are the same strings
   (the adapters carry them), and the LAN addresses change with the lab's network.
 
+### 3a. The lab laptop as found (`zmash`, 2026-11-03, BRINGUP_LOG 4.35)
+
+* **Config:** `COSTAS_BENCH_CONFIG=bringup/bench_config_laptop.json` in front of every `bench.py` command (the PC's
+  `bench_config.json` is left alone).  `bench.py check` answers for both supplies and the board.
+* **Power: two E3632As, not the E3646A.**  The "top" one (FTDI `FTER3DQU`, `CAL:COUNt?` +29) is the board's, 5.30 V,
+  1.5 A; the "bottom" one (`FTEP2CPY`, +20, FACTORY CAL 2014) the PYNQ's, 12 V, OVP 13.5.  `psu.pynq_serial` in the
+  config makes `psu up | cycle | pynq-on | pynq-off` drive the PYNQ's own supply in the same order as the E3646A's
+  output 2 (the board off first; on only with the server answering our ID).  `psu up --volts 5.3 --amps 1.5` brought
+  board A up at 5.295 V, 0.891 A, CV (16:33 PST).
+* **The PYNQ** on a direct cable: the laptop's `enp0s31f6` is 192.168.2.119/24 (DHCP from a router at 192.168.2.1);
+  the PYNQ answers at its static 192.168.2.99 and takes 192.168.2.142 by DHCP there.  Its micro-USB console is
+  `/dev/serial/by-id/usb-Xilinx_TUL_1234-tul-if01-port0` (115200; the FT2232 appears 0.6 s after the 12 V does: it is
+  powered by the PYNQ, not by the USB); the console is logged in as `xilinx` at boot.  No SSH key on it (Jason's rule):
+  files go over the console, or the PYNQ fetches them (`wget` from a `python3 -m http.server` bound to 192.168.2.119);
+  `sudo -S` on the PYNQ with its password.  From power to the shell 34-41 s, to the server answering about 90 s.
+* **The instruments here:** the 8720ES at GPIB 16 through the Prologix `PXAESUX9` (MY41003347, firmware 7.72: the same
+  analyzer as October's campaign; found uncorrected at +5 dBm, 50 MHz-20.05 GHz, 201 points); an SDS1104X-E on USB
+  (`/dev/usbtmc0`, 100 MHz: not the bench's SDS2104X, so `bench.py`'s scope commands do not apply; its driver now opens
+  on USB alone, lab-instrument-control); no Fluke, DSA875, SDG or B210.  The udev rule is installed.
+* **What is not on this laptop:** the October VNA files (`~/DroneSDR/vna/vna_measurements/` holds only the 2025
+  filter sweeps here), the vendors' manuals (`~/lab-instrument-control/manuals_untracked/`), and `bringup/data/`.
+  So the 8720ES's lowest source power is not known here: tomorrow set `vna.power(-30)` and read it back (the driver
+  raises when the analyzer refuses); if it will not go that low, calibrate with the kit's measured pads on port 1.
+* **Vivado:** 2021.2, 2022.1, 2022.2, 2023.1 and 2024.1 under `~/Downloads/Xilinx/Vivado/`.  PYNQ 3.0.1's overlays are
+  2022.1's (section 1): `source ~/Downloads/Xilinx/Vivado/2022.1/settings64.sh`, then from `gateware/`
+  `nice vivado -mode batch -source pynq/build.tcl -tclargs -strategy Performance_NetDelay_high -out <name>`.  This
+  rebuilt ID 13 from `0618a0b` in about 7 minutes with its logged timing (WNS +0.138, WHS +0.052, 13.015 ns) and a
+  configuration stream identical to the deployed `~/costaslink_id13/costaslink_top.bit` (`build/pynq/overlay_2022.1_id13_laptop/`).
+* **Never load an overlay by hand while `costaslink-netbus` runs.**  On 2026-11-03 an overlay built from the pushed
+  (pre-bring-up) tree was loaded over ID 13 under the running server: the PYNQ froze (no ping, no console) within
+  minutes and needed its 12 V cycled; the service brought ID 13 back at the next boot (4.35).
+
 ## 4. The day: what Jason wants walked through
 
 **Step 1 (if the students come): the demonstration**, MONDAY.md section 1: the page with `?controls=1&view=demo`, the

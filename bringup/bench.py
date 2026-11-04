@@ -38,7 +38,8 @@ for sub in ("", "hp", "fluke", "rigol", "siglent"):
 sys.path.insert(0, os.path.join(PROJECT, "gateware", "driver"))
 sys.path.insert(0, os.path.join(PROJECT, "gateware"))
 
-CONFIG = os.path.join(HERE, "bench_config.json")
+# another bench's instruments (a laptop in the lab: bench_config_laptop.json) without editing the bench PC's file
+CONFIG = os.environ.get("COSTAS_BENCH_CONFIG") or os.path.join(HERE, "bench_config.json")
 DEFAULTS = {
     "board": "A",
     "pynq_host": "192.168.2.99",          # PYNQ's static fallback address; the lab LAN gives it a DHCP one too
@@ -47,7 +48,9 @@ DEFAULTS = {
     # output switch for both) on RS-232 (find the port: python3 scpi_link.py identify)
     # pynq_out: the E3646A's other output powers the PYNQ (since 2026-11-01): the one switch stays on for it, and the
     # board is switched by its own output's voltage (psu_output); None while the PYNQ has its own adapter
-    "psu": {"serial": None, "gpib": None, "out": 1, "pynq_out": None},
+    # pynq_serial: the PYNQ on a supply of its own (an E3632A on RS-232, output 1; the lab laptop, 2026-11-03): then
+    # the board's supply switches the board alone, and psu up / cycle / pynq-on / pynq-off drive the PYNQ's supply
+    "psu": {"serial": None, "gpib": None, "out": 1, "pynq_out": None, "pynq_serial": None},
     "dmm": {"serial": None},              # the Fluke 45 on RS-232
     "sa": {"host": "192.168.8.114", "usb": False},     # the Rigol DSA875 (9 kHz-7.5 GHz): N input, +30 dBm max
     "scope": {"host": "192.168.8.203"},  # the Siglent SDS2104X Plus
@@ -288,6 +291,29 @@ class Bench:
         return self.log.add(kind, self.stage, **kw)
 
     # ---- the supply ----
+    def pynq_supply(self):
+        """The PYNQ's supply and output: the E3646A's other output (psu.pynq_out), a supply of its own (psu.pynq_serial,
+        output 1), or (None, None) while the PYNQ has its own adapter."""
+        c = self.cfg["psu"]
+        if c.get("pynq_serial"):
+            def make():
+                from agilent_E36xxA import AgilentE36xxA
+                return Locked(c["pynq_serial"], lambda: AgilentE36xxA(serial=c["pynq_serial"]))
+            return self._get("pynq_psu", make), 1
+        if c.get("pynq_out"):
+            return self.psu, c["pynq_out"]
+        return None, None
+
+    def _board_zero(self):
+        """The board unpowered before the PYNQ's power changes: its output at 0 V on a shared E3646A, its own supply's
+        output off otherwise."""
+        c = self.cfg["psu"]
+        if c.get("pynq_out"):
+            self.psu.select(c.get("out", 1))
+            self.psu.w("VOLTage 0")
+        else:
+            self.psu.output(False)
+
     def board_on(self):
         """The board's output live: the switch on and, when the PYNQ shares the supply, the board's setting above 0 V."""
         p = self.psu
@@ -331,6 +357,12 @@ class Bench:
         first so TX_EN is held low from the start (install_service.sh)."""
         pynq = self.cfg["psu"].get("pynq_out")
         if not pynq:
+            if on and self.cfg["psu"].get("pynq_serial"):          # the PYNQ on its own supply: the same interlock
+                s, o = self.pynq_supply()
+                if s.q("OUTPut?") != "1" or s.setting(o)["volts"] < PYNQ_V - 1:
+                    raise IOError("the PYNQ's supply is off: psu up (or psu pynq-on) first")
+                if not reachable(self.cfg["pynq_host"], self.cfg["pynq_port"], timeout=3):
+                    raise IOError("the PYNQ's server does not answer: the board is powered once its overlay is loaded")
             got = self.psu.output(on)
             self.record("psu_output", on=bool(on), got=got)
             return got
@@ -351,13 +383,13 @@ class Bench:
         return got
 
     def psu_pynq(self, on, volts=PYNQ_V, amps=PYNQ_A, ovp=PYNQ_OVP_V):
-        """The PYNQ's output (psu.pynq_out).  On: the board's output at 0 V, the PYNQ's set up (20 V range, OVP) at
+        """The PYNQ's output (psu.pynq_out, or its own supply: psu.pynq_serial).  On: the board's output at 0 V, the PYNQ's set up (20 V range, OVP) at
         1.5 V and 0.1 A first (a plug reversed conducts there; the right way round draws about 1 mA), the switch on,
         then 12 V, its draw checked (CV, 0.03-1.2 A).  Off: the board's output to 0 V first, then the switch (both).
         Anything out of bounds switches both off and raises."""
-        p, out, pynq = self.psu, self.cfg["psu"].get("out", 1), self.cfg["psu"].get("pynq_out")
-        if not pynq:
-            raise IOError("bench_config.json: psu.pynq_out is not set (the PYNQ is on its own adapter)")
+        p, pynq = self.pynq_supply()           # the E3646A and its other output, or the PYNQ's own supply and 1
+        if p is None:
+            raise IOError("bench_config.json: neither psu.pynq_out nor psu.pynq_serial is set (the PYNQ is on its own adapter)")
 
         def check(label, ok):
             v, i = p.measure(out=pynq)
@@ -369,16 +401,14 @@ class Bench:
             return r
 
         if not on:
-            p.select(out)
-            p.w("VOLTage 0")
+            self._board_zero()
             time.sleep(1.0)
             got = p.output(False)
             self.record("psu_pynq", on=False, got=got)
             return got
         if p.q("OUTPut?") == "1" and p.setting(pynq)["volts"] >= volts - 0.05:
             return check("already on", lambda v, i, m: True)
-        p.select(out)
-        p.w("VOLTage 0")
+        self._board_zero()
         p.set(0.0, 0.10, out=pynq)
         if p.setting(pynq)["range"] != p.ranges[1]:
             p.set_range(p.ranges[1], out=pynq)
@@ -503,6 +533,11 @@ class Bench:
                 out[name] = getattr(inst, "idn", None) or getattr(getattr(inst, "link", None), "idn", "open")
             except Exception as e:                                       # noqa: BLE001 - a report of what failed
                 out[name] = "no: %s: %s" % (type(e).__name__, e)
+        if self.cfg["psu"].get("pynq_serial"):
+            try:
+                out["pynq_psu"] = getattr(self.pynq_supply()[0], "idn", "open")
+            except Exception as e:                                       # noqa: BLE001
+                out["pynq_psu"] = "no: %s: %s" % (type(e).__name__, e)
         try:
             out["board"] = {"ping": self.cl.bus.ping(), "info": self.cl.info()}
         except Exception as e:                                           # noqa: BLE001
@@ -581,7 +616,8 @@ def main():
                 print(_fmt(bench.psu_pynq(True)))
             elif a.action == "pynq-off":
                 bench.psu_pynq(False)
-                print("the board's output at 0 V, then the switch off: both off")
+                print("the board's output at 0 V, then the switch off: both off" if bench.cfg["psu"].get("pynq_out")
+                      else "the board's supply off, then the PYNQ's: both off")
             elif a.action in ("up", "cycle"):
                 if a.action == "cycle":
                     bench.psu_pynq(False)
