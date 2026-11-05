@@ -817,16 +817,21 @@ def loop_turnaround(loop, s, path, rmap, count=5000, period=1000, width=20, firs
     return st
 
 
-def loop_capture(loop, s, path, rmap, first_edge=False, delay=16, width=20, reply_width=40, fp_clocks=1, post=256,
-                 guard=8, mask=0x1E, msg=0):
-    """one stimulus (challenge `msg`) captured (the comparators and the ladder pads, sample by sample) and its times"""
+def loop_captures(loop, s, path, rmap, msgs, first_edge=False, delay=16, width=20, reply_width=40, fp_clocks=1, post=256,
+                  guard=8, mask=0x1E):
+    """one stimulus per challenge in msgs, each captured (the comparators and the ladder pads, sample by sample) with
+    its times; the reply path armed once (it re-arms on each of this board's TX events)"""
     cl = loop.node.cl
     _loop_arm(loop, s, path, rmap, first_edge, delay, reply_width, fp_clocks)
-    cl.tx_msg(msg)
-    cl.events(period=1000, width=width, count=1, source="fixed", n=s.n)
-    cap = cl.capture("tx_event", post=post, start={"__method__": "tx_go"})
-    out = C.CostasLink.turnaround_from_capture(None, cap, guard=guard, mask=mask)
-    out["capture"] = cap
+    out = []
+    for msg in msgs:
+        cl.tx_msg(msg)
+        cl.events(period=1000, width=width, count=1, source="fixed", n=s.n)
+        cap = cl.capture("tx_event", post=post, start={"__method__": "tx_go"})
+        r = C.CostasLink.turnaround_from_capture(None, cap, guard=guard, mask=mask)
+        r["capture"] = cap
+        r["msg_sent"] = msg
+        out.append(r)
     return out
 
 
@@ -840,8 +845,12 @@ def check_capture(s, cap, reply_map, loop=None):
     if pins is not None and cap.get("t0p") is not None and cap.get("t2") is not None:
         lag = c.get("tx_pins_lag", 0)
         t0 = c["trigger_sample"]
-        stim = pins[min(len(pins) - 1, t0 + cap["t0p"] + lag + 2)]
-        rep = pins[min(len(pins) - 1, t0 + cap["t2"] + lag + 2)]
+        a0, a2 = t0 + cap["t0p"] + lag, t0 + cap["t2"] + lag
+        seg = pins[a0:a2] or [pins[min(len(pins) - 1, a0)]]
+        stim = max(set(seg), key=seg.count)                        # the code held from the stimulus to the reply
+        seg2 = [x for x in pins[a2:a2 + 8] if x != stim] or [pins[min(len(pins) - 1, a2)]]
+        rep = max(set(seg2), key=seg2.count)                       # the reply's code over its first clock
+        out["msg_sent"] = cap.get("msg_sent")
         k = codes.get(stim)
         out.update(stim_code=stim, reply_code=rep, stim_msg=k, reply_msg=codes.get(rep))
         out["reply_right_pins"] = (k is not None and codes.get(rep) == reply_map[k])
@@ -858,7 +867,7 @@ def check_capture(s, cap, reply_map, loop=None):
 
 
 def prover_point(loop, scheme="A3", path="fast", reply="xor1", count=5000, period=1000, width=20, first_edge=False,
-                 delay=16, reply_width=40, fp_clocks=1, guard=8, window=50, mask=0x1E, frac=0.4, dsa=None, caps=12):
+                 delay=16, reply_width=40, fp_clocks=1, guard=8, window=50, mask=0x1E, frac=0.4, dsa=None, caps=2):
     cl = loop.node.cl
     s = C.SCHEMES[scheme]
     maps = reply_maps(s.n)
@@ -888,11 +897,9 @@ def prover_point(loop, scheme="A3", path="fast", reply="xor1", count=5000, perio
                                                "sample_ns", "last_ref_to_arrival")}
         out["rx"] = st.get("rx")
         out["reply_state"] = st.get("reply")
-        cs = []
-        for j in range(caps):                         # every challenge in turn
-            cap = loop_capture(loop, s, path, rmap, first_edge=first_edge, delay=delay, width=width,
-                               reply_width=reply_width, fp_clocks=fp_clocks, guard=guard, mask=mask, msg=j % s.n)
-            cs.append(check_capture(s, cap, rmap, loop))
+        caps_ = loop_captures(loop, s, path, rmap, [j % s.n for j in range(caps)], first_edge=first_edge, delay=delay,
+                              width=width, reply_width=reply_width, fp_clocks=fp_clocks, guard=guard, mask=mask)
+        cs = [check_capture(s, cap, rmap, loop) for cap in caps_]
         out["captures"] = cs
         good = [c for c in cs if c.get("turnaround_ns") is not None]
         out["cap_turn_ns"] = sorted(c["turnaround_ns"] for c in good)
@@ -932,7 +939,7 @@ def prover_plan(schemes=None, quick=False):
         for path in ("fast", "sync"):
             base = dict(PROVER_BASE, scheme=sc, path=path)
             for rname in reply_maps(s.n):                       # every reply function, both paths
-                pts.append(dict(base, tag="reply", reply=rname))
+                pts.append(dict(base, tag="reply", reply=rname, caps=s.n))       # one capture a challenge
             for k, vals in PROVER_OFAT.items():
                 if k == "path":
                     continue
