@@ -194,10 +194,11 @@ def _level(rcl, w, duty_target=0.5, lo=0.85, hi=2.45, steps=13, seconds=0.005):
     return 0.5 * (lo + hi)
 
 
-def cal_windows(ctx, W=200, N=1000):
+def cal_windows(ctx, W=20, N=500):
     """each window comparator's centre and full step in its own terms, from the carrier: IP / IN at (1, 0) and
     (-1, 0); QP / QN at the idle (Q = 0) and at Q = +-a as events W of every N clocks (a held corner would turn the
-    loop 45 degrees), bisected for half their duty.  ctx.wcal = {w: (centre, on_level)}; returns the levels"""
+    loop 45 degrees; events of 2 us began turning it too, and read the Q step at half its size: 200 ns, as the
+    schemes' own), bisected for half their duty.  ctx.wcal = {w: (centre, on_level)}; returns the levels"""
     rcl = ctx.rx_cl()
     lv = {}
     ctx.hold((1, 0))
@@ -225,6 +226,82 @@ def cal_windows(ctx, W=200, N=1000):
             wc[w] = (lv[(w, "+I")], lv[(w, "step")])
     ctx.wcal, ctx.wcal_dsa = wc, rcl._dsa_db
     return {"%s %s" % k: (None if v is None else round(v, 4)) for k, v in lv.items()}
+
+
+WIN_INDEX = {"QP": 1, "QN": 2, "IP": 3, "IN": 4}     # a window's place in Scheme.fast()'s vector (CMP_NAMES' order)
+
+
+def point_levels(ctx, idle, pts, W=20, N=500):
+    """each window comparator's level at the scheme's idle (held) and at each point in pts (as events W of every N clocks
+    from that idle, as the schemes send them), in the comparator's own terms: the received constellation, with the lock's
+    rotation, the arms' offsets, the mirror and the pilot all in it.  {point: {w: volts}}"""
+    rcl = ctx.rx_cl()
+    ctx.hold(idle)
+    time.sleep(0.05)
+    base = {w: _level(rcl, w) for w in CMP_OF}
+    lv = {tuple(idle): base}
+    d = W / float(N)
+    for p in pts:
+        ctx.events_on(p, W, N, idle=idle)
+        time.sleep(0.02)
+        row = {}
+        for w in CMP_OF:
+            b = base[w]
+            hi = _level(rcl, w, duty_target=0.5 * d)            # where the events reach above the idle
+            lo = _level(rcl, w, duty_target=1.0 - 0.5 * d)      # where they reach below it
+            if b is None:
+                row[w] = None
+            elif hi is not None and hi > b + 0.003:
+                row[w] = hi
+            elif lo is not None and lo < b - 0.003:
+                row[w] = lo
+            else:
+                row[w] = b
+        ctx.events_off()
+        ctx.hold(idle)
+        time.sleep(0.02)
+        lv[tuple(p)] = row
+    return lv
+
+
+def scheme_windows(ctx, s, frac=0.5):
+    """the four windows for scheme s from its received constellation (point_levels, kept per scheme and DSA): each between
+    the highest level among the points that must leave it quiet and the lowest among those that must fire it, frac of the
+    way across that gap (0.5 the middle; low frac is near the quiet points, so it fires early).  A window no point fires
+    sits above them all.  Returns (thresholds, levels, gaps)."""
+    rcl = ctx.rx_cl()
+    key = (s.name, rcl._dsa_db)
+    cache = getattr(ctx, "slev", None)
+    if cache is None:
+        cache = ctx.slev = {}
+    if key not in cache:
+        # a pilot idle (0.2 of a point) is pulled round by the events themselves (each kind its own way: B1's (1, 0)
+        # read on -I at 4 % duty, 2026-11-04 18:24), so its points are measured at 0.4 %
+        cache[key] = point_levels(ctx, s.idle, s.msgs, N=5000 if s.pilot is not None else 500)
+    lv = cache[key]
+    model = {tuple(s.idle): s.fast(s.rx_idle_point())}
+    for m in s.msgs:
+        model[tuple(m)] = s.fast(s.rx_point(m))
+    th, gaps = {}, {}
+    for w, j in WIN_INDEX.items():
+        on = [lv[p][w] for p in model if model[p][j] == 1 and lv[p][w] is not None]
+        off = [lv[p][w] for p in model if model[p][j] == 0 and lv[p][w] is not None]
+        if on and off:
+            lo, hi = max(off), min(on)
+            v = lo + frac * (hi - lo) if hi > lo else 0.5 * (sum(on) / len(on) + sum(off) / len(off))
+            gaps[w] = round(1e3 * (hi - lo), 1)               # mV; negative: the points overlap on this comparator
+        elif off:
+            v = max(off) + 0.05
+            gaps[w] = None
+        elif on:
+            v = min(on) - 0.05
+            gaps[w] = None
+        else:
+            continue
+        v = min(2.499, max(0.0, v))
+        rcl.threshold(w, v)
+        th[w] = round(v, 4)
+    return th, {"%s,%s" % p: {w: (None if x is None else round(x, 4)) for w, x in r.items()} for p, r in lv.items()}, gaps
 
 
 def set_windows(ctx, frac, which=("QP", "QN", "IP", "IN")):
@@ -286,6 +363,7 @@ class Link:
             if ok:
                 self.frame()
                 self.wcal = None
+                self.slev = None
                 say("%s at %g MHz: locked in %.0f s, DSA %.2f, leg %.1f mV, VC %.4f, side %+d" % (
                     self.name, self.mhz, self.info["setup_s"], self.info["dsa"], 1e3 * self.ld.leg, self.ld.vc_lock, self.s))
                 return True
@@ -347,9 +425,9 @@ class Link:
     def hold(self, p):
         self.tx.idle(self.txp(*p))
 
-    def events_on(self, p, W, N):
+    def events_on(self, p, W, N, idle=(1, 0)):
         t = self.tx.cl
-        t.tx_points(self.pt(1, 0), [self.pt(*p)])
+        t.tx_points(self.pt(*idle), [self.pt(*p)])
         t.tx_msg(0)
         t.events(period=N, width=W, count=10000000, source="fixed", n=1)     # count 0 sends none
         t.tx_go()
@@ -481,13 +559,14 @@ def _sender(ctx):
     return ctx.node.cl, ctx.ld.observe, ctx.node.vr(ctx.mhz)[0]
 
 
-def pilot_cal(ctx, rho=C.RHO, angle=0, d0=0.03, tries=8):
+def pilot_cal(ctx, rho=C.RHO, angle=0, d0=0.08, tries=10):
     """the VR offsets from the null that leave a pilot of rho x the axis point's amplitude along TX (1, 0) (angle 0: B1)
     or TX (1, 1) (angle 45: B2, A4), as the receiver measures it with its loop running: locked on the full point first,
     then the point (0, 0) with the offsets, the loop staying on the same side if the pilot is in phase with the point.
+    At 45 degrees both relative signs of the VR_Q offset are tried (VR's Q may run either way against the ladder's: one
+    sign reached only 0.17 at 330 mV, 2026-11-04 18:18) and the one with the smaller offset kept.
     Returns {"vr": (VR_I, VR_Q), "rho": measured, "trace": [...]}; the sender left at (0, 0) with the pilot."""
     cl, observe, (vi0, vq0) = _sender(ctx)
-    ux, uy = ctx.txp(1.0, 0.0) if angle == 0 else ctx.txp(1 / math.sqrt(2), 1 / math.sqrt(2))   # in the sender's frame
     full = ctx.txp(1, 0) if angle == 0 else ctx.txp(1, 1)
     cl.dac(VR_I=vi0, VR_Q=vq0)
     cl.hold_point(*full)
@@ -496,35 +575,52 @@ def pilot_cal(ctx, rho=C.RHO, angle=0, d0=0.03, tries=8):
     a = abs(o["di"]) / (1.0 if angle == 0 else math.sqrt(2))      # the axis point's amplitude
     sgn_full = 1 if o["di"] > 0 else -1
     trace = [("full", full, o["di"], o["dq"])]
-    sign, d, got = 1.0, d0, None
-    for _ in range(tries):
-        vi, vq = vi0 + sign * d * ux, vq0 + sign * d * uy
-        if not (0.0 <= vi <= 0.55 and 0.0 <= vq <= 0.55):
-            break
-        cl.hold_point(*full)
-        time.sleep(0.05)
-        cl.dac(VR_I=vi, VR_Q=vq)
-        cl.hold_point(0, 0)
-        time.sleep(0.15)
-        o = observe()
-        r = o["di"] * sgn_full / a if a else 0.0
-        trace.append((round(d, 4), sign, round(vi, 4), round(vq, 4), o["di"], o["dq"], round(r, 3)))
-        if r < 0:                                    # the pilot sits on the other side: the offsets' sign is the other one
-            sign = -sign
-            continue
-        if r < 0.02:
-            d *= 3
-            continue
-        got = (vi, vq, r)
-        if abs(r - rho) <= 0.03:
-            break
-        d = d * rho / r
-    if got is None:
+
+    def search(ux, uy):
+        sign, d, got = 1.0, d0, None
+        for _ in range(tries):
+            vi, vq = vi0 + sign * d * ux, vq0 + sign * d * uy
+            if not (0.0 <= vi <= 0.55 and 0.0 <= vq <= 0.55):
+                break
+            cl.hold_point(*full)
+            time.sleep(0.05)
+            cl.dac(VR_I=vi, VR_Q=vq)
+            cl.hold_point(0, 0)
+            time.sleep(0.15)
+            o = observe()
+            r = o["di"] * sgn_full / a if a else 0.0
+            trace.append((round(d, 4), sign, round(vi, 4), round(vq, 4), o["di"], o["dq"], round(r, 3)))
+            # 30 mV (about 0.07 a by the slope 0.0024 a / mV) was too weak for the loop to stay on (it read 0 every
+            # time, 2026-11-04 18:15), so the search starts near rho; only a clear reading on the other side flips it
+            if r < -0.05:
+                sign = -sign
+                continue
+            if r < 0.05:
+                d *= 1.6
+                continue
+            got = (vi, vq, r, d)
+            if abs(r - rho) <= 0.03:
+                break
+            d = d * rho / r
+        return got
+
+    if angle == 0:
+        ux, uy = ctx.txp(1.0, 0.0)
+        cands = [search(ux, uy)]
+    else:
+        ux, uy = ctx.txp(1 / math.sqrt(2), 1 / math.sqrt(2))
+        cands = [search(ux, uy), search(ux, -uy)]
+    cands = [c for c in cands if c is not None and abs(c[2] - rho) <= 0.06]
+    if not cands:
         cl.dac(VR_I=vi0, VR_Q=vq0)
         cl.hold_point(*ctx.txp(1, 0))
         return {"vr": None, "rho": None, "trace": trace, "a": a}
+    got = min(cands, key=lambda c: c[3])
+    cl.hold_point(*full)
+    time.sleep(0.05)
     cl.dac(VR_I=got[0], VR_Q=got[1])
     cl.hold_point(0, 0)
+    time.sleep(0.1)
     return {"vr": (round(got[0], 4), round(got[1], 4)), "rho": got[2], "trace": trace, "a": a, "angle": angle}
 
 
@@ -555,8 +651,6 @@ def events_point(link, scheme="A3", msg=None, period=1000, width=20, count=20000
         return out
     leg = link.leg()
     out["leg"] = leg
-    out["thresholds"] = link.windows(frac, leg)
-    out["wcal"] = link.wcal
     if s.pilot is not None:                          # B1, B2, A4: the idle is a weak pilot, made with VR (pilot_cal)
         pc = pilot_cal(link, angle=0 if abs(s.pilot[1]) < 1e-9 else 45)
         out["pilot"] = pc
@@ -564,6 +658,7 @@ def events_point(link, scheme="A3", msg=None, period=1000, width=20, count=20000
             out["error"] = "no pilot"
             link.tx.cl.dac(VR_I=link.tx.vr(link.mhz)[0][0], VR_Q=link.tx.vr(link.mhz)[0][1])
             return out
+    out["thresholds"], out["levels"], out["gaps_mv"] = scheme_windows(link, s, frac)    # from the received constellation
     idle = link.pt(*s.idle)
     link.hold(s.idle)                                # the scheme's own idle for the false-event count
     time.sleep(0.05)
@@ -684,6 +779,7 @@ class Loop:
             self.info = {"ok": ok, "setup_s": round(time.time() - t0, 1), "dsa": cl._dsa_db, "leg": self.ld.leg,
                          "vc_lock": self.ld.vc_lock, "cen": self.ld.cen, "side": self.s, "try": k}
             self.wcal = None
+            self.slev = None
             say("%s at %g MHz: locked in %.0f s, DSA %.2f, leg %.1f mV, side %+d" % (
                 self.name, self.mhz, self.info["setup_s"], cl._dsa_db, 1e3 * self.ld.leg, self.s))
             return True                               # either side: the points are mapped (txp), the table nominal
@@ -711,9 +807,9 @@ class Loop:
         self.node.cl.tx_stop()
         self.node.cl.hold_point(*self.txp(*p))
 
-    def events_on(self, p, W, N):
+    def events_on(self, p, W, N, idle=(1, 0)):
         t = self.node.cl
-        t.tx_points(self.pt(1, 0), [self.pt(*p)])
+        t.tx_points(self.pt(*idle), [self.pt(*p)])
         t.tx_msg(0)
         t.events(period=N, width=W, count=10000000, source="fixed", n=1)     # count 0 sends none
         t.tx_go()
@@ -881,8 +977,6 @@ def prover_point(loop, scheme="A3", path="fast", reply="xor1", count=5000, perio
         return out
     leg = loop.leg()
     out["leg"] = leg
-    out["thresholds"] = loop.windows(frac, leg)
-    out["wcal"] = loop.wcal
     if s.pilot is not None:
         pc = pilot_cal(loop, angle=0 if abs(s.pilot[1]) < 1e-9 else 45)
         out["pilot"] = pc
@@ -890,6 +984,7 @@ def prover_point(loop, scheme="A3", path="fast", reply="xor1", count=5000, perio
             out["error"] = "no pilot"
             cl.dac(VR_I=loop.cfg["vr"]["VR_I"], VR_Q=loop.cfg["vr"]["VR_Q"])
             return out
+    out["thresholds"], out["levels"], out["gaps_mv"] = scheme_windows(loop, s, frac)
     try:
         st = loop_turnaround(loop, s, path, rmap, count=count, period=period, width=width, first_edge=first_edge,
                              delay=delay, reply_width=reply_width, fp_clocks=fp_clocks, guard=guard, window=window, mask=mask)
@@ -929,7 +1024,7 @@ PROVER_OFAT = {
     "width": [10, 20, 40, 80],
     "dsa": [16, 20, 24, 26, 28, 30, 31.75],
 }
-PROVER_SCHEMES = ["A3", "A2", "A1", "A1w", "B1", "B2"]
+PROVER_SCHEMES = ["A3", "A2", "B1", "B2"]   # A1 / A1w have one message: no reply can differ from its stimulus
 
 
 def prover_plan(schemes=None, quick=False):
@@ -1087,12 +1182,17 @@ def cmd_night(a, log):
     """the whole program, one thing on the boards at a time: the prover on each board; events and prbs both ways at
     the first frequency; the band (both ways, the loopback at each); events and prbs again at 5400 MHz (the WiFi gap)"""
     mhz0 = a.mhz[0]
-    steps = [("prover", dict(board=["B", "A"], mhz=[mhz0])),
-             ("events", dict(dir=["BA", "AB"], mhz=[mhz0])),
-             ("prbs", dict(dir=["BA", "AB"], mhz=[mhz0])),
-             ("band", dict(dir=["BA", "AB"], mhz=a.band, prover=True)),
-             ("events", dict(dir=["BA", "AB"], mhz=[5400.0], quick=True)),
-             ("prbs", dict(dir=["BA", "AB"], mhz=[5400.0], quick=True))]
+    pilots = ["B1", "B2", "A4"]
+    every = {"proverB": ("prover", dict(board=["B"], mhz=[mhz0])),
+             "proverA": ("prover", dict(board=["A"], mhz=[mhz0])),
+             "pilotB": ("prover", dict(board=["B"], mhz=[mhz0], scheme=["B1", "B2"])),
+             "events": ("events", dict(dir=["BA", "AB"], mhz=[mhz0])),
+             "prbs": ("prbs", dict(dir=["BA", "AB"], mhz=[mhz0])),
+             "band": ("band", dict(dir=["BA", "AB"], mhz=a.band, prover=True)),
+             "events5400": ("events", dict(dir=["BA", "AB"], mhz=[5400.0], quick=True)),
+             "prbs5400": ("prbs", dict(dir=["BA", "AB"], mhz=[5400.0], quick=True)),
+             "pilots_events": ("events", dict(dir=["BA", "AB"], mhz=[mhz0], scheme=pilots))}
+    steps = [every[n] for n in (a.steps or ["proverB", "proverA", "events", "prbs", "band", "events5400", "prbs5400"])]
     for name, kw in steps:
         b = argparse.Namespace(**dict(vars(a), **kw))
         say("night: %s %s" % (name, kw))
@@ -1112,6 +1212,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("cmd", choices=["check", "prbs", "events", "prover", "band", "night"])
     ap.add_argument("--band", type=float, nargs="+", default=[float(f) for f in BAND], help="night: the band's frequencies")
+    ap.add_argument("--steps", nargs="+", default=None, help="night: proverB proverA pilotB events prbs band events5400 "
+                    "prbs5400 pilots_events (default proverB proverA events prbs band events5400 prbs5400)")
     ap.add_argument("--dir", nargs="+", default=["BA"], help="links, sender then receiver: BA, AB")
     ap.add_argument("--board", nargs="+", default=["B"], help="prover: the board(s) in loopback")
     ap.add_argument("--mhz", type=float, nargs="+", default=[5200.0])
