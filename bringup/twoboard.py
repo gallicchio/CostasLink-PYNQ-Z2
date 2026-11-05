@@ -404,6 +404,11 @@ def set_windows(ctx, frac, which=("QP", "QN", "IP", "IN")):
     return th
 
 
+class LinkDown(Exception):
+    """a link whose recovery and setup both failed inside a point: its remaining points are abandoned (at 5500 MHz A -> B
+    locked with a 47 mV leg, too weak for the lock test, and every point then re-ran setup for 3 minutes, 2026-11-05 02:40)"""
+
+
 class Link:
     """a one-way link tx -> rx at mhz, set up and kept by linkd's own code run here"""
     def __init__(self, tx, rx, mhz, cfg=None):
@@ -489,7 +494,8 @@ class Link:
         ok, starts = self.ld.recover()
         say("%s: lock lost (%s); recover %s (%d starts)" % (self.name, s, ok, starts))
         if not ok:
-            self.up()
+            if not self.up(tries=1):
+                raise LinkDown("%s at %g MHz: no lock after recover and setup" % (self.name, self.mhz))
         else:
             self.frame()
         return self.look()
@@ -1008,7 +1014,9 @@ class Loop:
                 say("%s: the lock came back on the other side (%+d)" % (self.name, s_new))
             self.s = s_new
             return True
-        return self.up()
+        if not self.up(tries=2):
+            raise LinkDown("%s at %g MHz: no lock after recover and setup" % (self.name, self.mhz))
+        return True
 
     def state(self):
         return {"link": self.name, "mhz": self.mhz, "dsa": self.node.cl._dsa_db, "tr_a": self.tr_a, "side": self.s,
@@ -1242,11 +1250,19 @@ def run_points(log, ctx, fn, pts, label):
         tag = p.pop("tag", None)
         try:
             r = fn(ctx, **p)
+        except LinkDown as e:
+            log(label=label, tag=tag, params=p, state=ctx.state(), error="link down: " + str(e))
+            say("%s: %s: the remaining %d points abandoned" % (label, e, n - k - 1))
+            return
         except Exception as e:                                  # noqa: BLE001  (one bad point must not end the night)
             r = {"error": repr(e)[:300], "tb": traceback.format_exc()[-800:]}
             say("%s %d/%d %s: %r" % (label, k + 1, n, p, e))
             try:
                 ctx.ensure()
+            except LinkDown as e2:
+                log(label=label, tag=tag, params=p, state=ctx.state(), error="link down: " + str(e2), **r)
+                say("%s: %s: the remaining %d points abandoned" % (label, e2, n - k - 1))
+                return
             except Exception as e2:                             # noqa: BLE001
                 say("ensure after the error: %r" % (e2,))
         log(label=label, tag=tag, params=p, state=ctx.state(), **r)
