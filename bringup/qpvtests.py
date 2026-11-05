@@ -180,6 +180,10 @@ def roundtrip_point(dx, scheme="A3", path="fast", reply="xor1", count=20000, per
             ent = {v_: cm[code] for v_, code in C.CostasLink.fast_reply_entries(s, rmap, first_edge).items()}
             T._fast_load(P, ent, "oneshot", fp_clocks, "rx")
             P.fast_arm()
+        elif path == "hardware":                    # row 14: a lead from P's comparator monitor to its own TRIG IN keys +Q
+            P.fast_off()                            # on the air (JP203): no gateware in the reply; P's idle must have Q = 0
+            P.reply_off()
+            P.hold_point(*dx.PV.pt(1, 0))
         else:
             P.fast_off()
             P.reply_config(list(rmap), width=reply_width, once=False, rearm="rx")
@@ -286,8 +290,13 @@ def cmd_roundtrip(a, log):
         first = True
         while first or (t_end and time.time() < t_end):
             first = False
-            pts = roundtrip_plan(tuple(a.scheme) if a.scheme else ("A3", "B2", "A2", "B1"), a.quick) if not a.repeat_only \
-                else [dict(RT_BASE, scheme=sc, tag="repeat") for sc in (a.scheme or ["A3", "B2"])]
+            if a.prover_mode == "hardware":
+                pts = [dict(RT_BASE, scheme="A2", path="hardware", tag="hardware")] + \
+                      [dict(RT_BASE, scheme="A2", path="hardware", tag="fixed_msg", source="fixed", msg=m, count=5000) for m in range(2)]
+            elif a.repeat_only:
+                pts = [dict(RT_BASE, scheme=sc, tag="repeat") for sc in (a.scheme or ["A3", "B2"])]
+            else:
+                pts = roundtrip_plan(tuple(a.scheme) if a.scheme else ("A3", "B2", "A2", "B1"), a.quick)
             for p in pts:
                 tag = p.pop("tag", None)
                 try:
@@ -459,6 +468,8 @@ def main(argv=None):
     ap.add_argument("--minutes", type=float, default=0.0, help="roundtrip: repeat the plan until; soak: its length")
     ap.add_argument("--repeat-only", action="store_true", help="roundtrip: the baseline point only, repeated (temperature)")
     ap.add_argument("--note", default="", help="what is different (spool 50 m, coax, cross-pol, WiFi AP ch 40 ...)")
+    ap.add_argument("--prover-mode", choices=["gateware", "hardware"], default="gateware",
+                    help="roundtrip: 'hardware': P's paths off, its reply keyed by a lead from its comparator monitor to its TRIG IN (A2's Q step)")
     ap.add_argument("--dir", nargs="+", default=["BA"])
     ap.add_argument("--mhz", type=float, nargs="+", default=[5200.0])
     ap.add_argument("--dwell", type=float, default=60.0, help="supplywalk: seconds a step")

@@ -121,6 +121,84 @@ def prbs_table(rows, out):
     out.append("")
 
 
+def timing_tables(rows, out):
+    """T1-T4 and the round trip"""
+    d = [r for r in rows if r.get("exp") == "prover_dist"]
+    if d:
+        out.append("## T3. The prover's turnaround as a distribution (captures per challenge)\n")
+        out.append("| board | scheme | path | map | n | p50 | p99 | max | per challenge p50 (ns) | FPGA share p50 (ns) | right | counter mean by guard |")
+        out.append("|---|---|---|---|---|---|---|---|---|---|---|---|")
+        for r in d:
+            if r.get("error"):
+                out.append("| %s | %s | %s | %s | - | - | - | - | - | - | - | %s |" % ((r.get("state") or {}).get("link"), r.get("scheme"), r.get("path"), r.get("reply"), r["error"]))
+                continue
+            pc = r.get("per_challenge") or {}
+            ta = r.get("turn_all") or {}
+            out.append("| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s/%s | %s |" % (
+                (r.get("state") or {}).get("link"), r.get("scheme"), r.get("path"), r.get("reply"), ta.get("n"), fmt(ta.get("p50")),
+                fmt(ta.get("p99")), fmt(ta.get("max")),
+                ", ".join(fmt((x.get("turn_ns_stats") or {}).get("p50")) for x in pc.values()),
+                ", ".join(fmt((x.get("fpga_ns_stats") or {}).get("p50")) for x in pc.values()),
+                r.get("right_rx"), r.get("captures_n"),
+                " ".join("%s:%s" % (g, fmt(v.get("mean_ns"))) for g, v in (r.get("counter_by_guard") or {}).items())))
+        out.append("")
+    d = [r for r in rows if r.get("exp") == "prover_prbs"]
+    if d:
+        out.append("## T4. PRBS-chosen challenges against each reply map (the confusion matrix)\n")
+        out.append("| board | scheme | path | map | reply map | right (fast: the reply; sync: the decode) | per challenge | decided | false | counter mean |")
+        out.append("|---|---|---|---|---|---|---|---|---|---|")
+        for r in d:
+            rf = r.get("reply_right_frac") if r.get("path") == "fast" else r.get("decode_right_frac")
+            out.append("| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |" % (
+                (r.get("state") or {}).get("link"), r.get("scheme"), r.get("path"), r.get("reply"), r.get("reply_map"),
+                fmt(rf, 4), " ".join(fmt(x, 4) for x in (r.get("per_challenge_right") or [])), r.get("decided"), r.get("false"),
+                fmt((r.get("counter") or {}).get("mean_ns")) if not r.get("error") else r["error"]))
+        out.append("")
+    d = [r for r in rows if r.get("exp") == "evtiming"]
+    if d:
+        out.append("## T1. Idle-to-1-in-N timing in loopback (the reference is the board's own TX event)\n")
+        out.append("| board | scheme | factor | value | event p50 / min / max (ns) | decision p50 / p99.9 / max (ns) | right (min over msgs) | idle false/s |")
+        out.append("|---|---|---|---|---|---|---|---|")
+        for r in d:
+            f, v = factor(r)
+            pm = r.get("per_msg") or {}
+            ev = [x["ref_to_event"] for x in pm.values() if x.get("ref_to_event", {}).get("n")]
+            out.append("| %s | %s | %s | %s | %s | %s | %s | %s |" % (
+                (r.get("state") or {}).get("link"), r.get("scheme"), f, v,
+                "%s / %s / %s" % (fmt(min((e["p50_ns"] for e in ev), default=None)), fmt(min((e["min_ns"] for e in ev), default=None)),
+                                  fmt(max((e["max_ns"] for e in ev), default=None))) if ev else (r.get("error") or "-"),
+                "%s / %s / %s" % (fmt(r.get("decision_p50_ns")), fmt(r.get("decision_p999_ns")), fmt(r.get("decision_max_ns"))),
+                fmt(r.get("right_frac_min"), 4), fmt(r.get("idle_false_per_s"), 1)))
+        out.append("")
+    d = [r for r in rows if r.get("exp") == "bitlat"]
+    if d:
+        out.append("## T2. The bitstream in loopback: latency by capture, the eye per rate\n")
+        out.append("| board | period | MBd | DSA | lag pins to CMP_I (ns) | corr | half-width (ns) | symbols | BER by phase | open phases |")
+        out.append("|---|---|---|---|---|---|---|---|---|---|")
+        for r in d:
+            out.append("| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |" % (
+                (r.get("state") or {}).get("link"), r.get("period"), fmt(r.get("mbaud"), 2), (r.get("params") or {}).get("dsa"),
+                fmt(r.get("lag_ns")), fmt(r.get("corr"), 3), fmt(r.get("corr_halfwidth_ns")), r.get("symbols"),
+                " ".join("%s:%s" % (k, "%.1g" % v["ber"] if v.get("ber") is not None else "-") for k, v in (r.get("eye") or {}).items()),
+                r.get("open_phases") if not r.get("error") else r["error"]))
+        out.append("")
+    d = [r for r in rows if r.get("exp") == "roundtrip"]
+    if d:
+        out.append("## The round trip over the air (V's challenge, P's reply, V's clock)\n")
+        out.append("| V -> P | MHz c / r | scheme | path | map | factor | value | note | replies / sent | missed | false | arrival p50 / p99 / p99.9 / max (ns) | decision p50 | right | per challenge |")
+        out.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+        for r in d:
+            st = r.get("state") or {}
+            f, v = factor(r)
+            out.append("| %s -> %s | %s / %s | %s | %s | %s | %s | %s | %s | %s / %s | %s | %s | %s / %s / %s / %s | %s | %s | %s |" % (
+                st.get("v"), st.get("p"), fmt(st.get("mhz_c"), 0), fmt(st.get("mhz_r"), 0), r.get("scheme"), r.get("path"), r.get("reply"),
+                f, v, r.get("note", ""), r.get("replies"), (r.get("params") or {}).get("count"), r.get("missed"), r.get("false"),
+                fmt(r.get("arrival_p50_ns")), fmt(r.get("arrival_p99_ns")), fmt(r.get("arrival_p999_ns")), fmt(r.get("arrival_max_ns")),
+                fmt(r.get("decision_p50_ns")), fmt(r.get("reply_right_frac"), 4),
+                " ".join(fmt(x, 3) for x in (r.get("per_challenge_right") or [])) if not r.get("error") else r["error"]))
+        out.append("")
+
+
 def band_table(rows, out):
     bd = [r for r in rows if r.get("label", "").startswith("band")]
     if not bd:
@@ -190,11 +268,12 @@ def main(argv=None):
     ap.add_argument("--wifi", nargs="*", default=None)
     ap.add_argument("--out")
     a = ap.parse_args(argv)
-    paths = a.records or sorted(glob.glob(os.path.join(DATA, "night_*.jsonl")))[-1:]
+    paths = a.records or sorted(glob.glob(os.path.join(DATA, "campaign_*.jsonl")) + glob.glob(os.path.join(DATA, "night_*.jsonl")))[-1:]
     rows = load(paths)
     wifi = load(a.wifi) if a.wifi else []
     out = ["# Two boards: %s (%d records)\n" % (", ".join(os.path.basename(p) for p in paths), len(rows))]
     prover_table(rows, out)
+    timing_tables(rows, out)
     events_table(rows, out)
     prbs_table(rows, out)
     band_table(rows, out)

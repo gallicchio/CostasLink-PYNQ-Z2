@@ -657,13 +657,20 @@ def _lut_only(s, m, first_edge):
 
 
 def events_point(link, scheme="A3", msg=None, period=1000, width=20, count=20000, first_edge=False, delay=16, quiet=4,
-                 confirm=6, window=100, settle=0, frac=0.4, dsa=None, idle_s=0.5):
+                 confirm=6, window=100, settle=0, frac=0.4, dsa=None, idle_s=0.5, ref="tx"):
     """`count` events of each message (or of `msg`), every `period` clocks, `width` long; per message: the events seen,
-    the right decisions, the event-to-event histogram's peaks; and the idle's false events in idle_s"""
+    the right decisions, the event-to-event histogram's peaks; and the idle's false events in idle_s.
+    ref 'trig_in' (QPV_TIMING_REVIEW 6a row 3: a lead from the sender's TRIG OUT A, J205, to the receiver's TRIG IN, J207):
+    the sender's TX events mark TRIG OUT A, the receiver takes TRIG IN's rise as its reference, and the reference-to-event
+    and reference-to-decision counters and 1.25 ns histograms (and the LAT register, TRIG IN to CMP_I) measure the one-way
+    timing across the boards; JP203 sums TRIG IN into the receiver's Q ladder, harmless while its TX is muted."""
     tx, rx = link.tx.cl, link.rx.cl
     s = C.SCHEMES[scheme]
     out = {"exp": "events", "scheme": scheme, "period": period, "width": width, "count": count, "first_edge": first_edge,
-           "delay": delay, "quiet": quiet, "confirm": confirm, "window": window, "settle": settle, "frac": frac}
+           "delay": delay, "quiet": quiet, "confirm": confirm, "window": window, "settle": settle, "frac": frac, "ref": ref}
+    ts = 1e3 / (link.rx.clk_mhz * link.rx.ser)
+    if ref == "trig_in":
+        tx.triggers(width=10, a="tx_event")
     rx.dsa(link.info.get("dsa", rx._dsa_db))
     st = link.ensure()
     out["look"] = st
@@ -692,32 +699,45 @@ def events_point(link, scheme="A3", msg=None, period=1000, width=20, count=20000
     try:
         # the idle alone: false events a second
         rx.rx_config(s.idle_vector(), s.mask, s.lut(first_edge), s.slow_exp(), delay=delay, quiet=quiet, confirm=confirm,
-                     window=window, first_edge=first_edge, settle=settle)
+                     window=window, first_edge=first_edge, settle=settle, ref=ref)
         rx.rx_clear()
         time.sleep(idle_s)
         rx.rx_enable(False)
         q = rx.rx_stats()
         out["idle_false_per_s"] = q["events"] / idle_s
+        hists = ["event_to_event"] + (["ref_to_event", "ref_to_decision"] if ref == "trig_in" else [])
         for m in ([msg] if msg is not None else range(s.n)):
-            rx.rx_config(s.idle_vector(), s.mask, _lut_only(s, m, first_edge), s.slow_exp(), delay=delay, quiet=quiet,
-                         confirm=confirm, window=window, first_edge=first_edge, settle=settle)
-            rx.hist_config("event_to_event", shift)
-            rx.rx_clear()
-            tx.tx_points(idle, [link.pt(*p) for p in s.msgs])    # hold_point (the looks) rewrites them
-            tx.tx_msg(m)
-            tx.events(period=period, width=width, count=count, source="fixed", n=s.n)
-            tx.tx_go()
-            time.sleep(count * period / (link.tx.clk_mhz * 1e6) + 0.05)
-            rx.rx_enable(False)
-            q = rx.rx_stats()
-            h = rx.histogram()
-            tx.tx_stop()
-            b0 = int(round(n_samp / 2 ** shift))
-            near = lambda c, w=3: sum(h[max(0, c - w):c + w + 1])    # noqa: E731
-            r = {"events": q["events"], "decided": q["decided"], "confirm": q["confirm"], "veto": q["veto"],
-                 "right_frac": q["decided"] / count, "extra": q["events"] - count,
-                 "intervals_1N": near(b0), "intervals_2N": near(2 * b0), "intervals_short": sum(h[:max(0, b0 - 4)]),
-                 "intervals_other": sum(h) - near(b0) - near(2 * b0) - sum(h[:max(0, b0 - 4)]), "hist_shift": shift}
+            r = {}
+            for what in hists:
+                rx.rx_config(s.idle_vector(), s.mask, _lut_only(s, m, first_edge), s.slow_exp(), delay=delay, quiet=quiet,
+                             confirm=confirm, window=window, first_edge=first_edge, settle=settle, ref=ref)
+                rx.hist_config(what, shift if what == "event_to_event" else 0)
+                rx.rx_clear()
+                tx.tx_points(idle, [link.pt(*p) for p in s.msgs])    # hold_point (the looks) rewrites them
+                tx.tx_msg(m)
+                tx.events(period=period, width=width, count=count, source="fixed", n=s.n)
+                tx.tx_go()
+                time.sleep(count * period / (link.tx.clk_mhz * 1e6) + 0.05)
+                rx.rx_enable(False)
+                q = rx.rx_stats()
+                h = rx.histogram()
+                tx.tx_stop()
+                if what == "event_to_event":
+                    b0 = int(round(n_samp / 2 ** shift))
+                    near = lambda c, w=3: sum(h[max(0, c - w):c + w + 1])    # noqa: E731
+                    r.update({"events": q["events"], "decided": q["decided"], "confirm": q["confirm"], "veto": q["veto"],
+                              "right_frac": q["decided"] / count, "extra": q["events"] - count,
+                              "intervals_1N": near(b0), "intervals_2N": near(2 * b0), "intervals_short": sum(h[:max(0, b0 - 4)]),
+                              "intervals_other": sum(h) - near(b0) - near(2 * b0) - sum(h[:max(0, b0 - 4)]), "hist_shift": shift})
+                else:
+                    hs = _hist_summary(h, 0, ts)
+                    hs["stats"] = {k: q.get(k) for k in ("refs", "missed", "false", "lat_n", "lat_min", "lat_max", "lat_mean")}
+                    hs["lat_min_ns"] = q["lat_min"] * ts if q["lat_n"] else None
+                    hs["lat_max_ns"] = q["lat_max"] * ts if q["lat_n"] else None
+                    hs["lat_mean_ns"] = q["lat_mean"] * ts if q["lat_n"] else None
+                    lat = rx.rd("LAT")
+                    hs["LAT_trig_to_cmp_i_clocks"] = (lat & 0xFFFF) if (lat >> 16) & 1 else None
+                    r[what] = hs
             rows[str(m)] = r
     finally:
         tx.tx_stop()
@@ -731,6 +751,15 @@ def events_point(link, scheme="A3", msg=None, period=1000, width=20, count=20000
     out["per_msg"] = rows
     out["right_frac_min"] = min(r["right_frac"] for r in rows.values())
     out["right_frac_mean"] = sum(r["right_frac"] for r in rows.values()) / len(rows)
+    if ref == "trig_in":
+        ev = [r["ref_to_event"] for r in rows.values() if r.get("ref_to_event", {}).get("n")]
+        de = [r["ref_to_decision"] for r in rows.values() if r.get("ref_to_decision", {}).get("n")]
+        if ev:
+            out.update(arrival_p50_ns=sum(e["p50_ns"] for e in ev) / len(ev), arrival_min_ns=min(e["min_ns"] for e in ev),
+                       arrival_max_ns=max(e["max_ns"] for e in ev))
+        if de:
+            out.update(decision_p50_ns=sum(d["p50_ns"] for d in de) / len(de), decision_p999_ns=max(d["p999_ns"] for d in de),
+                       decision_max_ns=max(d["max_ns"] for d in de))
     return out
 
 
@@ -1158,7 +1187,11 @@ def cmd_events(a, log):
                 log(label="events", exp="setup", state=L.state(), **L.info)
                 continue
             log(label="events", exp="setup", state=L.state(), **L.info)
-            run_points(log, L, events_point, events_plan(a.scheme, a.quick), "events %s %g" % (L.name, mhz))
+            pts = events_plan(a.scheme, a.quick)
+            if getattr(a, "ref", "tx") != "tx":
+                for p_ in pts:
+                    p_["ref"] = a.ref
+            run_points(log, L, events_point, pts, "events %s %g" % (L.name, mhz))
             L.tx.quiet()
 
 
@@ -2051,6 +2084,8 @@ def main(argv=None):
     ap.add_argument("--seed", type=int, default=20261104, help="campaign: the random sessions' seed")
     ap.add_argument("--skip-nulls", action="store_true", help="campaign: the null table as it is")
     ap.add_argument("--redo", action="store_true", help="nulls: measure again the frequencies already in the table")
+    ap.add_argument("--ref", choices=["tx", "trig_in"], default="tx", help="events: the receiver's reference ('trig_in': the "
+                    "sender's TRIG OUT A on a lead to the receiver's TRIG IN: the timing across the boards)")
     ap.add_argument("--band", type=float, nargs="+", default=[float(f) for f in BAND], help="night: the band's frequencies")
     ap.add_argument("--steps", nargs="+", default=None, help="night: proverB proverA pilotB events prbs band events5400 "
                     "prbs5400 pilots_events (default proverB proverA events prbs band events5400 prbs5400); campaign: "
