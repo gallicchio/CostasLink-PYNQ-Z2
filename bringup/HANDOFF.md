@@ -71,7 +71,13 @@ output-null `link_A_5200.json` beside it), so its linkd waits and board A stays 
 two-board link needs a receiving config for A (`rx_mhz`) and a sending one for B: `gateware/driver/link_B_5200.json`
 holds B's output null (0.2343 / 0.2609, -69 dBc), not deployed.  Board B's stage 2: 2.1 pass, 2.3 at TX ANT +3.2 dBm at
 5.8 GHz and +8.3 at 5.2 (as A); its RX synthesizer puts +-d sidebands on its carrier (REVB 57).  The watchdog
-(PID in the scratchpad's `logs/watch.pid`, from 16:22 for 12 h) reads the boards' supply.
+(PID in the scratchpad's `logs/watch.pid`, from 16:22 for 12 h) reads the boards' supply.  **From 16:59 (BRINGUP_LOG 4.59), both boards on the dishes
+through their switches** (TX ANT -> SW TX, SW RX -> RX ANT, ANT -> 10 m -> dish), locked both ways at -54.4 to -55.3 dBm at
+RX ANT, BER 0 / 20 Mbit (A -> B) and 2e-7 (B -> A) at 2 MBd.  Running for 12 h from the laptop (scratchpad scripts, PIDs in
+`logs/bersoak.launch.pid`, `logs/wifimon.launch.pid`): `bersoak.py` (B -> A PRBS15 at 2 MBd, A checking; linkd's setup and
+recover run from the laptop, A's TX muted, A's TX synthesizer on 5800 and B's RX synthesizer on 5800) and `wifimon.py` (the
+DSA875 on an FPV antenna near the beam, 5.10-5.35 GHz).  A's PYNQ linkd is paused while the soak writes; if the soak stops, B is
+left on its idle carrier.
 
 **Power (the E3646A, USB serial):** output 1 the board at 5.30 V, 1.5 A limit (the board draws about 0.9 A); output 2
 the PYNQ at 12.0 V, 1.5 A limit, OVP 13.5 V.  One switch serves both outputs; the board is switched by its output's
