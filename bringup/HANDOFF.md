@@ -85,7 +85,7 @@ left on its idle carrier.
 boards, `data/twoboard/vr_null.json`), the timing step (T1-T4 in loopback on each board), events and prbs both ways at
 5200, the band both ways with the loopback prover at each frequency, quick sweeps at 5400 / 4800 / 5800, then random joint
 draws of every parameter with a soak each hour (half with the analyzer sweeping, half paused).  `twoboard_report.py`
-tabulates the newest records.  **Stop it with SIGINT** (it quiets both boards) before anything else touches the boards;
+tabulates the newest records.  **Stop it with SIGINT** (it quiets both boards) before anything else touches the boards, **and check with `kill -0` that it is gone before starting another: a campaign started from a background shell script (the 21:47 hand-off script) inherited SIGINT ignored and ran on through four 'stops', driving the boards under the next campaigns from 21:58 to 22:16 (their records are spoiled; campaign 11, from 22:16, is clean).  SIGTERM ends such a process without its clean-up: quiet the boards by hand after (`twoboard.Node(n).quiet()`).  Only ever one process drives the boards;
 `aimtone.py` and `qpvtests.py` (the round trip over the air, the soak with a note, the supply walk, the cold start, the
 autonomous channel) need the boards to themselves.  The prover's own two antennas (V's RX ANT and P's TX ANT onto FPV
 antennas) are the first thing to cable tomorrow (`QPV_TIMING_REVIEW.md` section 6a, the ranked list); the review's
