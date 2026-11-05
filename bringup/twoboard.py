@@ -315,6 +315,7 @@ def scheme_windows(ctx, s, frac=0.5):
         rcl.threshold(w, v)
         th[w] = round(v, 4)
     ctx.last_th = dict(th)
+    ctx.last_gaps = dict(gaps)
     return th, {"%s,%s" % p: {w: (None if x is None else round(x, 4)) for w, x in r.items()} for p, r in lv.items()}, gaps
 
 
@@ -351,9 +352,14 @@ def rx_tables(ctx, s, first_edge=False, seconds=0.01, margin_v=0.004):
     # between (1, 0) and (-1, 0) against IN's 350, BRINGUP_LOG 4.63-4.64): it is taken both ways in every vector
     pts_all = [tuple(s.idle)] + [tuple(m) for m in s.msgs]
     dead = set()
+    gaps = getattr(ctx, "last_gaps", None) or {}
     for w in WIN_INDEX:
         vals = [lv[p][w] for p in pts_all if p in lv and lv[p].get(w) is not None]
         if len(vals) >= 2 and max(vals) - min(vals) < 5 * margin_v:
+            dead.add(w)
+        # or its points overlap on it (the level not monotonic in the scheme's order: B's IP at 4800 MHz, (-1, 1) above
+        # (1, 0) by 29 mV, 2026-11-05 06:10): nothing a threshold can separate, so both ways
+        elif gaps.get(w) is not None and gaps[w] < 2e3 * margin_v:
             dead.add(w)
     info["dead_windows"] = sorted(dead)
     owners, clash = {}, set()
