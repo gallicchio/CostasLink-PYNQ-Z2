@@ -172,12 +172,14 @@ def roundtrip_point(dx, scheme="A3", path="fast", reply="xor1", count=20000, per
         # P: its RX engine on the scheme (so it re-arms after each challenge), its reply path armed on RX re-arm
         P.tx_stop()
         P.tx_points(dx.PV.pt(*s.idle), [dx.PV.pt(*m) for m in s.msgs])
-        P.rx_config(s.idle_vector(), s.mask, s.lut(first_edge), s.slow_exp(), delay=delay, quiet=quiet, confirm=confirm,
-                    window=0, first_edge=first_edge, settle=settle, row=0)
+        p_iv, p_lut, p_sexp, out["p_rx_info"] = T.rx_tables(dx.VP, s, first_edge)      # P's view of V's idle
+        s_p = s.twin() if out["p_rx_info"].get("twin") else s
+        P.rx_config(p_iv, s.mask, p_lut, p_sexp, delay=delay, quiet=quiet, confirm=confirm, window=0, first_edge=first_edge,
+                    settle=settle, row=0)
         if path == "fast":
             P.reply_off()
             cm = T._code_map(dx.PV)
-            ent = {v_: cm[code] for v_, code in C.CostasLink.fast_reply_entries(s, rmap, first_edge).items()}
+            ent = {v_: cm[code] for v_, code in C.CostasLink.fast_reply_entries(s_p, rmap, first_edge).items()}
             T._fast_load(P, ent, "oneshot", fp_clocks, "rx")
             P.fast_arm()
         elif path == "hardware":                    # row 14: a lead from P's comparator monitor to its own TRIG IN keys +Q
@@ -190,9 +192,10 @@ def roundtrip_point(dx, scheme="A3", path="fast", reply="xor1", count=20000, per
         P.rx_clear()
         # V: its challenges, its decoder on the replies, referenced to its own TX events
         V.tx_stop()
+        v_iv, v_lut, v_sexp, out["v_rx_info"] = T.rx_tables(dx.PV, s, first_edge)      # V's view of P's idle
         V.tx_points(dx.VP.pt(*s.idle), [dx.VP.pt(*m) for m in s.msgs])
-        V.rx_config(s.idle_vector(), s.mask, s.lut(first_edge), s.slow_exp(), delay=delay, quiet=quiet, confirm=confirm,
-                    window=window, first_edge=first_edge, settle=settle, row="tx")
+        V.rx_config(v_iv, s.mask, v_lut, v_sexp, delay=delay, quiet=quiet, confirm=confirm, window=window,
+                    first_edge=first_edge, settle=settle, row="tx")
         V.turnaround_config(mask=0x1E, guard=12, window=255)
         V.rx_clear()
         time.sleep(idle_s)
@@ -200,8 +203,8 @@ def roundtrip_point(dx, scheme="A3", path="fast", reply="xor1", count=20000, per
         out["v_idle_false_per_s"] = V.rx_stats()["events"] / idle_s
         res = {}
         for what in ("ref_to_event", "ref_to_decision"):
-            V.rx_config(s.idle_vector(), s.mask, s.lut(first_edge), s.slow_exp(), delay=delay, quiet=quiet, confirm=confirm,
-                        window=window, first_edge=first_edge, settle=settle, row="tx")
+            V.rx_config(v_iv, s.mask, v_lut, v_sexp, delay=delay, quiet=quiet, confirm=confirm, window=window,
+                        first_edge=first_edge, settle=settle, row="tx")
             V.hist_config(what, 0)
             V.rx_clear()
             P.rx_clear()

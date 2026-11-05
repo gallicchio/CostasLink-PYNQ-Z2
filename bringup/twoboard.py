@@ -237,7 +237,7 @@ def cal_windows(ctx, W=20, N=500):
     for w in ("QP", "QN"):
         if lv[(w, "+I")] is not None and lv[(w, "step")] is not None:
             wc[w] = (lv[(w, "+I")], lv[(w, "step")])
-    ctx.wcal, ctx.wcal_dsa = wc, rcl._dsa_db
+    ctx.wcal, ctx.wcal_dsa = wc, (rcl._dsa_db, getattr(ctx, "s", 1))
     return {"%s %s" % k: (None if v is None else round(v, 4)) for k, v in lv.items()}
 
 
@@ -283,7 +283,7 @@ def scheme_windows(ctx, s, frac=0.5):
     way across that gap (0.5 the middle; low frac is near the quiet points, so it fires early).  A window no point fires
     sits above them all.  Returns (thresholds, levels, gaps)."""
     rcl = ctx.rx_cl()
-    key = (s.name, rcl._dsa_db)
+    key = (s.name, rcl._dsa_db, getattr(ctx, "s", 1))     # per lock side: the Q offsets flip with it (REVB 41, 4.62)
     cache = getattr(ctx, "slev", None)
     if cache is None:
         cache = ctx.slev = {}
@@ -317,11 +317,34 @@ def scheme_windows(ctx, s, frac=0.5):
     return th, {"%s,%s" % p: {w: (None if x is None else round(x, 4)) for w, x in r.items()} for p, r in lv.items()}, gaps
 
 
+def rx_tables(ctx, s, first_edge=False, seconds=0.01):
+    """the decoder's idle vector, table and slow expectations for scheme s as this receiver actually sees its idle: the
+    five comparators gated at the scheme's idle (the pilot's, for B1 / B2 / A4).  If CMP_I reads the other way from the
+    scheme's nominal idle, the scheme's 180-degree twin is used (a pilot on the other side of I: the loop's side on a weak
+    pilot is not the full point's); a window firing at the idle is reported (the windows are then wrong).  Returns
+    (idle_vector, lut, slow_exp, info)."""
+    rcl = ctx.rx_cl()
+    ctx.hold(s.idle)
+    time.sleep(0.05)
+    g = rcl.gate(seconds=seconds, inputs=tuple(C.CMP_NAMES))
+    vec = sum((1 if g[n]["duty"] > 0.5 else 0) << k for k, n in enumerate(C.CMP_NAMES))
+    nominal = s.idle_vector()
+    info = {"measured": vec, "nominal": nominal, "duty": {n: round(g[n]["duty"], 3) for n in C.CMP_NAMES}}
+    use = s
+    if (vec ^ nominal) & 1:                            # CMP_I the other way: the twin
+        tw = s.twin()
+        if tw.idle_vector() == vec or ((tw.idle_vector() ^ vec) & 0x1E) == 0:
+            use, info["twin"] = tw, True
+    if (use.idle_vector() ^ vec) & 0x1E:
+        info["windows_firing_at_idle"] = [n for k, n in enumerate(C.CMP_NAMES) if k and (vec >> k) & 1 != (use.idle_vector() >> k) & 1]
+    return use.idle_vector(), use.lut(first_edge), use.slow_exp(), info
+
+
 def set_windows(ctx, frac, which=("QP", "QN", "IP", "IN")):
     """each window at its centre + frac x (its on level - its centre), calibrated at this DSA (again if it changed);
     linkd's rule (the ADC's leg from its fitted centre) where a comparator would not calibrate"""
     rcl = ctx.rx_cl()
-    if getattr(ctx, "wcal", None) is None or getattr(ctx, "wcal_dsa", None) != rcl._dsa_db:
+    if getattr(ctx, "wcal", None) is None or getattr(ctx, "wcal_dsa", None) != (rcl._dsa_db, getattr(ctx, "s", 1)):
         ctx.wcal_levels = cal_windows(ctx)
     th = {}
     leg = None
@@ -698,8 +721,11 @@ def events_point(link, scheme="A3", msg=None, period=1000, width=20, count=20000
     rows = {}
     try:
         # the idle alone: false events a second
-        rx.rx_config(s.idle_vector(), s.mask, s.lut(first_edge), s.slow_exp(), delay=delay, quiet=quiet, confirm=confirm,
-                     window=window, first_edge=first_edge, settle=settle, ref=ref)
+        iv, lut_full, sexp, out["rx_info"] = rx_tables(link, s, first_edge)
+        s_use = s.twin() if out["rx_info"].get("twin") else s
+        tx.tx_points(idle, [link.pt(*p) for p in s.msgs])
+        rx.rx_config(iv, s.mask, lut_full, sexp, delay=delay, quiet=quiet, confirm=confirm, window=window,
+                     first_edge=first_edge, settle=settle, ref=ref)
         rx.rx_clear()
         time.sleep(idle_s)
         rx.rx_enable(False)
@@ -709,7 +735,7 @@ def events_point(link, scheme="A3", msg=None, period=1000, width=20, count=20000
         for m in ([msg] if msg is not None else range(s.n)):
             r = {}
             for what in hists:
-                rx.rx_config(s.idle_vector(), s.mask, _lut_only(s, m, first_edge), s.slow_exp(), delay=delay, quiet=quiet,
+                rx.rx_config(iv, s.mask, _lut_only(s_use, m, first_edge), sexp, delay=delay, quiet=quiet,
                              confirm=confirm, window=window, first_edge=first_edge, settle=settle, ref=ref)
                 rx.hist_config(what, shift if what == "event_to_event" else 0)
                 rx.rx_clear()
@@ -882,8 +908,10 @@ class Loop:
         if ok:
             self.node.cl.hold_point(1, 0)
             time.sleep(0.05)
-            self.s = 1 if self.ld.observe()["di"] > 0 else -1
-            self.wcal = None
+            s_new = 1 if self.ld.observe()["di"] > 0 else -1
+            if s_new != self.s:
+                say("%s: the lock came back on the other side (%+d)" % (self.name, s_new))
+            self.s = s_new
             return True
         return self.up()
 
@@ -938,15 +966,18 @@ def _loop_arm(loop, s, path, rmap, first_edge, delay, reply_width, fp_clocks, qu
     cl = loop.node.cl
     cl.tx_stop()
     cl.tx_points(loop.pt(*s.idle), [loop.pt(*m) for m in s.msgs])
-    cl.rx_config(s.idle_vector(), s.mask, s.lut(first_edge), s.slow_exp(), delay=delay, quiet=quiet, confirm=confirm,
-                 window=window, first_edge=first_edge, settle=settle)
+    iv, lut, sexp, loop.rx_info = rx_tables(loop, s, first_edge)
+    cl.tx_points(loop.pt(*s.idle), [loop.pt(*m) for m in s.msgs])
+    cl.rx_config(iv, s.mask, lut, sexp, delay=delay, quiet=quiet, confirm=confirm, window=window, first_edge=first_edge,
+                 settle=settle)
     if path == "sync":
         cl.fast_off()
         cl.reply_config(list(rmap), width=reply_width, once=True, rearm="tx")
     elif path == "fast":
         cl.reply_off()
         cm = _code_map(loop)
-        ent = {v: cm[code] for v, code in C.CostasLink.fast_reply_entries(s, rmap, first_edge).items()}
+        s_use = s.twin() if (getattr(loop, "rx_info", None) or {}).get("twin") else s
+        ent = {v: cm[code] for v, code in C.CostasLink.fast_reply_entries(s_use, rmap, first_edge).items()}
         _fast_load(cl, ent, "oneshot", fp_clocks, "tx")
     else:
         raise ValueError("path: 'sync' or 'fast'")
@@ -1740,9 +1771,11 @@ def evtiming_point(loop, scheme="A3", period=1000, width=20, count=20000, first_
     try:
         cl.tx_stop()
         cl.tx_points(loop.pt(*s.idle), [loop.pt(*m) for m in s.msgs])
+        iv, lut, sexp, out["rx_info"] = rx_tables(loop, s, first_edge)
+        cl.tx_points(loop.pt(*s.idle), [loop.pt(*m) for m in s.msgs])
         loop.hold(s.idle)
-        cl.rx_config(s.idle_vector(), s.mask, s.lut(first_edge), s.slow_exp(), delay=delay, quiet=quiet, confirm=confirm,
-                     window=window, first_edge=first_edge, settle=settle)
+        cl.rx_config(iv, s.mask, lut, sexp, delay=delay, quiet=quiet, confirm=confirm, window=window, first_edge=first_edge,
+                     settle=settle)
         cl.rx_clear()
         time.sleep(idle_s)
         cl.rx_enable(False)
@@ -1750,8 +1783,8 @@ def evtiming_point(loop, scheme="A3", period=1000, width=20, count=20000, first_
         for m in range(s.n):
             r = {}
             for what in ("ref_to_event", "ref_to_decision"):
-                cl.rx_config(s.idle_vector(), s.mask, s.lut(first_edge), s.slow_exp(), delay=delay, quiet=quiet,
-                             confirm=confirm, window=window, first_edge=first_edge, settle=settle)
+                cl.rx_config(iv, s.mask, lut, sexp, delay=delay, quiet=quiet, confirm=confirm, window=window,
+                             first_edge=first_edge, settle=settle)
                 cl.hist_config(what, 0)
                 cl.rx_clear()
                 cl.tx_points(loop.pt(*s.idle), [loop.pt(*mm) for mm in s.msgs])
