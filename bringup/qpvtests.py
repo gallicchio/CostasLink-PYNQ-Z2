@@ -172,14 +172,14 @@ def roundtrip_point(dx, scheme="A3", path="fast", reply="xor1", count=20000, per
         # P: its RX engine on the scheme (so it re-arms after each challenge), its reply path armed on RX re-arm
         P.tx_stop()
         P.tx_points(dx.PV.pt(*s.idle), [dx.PV.pt(*m) for m in s.msgs])
-        p_iv, p_lut, p_sexp, out["p_rx_info"] = T.rx_tables(dx.VP, s, first_edge)      # P's view of V's idle
-        s_p = s.twin() if out["p_rx_info"].get("twin") else s
+        p_iv, p_lut, p_sexp, out["p_rx_info"] = T.rx_tables(dx.VP, s, first_edge)      # P's view of V's challenges
         P.rx_config(p_iv, s.mask, p_lut, p_sexp, delay=delay, quiet=quiet, confirm=confirm, window=0, first_edge=first_edge,
                     settle=settle, row=0)
         if path == "fast":
             P.reply_off()
             cm = T._code_map(dx.PV)
-            ent = {v_: cm[code] for v_, code in C.CostasLink.fast_reply_entries(s_p, rmap, first_edge).items()}
+            owners = out["p_rx_info"].get("owners") or {}
+            ent = {v_: cm[C.point_code(*s.msgs[rmap[k]])] for v_, k in owners.items() if k < len(rmap)}
             T._fast_load(P, ent, "oneshot", fp_clocks, "rx")
             P.fast_arm()
         elif path == "hardware":                    # row 14: a lead from P's comparator monitor to its own TRIG IN keys +Q

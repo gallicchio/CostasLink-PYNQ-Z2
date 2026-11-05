@@ -314,15 +314,18 @@ def scheme_windows(ctx, s, frac=0.5):
         v = min(2.499, max(0.0, v))
         rcl.threshold(w, v)
         th[w] = round(v, 4)
+    ctx.last_th = dict(th)
     return th, {"%s,%s" % p: {w: (None if x is None else round(x, 4)) for w, x in r.items()} for p, r in lv.items()}, gaps
 
 
-def rx_tables(ctx, s, first_edge=False, seconds=0.01):
-    """the decoder's idle vector, table and slow expectations for scheme s as this receiver actually sees its idle: the
-    five comparators gated at the scheme's idle (the pilot's, for B1 / B2 / A4).  If CMP_I reads the other way from the
-    scheme's nominal idle, the scheme's 180-degree twin is used (a pilot on the other side of I: the loop's side on a weak
-    pilot is not the full point's); a window firing at the idle is reported (the windows are then wrong).  Returns
-    (idle_vector, lut, slow_exp, info)."""
+def rx_tables(ctx, s, first_edge=False, seconds=0.01, margin_v=0.004):
+    """the decoder's idle vector, table and slow expectations for scheme s as this receiver actually sees it.  The idle:
+    the five comparators gated at the scheme's idle (the pilot's, for B1 / B2 / A4).  The table: each message's vector from
+    the measured constellation (point_levels, kept by scheme_windows) against the thresholds set, a window within margin_v
+    of its threshold taken both ways, CMP_I from the point's I sign against the idle's; vectors two messages share, or the
+    idle's, are left invalid.  Without a measured constellation (or for first-edge decisions) the scheme's own table, the
+    180-degree twin when CMP_I reads the other way at the idle.  Returns (idle_vector, lut, slow_exp, info); info has
+    'owners' {vector: message} for the fast path's table."""
     rcl = ctx.rx_cl()
     ctx.hold(s.idle)
     time.sleep(0.05)
@@ -330,14 +333,54 @@ def rx_tables(ctx, s, first_edge=False, seconds=0.01):
     vec = sum((1 if g[n]["duty"] > 0.5 else 0) << k for k, n in enumerate(C.CMP_NAMES))
     nominal = s.idle_vector()
     info = {"measured": vec, "nominal": nominal, "duty": {n: round(g[n]["duty"], 3) for n in C.CMP_NAMES}}
-    use = s
-    if (vec ^ nominal) & 1:                            # CMP_I the other way: the twin
-        tw = s.twin()
-        if tw.idle_vector() == vec or ((tw.idle_vector() ^ vec) & 0x1E) == 0:
-            use, info["twin"] = tw, True
-    if (use.idle_vector() ^ vec) & 0x1E:
-        info["windows_firing_at_idle"] = [n for k, n in enumerate(C.CMP_NAMES) if k and (vec >> k) & 1 != (use.idle_vector() >> k) & 1]
-    return use.idle_vector(), use.lut(first_edge), use.slow_exp(), info
+    th = getattr(ctx, "last_th", None)
+    lv = (getattr(ctx, "slev", None) or {}).get((s.name, rcl._dsa_db, getattr(ctx, "s", 1)))
+    if first_edge or not th or not lv:
+        use = s
+        if (vec ^ nominal) & 1:
+            use, info["twin"] = s.twin(), True
+        if (use.idle_vector() ^ vec) & 0x1E:
+            info["idle_mismatch"] = [n for k, n in enumerate(C.CMP_NAMES) if k and (vec >> k) & 1 != (use.idle_vector() >> k) & 1]
+        lut = use.lut(first_edge)
+        info["owners"] = {v: (e & 7) for v, e in enumerate(lut) if e & 8}
+        info["source"] = "nominal"
+        return use.idle_vector(), lut, use.slow_exp(), info
+    i_idle = s.rx_idle_point()[0]
+    cmp_i_idle = vec & 1
+    owners, clash = {}, set()
+    for m, pt in enumerate(s.msgs):
+        bits = []
+        pi = s.rx_point(pt)[0]
+        if abs(pi) < 1e-9 or abs(i_idle) < 1e-9:
+            bits.append((0, 1))
+        else:
+            bits.append((cmp_i_idle,) if (pi > 0) == (i_idle > 0) else (1 - cmp_i_idle,))
+        levels = lv.get(tuple(pt)) or {}
+        for w, k in WIN_INDEX.items():
+            if w not in th or levels.get(w) is None:
+                bits.append((0, 1))
+            elif abs(levels[w] - th[w]) < margin_v:
+                bits.append((0, 1))
+            else:
+                bits.append((1,) if levels[w] > th[w] else (0,))
+        for combo in itertools.product(*bits):
+            v = sum(b << k for k, b in enumerate(combo))
+            if v == vec:
+                continue
+            if v in owners and owners[v] != m:
+                clash.add(v)
+            owners[v] = m
+    for v in clash:
+        owners.pop(v, None)
+    lut = [(8 | owners[v]) if v in owners else 0 for v in range(32)]
+    info.update(source="measured", owners=owners, clashes=sorted(clash),
+                vectors={str(m): sorted(v for v, mm in owners.items() if mm == m) for m in range(s.n)})
+    return vec, lut, 0, info
+
+
+def _cut(lut, m):
+    """a table with only message m valid: a decision is then a right one"""
+    return [(e if (e & 8) and (e & 7) == m else 0) for e in lut]
 
 
 def set_windows(ctx, frac, which=("QP", "QN", "IP", "IN")):
@@ -727,7 +770,6 @@ def events_point(link, scheme="A3", msg=None, period=1000, width=20, count=20000
     try:
         # the idle alone: false events a second
         iv, lut_full, sexp, out["rx_info"] = rx_tables(link, s, first_edge)
-        s_use = s.twin() if out["rx_info"].get("twin") else s
         tx.tx_points(idle, [link.pt(*p) for p in s.msgs])
         rx.rx_config(iv, s.mask, lut_full, sexp, delay=delay, quiet=quiet, confirm=confirm, window=window,
                      first_edge=first_edge, settle=settle, ref=ref)
@@ -740,7 +782,7 @@ def events_point(link, scheme="A3", msg=None, period=1000, width=20, count=20000
         for m in ([msg] if msg is not None else range(s.n)):
             r = {}
             for what in hists:
-                rx.rx_config(iv, s.mask, _lut_only(s_use, m, first_edge), sexp, delay=delay, quiet=quiet,
+                rx.rx_config(iv, s.mask, _cut(lut_full, m), sexp, delay=delay, quiet=quiet,
                              confirm=confirm, window=window, first_edge=first_edge, settle=settle, ref=ref)
                 rx.hist_config(what, shift if what == "event_to_event" else 0)
                 rx.rx_clear()
@@ -986,8 +1028,8 @@ def _loop_arm(loop, s, path, rmap, first_edge, delay, reply_width, fp_clocks, qu
     elif path == "fast":
         cl.reply_off()
         cm = _code_map(loop)
-        s_use = s.twin() if (getattr(loop, "rx_info", None) or {}).get("twin") else s
-        ent = {v: cm[code] for v, code in C.CostasLink.fast_reply_entries(s_use, rmap, first_edge).items()}
+        owners = (getattr(loop, "rx_info", None) or {}).get("owners") or {}
+        ent = {v: cm[C.point_code(*s.msgs[rmap[k]])] for v, k in owners.items() if k in range(len(rmap))}
         _fast_load(cl, ent, "oneshot", fp_clocks, "tx")
     else:
         raise ValueError("path: 'sync' or 'fast'")
