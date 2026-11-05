@@ -167,6 +167,19 @@ Grouped by what each buys; within a group, in order.  None needs new hardware.
     offset that locked at the last one.  And tell a false lock from no carrier: VC settled while CMP_I chatters
     (6 000-15 000 edges in 10 ms) is a false lock, to be released from elsewhere, not a missing carrier to back off from.
 
+**Across two boards (2026-11-04, BRINGUP_LOG 4.60; `twoboard.py` does each of these from the laptop today)**
+1. **linkd's comparator centres from the carrier, not from noise.**  setup's Rice fit at DSA 31.75 with no carrier finds too
+   few edges on most links (every centre fell back to V_MID on the dish link), so the windows ignore the comparators'
+   offsets (tens of mV against an 80-90 mV leg): A2 / A3 decided nothing until the windows were placed from the carrier.
+   `twoboard.cal_windows`: each window's level bisected at (1, 0), (-1, 0) and, as events, the Q steps.
+2. **scheme() and the turnaround calls with the lock's frame.**  Rev A's inverted I arm (REVB 9) makes a receiver see
+   (s I, -s Q) at linkd's lock (the idle on +-I), so every Q-carrying scheme sent by name (A2, A3, B1, B2, the self-test's
+   and the prover's calls) has its Q points the wrong way; BPSK and on-off never show it.  A `side` / mirror argument in
+   scheme(), loopback_turnaround() and the fast path's tables (twoboard's txp mapping) would let the server do it.
+3. **netbus: fast_config's table** is a dict keyed by vector; JSON makes the keys strings and the call fails remotely
+   (twoboard writes FP_MAP / FP_USE directly).  Accept a list of (vector, code) pairs.
+4. **events(count=0) sends none** (the docstring reads as if 0 were endless): say so, or take count=None for endless.
+
 ## 2. Rev A hardware: rework by hand
 
 | # | rework | expected | then measure | REVB |
