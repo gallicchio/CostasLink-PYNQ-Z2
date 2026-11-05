@@ -49,7 +49,7 @@ PAGE = r"""<!doctype html>
 <p><small>1 dB = 1 semitone (12 dB an octave).  Left ear: the first card's receiver, right ear: the second's.  The level is each
 listener's log detector (the +-94 MHz band at RX ANT) while the other board transmits.  Read-only page; the laptop drives the boards.</small></p>
 <script>
-let ctx = null, osc = {}, gain = {}, pan = {}, maxes = {}, last = null, clickOn = true;
+let ctx = null, osc = {}, gain = {}, pan = {}, maxes = {}, last = null, clickOn = true, muted = false;
 const REF_DBM = -60, REF_HZ = 440;
 function hz(d) { return REF_HZ * Math.pow(2, (d - REF_DBM) / 12); }
 function ensureAudio() {
@@ -97,7 +97,7 @@ function render(d) {
     c.querySelector(".info").textContent = L.info || "";
     if (ctx) {
       voice(n, names.length > 1 ? (i === 0 ? -1 : 1) : 0);
-      const target = (v == null || L.stale) ? 0 : 0.25;
+      const target = (muted || v == null || L.stale) ? 0 : 0.25;
       gain[n].gain.setTargetAtTime(target, ctx.currentTime, 0.05);
       if (v != null) osc[n].frequency.setTargetAtTime(hz(v), ctx.currentTime, 0.03);
     }
@@ -111,8 +111,8 @@ async function tick() {
     if (last) { Object.values(last.levels).forEach(L => L.stale = true); render(last); }
   }
 }
-document.getElementById("go").onclick = () => { ensureAudio(); ctx.resume(); };
-document.getElementById("stop").onclick = () => { if (ctx) Object.values(gain).forEach(g => g.gain.setTargetAtTime(0, ctx.currentTime, 0.05)); };
+document.getElementById("go").onclick = () => { ensureAudio(); ctx.resume(); muted = false; };
+document.getElementById("stop").onclick = () => { muted = true; if (ctx) Object.values(gain).forEach(g => g.gain.setTargetAtTime(0, ctx.currentTime, 0.05)); };
 document.getElementById("reset").onclick = () => { maxes = {}; };
 document.getElementById("click").onchange = (e) => { clickOn = e.target.checked; };
 setInterval(tick, 150);
