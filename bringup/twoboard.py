@@ -123,6 +123,8 @@ class Proxy:
         self.r, self._pll, self._dsa_db = r, {}, 31.75
 
     def pll_tune(self, which, f, f_pfd=25.0, cp=None, lo_mon=None):
+        if f_pfd == 25.0 and abs(f / 25.0 - round(f / 25.0)) > 1e-9:    # off the 25 MHz grid: R = 5 (every 5 MHz), cp 15
+            f_pfd, cp = 5.0, 15
         self._pll[which] = (float(f), f_pfd, cp)
         return self.r.pll_tune(which, float(f), f_pfd=f_pfd, cp=cp)
 
