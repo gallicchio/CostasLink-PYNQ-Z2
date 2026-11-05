@@ -916,7 +916,8 @@ class Loop:
         return self.up()
 
     def state(self):
-        return {"link": self.name, "mhz": self.mhz, "dsa": self.node.cl._dsa_db, "tr_a": self.tr_a, "wifi": wifi_tag(self.mhz)}
+        return {"link": self.name, "mhz": self.mhz, "dsa": self.node.cl._dsa_db, "tr_a": self.tr_a, "side": self.s,
+                "wifi": wifi_tag(self.mhz)}
 
 
 def reply_maps(n):
