@@ -25,6 +25,17 @@ budget, 10-29), `docs/SYSTEM.md` section 1 (the prover's turnaround in the QPV c
 | **Bitstream latency** | not measured.  *est* 17.5 ns from the ladder pins to the comparators (the captures' loop time) + half a symbol (the timing recovery samples mid-symbol) + the decision; over the dishes + 139.75 ns of cable and air | | tonight: the lag of CMP_I against the ladder's I bit in one capture during PRBS, per rate and level (T2); tomorrow: on the scope (item 3) |
 | **Bitstream rate** | 0 errors at 2 MBd (A -> B, 20 Mbit) and 2e-7 (B -> A); 0 at 0.5 MBd; 20 MBd and more are in the campaign.  On one board at the bench: 50 MBd open at 13 of 16 sampling phases, 100 MBd closed (REVB 20: the end-to-end edge is 10-13 ns) | | the campaign (periods 5-1000 clocks); tonight's T2 adds periods 1-4 with the phase swept |
 
+**Filled in at 22:05 by the timing step (BRINGUP_LOG 4.62, both boards in loopback, 5200 MHz):**
+
+| question | measured tonight |
+|---|---|
+| the prover's turnaround | **B2 (the four corners onto the four windows): 23.75-26.25 ns median, 26.25-28.75 worst, on both boards, every corner within 5 ns, every reply right.**  A2 23.75-25.0.  A3 25-31 by map, its I = -1 corners 5-10 ns slower (the analog path to their windows).  Clocked: 72-80 ns |
+| every challenge against every reply | 20 000 PRBS-chosen challenges per map: A3 and B2 100 % right on all nine maps on both boards, A2 100 %; the confusion matrix is the map |
+| consistency | per challenge repeatable to one 1.25 ns sample over 16 captures; the spread between challenges is the FPGA's share (3.8-12.5 ns by which comparator moves first) and, for A3, the slow corners |
+| idle-to-1-in-N | the event 47.5-53.75 ns after the board's TX reference (zero spread for A1 over 20 000 events; 3.75 ns across A2 / B2's messages); **decided 1.25-4 ns after the event with the settled decision** (A1 55.0, A2 51.25-52.5, B2 50.9 ns), 20 ns after with the fixed delay; B2 right at every delay and settle; no false events at the idle at any window place 0.2-0.8 |
+| bitstream latency | the ladder pins to CMP_I 20.0-23.75 ns at every rate (0.5-100 MBd) and level; over the dishes add 139.75 ns and half a symbol |
+| bitstream rate | 100 MBd open at 1-2 of 5 sampling phases, 50 MBd at 3 of 5, 33 MBd and below at all 5 |
+
 **The one structural fact:** with the cabling as it is (one dish per board behind its T/R switch), **no round trip over the
 air is possible at speed** (REVB 55): each switch block passes the board's own TX to its own RX 25 dB down in either state
 (about -17 dBm against the far board's -55), and rev A has no mute that is both fast and quiet (DSOP takes 112-126 ns to
