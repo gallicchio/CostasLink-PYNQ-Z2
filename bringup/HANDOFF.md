@@ -139,6 +139,30 @@ What the laptop needs that the bench PC has:
 * The bench's `bench_config.json` names USB serial ports by their FTDI IDs; on the laptop they are the same strings
   (the adapters carry them), and the LAN addresses change with the lab's network.
 
+### 2b. The afternoon of 2026-11-05: what is where, and what to do first
+
+* **Running until 13:00:** `twoboard.py campaign` 17 (PID in `data/twoboard/campaign.pid`; the random sessions, every
+  parameter drawn jointly at a random band frequency and direction, with a 10-minute B -> A soak at 5200 each hour, half
+  with the analyzer sweeping and half paused) and the supply watchdog started 04:10 (PID in the scratchpad's
+  `logs/watch2.pid`, to 16:10).  Both quiet the boards when stopped: SIGINT the campaign and **check it is gone** (HANDOFF
+  section 2's rule) before anything else drives the boards.  The watchdog's process ignores SIGINT (started from a
+  script): `kill -TERM` it.
+* **The night's results:** BRINGUP_LOG 4.62 (the timing step: the prover's distributions, PRBS challenges, event timing, the
+  bitstream's latency), 4.63 (the 5200 sweeps both ways), 4.64 (the band), 4.65 (5400 / 4800 / 5800); the review's section 0
+  tables (`QPV_TIMING_REVIEW.md`) carry the answers; `twoboard_report.py <records>` tabulates any file.  The framework's
+  faults found on the way are listed in 4.63 and fixed in `twoboard.py` as of 4e107a8.
+* **First at the bench (the ranked list, `QPV_TIMING_REVIEW.md` 6a):** stop the campaign; `python3 bringup/aimtone.py` for the
+  dishes (untested with the boards: its first run is its test); then the round trip's cabling (V's RX ANT and P's TX ANT
+  onto two FPV antennas on the bench) and `qpvtests.py roundtrip --v A --p B --mhz-c 5200 --mhz-r 5400`, with me watching
+  its first minutes.  Two things to look at with hands: **board A's IP window** (its comparator's level moves 14 mV where
+  IN moves 170 at the dish link's level: A's I MON on the scope, and the scope's input impedance on it), and the 5-9 dB of
+  link loss (the VNA on the cable ends).
+* **What the boards can and cannot do as they stand (4.63-4.65):** BPSK and the I-window bitstreams error-free to 20 MBd over
+  the dishes at 4400-5450 MHz; the Q channel 1e-6-1e-3; A2 / B2 / A4 events at 99-100 % at the link's level; the pilot
+  schemes want the challenges' duty under about 1 %; events every 50 clocks overrun everything; 20 ns events fail; above
+  5700 MHz there is no link; A -> B fails at 4400 and 5500-5700 where B -> A locks; a strong link (4800) loses its lock to a
+  false one after an events run unless the attenuator keeps the leg at the calibrated level.
+
 ### 3a. The lab laptop as found (`zmash`, 2026-11-03, BRINGUP_LOG 4.35)
 
 * **Config:** `COSTAS_BENCH_CONFIG=bringup/bench_config_laptop.json` in front of every `bench.py` command (the PC's
