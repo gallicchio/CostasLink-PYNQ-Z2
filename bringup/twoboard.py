@@ -1325,6 +1325,29 @@ def cmd_band(a, log):
                 nodes[b].quiet()
 
 
+def open_sa(tries=3):
+    """the DSA875 on USB, with a USBTMC device clear and another try when its first read times out (an interrupted
+    sweep leaves a half-finished message in the endpoint: 2026-11-04 22:07, two campaigns dead at their first line)"""
+    import scpi_link
+    from rigol_DSA875 import DSA875, usbtmc_node, USB_VENDOR, USB_PRODUCT
+    node = usbtmc_node(USB_VENDOR, USB_PRODUCT)
+    last = None
+    for k in range(tries):
+        try:
+            return DSA875(usb=node)
+        except Exception as e:                                  # noqa: BLE001
+            last = e
+            say("the analyzer did not answer (%r): a device clear, try %d" % (e, k + 2))
+            try:
+                L = scpi_link.Link(usb=node, idn=None, timeout=5)
+                L.clear()
+                L.close()
+            except Exception as e2:                             # noqa: BLE001
+                say("  the clear failed: %r" % (e2,))
+            time.sleep(2)
+    raise last
+
+
 def null_fpv(node, other, mhz, sa, start=None, att=0, ref=-40.0):
     """the board's TX output null at mhz found on the DSA875's FPV antenna (the carrier over the air, near the beam): the
     other board quiet with both synthesizers parked, this one's TX on mhz (its RX synthesizer parked, REVB 57), TR_A 0;
@@ -1390,8 +1413,7 @@ def null_fpv(node, other, mhz, sa, start=None, att=0, ref=-40.0):
 
 def cmd_nulls(a, log):
     """each board's null at each frequency on the FPV antenna (the WiFi monitor must be stopped: one analyzer)"""
-    from rigol_DSA875 import DSA875, usbtmc_node, USB_VENDOR, USB_PRODUCT
-    sa = getattr(a, "sa", None) or DSA875(usb=usbtmc_node(USB_VENDOR, USB_PRODUCT))
+    sa = getattr(a, "sa", None) or open_sa()
     nodes = {n: Node(n) for n in ("A", "B")}
     try:
         table = json.load(open(NULL_FILE))
@@ -1572,10 +1594,9 @@ def cmd_campaign(a, log):
     band, full sweeps at 5400 / 4800 / 5800, then random sessions (a frequency, a direction, every parameter drawn
     jointly) with a 10-minute soak at 5200 every hour"""
     import random
-    from rigol_DSA875 import DSA875, usbtmc_node, USB_VENDOR, USB_PRODUCT
     rng = random.Random(a.seed)
     t_end = time.mktime(time.strptime(a.until, "%Y-%m-%d %H:%M"))
-    sa = None if a.no_wifi else DSA875(usb=usbtmc_node(USB_VENDOR, USB_PRODUCT))
+    sa = None if a.no_wifi else open_sa()
     wifi = WifiThread(sa, os.path.join(DATA, "wifi_%s.jsonl" % time.strftime("%Y%m%d_%H%M%S"))) if sa else None
     nodes = {n: Node(n) for n in ("A", "B")}
 
@@ -1746,8 +1767,7 @@ def ripple(tx, rx, sa, f0=5200.0, half=50.0, step=1.0, f_pfd=1.0):
 
 
 def cmd_ripple(a, log):
-    from rigol_DSA875 import DSA875, usbtmc_node, USB_VENDOR, USB_PRODUCT
-    sa = getattr(a, "sa", None) or DSA875(usb=usbtmc_node(USB_VENDOR, USB_PRODUCT))
+    sa = getattr(a, "sa", None) or open_sa()
     nodes = {n: Node(n) for n in ("A", "B")}
     try:
         for d in a.dir:
