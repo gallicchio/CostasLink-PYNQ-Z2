@@ -436,7 +436,12 @@ class Link:
 
     def ensure(self):
         s = self.look()
-        if s["locked"] and s["di"] * 1 > 0.01:
+        if s["locked"] and abs(s["di"]) > 0.01:       # locked on either side (the side is in self.s; the points are mapped)
+            side = 1 if s["di"] > 0 else -1
+            if side != self.s:
+                say("%s: the lock is on the other side (%+d)" % (self.name, side))
+                self.s = side
+                self.wcal = self.slev = None
             return s
         ok, starts = self.ld.recover()
         say("%s: lock lost (%s); recover %s (%d starts)" % (self.name, s, ok, starts))
@@ -902,7 +907,11 @@ class Loop:
         self.hold((1, 0))
         time.sleep(0.03)
         o = self.ld.observe()
-        if o["locked"] and o["di"] > 0.01:
+        if o["locked"] and abs(o["di"]) > 0.01:       # either side
+            side = 1 if o["di"] > 0 else -1
+            if side != self.s:
+                say("%s: the lock is on the other side (%+d)" % (self.name, side))
+                self.s = side
             return True
         ok, _ = self.ld.recover()
         if ok:
