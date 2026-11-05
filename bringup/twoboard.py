@@ -683,8 +683,11 @@ def pilot_cal(ctx, rho=C.RHO, angle=0, d0=0.08, tries=10):
     sgn_full = 1 if o["di"] > 0 else -1
     trace = [("full", full, o["di"], o["dq"])]
 
-    def search(ux, uy):
-        sign, d, got = 1.0, d0, None
+    def search(ux, uy, sign=1.0):
+        """the offset d along (ux, uy) that leaves a pilot of rho: the loop locks the pilot on whichever side it likes
+        (board A put it at -I for either sign of the offset, 2026-11-05 00:10), so the size |r| is what converges and
+        the side is measured afterwards by the caller (recheck_side_on_idle)"""
+        d, got = d0, None
         for _ in range(tries):
             vi, vq = vi0 + sign * d * ux, vq0 + sign * d * uy
             if not (0.0 <= vi <= 0.55 and 0.0 <= vq <= 0.55):
@@ -697,18 +700,13 @@ def pilot_cal(ctx, rho=C.RHO, angle=0, d0=0.08, tries=10):
             o = observe()
             r = o["di"] * sgn_full / a if a else 0.0
             trace.append((round(d, 4), sign, round(vi, 4), round(vq, 4), o["di"], o["dq"], round(r, 3)))
-            # 30 mV (about 0.07 a by the slope 0.0024 a / mV) was too weak for the loop to stay on (it read 0 every
-            # time, 2026-11-04 18:15), so the search starts near rho; only a clear reading on the other side flips it
-            if r < -0.05:
-                sign = -sign
-                continue
-            if r < 0.05:
+            if abs(r) < 0.05:                        # too weak for the loop to hold (30 mV read 0, 2026-11-04 18:15)
                 d *= 1.6
                 continue
             got = (vi, vq, r, d)
-            if abs(r - rho) <= 0.03:
+            if abs(abs(r) - rho) <= 0.03:
                 break
-            d = d * rho / r
+            d = d * rho / abs(r)
         return got
 
     if angle == 0:
@@ -717,7 +715,7 @@ def pilot_cal(ctx, rho=C.RHO, angle=0, d0=0.08, tries=10):
     else:
         ux, uy = ctx.txp(1 / math.sqrt(2), 1 / math.sqrt(2))
         cands = [search(ux, uy), search(ux, -uy)]
-    cands = [c for c in cands if c is not None and abs(c[2] - rho) <= 0.06]
+    cands = [c for c in cands if c is not None and abs(abs(c[2]) - rho) <= 0.06]
     if not cands:
         cl.dac(VR_I=vi0, VR_Q=vq0)
         cl.hold_point(*ctx.txp(1, 0))
@@ -728,7 +726,24 @@ def pilot_cal(ctx, rho=C.RHO, angle=0, d0=0.08, tries=10):
     cl.dac(VR_I=got[0], VR_Q=got[1])
     cl.hold_point(0, 0)
     time.sleep(0.1)
-    return {"vr": (round(got[0], 4), round(got[1], 4)), "rho": got[2], "trace": trace, "a": a, "angle": angle}
+    return {"vr": (round(got[0], 4), round(got[1], 4)), "rho": abs(got[2]), "pilot_side_vs_full": 1 if got[2] > 0 else -1,
+            "trace": trace, "a": a, "angle": angle}
+
+
+def recheck_side_on_idle(ctx, s):
+    """for a pilot scheme, after the pilot is set: the loop may have put the pilot on the other side from the full point
+    it was mapped for; the idle (0, 0) with the pilot sent, the receiver's I sign says.  The side is flipped and the
+    windows and tables re-measured on it (their caches are per side)."""
+    ctx.hold(s.idle)
+    time.sleep(0.1)
+    o = ctx.ld.observe()
+    if abs(o["di"]) < 0.004:
+        return None
+    if o["di"] < 0:
+        ctx.s = -ctx.s
+        ctx.wcal = ctx.slev = None
+        say("%s: the pilot sits on the other side: side %+d" % (ctx.name, ctx.s))
+    return ctx.s
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -776,6 +791,7 @@ def events_point(link, scheme="A3", msg=None, period=1000, width=20, count=20000
             out["error"] = "no pilot"
             link.tx.cl.dac(VR_I=link.tx.vr(link.mhz)[0][0], VR_Q=link.tx.vr(link.mhz)[0][1])
             return out
+        out["side_on_pilot"] = recheck_side_on_idle(link, s)
     out["thresholds"], out["levels"], out["gaps_mv"] = scheme_windows(link, s, frac)    # from the received constellation
     idle = link.pt(*s.idle)
     link.hold(s.idle)                                # the scheme's own idle for the false-event count
@@ -1154,6 +1170,7 @@ def prover_point(loop, scheme="A3", path="fast", reply="xor1", count=5000, perio
             out["error"] = "no pilot"
             cl.dac(VR_I=loop.cfg["vr"]["VR_I"], VR_Q=loop.cfg["vr"]["VR_Q"])
             return out
+        out["side_on_pilot"] = recheck_side_on_idle(loop, s)
     out["thresholds"], out["levels"], out["gaps_mv"] = scheme_windows(loop, s, frac)
     try:
         st = loop_turnaround(loop, s, path, rmap, count=count, period=period, width=width, first_edge=first_edge,
@@ -1880,6 +1897,7 @@ def evtiming_point(loop, scheme="A3", period=1000, width=20, count=20000, first_
             out["error"] = "no pilot"
             cl.dac(VR_I=loop.cfg["vr"]["VR_I"], VR_Q=loop.cfg["vr"]["VR_Q"])
             return out
+        out["side_on_pilot"] = recheck_side_on_idle(loop, s)
     out["thresholds"], out["levels"], out["gaps_mv"] = scheme_windows(loop, s, frac)
     ts = 1e3 / (loop.node.clk_mhz * loop.node.ser)                  # ns a sample
     rows = {}
@@ -2048,6 +2066,7 @@ def prover_dist_point(loop, scheme="A3", path="fast", reply="xor1", frac=0.5, pe
             out["error"] = "no pilot"
             cl.dac(VR_I=loop.cfg["vr"]["VR_I"], VR_Q=loop.cfg["vr"]["VR_Q"])
             return out
+        out["side_on_pilot"] = recheck_side_on_idle(loop, s)
     out["thresholds"], out["levels"], out["gaps_mv"] = scheme_windows(loop, s, frac)
     try:
         out["counter_by_guard"] = {}
@@ -2119,6 +2138,7 @@ def prover_prbs_point(loop, scheme="A3", path="fast", reply="xor1", frac=0.5, co
             out["error"] = "no pilot"
             cl.dac(VR_I=loop.cfg["vr"]["VR_I"], VR_Q=loop.cfg["vr"]["VR_Q"])
             return out
+        out["side_on_pilot"] = recheck_side_on_idle(loop, s)
     out["thresholds"], out["levels"], out["gaps_mv"] = scheme_windows(loop, s, frac)
     try:
         delay = decide_at if path == "fast" else 16
