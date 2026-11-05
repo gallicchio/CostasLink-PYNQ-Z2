@@ -500,6 +500,20 @@ class Link:
         time.sleep(0.03)
         return abs(sum(self.rx.cl.adc("I") for _ in range(4)) / 4.0 - self.ld.i0)
 
+    def recheck_side(self):
+        """after a level change (the DSA): the loop may have re-locked on the other side; the idle sent on the current
+        side reads negative then.  Returns the side, or None when nothing is locked at this level."""
+        self.tx.idle((self.s, 0))
+        time.sleep(0.05)
+        o = self.ld.observe()
+        if abs(o["di"]) < 0.005:
+            return None
+        if o["di"] < 0:
+            self.s = -self.s
+            self.wcal = self.slev = None
+            say("%s: the side changed with the level (%+d)" % (self.name, self.s))
+        return self.s
+
     def windows(self, frac, leg=None, which=("QP", "QN", "IP", "IN")):
         return set_windows(self, frac, which)
 
@@ -558,6 +572,7 @@ def prbs_point(link, const="bpsk", period=50, poly=15, gain=4, one_pol=None, pha
     if dsa is not None:                              # then the point's own level, the windows scaled with the leg
         rx.dsa(dsa)
         time.sleep(0.05)
+        out["side_at_level"] = link.recheck_side()
         if wins:
             out["thresholds"] = set_windows(link, frac, wins)
     leg = link.leg()
@@ -751,6 +766,7 @@ def events_point(link, scheme="A3", msg=None, period=1000, width=20, count=20000
     if dsa is not None:
         rx.dsa(dsa)
         time.sleep(0.05)
+        out["side_at_level"] = link.recheck_side()
     leg = link.leg()
     out["leg"] = leg
     if s.pilot is not None:                          # B1, B2, A4: the idle is a weak pilot, made with VR (pilot_cal)
@@ -918,6 +934,18 @@ class Loop:
         self.hold((1, 0))
         time.sleep(0.03)
         return abs(sum(cl.adc("I") for _ in range(4)) / 4.0 - self.ld.i0)
+
+    def recheck_side(self):
+        self.hold((1, 0))
+        time.sleep(0.05)
+        o = self.ld.observe()
+        if abs(o["di"]) < 0.005:
+            return None
+        if o["di"] < 0:
+            self.s = -self.s
+            self.wcal = self.slev = None
+            say("%s: the side changed with the level (%+d)" % (self.name, self.s))
+        return self.s
 
     def windows(self, frac, leg=None):
         return set_windows(self, frac)
@@ -1116,6 +1144,7 @@ def prover_point(loop, scheme="A3", path="fast", reply="xor1", count=5000, perio
     if dsa is not None:
         cl.dsa(dsa)
         time.sleep(0.05)
+        out["side_at_level"] = loop.recheck_side()
     leg = loop.leg()
     out["leg"] = leg
     if s.pilot is not None:
@@ -1843,6 +1872,7 @@ def evtiming_point(loop, scheme="A3", period=1000, width=20, count=20000, first_
     if dsa is not None:
         cl.dsa(dsa)
         time.sleep(0.05)
+        out["side_at_level"] = loop.recheck_side()
     if s.pilot is not None:
         pc = pilot_cal(loop, angle=0 if abs(s.pilot[1]) < 1e-9 else 45)
         out["pilot"] = pc
