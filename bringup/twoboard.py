@@ -88,7 +88,9 @@ def wifi_tag(mhz):
 
 
 def park(mhz):
-    return mhz + PARK_MHZ if mhz + PARK_MHZ <= 6000 else mhz - PARK_MHZ
+    """an unused synthesizer's frequency: PARK_MHZ away, on the 25 MHz grid (integer-N), inside 3000-6000"""
+    f = mhz + PARK_MHZ if mhz + PARK_MHZ <= 6000 else mhz - PARK_MHZ
+    return float(25 * round(f / 25.0))
 
 
 class Log:
@@ -470,17 +472,22 @@ def prbs_point(link, const="bpsk", period=50, poly=15, gain=4, one_pol=None, pha
     p0, p1, src, wins = CONSTS[const]
     out = {"exp": "prbs", "const": const, "period": period, "poly": poly, "gain": gain, "one_pol": one_pol,
            "phase_frac": phase_frac, "frac": frac, "ioff": ioff, "seconds": seconds}
-    rx.dsa(dsa if dsa is not None else link.info.get("dsa", rx._dsa_db))     # a DSA point must not outlive itself
+    rx.dsa(link.info.get("dsa", rx._dsa_db))         # the lock checked at the link's own level (a weak leg reads as lost)
     st = link.ensure()
     out["look"] = st
     if not st["locked"]:
         out["error"] = "no lock"
         return out
+    if wins:
+        out["thresholds"] = link.windows(frac, None, wins)
+        out["wcal"] = link.wcal
+    if dsa is not None:                              # then the point's own level, the windows scaled with the leg
+        rx.dsa(dsa)
+        time.sleep(0.05)
+        if wins:
+            out["thresholds"] = set_windows(link, frac, wins)
     leg = link.leg()
     out["leg"] = leg
-    if wins:
-        out["thresholds"] = link.windows(frac, leg, wins)
-        out["wcal"] = link.wcal
     ioff0 = None
     if ioff is not None:
         ioff0 = rx.dac_volts().get("I_OFF_F", C.V_MID)
@@ -511,6 +518,8 @@ def prbs_point(link, const="bpsk", period=50, poly=15, gain=4, one_pol=None, pha
         link.tx.idle((link.s, 0))
         if ioff0 is not None:
             rx.dac(C.DAC2, I_OFF_F=float(ioff0))
+        if dsa is not None:
+            rx.dsa(link.info.get("dsa", rx._dsa_db))
     out.update(invert=inv, bits=r["bits"], mismatches=r["mismatches"], errors=r["mismatches"] / 3.0,
                ber=r["ber"], ber_tries={str(k): v["mismatches"] / v["bits"] if v["bits"] else None for k, v in tries.items()},
                cdr=cdr, mbaud=link.tx.clk_mhz / period, bits_expected=seconds * link.tx.clk_mhz * 1e6 / period)
@@ -652,12 +661,15 @@ def events_point(link, scheme="A3", msg=None, period=1000, width=20, count=20000
     s = C.SCHEMES[scheme]
     out = {"exp": "events", "scheme": scheme, "period": period, "width": width, "count": count, "first_edge": first_edge,
            "delay": delay, "quiet": quiet, "confirm": confirm, "window": window, "settle": settle, "frac": frac}
-    rx.dsa(dsa if dsa is not None else link.info.get("dsa", rx._dsa_db))
+    rx.dsa(link.info.get("dsa", rx._dsa_db))
     st = link.ensure()
     out["look"] = st
     if not st["locked"]:
         out["error"] = "no lock"
         return out
+    if dsa is not None:
+        rx.dsa(dsa)
+        time.sleep(0.05)
     leg = link.leg()
     out["leg"] = leg
     if s.pilot is not None:                          # B1, B2, A4: the idle is a weak pilot, made with VR (pilot_cal)
@@ -711,6 +723,8 @@ def events_point(link, scheme="A3", msg=None, period=1000, width=20, count=20000
             tx.dac(VR_I=vi0, VR_Q=vq0)
         link.tx.idle((link.s, 0))
         rx.rx_enable(True)
+        if dsa is not None:
+            rx.dsa(link.info.get("dsa", rx._dsa_db))
     out["per_msg"] = rows
     out["right_frac_min"] = min(r["right_frac"] for r in rows.values())
     out["right_frac_mean"] = sum(r["right_frac"] for r in rows.values()) / len(rows)
@@ -980,10 +994,13 @@ def prover_point(loop, scheme="A3", path="fast", reply="xor1", count=5000, perio
     out = {"exp": "prover", "scheme": scheme, "path": path, "reply": reply, "reply_map": rmap, "count": count,
            "period": period, "width": width, "first_edge": first_edge, "delay": delay, "reply_width": reply_width,
            "fp_clocks": fp_clocks, "guard": guard, "window": window, "mask": mask, "frac": frac}
-    cl.dsa(dsa if dsa is not None else loop.info.get("dsa", cl._dsa_db))
+    cl.dsa(loop.info.get("dsa", cl._dsa_db))
     if not loop.ensure():
         out["error"] = "no lock"
         return out
+    if dsa is not None:
+        cl.dsa(dsa)
+        time.sleep(0.05)
     leg = loop.leg()
     out["leg"] = leg
     if s.pilot is not None:
@@ -1019,6 +1036,8 @@ def prover_point(loop, scheme="A3", path="fast", reply="xor1", count=5000, perio
         if s.pilot is not None:
             cl.dac(VR_I=loop.cfg["vr"]["VR_I"], VR_Q=loop.cfg["vr"]["VR_Q"])
         loop.hold((1, 0))
+        if dsa is not None:
+            cl.dsa(loop.info.get("dsa", cl._dsa_db))
     return out
 
 
@@ -1262,6 +1281,8 @@ def cmd_nulls(a, log):
     try:
         for b in a.board:
             for mhz in a.mhz:
+                if str(float(mhz)) in table.get(b, {}) and not getattr(a, "redo", False):
+                    continue
                 r = null_fpv(nodes[b], nodes["B" if b == "A" else "A"], mhz, sa)
                 log(label="nulls", exp="null_fpv", **r)
                 say("%s %g MHz: carrier %.1f dBm, null %.1f dBm (%.1f dBc%s) at VR %.4f / %.4f (start %.4f / %.4f: %.1f dBm)" % (
@@ -1456,14 +1477,22 @@ def cmd_campaign(a, log):
     if not a.skip_nulls:
         step("nulls", cmd_nulls, board=["B", "A"], mhz=a.band, sa=sa)
     wifi.start()
+    want = a.steps or ["timing", "events5200", "prbs5200", "band", "5400", "4800", "5800"]
     try:
-        step("events 5200", cmd_events, dir=["BA", "AB"], mhz=[5200.0])
-        step("prbs 5200", cmd_prbs, dir=["BA", "AB"], mhz=[5200.0])
-        step("band", cmd_band, dir=["BA", "AB"], mhz=a.band, prover=True)
+        if "timing" in want:
+            step("timing", cmd_timing, board=["B", "A"], mhz=[5200.0], scheme=None)
+        if "events5200" in want:
+            step("events 5200", cmd_events, dir=["BA", "AB"], mhz=[5200.0])
+        if "prbs5200" in want:
+            step("prbs 5200", cmd_prbs, dir=["BA", "AB"], mhz=[5200.0])
+        if "band" in want:
+            step("band", cmd_band, dir=["BA", "AB"], mhz=a.band, prover=True)
         for f in (5400.0, 4800.0, 5800.0):
+            if "%g" % f not in want:
+                continue
             wifi.carrier_mhz = f
-            step("events %g" % f, cmd_events, dir=["BA", "AB"], mhz=[f])
-            step("prbs %g" % f, cmd_prbs, dir=["BA", "AB"], mhz=[f])
+            step("events %g" % f, cmd_events, dir=["BA", "AB"], mhz=[f], quick=True)
+            step("prbs %g" % f, cmd_prbs, dir=["BA", "AB"], mhz=[f], quick=True)
             step("prover %g" % f, cmd_prover, board=["B", "A"], mhz=[f], quick=True)
         t_soak = 0.0
         while left() > 600:
@@ -1602,6 +1631,385 @@ def cmd_ripple(a, log):
         sa.run()
 
 
+# ---------------------------------------------------------------------------------------------------------------------
+# timing (QPV_TIMING_REVIEW.md section 5, T1-T4): in loopback, on the board's own clock
+# ---------------------------------------------------------------------------------------------------------------------
+class _LoopLink:
+    """a Loop seen as a Link (the same board sends and receives), for prbs_point"""
+    def __init__(self, loop):
+        self.loop, self.tx, self.rx, self.mhz = loop, loop.node, loop.node, loop.mhz
+
+    def __getattr__(self, n):
+        return getattr(self.loop, n)
+
+    def ensure(self):
+        ok = self.loop.ensure()
+        o = self.loop.ld.observe()
+        return {"locked": bool(ok and o["locked"]), "di": o["di"], "dq": o["dq"], "vc": o["vc"],
+                "received_dbm": self.loop.node.cl.received_dBm() if ok else None, "dsa": self.loop.node.cl._dsa_db}
+
+    def look(self):
+        return self.ensure()
+
+    def windows(self, frac, leg=None, which=("QP", "QN", "IP", "IN")):
+        return set_windows(self.loop, frac, which)
+
+
+def _hist_summary(h, shift, ts_ns):
+    """a histogram's bins (2^shift samples each) -> count, p50 / p99 / p99.9 / max in ns, and the bins (first 1000)"""
+    n = sum(h[:-1])
+    out = {"n": n, "overflow": h[-1]}
+    if not n:
+        return out
+    acc, q = 0, {0.5: None, 0.99: None, 0.999: None}
+    for k, c in enumerate(h[:-1]):
+        acc += c
+        for f in q:
+            if q[f] is None and acc >= f * n:
+                q[f] = k
+    last = max(k for k, c in enumerate(h[:-1]) if c)
+    first = min(k for k, c in enumerate(h[:-1]) if c)
+    w = (2 ** shift) * ts_ns
+    out.update(p50_ns=q[0.5] * w, p99_ns=q[0.99] * w, p999_ns=q[0.999] * w, max_ns=last * w, min_ns=first * w, bin_ns=w,
+               bins=[(k, c) for k, c in enumerate(h[:-1]) if c][:400])
+    return out
+
+
+def evtiming_point(loop, scheme="A3", period=1000, width=20, count=20000, first_edge=False, delay=16, quiet=4,
+                   confirm=6, window=100, settle=0, frac=0.5, dsa=None, idle_s=0.5):
+    """T1: idle-to-1-in-N timing in loopback: per message, the RX engine's reference (this board's own TX event) to the
+    event and to the decision, as counters and 1.25 ns histograms; the confusion matrix row (right / wrong); the idle's
+    false rate"""
+    cl = loop.node.cl
+    s = C.SCHEMES[scheme]
+    out = {"exp": "evtiming", "scheme": scheme, "period": period, "width": width, "count": count, "first_edge": first_edge,
+           "delay": delay, "quiet": quiet, "confirm": confirm, "window": window, "settle": settle, "frac": frac}
+    cl.dsa(loop.info.get("dsa", cl._dsa_db))
+    if not loop.ensure():
+        out["error"] = "no lock"
+        return out
+    if dsa is not None:
+        cl.dsa(dsa)
+        time.sleep(0.05)
+    if s.pilot is not None:
+        pc = pilot_cal(loop, angle=0 if abs(s.pilot[1]) < 1e-9 else 45)
+        out["pilot"] = pc
+        if pc["vr"] is None:
+            out["error"] = "no pilot"
+            cl.dac(VR_I=loop.cfg["vr"]["VR_I"], VR_Q=loop.cfg["vr"]["VR_Q"])
+            return out
+    out["thresholds"], out["levels"], out["gaps_mv"] = scheme_windows(loop, s, frac)
+    ts = 1e3 / (loop.node.clk_mhz * loop.node.ser)                  # ns a sample
+    rows = {}
+    try:
+        cl.tx_stop()
+        cl.tx_points(loop.pt(*s.idle), [loop.pt(*m) for m in s.msgs])
+        loop.hold(s.idle)
+        cl.rx_config(s.idle_vector(), s.mask, s.lut(first_edge), s.slow_exp(), delay=delay, quiet=quiet, confirm=confirm,
+                     window=window, first_edge=first_edge, settle=settle)
+        cl.rx_clear()
+        time.sleep(idle_s)
+        cl.rx_enable(False)
+        out["idle_false_per_s"] = cl.rx_stats()["events"] / idle_s
+        for m in range(s.n):
+            r = {}
+            for what in ("ref_to_event", "ref_to_decision"):
+                cl.rx_config(s.idle_vector(), s.mask, s.lut(first_edge), s.slow_exp(), delay=delay, quiet=quiet,
+                             confirm=confirm, window=window, first_edge=first_edge, settle=settle)
+                cl.hist_config(what, 0)
+                cl.rx_clear()
+                cl.tx_points(loop.pt(*s.idle), [loop.pt(*mm) for mm in s.msgs])
+                cl.tx_msg(m)
+                cl.events(period=period, width=width, count=count, source="fixed", n=s.n)
+                cl.tx_go()
+                time.sleep(count * period / (loop.node.clk_mhz * 1e6) + 0.05)
+                cl.rx_enable(False)
+                q = cl.rx_stats()
+                h = cl.histogram()
+                cm = cl.confusion()
+                cl.tx_stop()
+                loop.hold(s.idle)
+                r[what] = _hist_summary(h, 0, ts)
+                r[what]["stats"] = {k: q.get(k) for k in ("events", "decided", "false", "missed", "refs", "lat_n", "lat_min",
+                                                           "lat_max", "lat_mean")}
+                r[what]["lat_min_ns"] = q["lat_min"] * ts if q["lat_n"] else None
+                r[what]["lat_max_ns"] = q["lat_max"] * ts if q["lat_n"] else None
+                r[what]["lat_mean_ns"] = q["lat_mean"] * ts if q["lat_n"] else None
+                r[what]["right"] = cm[m][m]
+                r[what]["wrong"] = sum(cm[m]) - cm[m][m]
+            rows[str(m)] = r
+    finally:
+        cl.tx_stop()
+        if s.pilot is not None:
+            cl.dac(VR_I=loop.cfg["vr"]["VR_I"], VR_Q=loop.cfg["vr"]["VR_Q"])
+        loop.hold((1, 0))
+        cl.rx_enable(True)
+        if dsa is not None:
+            cl.dsa(loop.info.get("dsa", cl._dsa_db))
+    out["per_msg"] = rows
+    dec = [r["ref_to_decision"] for r in rows.values() if r["ref_to_decision"].get("n")]
+    if dec:
+        out["decision_p50_ns"] = sum(d["p50_ns"] for d in dec) / len(dec)
+        out["decision_p999_ns"] = max(d["p999_ns"] for d in dec)
+        out["decision_max_ns"] = max(d["max_ns"] for d in dec)
+    out["right_frac_min"] = min(r["ref_to_decision"]["right"] / count for r in rows.values()) if rows else None
+    return out
+
+
+EVT_BASE = {"scheme": "A3", "period": 1000, "width": 20, "count": 20000, "first_edge": False, "delay": 16, "quiet": 4,
+            "confirm": 6, "window": 100, "settle": 0, "frac": 0.5, "dsa": None}
+EVT_OFAT = {"delay": [2, 4, 8, 12, 16, 24, 32, 48], "settle": [2, 4, 8], "first_edge": [True],
+            "frac": [0.2, 0.35, 0.5, 0.65, 0.8], "dsa": [16, 20, 24, 28, 31.75], "width": [5, 10, 40]}
+EVT_SCHEMES = ["A3", "A2", "A1", "A1w", "B1", "B2"]
+
+
+def evtiming_plan(schemes=None, quick=False):
+    pts = []
+    for sc in schemes or EVT_SCHEMES:
+        base = dict(EVT_BASE, scheme=sc)
+        pts.append(dict(base, tag="base"))
+        for k, vals in EVT_OFAT.items():
+            for v in (vals[::2] if quick else vals):
+                pts.append(dict(base, tag="ofat_" + k, **{k: v}))
+    return pts
+
+
+def bitlat_point(loop, period=50, dsa=None, phases=(0.1, 0.3, 0.5, 0.7, 0.9), ioff=None, seconds=0.5):
+    """T2: the bitstream's latency in loopback: during PRBS15 as BPSK every `period` clocks, one capture holds the ladder
+    pins and CMP_I sample by sample: the lag at which CMP_I's sign best matches the ladder's I bit is the pins-to-comparator
+    latency (1.25 ns samples); the BER at each sampling phase (the eye)"""
+    import numpy as np
+    cl = loop.node.cl
+    L = _LoopLink(loop)
+    out = {"exp": "bitlat", "period": period, "mbaud": loop.node.clk_mhz / period, "phases": list(phases)}
+    cl.dsa(loop.info.get("dsa", cl._dsa_db))
+    if not loop.ensure():
+        out["error"] = "no lock"
+        return out
+    if dsa is not None:
+        cl.dsa(dsa)
+        time.sleep(0.05)
+    try:
+        cl.tx_timing(period=period)
+        cl.tx_points(loop.pt(1, 0), [loop.pt(1, 0), loop.pt(-1, 0)])
+        cl.tx_prbs(15)
+        cl.tx_mode("prbs", n=2)
+        cl.tx_go()
+        time.sleep(0.02)
+        cap = cl.capture("any_change", post=cl.cap_info()["depth"] // 2)
+        cl.tx_stop()
+        loop.hold((1, 0))
+        pins = np.array(cap["TX_PINS"], int)
+        lag0 = cap.get("tx_pins_lag", 0)
+        ib = np.where((pins & 3) == 3, 1.0, np.where((pins & 3) == 0, -1.0, 0.0))     # the I level's sign on the pins
+        ci = np.array(cap["CMP_I"], float) * 2 - 1
+        v = cap["valid_from"]
+        ib, ci = ib[v:], ci[v:]
+        n = len(ib)
+        best = None
+        corr = []
+        for lag in range(0, 120):
+            c = float(np.dot(ib[:n - lag], ci[lag:])) / max(1, n - lag)
+            corr.append(round(c, 4))
+            if best is None or abs(c) > abs(best[1]):
+                best = (lag, c)
+        ts = 1e3 / (loop.node.clk_mhz * loop.node.ser)
+        out.update(lag_samples=best[0] - lag0, lag_ns=(best[0] - lag0) * ts, corr=best[1], corr_by_lag=corr,
+                   samples=int(n), symbols=int(n / (period * loop.node.ser)))
+        # the half-maximum points of the correlation peak: the edge's rise as the receiver sees it
+        a = np.abs(np.array(corr))
+        k = int(np.argmax(a))
+        half = a[k] / 2
+        lo = k
+        while lo > 0 and a[lo] > half:
+            lo -= 1
+        hi = k
+        while hi < len(a) - 1 and a[hi] > half:
+            hi += 1
+        out["corr_halfwidth_ns"] = (hi - lo) * ts
+    finally:
+        cl.tx_stop()
+        loop.hold((1, 0))
+    eye = {}
+    for ph in phases:
+        r = prbs_point(L, const="bpsk", period=period, phase_frac=ph, seconds=seconds, dsa=dsa)
+        eye[str(ph)] = {"ber": r.get("ber"), "bits": r.get("bits"), "errors": r.get("errors")}
+    out["eye"] = eye
+    out["open_phases"] = sum(1 for e in eye.values() if e["ber"] is not None and e["ber"] < 1e-3)
+    if dsa is not None:
+        cl.dsa(loop.info.get("dsa", cl._dsa_db))
+    return out
+
+
+BITLAT_PERIODS = [1, 2, 3, 4, 5, 8, 10, 20, 50, 200]
+
+
+def prover_dist_point(loop, scheme="A3", path="fast", reply="xor1", frac=0.5, per_challenge=16, first_edge=False,
+                      delay=16, reply_width=40, fp_clocks=1, guards=(8, 12, 16, 24), mask=0x1E, width=20):
+    """T3: the prover's turnaround as a distribution: `per_challenge` captures of each challenge (the turnaround and the
+    FPGA's share per (challenge, reply)), and the counter with its guard swept"""
+    cl = loop.node.cl
+    s = C.SCHEMES[scheme]
+    rmap = reply_maps(s.n).get(reply, list(reply_maps(s.n).values())[0])
+    out = {"exp": "prover_dist", "scheme": scheme, "path": path, "reply": reply, "reply_map": rmap, "frac": frac,
+           "first_edge": first_edge, "delay": delay, "reply_width": reply_width, "fp_clocks": fp_clocks, "width": width}
+    cl.dsa(loop.info.get("dsa", cl._dsa_db))
+    if not loop.ensure():
+        out["error"] = "no lock"
+        return out
+    if s.pilot is not None:
+        pc = pilot_cal(loop, angle=0 if abs(s.pilot[1]) < 1e-9 else 45)
+        out["pilot"] = pc
+        if pc["vr"] is None:
+            out["error"] = "no pilot"
+            cl.dac(VR_I=loop.cfg["vr"]["VR_I"], VR_Q=loop.cfg["vr"]["VR_Q"])
+            return out
+    out["thresholds"], out["levels"], out["gaps_mv"] = scheme_windows(loop, s, frac)
+    try:
+        out["counter_by_guard"] = {}
+        for g in guards:
+            st = loop_turnaround(loop, s, path, rmap, count=5000, period=1000, width=width, first_edge=first_edge,
+                                 delay=delay, reply_width=reply_width, fp_clocks=fp_clocks, guard=g, window=50, mask=mask)
+            out["counter_by_guard"][str(g)] = {k: st.get(k) for k in ("n", "miss", "min_ns", "mean_ns", "max_ns")}
+            out["counter_by_guard"][str(g)]["false"] = (st.get("rx") or {}).get("false")
+        msgs = [m for m in range(s.n) for _ in range(per_challenge)]
+        caps = loop_captures(loop, s, path, rmap, msgs, first_edge=first_edge, delay=delay, width=width,
+                             reply_width=reply_width, fp_clocks=fp_clocks, guard=8, mask=mask)
+        per = {}
+        for cap in caps:
+            c = check_capture(s, cap, rmap, loop)
+            m = c.get("msg_sent")
+            d = per.setdefault(str(m), {"turn_ns": [], "fpga_ns": [], "loop_ns": [], "right_rx": 0, "right_pins": 0, "n": 0})
+            d["n"] += 1
+            if c.get("turnaround_ns") is not None:
+                d["turn_ns"].append(c["turnaround_ns"])
+            if c.get("fpga_ns") is not None:
+                d["fpga_ns"].append(c["fpga_ns"])
+            if c.get("loop_ns") is not None:
+                d["loop_ns"].append(c["loop_ns"])
+            d["right_rx"] += bool(c.get("reply_right_rx"))
+            d["right_pins"] += bool(c.get("reply_right_pins"))
+        for m, d in per.items():
+            for k in ("turn_ns", "fpga_ns", "loop_ns"):
+                v = sorted(d[k])
+                d[k + "_stats"] = ({"n": len(v), "min": v[0], "p50": v[len(v) // 2], "max": v[-1],
+                                    "mean": sum(v) / len(v)} if v else None)
+        out["per_challenge"] = per
+        allt = sorted(t for d in per.values() for t in d["turn_ns"])
+        if allt:
+            out["turn_all"] = {"n": len(allt), "min": allt[0], "p50": allt[len(allt) // 2], "p99": allt[min(len(allt) - 1, int(0.99 * len(allt)))],
+                               "max": allt[-1], "mean": sum(allt) / len(allt)}
+        out["right_rx"] = sum(d["right_rx"] for d in per.values())
+        out["captures_n"] = sum(d["n"] for d in per.values())
+    finally:
+        cl.reply_off()
+        cl.fast_off()
+        cl.wr("RT_CFG", 0)
+        cl.tx_stop()
+        if s.pilot is not None:
+            cl.dac(VR_I=loop.cfg["vr"]["VR_I"], VR_Q=loop.cfg["vr"]["VR_Q"])
+        loop.hold((1, 0))
+    return out
+
+
+def prover_prbs_point(loop, scheme="A3", path="fast", reply="xor1", frac=0.5, count=20000, period=1000, width=20,
+                      decide_at=36, fp_hold=8, reply_width=40, first_edge=False, mask=0x1E):
+    """T4: every challenge against every reply: the challenges chosen by the TX's PRBS, the reply map fixed; on the fast
+    path the reply is held `fp_hold` clocks and the RX engine decides `decide_at` samples after the event, when the
+    comparators show the reply: the confusion matrix [challenge][decoded] is the reply as received.  On the sync path the
+    RX engine's decision is what makes the reply, so its matrix is the challenge's decode (the reply follows the map by
+    construction); the reply_stat counts the replies"""
+    cl = loop.node.cl
+    s = C.SCHEMES[scheme]
+    rmap = reply_maps(s.n).get(reply, list(reply_maps(s.n).values())[0])
+    out = {"exp": "prover_prbs", "scheme": scheme, "path": path, "reply": reply, "reply_map": rmap, "frac": frac,
+           "count": count, "decide_at": decide_at, "fp_hold": fp_hold, "reply_width": reply_width}
+    cl.dsa(loop.info.get("dsa", cl._dsa_db))
+    if not loop.ensure():
+        out["error"] = "no lock"
+        return out
+    if s.pilot is not None:
+        pc = pilot_cal(loop, angle=0 if abs(s.pilot[1]) < 1e-9 else 45)
+        out["pilot"] = pc
+        if pc["vr"] is None:
+            out["error"] = "no pilot"
+            cl.dac(VR_I=loop.cfg["vr"]["VR_I"], VR_Q=loop.cfg["vr"]["VR_Q"])
+            return out
+    out["thresholds"], out["levels"], out["gaps_mv"] = scheme_windows(loop, s, frac)
+    try:
+        delay = decide_at if path == "fast" else 16
+        _loop_arm(loop, s, path, rmap, first_edge, delay, reply_width, fp_hold)
+        cl.turnaround_config(mask=mask, guard=8, window=50)
+        cl.rx_clear()
+        cl.events(period=period, width=width, count=count, source="prbs", n=s.n)
+        cl.tx_go()
+        time.sleep(count * period / (loop.node.clk_mhz * 1e6) + 0.05)
+        cl.rx_enable(False)
+        q = cl.rx_stats()
+        cm = cl.confusion()
+        st = cl.turnaround_stats()
+        rs = cl.reply_stat() if path == "sync" else cl.fast_state()
+        cl.tx_stop()
+        loop.hold((1, 0))
+        m4 = [row[:s.n] for row in cm[:s.n]]
+        out["confusion"] = m4
+        tot = sum(sum(r) for r in m4)
+        if path == "fast":
+            right = sum(m4[k][rmap[k]] for k in range(s.n))
+            out["reply_right_frac"] = right / tot if tot else None
+            out["per_challenge_right"] = [m4[k][rmap[k]] / sum(m4[k]) if sum(m4[k]) else None for k in range(s.n)]
+        else:
+            right = sum(m4[k][k] for k in range(s.n))
+            out["decode_right_frac"] = right / tot if tot else None
+            out["per_challenge_right"] = [m4[k][k] / sum(m4[k]) if sum(m4[k]) else None for k in range(s.n)]
+        out["decided"], out["false"], out["refs"] = q.get("decided"), q.get("false"), q.get("refs")
+        out["counter"] = {k: st.get(k) for k in ("n", "miss", "min_ns", "mean_ns", "max_ns")}
+        out["reply_state"] = rs
+    finally:
+        cl.reply_off()
+        cl.fast_off()
+        cl.wr("RT_CFG", 0)
+        cl.tx_stop()
+        if s.pilot is not None:
+            cl.dac(VR_I=loop.cfg["vr"]["VR_I"], VR_Q=loop.cfg["vr"]["VR_Q"])
+        loop.hold((1, 0))
+        cl.rx_enable(True)
+    return out
+
+
+def cmd_timing(a, log):
+    """T1-T4 on each board in loopback"""
+    nodes = {n: Node(n) for n in ("A", "B")}
+    for mhz in a.mhz:
+        for b in a.board:
+            lp = Loop(nodes[b], nodes["B" if b == "A" else "A"], mhz)
+            if not lp.up(tries=4):
+                log(label="timing", exp="loop_setup", state=lp.state(), ok=False)
+                continue
+            log(label="timing", exp="loop_setup", state=lp.state(), **lp.info)
+            # T3 first (the headline), then T4, T1, T2
+            pts = []
+            for sc in ("A2", "A3", "B2", "B1"):
+                maps = list(reply_maps(C.SCHEMES[sc].n))
+                for r in (maps[:3] if C.SCHEMES[sc].n == 4 else maps[:1]):
+                    pts.append(dict(scheme=sc, path="fast", reply=r, tag="dist"))
+                pts.append(dict(scheme=sc, path="sync", reply=maps[0], tag="dist"))
+            run_points(log, lp, prover_dist_point, pts, "timing dist %s %g" % (b, mhz))
+            pts = []
+            for sc in ("A3", "B2", "B1", "A2"):
+                for r in reply_maps(C.SCHEMES[sc].n):
+                    pts.append(dict(scheme=sc, path="fast", reply=r, tag="prbs_map"))
+                pts.append(dict(scheme=sc, path="sync", reply="xor1" if C.SCHEMES[sc].n == 4 else "xor1", tag="prbs_map"))
+            for d in (28, 32, 44, 56):
+                pts.append(dict(scheme="A3", path="fast", reply="xor1", decide_at=d, tag="ofat_decide_at"))
+            run_points(log, lp, prover_prbs_point, pts, "timing prbs-map %s %g" % (b, mhz))
+            run_points(log, lp, evtiming_point, evtiming_plan(a.scheme, a.quick), "timing events %s %g" % (b, mhz))
+            pts = [dict(period=P, tag="rate") for P in BITLAT_PERIODS] + \
+                  [dict(period=P, dsa=d, tag="rate_dsa") for P in (5, 20, 50) for d in (16, 22, 31.75)]
+            run_points(log, lp, bitlat_point, pts, "timing bitlat %s %g" % (b, mhz))
+            nodes[b].quiet()
+
+
 def cmd_night(a, log):
     """the whole program, one thing on the boards at a time: the prover on each board; events and prbs both ways at
     the first frequency; the band (both ways, the loopback at each); events and prbs again at 5400 MHz (the WiFi gap)"""
@@ -1634,13 +2042,16 @@ BAND = [4400, 4600, 4800, 5000, 5100, 5150, 5180, 5200, 5240, 5300, 5320, 5400, 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("cmd", choices=["check", "prbs", "events", "prover", "band", "night", "nulls", "campaign", "ripple"])
+    ap.add_argument("cmd", choices=["check", "prbs", "events", "prover", "band", "night", "nulls", "campaign", "ripple",
+                                    "timing"])
     ap.add_argument("--until", default=None, help="campaign: 'YYYY-MM-DD HH:MM' (local time)")
     ap.add_argument("--seed", type=int, default=20261104, help="campaign: the random sessions' seed")
     ap.add_argument("--skip-nulls", action="store_true", help="campaign: the null table as it is")
+    ap.add_argument("--redo", action="store_true", help="nulls: measure again the frequencies already in the table")
     ap.add_argument("--band", type=float, nargs="+", default=[float(f) for f in BAND], help="night: the band's frequencies")
     ap.add_argument("--steps", nargs="+", default=None, help="night: proverB proverA pilotB events prbs band events5400 "
-                    "prbs5400 pilots_events (default proverB proverA events prbs band events5400 prbs5400)")
+                    "prbs5400 pilots_events (default proverB proverA events prbs band events5400 prbs5400); campaign: "
+                    "timing events5200 prbs5200 band 5400 4800 5800 (default all), then the random sessions")
     ap.add_argument("--dir", nargs="+", default=["BA"], help="links, sender then receiver: BA, AB")
     ap.add_argument("--board", nargs="+", default=["B"], help="prover: the board(s) in loopback")
     ap.add_argument("--mhz", type=float, nargs="+", default=[5200.0])
@@ -1655,7 +2066,8 @@ def main(argv=None):
     nodes_quiet = []
     try:
         {"check": cmd_check, "prbs": cmd_prbs, "events": cmd_events, "prover": cmd_prover, "band": cmd_band,
-         "night": cmd_night, "nulls": cmd_nulls, "campaign": cmd_campaign, "ripple": cmd_ripple}[a.cmd](a, log)
+         "night": cmd_night, "nulls": cmd_nulls, "campaign": cmd_campaign, "ripple": cmd_ripple,
+         "timing": cmd_timing}[a.cmd](a, log)
     finally:
         for n in ("A", "B"):
             try:
