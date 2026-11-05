@@ -1575,8 +1575,8 @@ def cmd_campaign(a, log):
     from rigol_DSA875 import DSA875, usbtmc_node, USB_VENDOR, USB_PRODUCT
     rng = random.Random(a.seed)
     t_end = time.mktime(time.strptime(a.until, "%Y-%m-%d %H:%M"))
-    sa = DSA875(usb=usbtmc_node(USB_VENDOR, USB_PRODUCT))
-    wifi = WifiThread(sa, os.path.join(DATA, "wifi_%s.jsonl" % time.strftime("%Y%m%d_%H%M%S")))
+    sa = None if a.no_wifi else DSA875(usb=usbtmc_node(USB_VENDOR, USB_PRODUCT))
+    wifi = WifiThread(sa, os.path.join(DATA, "wifi_%s.jsonl" % time.strftime("%Y%m%d_%H%M%S"))) if sa else None
     nodes = {n: Node(n) for n in ("A", "B")}
 
     def left():
@@ -1593,9 +1593,10 @@ def cmd_campaign(a, log):
         except Exception as e:                                  # noqa: BLE001
             say("campaign: %s failed: %r" % (name, e))
             log(label="campaign", exp="step_error", step=name, error=repr(e)[:300], tb=traceback.format_exc()[-1200:])
-    if not a.skip_nulls:
+    if not a.skip_nulls and sa:
         step("nulls", cmd_nulls, board=["B", "A"], mhz=a.band, sa=sa)
-    wifi.start()
+    if wifi:
+        wifi.start()
     want = a.steps or ["timing", "events5200", "prbs5200", "band", "5400", "4800", "5800"]
     try:
         if "timing" in want:
@@ -1609,28 +1610,35 @@ def cmd_campaign(a, log):
         for f in (5400.0, 4800.0, 5800.0):
             if "%g" % f not in want:
                 continue
-            wifi.carrier_mhz = f
+            if wifi:
+                wifi.carrier_mhz = f
             step("events %g" % f, cmd_events, dir=["BA", "AB"], mhz=[f], quick=True)
             step("prbs %g" % f, cmd_prbs, dir=["BA", "AB"], mhz=[f], quick=True)
             step("prover %g" % f, cmd_prover, board=["B", "A"], mhz=[f], quick=True)
         t_soak = 0.0
         while left() > 600:
             if time.time() - t_soak > 3600:
-                wifi.carrier_mhz = 5200.0
+                if wifi:
+                    wifi.carrier_mhz = 5200.0
                 L = Link(nodes["B"], nodes["A"], 5200.0)
                 if L.up():
                     try:                                        # the analyzer sweeping, then not (its own emission?)
-                        soak(log, L, minutes=5.0, cond="analyzer sweeping")
-                        wifi.pause()
-                        soak(log, L, minutes=5.0, cond="analyzer paused")
+                        if wifi:
+                            soak(log, L, minutes=5.0, cond="analyzer sweeping")
+                            wifi.pause()
+                            soak(log, L, minutes=5.0, cond="analyzer paused")
+                        else:
+                            soak(log, L, minutes=10.0, cond="no analyzer")
                     except Exception as e:                      # noqa: BLE001
                         log(label="campaign", exp="soak_error", error=repr(e)[:300])
                     finally:
-                        wifi.resume()
+                        if wifi:
+                            wifi.resume()
                 nodes["B"].quiet()
                 t_soak = time.time()
             mhz = float(rng.choice(a.band))
-            wifi.carrier_mhz = mhz
+            if wifi:
+                wifi.carrier_mhz = mhz
             d = rng.choice(["BA", "AB"])
             L = Link(nodes[d[0]], nodes[d[1]], mhz)
             log(label="random", exp="session", mhz=mhz, link=d)
@@ -1666,13 +1674,18 @@ def cmd_campaign(a, log):
                 run_points(log, lp, prover_point, pts, "random prover %s %g" % (b, mhz))
             nodes[b].quiet()
     finally:
-        wifi.stop = True
-        wifi.run_ev.set()
-        wifi.th.join(30) if wifi.th.is_alive() else None
-        sa.amplitude(attenuation=30, ref_level=20)
-        sa.w(":SENSe:FREQuency:SPAN:FULL")
-        sa.bandwidth(rbw="auto", vbw="auto")
-        sa.run()
+        if wifi:
+            wifi.stop = True
+            wifi.run_ev.set()
+            wifi.th.join(30) if wifi.th.is_alive() else None
+        if sa:
+            try:
+                sa.amplitude(attenuation=30, ref_level=20)
+                sa.w(":SENSe:FREQuency:SPAN:FULL")
+                sa.bandwidth(rbw="auto", vbw="auto")
+                sa.run()
+            except Exception as e:                              # noqa: BLE001
+                say("the analyzer at the end: %r" % (e,))
 
 
 def ripple(tx, rx, sa, f0=5200.0, half=50.0, step=1.0, f_pfd=1.0):
@@ -2168,6 +2181,7 @@ def main(argv=None):
     ap.add_argument("--until", default=None, help="campaign: 'YYYY-MM-DD HH:MM' (local time)")
     ap.add_argument("--seed", type=int, default=20261104, help="campaign: the random sessions' seed")
     ap.add_argument("--skip-nulls", action="store_true", help="campaign: the null table as it is")
+    ap.add_argument("--no-wifi", action="store_true", help="campaign: without the analyzer (no WiFi monitor, no nulls)")
     ap.add_argument("--redo", action="store_true", help="nulls: measure again the frequencies already in the table")
     ap.add_argument("--timing-boards", nargs="+", default=["B", "A"], help="campaign: the boards for the timing step")
     ap.add_argument("--ref", choices=["tx", "trig_in"], default="tx", help="events: the receiver's reference ('trig_in': the "
