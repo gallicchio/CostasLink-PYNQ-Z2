@@ -480,7 +480,7 @@ class Link:
     def ensure(self):
         s = self.look()
         if s["locked"] and abs(s["di"]) > 0.01:       # locked on either side (the side is in self.s; the points are mapped)
-            side = 1 if s["di"] > 0 else -1
+            side = self.s * (1 if s["di"] > 0 else -1)   # look() sent (s, 0): a negative I means the side has changed
             if side != self.s:
                 say("%s: the lock is on the other side (%+d)" % (self.name, side))
                 self.s = side
@@ -950,14 +950,14 @@ class Loop:
         time.sleep(0.03)
         o = self.ld.observe()
         if o["locked"] and abs(o["di"]) > 0.01:       # either side
-            side = 1 if o["di"] > 0 else -1
+            side = self.s * (1 if o["di"] > 0 else -1)   # hold((1, 0)) sent (s, 0)
             if side != self.s:
                 say("%s: the lock is on the other side (%+d)" % (self.name, side))
                 self.s = side
             return True
         ok, _ = self.ld.recover()
         if ok:
-            self.node.cl.hold_point(1, 0)
+            self.node.cl.hold_point(1, 0)                 # raw (1, 0): the sign of I is the side itself
             time.sleep(0.05)
             s_new = 1 if self.ld.observe()["di"] > 0 else -1
             if s_new != self.s:
