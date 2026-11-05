@@ -101,8 +101,8 @@ What the laptop needs that the bench PC has:
 * **The VNA (8720ES, the RACON room):** its driver is in `~/lab-instrument-control/hp/` (GPIB through a Prologix
   GPIB-USB adapter, `gpib/gpib.md`; calibration and Touchstone output, run on the 8720ES on 2026-10-20/21), so the
   laptop has it with that clone.  The earlier measurements and their log (the calibration CAL1020B with isolation, the
-  fixture, what to trust) are `~/DroneSDR/vna/vna_measurements/README.md` and its `.s2p` files on the bench PC, with
-  `plot_vna.py` beside them: not in this repo; copy that folder if the day's plots should sit beside the old ones.
+  fixture, what to trust) are `~/DroneSDR/vna/vna_measurements/README.md` and its `.s2p` files (on the bench PC and, since
+  2026-11-04, on the laptop), with `plot_vna.py` beside them: not in this repo; copy that folder if the day's plots should sit beside the old ones.
 * The bench's `bench_config.json` names USB serial ports by their FTDI IDs; on the laptop they are the same strings
   (the adapters carry them), and the LAN addresses change with the lab's network.
 
@@ -125,8 +125,11 @@ What the laptop needs that the bench PC has:
   analyzer as October's campaign; found uncorrected at +5 dBm, 50 MHz-20.05 GHz, 201 points); an SDS1104X-E on USB
   (`/dev/usbtmc0`, 100 MHz: not the bench's SDS2104X, so `bench.py`'s scope commands do not apply; its driver now opens
   on USB alone, lab-instrument-control); no Fluke, DSA875, SDG or B210.  The udev rule is installed.
-* **What is not on this laptop:** the October VNA files (`~/DroneSDR/vna/vna_measurements/` holds only the 2025
-  filter sweeps here), the vendors' manuals (`~/lab-instrument-control/manuals_untracked/`), and `bringup/data/`.
+* **On this laptop since 2026-11-04 (Jason):** the October VNA files (`~/DroneSDR/vna/vna_measurements/`: the
+  2026-10-20/21 `.s2p` files beside the 2025 filter sweeps, with `README.md`, `plot_vna.py`, `manifest.csv`; the
+  older VNA work in `~/DroneSDR/vna/`) and the vendors' manuals (`~/lab-instrument-control/manuals_untracked/`: the
+  E3632A, DSA875 (DSA800E programming guide), SDS1104X-E and SDS2104X Plus among them).  `bringup/data/` from the PC
+  is still not here.
   The 8720ES goes to -40 dBm without pads (`vna.power(-40)` read back, no error; 2026-11-03, BRINGUP_LOG 4.36).
 * **The 8720ES's calibration here: register 29** (`RECAREG29;`): full 2-port, 85052D (3.5mmD), 3-6.5 GHz, 1601
   points, 1 kHz IF bandwidth (4.2 s a sweep), -40 dBm, isolation omitted, at the ends of the two test cables.  Park it
