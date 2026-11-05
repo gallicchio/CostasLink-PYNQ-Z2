@@ -62,6 +62,15 @@ linkd.CAL_FILE = os.path.join(DATA, "windows_laptop.json")       # never beside 
 HOSTS = {"A": "192.168.2.99", "B": "192.168.2.98"}
 # each board's TX output null (VR_I, VR_Q) by frequency, measured on the DSA875 at TX ANT (BRINGUP_LOG 4.55, 4.58)
 VR_NULL = {"A": {5200: (0.2482, 0.2712)}, "B": {5200: (0.2343, 0.2609)}}
+TX_ANT_NULL = {b: dict(t) for b, t in VR_NULL.items()}      # measured on the analyzer at TX ANT itself
+NULL_FILE = os.path.join(DATA, "vr_null.json")         # `twoboard.py nulls`: each board's null by frequency, on the FPV
+try:
+    for _b, _t in json.load(open(NULL_FILE)).items():
+        for _f, _r in _t.items():
+            if _r.get("vr") and (float(_f) not in TX_ANT_NULL[_b] or _r.get("prefer")):
+                VR_NULL[_b][float(_f)] = tuple(_r["vr"])
+except (OSError, ValueError, KeyError):
+    pass
 PARK_MHZ = 700.0                       # an unused synthesizer this far from the link's carrier (REVB 57)
 LINK_CFG = {"leg_target": 0.15, "window_frac": 0.5, "v_t2": 2.9, "dsa_min": 6.0}
 # the 5 GHz WiFi channels (20 MHz) and the ones seen here (the laptop's `iw` / `nmcli`, 2026-11-04 16:50)
@@ -1178,6 +1187,421 @@ def cmd_band(a, log):
                 nodes[b].quiet()
 
 
+def null_fpv(node, other, mhz, sa, start=None, att=0, ref=-40.0):
+    """the board's TX output null at mhz found on the DSA875's FPV antenna (the carrier over the air, near the beam): the
+    other board quiet with both synthesizers parked, this one's TX on mhz (its RX synthesizer parked, REVB 57), TR_A 0;
+    the carrier (1, 0) found, then the null (0, 0) with VR_I, VR_Q on grids (6 mV over +-24, 1.5 over +-6, 0.75 over
+    +-1.5) about `start` (the nearest null known), never above 0.55 V.  The analyzer's floor at 0 dB, 1 kHz is about
+    -110 dBm, so a -50 dBm carrier's null is read to about -60 dBc."""
+    import numpy as np
+    o, cl = other.cl, node.cl
+    o.safe()
+    o.pll_tune(0, park(mhz))
+    o.pll_tune(1, park(mhz))
+    cl.safe()
+    cl.pll_tune(0, mhz)
+    cl.pll_tune(1, park(mhz))
+    time.sleep(0.3)
+    (vi0, vq0) = start or node.vr(mhz)[0]
+    cl.dac(VR_I=vi0, VR_Q=vq0)
+    cl.hold_point(1, 0)
+    cl.ctrl(tr_a=0, tx_dis=0)
+    time.sleep(0.1)
+    sa.w(":SENSe:DETector:FUNCtion POSitive")
+    sa.amplitude(attenuation=att, ref_level=ref)
+
+    def peak(center, span, rbw):
+        sa.frequency(center=center, span=span)
+        sa.bandwidth(rbw=rbw, vbw=rbw)
+        f, y = sa.trace(binary=True)
+        k = int(np.argmax(y))
+        return float(f[k]), float(y[k]), float(np.median(y))
+    fc, pc, _ = peak(mhz * 1e6, 400e3, 3e3)
+    fc, pc, floor_c = peak(fc, 20e3, 1e3)
+    out = {"mhz": mhz, "board": node.name, "fc": fc, "carrier_dbm": pc, "start": (vi0, vq0), "locked": cl.pll_locked()}
+    cl.hold_point(0, 0)
+    time.sleep(0.05)
+
+    def meas(vi, vq):
+        if not (0.0 <= vi <= 0.55 and 0.0 <= vq <= 0.55):
+            return 99.0
+        cl.dac(VR_I=vi, VR_Q=vq)
+        time.sleep(0.02)
+        return peak(fc, 20e3, 1e3)[1]
+    best = (vi0, vq0, meas(vi0, vq0))
+    out["at_start_dbm"] = best[2]
+    try:
+        for step, half in ((0.006, 0.024), (0.0015, 0.006), (0.00075, 0.0015)):
+            ci, cq = best[0], best[1]
+            n = int(round(half / step))
+            for di in range(-n, n + 1):
+                for dq in range(-n, n + 1):
+                    vi, vq = ci + di * step, cq + dq * step
+                    p = meas(vi, vq)
+                    if p < best[2]:
+                        best = (vi, vq, p)
+        rep = [meas(best[0], best[1]) for _ in range(4)]
+        _, _, floor_n = peak(fc, 20e3, 1e3)
+    finally:
+        cl.dac(VR_I=vi0, VR_Q=vq0)
+        cl.safe()
+    out.update(vr=(round(best[0], 4), round(best[1], 4)), null_dbm=float(np.median(rep)), repeat=rep,
+               depth_dbc=float(np.median(rep)) - pc, floor_dbm=floor_n, at_floor=float(np.median(rep)) - floor_n < 3.0)
+    return out
+
+
+def cmd_nulls(a, log):
+    """each board's null at each frequency on the FPV antenna (the WiFi monitor must be stopped: one analyzer)"""
+    from rigol_DSA875 import DSA875, usbtmc_node, USB_VENDOR, USB_PRODUCT
+    sa = getattr(a, "sa", None) or DSA875(usb=usbtmc_node(USB_VENDOR, USB_PRODUCT))
+    nodes = {n: Node(n) for n in ("A", "B")}
+    try:
+        table = json.load(open(NULL_FILE))
+    except (OSError, ValueError):
+        table = {}
+    try:
+        for b in a.board:
+            for mhz in a.mhz:
+                r = null_fpv(nodes[b], nodes["B" if b == "A" else "A"], mhz, sa)
+                log(label="nulls", exp="null_fpv", **r)
+                say("%s %g MHz: carrier %.1f dBm, null %.1f dBm (%.1f dBc%s) at VR %.4f / %.4f (start %.4f / %.4f: %.1f dBm)" % (
+                    b, mhz, r["carrier_dbm"], r["null_dbm"], r["depth_dbc"], ", at the floor" if r["at_floor"] else "",
+                    r["vr"][0], r["vr"][1], r["start"][0], r["start"][1], r["at_start_dbm"]))
+                table.setdefault(b, {})[str(float(mhz))] = {"vr": r["vr"], "depth_dbc": r["depth_dbc"], "carrier_dbm": r["carrier_dbm"],
+                                                           "at_floor": r["at_floor"], "t": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                                                           "method": "FPV antenna on the DSA875"}
+                table[b][str(float(mhz))]["note"] = ("A's FPV view is its own board's radiation as much as its dish (the ripple, "
+                                                     "13 dB p-p at 64 ns): possibly biased (3.7 mV in I at 5200 against TX ANT)"
+                                                     if b == "A" else "B's FPV view is mostly its dish path (-13 dB local): "
+                                                     "within 1.5 mV of TX ANT at 5200")
+                json.dump(table, open(NULL_FILE, "w"), indent=1)
+                if float(mhz) not in TX_ANT_NULL.get(b, {}):    # the TX ANT nulls stay where they were measured
+                    VR_NULL[b][float(mhz)] = tuple(r["vr"])
+    finally:
+        sa.amplitude(attenuation=30, ref_level=20)
+        sa.w(":SENSe:FREQuency:SPAN:FULL")
+        sa.bandwidth(rbw="auto", vbw="auto")
+        sa.run()
+
+
+class WifiThread:
+    """wifimon.py's monitor in this process, on the same clock as the tests: the DSA875 on the FPV antenna, 5.10-5.35 GHz
+    (or about the link's carrier, +-150 MHz), every sweep, one record each 10 s (each 20 MHz channel's maximum with
+    the link's own +-12 MHz left out, the band's excursions with their times); paused while a null sweep has the
+    analyzer (pause() / resume())"""
+    def __init__(self, sa, path, att=0, ref=-40.0):
+        import threading
+        self.sa, self.path, self.att, self.ref = sa, path, att, ref
+        self.run_ev = threading.Event()
+        self.run_ev.set()
+        self.idle = threading.Event()
+        self.stop = False
+        self.carrier_mhz = 5200.0
+        self.th = threading.Thread(target=self._loop, daemon=True)
+
+    def start(self):
+        self.th.start()
+        return self
+
+    def pause(self):
+        self.run_ev.clear()
+        self.idle.wait(30)
+
+    def resume(self):
+        self.idle.clear()
+        self.run_ev.set()
+
+    def _loop(self):
+        import numpy as np
+        f_out = open(self.path, "a")
+        while not self.stop:
+            if not self.run_ev.is_set():
+                self.idle.set()
+                self.run_ev.wait(1.0)
+                continue
+            try:
+                fc = self.carrier_mhz * 1e6
+                lo, hi = max(4.2e9, min(5.10e9, fc - 150e6)), max(5.35e9, fc + 150e6)
+                self.sa.w(":SENSe:DETector:FUNCtion POSitive")
+                self.sa.amplitude(attenuation=self.att, ref_level=self.ref)
+                self.sa.frequency(start=lo, stop=hi)
+                self.sa.bandwidth(rbw=1e6, vbw=1e6)
+                t0 = time.time()
+                chmax, carriers, events, n, floor, bmax = {}, [], [], 0, None, (-200.0, None)
+                while time.time() - t0 < 10.0 and self.run_ev.is_set() and not self.stop:
+                    f, y = self.sa.trace(binary=True)
+                    f, y = np.asarray(f), np.asarray(y)
+                    n += 1
+                    near = np.abs(f - fc) < 2e6
+                    if near.any():
+                        carriers.append(float(y[near].max()))
+                    m = np.abs(f - fc) < 12e6
+                    for c, cf in WIFI_CH.items():
+                        sel = (np.abs(f - cf * 1e6) <= 10e6) & ~m
+                        if sel.any():
+                            chmax[c] = max(chmax.get(c, -200.0), float(y[sel].max()))
+                    band = (np.abs(f - fc) <= 94e6) & ~m
+                    if band.any():
+                        yb, fb = y[band], f[band]
+                        fl = float(np.median(yb))
+                        floor = fl if floor is None else min(floor, fl)
+                        k = int(np.argmax(yb))
+                        if yb[k] > bmax[0]:
+                            bmax = (float(yb[k]), float(fb[k]))
+                        if yb[k] > fl + 10 and len(events) < 12:
+                            events.append((round(time.time(), 2), round(float(fb[k]) / 1e6, 1), round(float(yb[k]), 1)))
+                f_out.write(json.dumps({"t": round(t0, 1), "kind": "s", "sweeps": n, "carrier_mhz": self.carrier_mhz,
+                                        "carrier": round(float(np.median(carriers)), 1) if carriers else None,
+                                        "floor": None if floor is None else round(floor, 1),
+                                        "band_max": (round(bmax[0], 1), round(bmax[1] / 1e6, 1) if bmax[1] else None),
+                                        "ch": {c: round(v, 1) for c, v in chmax.items()}, "events": events}) + "\n")
+                f_out.flush()
+            except Exception as e:                              # noqa: BLE001
+                f_out.write(json.dumps({"t": round(time.time(), 1), "kind": "error", "error": repr(e)[:200]}) + "\n")
+                f_out.flush()
+                time.sleep(5)
+        self.idle.set()
+
+
+def soak(log, link, minutes=10.0, period=50, cond=None):
+    """B -> A style: PRBS15 as BPSK every `period` clocks, the receiver's check 1 s at a time, a look at the idle
+    carrier every minute, linkd's recover on a loss; each window logged with its time (for the WiFi records)"""
+    t_end = time.time() + minutes * 60
+    st = link.ensure()
+    tx, rx = link.tx.cl, link.rx.cl
+    rx.tx_timing(period=period)
+    from costaslink import point_code as pc_  # noqa: F401
+
+    def start_prbs():
+        tx.tx_timing(period=period)
+        tx.tx_points(link.pt(1, 0), [link.pt(1, 0), link.pt(-1, 0)])
+        tx.tx_prbs(15)
+        tx.tx_mode("prbs", n=2)
+        tx.tx_go()
+
+    def win(inv, secs):
+        rx.ber_config(15, cdr=True, period=period, invert=inv, enable=True)
+        time.sleep(secs)
+        rx.ber_config(15, cdr=True, period=period, invert=inv, enable=False)
+        return rx.ber()
+
+    start_prbs()
+    time.sleep(0.05)
+    tr = {inv: win(inv, 0.3) for inv in (False, True)}
+    inv = min(tr, key=lambda k: tr[k]["mismatches"] / max(1, tr[k]["bits"]))
+    t_look = time.time()
+    bits = errs = 0
+    try:
+        while time.time() < t_end:
+            r = win(inv, 1.0)
+            bits += r["bits"]
+            errs += r["mismatches"] / 3.0
+            log(label="soak", exp="soak_w", state=link.state(), bits=r["bits"], mm=r["mismatches"], invert=inv, cond=cond)
+            frac = r["mismatches"] / max(1, r["bits"])
+            if frac > 0.9 or time.time() - t_look > 60 or frac > 0.05:
+                tx.tx_stop()
+                look = link.ensure()
+                d = rx.detectors()
+                log(label="soak", exp="soak_look", state=link.state(), log_dbm=d.get("log_dbm"), cond=cond, **look)
+                rx.tx_timing(period=period)
+                start_prbs()
+                time.sleep(0.05)
+                tr = {inv_: win(inv_, 0.3) for inv_ in (False, True)}
+                inv = min(tr, key=lambda k: tr[k]["mismatches"] / max(1, tr[k]["bits"]))
+                t_look = time.time()
+    finally:
+        tx.tx_stop()
+        link.tx.idle((link.s, 0))
+    say("soak %s %.0f min (%s): %.3g bits, %.0f errors, BER %.2g" % (link.name, minutes, cond, bits, errs, errs / bits if bits else 0))
+    return bits, errs
+
+
+def _rand_params(rng, base, ofat, extra=None, keep=0.5):
+    p = dict(base)
+    for k, vals in ofat.items():
+        if rng.random() > keep:
+            p[k] = rng.choice(vals)
+    for k, vals in (extra or {}).items():
+        if rng.random() > keep:
+            p[k] = rng.choice(vals)
+    return p
+
+
+def cmd_campaign(a, log):
+    """until a.until: the nulls over the band (the analyzer's), the WiFi monitor from then on, the full sweeps at 5200, the
+    band, full sweeps at 5400 / 4800 / 5800, then random sessions (a frequency, a direction, every parameter drawn
+    jointly) with a 10-minute soak at 5200 every hour"""
+    import random
+    from rigol_DSA875 import DSA875, usbtmc_node, USB_VENDOR, USB_PRODUCT
+    rng = random.Random(a.seed)
+    t_end = time.mktime(time.strptime(a.until, "%Y-%m-%d %H:%M"))
+    sa = DSA875(usb=usbtmc_node(USB_VENDOR, USB_PRODUCT))
+    wifi = WifiThread(sa, os.path.join(DATA, "wifi_%s.jsonl" % time.strftime("%Y%m%d_%H%M%S")))
+    nodes = {n: Node(n) for n in ("A", "B")}
+
+    def left():
+        return t_end - time.time()
+
+    def step(name, fn, **kw):
+        if left() <= 0:
+            return
+        b = argparse.Namespace(**dict(vars(a), **kw))
+        say("campaign: %s %s" % (name, kw))
+        log(label="campaign", exp="step", step=name, kw=kw)
+        try:
+            fn(b, log)
+        except Exception as e:                                  # noqa: BLE001
+            say("campaign: %s failed: %r" % (name, e))
+            log(label="campaign", exp="step_error", step=name, error=repr(e)[:300], tb=traceback.format_exc()[-1200:])
+    if not a.skip_nulls:
+        step("nulls", cmd_nulls, board=["B", "A"], mhz=a.band, sa=sa)
+    wifi.start()
+    try:
+        step("events 5200", cmd_events, dir=["BA", "AB"], mhz=[5200.0])
+        step("prbs 5200", cmd_prbs, dir=["BA", "AB"], mhz=[5200.0])
+        step("band", cmd_band, dir=["BA", "AB"], mhz=a.band, prover=True)
+        for f in (5400.0, 4800.0, 5800.0):
+            wifi.carrier_mhz = f
+            step("events %g" % f, cmd_events, dir=["BA", "AB"], mhz=[f])
+            step("prbs %g" % f, cmd_prbs, dir=["BA", "AB"], mhz=[f])
+            step("prover %g" % f, cmd_prover, board=["B", "A"], mhz=[f], quick=True)
+        t_soak = 0.0
+        while left() > 600:
+            if time.time() - t_soak > 3600:
+                wifi.carrier_mhz = 5200.0
+                L = Link(nodes["B"], nodes["A"], 5200.0)
+                if L.up():
+                    try:                                        # the analyzer sweeping, then not (its own emission?)
+                        soak(log, L, minutes=5.0, cond="analyzer sweeping")
+                        wifi.pause()
+                        soak(log, L, minutes=5.0, cond="analyzer paused")
+                    except Exception as e:                      # noqa: BLE001
+                        log(label="campaign", exp="soak_error", error=repr(e)[:300])
+                    finally:
+                        wifi.resume()
+                nodes["B"].quiet()
+                t_soak = time.time()
+            mhz = float(rng.choice(a.band))
+            wifi.carrier_mhz = mhz
+            d = rng.choice(["BA", "AB"])
+            L = Link(nodes[d[0]], nodes[d[1]], mhz)
+            log(label="random", exp="session", mhz=mhz, link=d)
+            if L.up(tries=2):
+                log(label="random", exp="setup", state=L.state(), **L.info)
+                pts = []
+                for _ in range(25):
+                    c = rng.choice(list(CONSTS))
+                    pts.append(_rand_params(rng, dict(PRBS_BASE, const=c, frac=CONST_FRAC.get(c, 0.5)), PRBS_OFAT,
+                                            {"frac": PRBS_FRACS} if CONSTS[c][3] else {"ioff": PRBS_IOFFS}))
+                run_points(log, L, prbs_point, [dict(p, tag="random") for p in pts], "random prbs %s %g" % (d, mhz))
+                pts = []
+                for _ in range(15):
+                    pts.append(_rand_params(rng, dict(EVENTS_BASE, scheme=rng.choice(EVENT_SCHEMES)), EVENTS_OFAT))
+                for p in pts:
+                    p["width"] = min(p["width"], max(1, p["period"] // 3))
+                    p["count"] = min(20000, max(2000, int(2e6 / p["period"])))
+                run_points(log, L, events_point, [dict(p, tag="random") for p in pts], "random events %s %g" % (d, mhz))
+            L.tx.quiet()
+            if left() <= 600:
+                break
+            b = rng.choice(["A", "B"])
+            lp = Loop(nodes[b], nodes["B" if b == "A" else "A"], mhz)
+            if lp.up(tries=3):
+                log(label="random", exp="loop_setup", state=lp.state(), **lp.info)
+                pts = []
+                for _ in range(12):
+                    sc = rng.choice(PROVER_SCHEMES)
+                    p = _rand_params(rng, dict(PROVER_BASE, scheme=sc), PROVER_OFAT,
+                                     {"reply": list(reply_maps(C.SCHEMES[sc].n))})
+                    p["width"] = max(p["width"], 10)
+                    pts.append(dict(p, tag="random"))
+                run_points(log, lp, prover_point, pts, "random prover %s %g" % (b, mhz))
+            nodes[b].quiet()
+    finally:
+        wifi.stop = True
+        wifi.run_ev.set()
+        wifi.th.join(30) if wifi.th.is_alive() else None
+        sa.amplitude(attenuation=30, ref_level=20)
+        sa.w(":SENSe:FREQuency:SPAN:FULL")
+        sa.bandwidth(rbw="auto", vbw="auto")
+        sa.run()
+
+
+def ripple(tx, rx, sa, f0=5200.0, half=50.0, step=1.0, f_pfd=1.0):
+    """two paths of different delay ripple a level against frequency with period 1 / (their delay difference): the
+    sender's carrier stepped f0 +- half in `step` MHz (integer-N at f_pfd), the receiver's RX synthesizer fixed at f0 (its
+    log detector, the +-94 MHz band, no lock needed: the carrier falls inside it), the FPV antenna on the DSA875 at each
+    step.  Returns the levels and, for each, the delay spectrum of the detrended linear power (|FFT| over frequency)"""
+    import numpy as np
+    tx.cl.safe()
+    rx.cl.safe()
+    rx.cl.pll_tune(0, park(f0))
+    rx.cl.pll_tune(1, f0)
+    rx.cl.ctrl(tr_a=1, tx_dis=1)
+    rx.cl.dsa(21.75)
+    tx.cl.pll_tune(1, park(f0))
+    (vi, vq), _ = tx.vr(f0)
+    tx.cl.dac(VR_I=vi, VR_Q=vq)
+    tx.cl.hold_point(1, 0)
+    tx.cl.ctrl(tr_a=0, tx_dis=0)
+    sa.w(":SENSe:DETector:FUNCtion POSitive")
+    sa.amplitude(attenuation=0, ref_level=-40)
+    sa.bandwidth(rbw=3e3, vbw=3e3)
+    rows = []
+    try:
+        for f in np.arange(f0 - half, f0 + half + 1e-9, step):
+            tx.cl.pll_tune(0, float(f), f_pfd=f_pfd, cp=15 if f_pfd < 25 else None)   # cp 15: the loop's gain at a low PFD
+            time.sleep(0.05)
+            lk = tx.cl.pll_locked()["tx"]
+            sa.frequency(center=float(f) * 1e6, span=300e3)
+            fr, y = sa.trace(binary=True)
+            k = int(np.argmax(y))
+            d = rx.cl.detectors()
+            rows.append({"mhz": float(f), "locked": lk, "fpv_dbm": float(y[k]), "fpv_hz": float(fr[k]),
+                         "log_dbm": d.get("log_dbm"), "peak_dbm": d.get("peak_dbm")})
+    finally:
+        tx.cl.safe()
+        rx.cl.safe()
+    out = {"tx": tx.name, "rx": rx.name, "f0": f0, "step": step, "rows": rows}
+    for key in ("fpv_dbm", "log_dbm"):
+        v = np.array([r[key] if r[key] is not None else np.nan for r in rows], float)
+        f = np.array([r["mhz"] for r in rows])
+        ok = np.isfinite(v)
+        if ok.sum() < 10:
+            continue
+        pw = 10 ** (v[ok] / 10)
+        c = np.polyfit(f[ok] - f0, pw, 3)
+        res = pw / np.polyval(c, f[ok] - f0) - 1.0                 # the ripple, a fraction of the smooth level
+        n = 1 << int(np.ceil(np.log2(len(res) * 4)))
+        spec = np.abs(np.fft.rfft(res * np.hanning(len(res)), n))
+        tau = np.fft.rfftfreq(n, d=step * 1e6) * 1e9               # ns
+        sel = tau > 15                                              # below one period across the span is the trend
+        kk = int(np.argmax(spec[sel]))
+        out[key + "_ripple_pp_db"] = float(10 * np.log10((1 + res.max()) / max(1e-6, 1 + res.min())))
+        out[key + "_delay_ns"] = float(tau[sel][kk])
+        out[key + "_delay_strength"] = float(spec[sel][kk] / max(1e-12, spec[sel].mean()))
+        out[key + "_spectrum"] = [(round(float(t), 1), round(float(x), 4)) for t, x in zip(tau, spec) if t <= 400][::2]
+    return out
+
+
+def cmd_ripple(a, log):
+    from rigol_DSA875 import DSA875, usbtmc_node, USB_VENDOR, USB_PRODUCT
+    sa = getattr(a, "sa", None) or DSA875(usb=usbtmc_node(USB_VENDOR, USB_PRODUCT))
+    nodes = {n: Node(n) for n in ("A", "B")}
+    try:
+        for d in a.dir:
+            r = ripple(nodes[d[0]], nodes[d[1]], sa, f0=a.mhz[0])
+            log(label="ripple", exp="ripple", **r)
+            say("%s at %g +- 50 MHz: FPV ripple %.1f dB p-p, strongest delay %.0f ns (x%.1f the mean); %s's log detector ripple "
+                "%.1f dB p-p, strongest delay %.0f ns (x%.1f)" % (d, a.mhz[0], r.get("fpv_dbm_ripple_pp_db", 0), r.get("fpv_dbm_delay_ns", 0),
+                r.get("fpv_dbm_delay_strength", 0), d[1], r.get("log_dbm_ripple_pp_db", 0), r.get("log_dbm_delay_ns", 0), r.get("log_dbm_delay_strength", 0)))
+    finally:
+        sa.amplitude(attenuation=30, ref_level=20)
+        sa.w(":SENSe:FREQuency:SPAN:FULL")
+        sa.bandwidth(rbw="auto", vbw="auto")
+        sa.run()
+
+
 def cmd_night(a, log):
     """the whole program, one thing on the boards at a time: the prover on each board; events and prbs both ways at
     the first frequency; the band (both ways, the loopback at each); events and prbs again at 5400 MHz (the WiFi gap)"""
@@ -1210,7 +1634,10 @@ BAND = [4400, 4600, 4800, 5000, 5100, 5150, 5180, 5200, 5240, 5300, 5320, 5400, 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("cmd", choices=["check", "prbs", "events", "prover", "band", "night"])
+    ap.add_argument("cmd", choices=["check", "prbs", "events", "prover", "band", "night", "nulls", "campaign", "ripple"])
+    ap.add_argument("--until", default=None, help="campaign: 'YYYY-MM-DD HH:MM' (local time)")
+    ap.add_argument("--seed", type=int, default=20261104, help="campaign: the random sessions' seed")
+    ap.add_argument("--skip-nulls", action="store_true", help="campaign: the null table as it is")
     ap.add_argument("--band", type=float, nargs="+", default=[float(f) for f in BAND], help="night: the band's frequencies")
     ap.add_argument("--steps", nargs="+", default=None, help="night: proverB proverA pilotB events prbs band events5400 "
                     "prbs5400 pilots_events (default proverB proverA events prbs band events5400 prbs5400)")
@@ -1228,7 +1655,7 @@ def main(argv=None):
     nodes_quiet = []
     try:
         {"check": cmd_check, "prbs": cmd_prbs, "events": cmd_events, "prover": cmd_prover, "band": cmd_band,
-         "night": cmd_night}[a.cmd](a, log)
+         "night": cmd_night, "nulls": cmd_nulls, "campaign": cmd_campaign, "ripple": cmd_ripple}[a.cmd](a, log)
     finally:
         for n in ("A", "B"):
             try:

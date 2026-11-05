@@ -205,7 +205,7 @@ GHz if the antennas favour it, then `soak.py run` overnight at both carriers.
   beside the server: `deploy_pynq.sh` copies the core driver only; copy the rest by `scp` as the version table in
   BRINGUP_LOG shows).  Its own IP; a second `bench_config.json` (or `--board B` with its own `pynq_host`).
 * **The frequency plan:** one one-way link each way, apart in frequency (A to B at 5.2 GHz, B to A at 5.8 GHz): the
-  5.8 GHz receive needs C102 lifted on both boards.  Until then one direction (A to B at 5.2 GHz, B's TX muted).
+  5.8 GHz receive needs C102 lifted on both boards: done on both (A 2026-11-03, BRINGUP_LOG 4.44; B by Jason, told 2026-11-04 19:05, BRINGUP_LOG 4.61).
 * **The software that exists for two boards, untested across two:** `link.json` takes separate `tx_mhz` and `rx_mhz`
   (linkd tunes each synthesizer; VR belongs to `tx_mhz`); the self-test's plans 'send' (BPSK data out continuously) and
   'check' (the other's data checked, its timing recovered by `ber_cdr.v`); single symbols across boards count decisions
