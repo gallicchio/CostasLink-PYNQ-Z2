@@ -141,7 +141,7 @@ What the laptop needs that the bench PC has:
 
 ### 2b. The afternoon of 2026-11-05: what is where, and what to do first
 
-* **Running until 13:00:** `twoboard.py campaign` 17 (PID in `data/twoboard/campaign.pid`; the random sessions, every
+* **At 13:00 the campaign ended by itself** (both boards quiet: TX muted, loop held, receive; the analyzer at full span, 30 dB); only the supply watchdog runs (to 16:10).  Until then it was `twoboard.py campaign` 17 (PID in `data/twoboard/campaign.pid`; the random sessions, every
   parameter drawn jointly at a random band frequency and direction, with a 10-minute B -> A soak at 5200 each hour, half
   with the analyzer sweeping and half paused) and the supply watchdog started 04:10 (PID in the scratchpad's
   `logs/watch2.pid`, to 16:10).  Both quiet the boards when stopped: SIGINT the campaign and **check it is gone** (HANDOFF
