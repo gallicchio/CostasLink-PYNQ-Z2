@@ -22,7 +22,7 @@
  },
  "sa": {
   "host": null,
-  "usb": false
+  "usb": true
  },
  "scope": {
   "host": null
