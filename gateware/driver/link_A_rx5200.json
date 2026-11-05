@@ -1,0 +1,2 @@
+{"tx_mhz": 5900, "rx_mhz": 5200, "vr": {"VR_I": 0.2482, "VR_Q": 0.2712}, "leg_target": 0.15, "window_frac": 0.5, "v_t2": 2.9, "dsa_min": 6.0,
+ "note": "board A as the receiver of board B's carrier over the dishes (BRINGUP_LOG 4.59): its RX at 5200, its own TX synthesizer parked at 5900 (REVB 57) and muted by the server's safe state; VR the TX output's null at 5200 (4.55) for when it sends. For the cold-start test (qpvtests.py coldstart): copy to link.json on PYNQ A. Not deployed (Jason's call)."}

@@ -342,7 +342,8 @@ class Link:
     """a one-way link tx -> rx at mhz, set up and kept by linkd's own code run here"""
     def __init__(self, tx, rx, mhz, cfg=None):
         self.tx, self.rx, self.mhz = tx, rx, float(mhz)
-        self.cfg = dict(LINK_CFG, tx_mhz=park(mhz), rx_mhz=float(mhz), **(cfg or {}))
+        self.cfg = dict(LINK_CFG, tx_mhz=park(mhz), rx_mhz=float(mhz))
+        self.cfg.update(cfg or {})                   # a duplex pair keeps the sender's own TX synthesizer (tx_mhz) and null
         path = os.path.join(DATA, "cfg_%s_rx_%d.json" % (rx.name, int(mhz)))
         json.dump(self.cfg, open(path, "w"))
         self.ld = linkd.LinkD(_Srv(rx.cl), config=path)

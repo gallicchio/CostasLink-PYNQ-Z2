@@ -199,6 +199,37 @@ analyzer sweeping, 5 paused).
    the four ladder lines (LATENCY row 6, an hour, 1.35-2.7 ns); REF OUT to TRIG IN clocking and two-way time transfer
    (stage 4, step 8); the reply lane at 200 MHz (gateware, LATENCY row 3: 13-15 ns off the clocked reply).
 
+## 6a. The tests written for the cupboard (2026-11-04, 21:00), ranked by bang for the buck
+
+Jason: "All of those things are in the cupboard.  Write the tests and rank them by bang-for-the-buck."  Each row: what it
+answers, the hands it costs, the script, and how long it runs by itself.  `bringup/qpvtests.py` holds the new ones (built
+on `twoboard.py`); `sdrtime.py` the SDR's; the first two are the same script with different cabling.  All untested on
+hardware until the cabling exists: the first ten minutes tomorrow are their debugging, with me watching.
+
+| # | test | answers | hands | script | runs |
+|---|---|---|---|---|---|
+| 1 | **The round trip over the air** (section 6, item 1) | the prover's turnaround and its distribution as the verifier measures it, every challenge against every reply map, the reply decoded by the verifier | 10 min: V's RX ANT and P's TX ANT onto two FPV antennas on the bench; a 10-20 dB pad on one if the bench pair reads over -20 dBm | `qpvtests.py roundtrip --v A --p B --mhz-c 5200 --mhz-r 5400` (244 points, about 40 min; `--quick` 172); then `--v B --p A` | 40 min a direction |
+| 2 | **The spool: the attacker's extra distance** | the position resolution: the round trip must grow by the spool's delay, to the nanosecond | 5 min: the spool (VNA'd first, 3 min) in cable B; then in the reply's path | `roundtrip --repeat-only --minutes 10 --note "spool 50 m in cable B"` | 10 min a placement |
+| 3 | **The hardware time reference** | the one-way detection latency and jitter of events over the dishes, at 1.25 ns, per scheme and setting; the LAT register's TRIG IN to CMP_I | 2 min: one SMA lead, B's J205 (TRIG OUT A) to A's J207 (TRIG IN) | `twoboard.py events --dir BA` with the receiver's reference `trig_in` (a `--ref trig_in` switch to add: 20 lines) | 1 h |
+| 4 | **All-coax calibration** | the electronics alone: latency with no air and no leakage, at any level by pads; air minus coax = propagation; the 5-9 dB settled by comparison | 10 min: TX ANT -> 40 dB -> the other's RX ANT, both ways (never a bare TX ANT to RX ANT) | `roundtrip --note coax`, `twoboard.py prbs/events --dir BA AB`, pads 20 / 40 / 60 dB | 1 h |
+| 5 | **The VNA on the cable ends** | where the 5-9 dB went | 10 min | the 8720ES, register 29, as 4.43 (`vna_peak.py` / the hp driver) | 5 min |
+| 6 | **Aim by ear** | the dishes peaked; the 5-9 dB if it is pointing | 5 min walking | `aimtone.py` (page at :8082; `--one-way BA` for one dish) | live |
+| 7 | **Cold start to link, unattended** | the number the physicists live with: power to a working link, N times, nobody present | 0 (link.json on both PYNQs first: `gateware/driver/link_A_rx5200.json`, `link_B_tx5200.json`, Jason's call) | `qpvtests.py coldstart --n 20` (the boards' 5 V cycled, the PYNQs up); the full cycle with the PYNQs halted by hand | 20 cycles in 2 h |
+| 8 | **A real WiFi AP on the carrier** | the link, the interference hold and the BER under the interferer it will meet | 10 min: the OpenWRT 5 GHz radio on channel 40 (5200), iperf3 from the laptop, the AP a few metres from a dish | `qpvtests.py soak --minutes 20 --note "AP ch40 iperf"` beside the quiet soak | 20 min a condition |
+| 9 | **The SDR as the independent clock** | the round trip timed by the instrument the experiment will use, no board sampling in it; each board's carrier phase against one clock (REVB 56's turn) | 30-60 min: the B210 (or X310) two channels on the two TX MONs through pads; UHD on the laptop (4.9 is installed) | `sdrtime.py --args type=b200 --rate 30.72e6 --lo 5205e6` with `roundtrip --mhz-r 5210` running; the X310 at 200 MS/s for 5 ns samples | 10 min |
+| 10 | **A common 25 MHz reference** | how much of the acquisition and holdover trouble is the TCXOs' 1 ppm; REVB 57's beat gone | 5 min: the SDG at 25 MHz (locked to a 10 MHz house reference if there is one) into both REF INs, JP201 to REF IN on both | the campaign's own steps again (`twoboard.py night --steps proverB events prbs`) | 1 h |
+| 11 | **Cross-polarization, a person, a plate** | the fade margin and the holdover under real blockage; the sensitivity without a pad | 1 min each during a soak | `qpvtests.py soak --minutes 10 --note "dish B 90 deg"` (and `--note "person in beam"`) | 10 min each |
+| 12 | **Temperature** | how far the timing calibration drifts per degree (the NTC is logged with every point) | 10 min: a heat gun, then freeze spray, on a board, then on a cable | `roundtrip --repeat-only --minutes 20 --note "heat gun on B"` | 20 min |
+| 13 | **The supply walk** | immunity of lock, latency and the comparators to the rail, 4.75-5.30 V | 0 (the watchdog paused by the script) | `qpvtests.py supplywalk --dwell 60` | 25 min |
+| 14 | **The prover without an FPGA** | the hardware floor of the turnaround, about 20 ns, no gateware in it | 5 min: a lead from B's comparator monitor to its own TRIG IN (BRINGUP.md stage 4, step 7) | `roundtrip --p B` with P's paths off (a `--prover-mode hardware` switch to add) | 10 min |
+| 15 | **The link picks its own channel** | autonomous frequency planning against the WiFi AP of row 8 | 0 | `qpvtests.py autochannel --dir BA --lo 5150 --hi 5850` | 15 min |
+| 16 | **The benchtop pair** | the whole exchange on one table, for demos and for every test that does not need 16 m | 10 min: both boards on FPV pairs | `roundtrip` and the campaign's steps | as above |
+| 17 | **Two-way time transfer** | the verifiers' synchronization precision | gateware: the fabric clock from REF OUT (stage 4, step 8) is not in ID 13 | later | later |
+
+**The order tomorrow afternoon:** 6 (aim, 5 min), 5 (the VNA, 10 min), then 1 (the round trip, the afternoon's centre),
+2 (the spool, while the round trip's cabling is up), 12 (the heat gun, same cabling), 9 (the SDR, same cabling), then 3 and
+4 before the dishes go back to the switches; 7 and 13 overnight; 8, 10, 11, 15 as time allows.
+
 ## 7. Beyond this hardware
 
 * **Gateware and firmware on rev A** (IMPROVEMENTS.md): the per-scheme windows and the mirror into linkd and the learning
