@@ -1547,7 +1547,7 @@ def cmd_campaign(a, log):
     want = a.steps or ["timing", "events5200", "prbs5200", "band", "5400", "4800", "5800"]
     try:
         if "timing" in want:
-            step("timing", cmd_timing, board=["B", "A"], mhz=[5200.0], scheme=None)
+            step("timing", cmd_timing, board=a.timing_boards, mhz=[5200.0], scheme=None)
         if "events5200" in want:
             step("events 5200", cmd_events, dir=["BA", "AB"], mhz=[5200.0])
         if "prbs5200" in want:
@@ -2117,6 +2117,7 @@ def main(argv=None):
     ap.add_argument("--seed", type=int, default=20261104, help="campaign: the random sessions' seed")
     ap.add_argument("--skip-nulls", action="store_true", help="campaign: the null table as it is")
     ap.add_argument("--redo", action="store_true", help="nulls: measure again the frequencies already in the table")
+    ap.add_argument("--timing-boards", nargs="+", default=["B", "A"], help="campaign: the boards for the timing step")
     ap.add_argument("--ref", choices=["tx", "trig_in"], default="tx", help="events: the receiver's reference ('trig_in': the "
                     "sender's TRIG OUT A on a lead to the receiver's TRIG IN: the timing across the boards)")
     ap.add_argument("--band", type=float, nargs="+", default=[float(f) for f in BAND], help="night: the band's frequencies")
