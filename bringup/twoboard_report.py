@@ -268,7 +268,9 @@ def main(argv=None):
     ap.add_argument("--wifi", nargs="*", default=None)
     ap.add_argument("--out")
     a = ap.parse_args(argv)
-    paths = a.records or sorted(glob.glob(os.path.join(DATA, "campaign_*.jsonl")) + glob.glob(os.path.join(DATA, "night_*.jsonl")))[-1:]
+    cands = glob.glob(os.path.join(DATA, "campaign_*.jsonl")) + glob.glob(os.path.join(DATA, "night_*.jsonl")) + \
+        glob.glob(os.path.join(DATA, "qpv_*.jsonl"))
+    paths = a.records or sorted(cands, key=os.path.getmtime)[-1:]            # the newest by time
     rows = load(paths)
     wifi = load(a.wifi) if a.wifi else []
     out = ["# Two boards: %s (%d records)\n" % (", ".join(os.path.basename(p) for p in paths), len(rows))]

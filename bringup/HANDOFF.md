@@ -79,6 +79,19 @@ recover run from the laptop, A's TX muted, A's TX synthesizer on 5800 and B's RX
 DSA875 on an FPV antenna near the beam, 5.10-5.35 GHz).  A's PYNQ linkd is paused while the soak writes; if the soak stops, B is
 left on its idle carrier.
 
+**Since 2026-11-04 19:43 (BRINGUP_LOG 4.60-4.61, `QPV_TIMING_REVIEW.md`): the campaign.**  `twoboard.py campaign --until
+"2026-11-05 13:00"` (PID in `data/twoboard/campaign.pid`, its log `data/twoboard/campaign3.out`, records
+`data/twoboard/campaign_*.jsonl`, the WiFi monitor's `data/twoboard/wifi_*.jsonl`): the nulls over the band (done, both
+boards, `data/twoboard/vr_null.json`), the timing step (T1-T4 in loopback on each board), events and prbs both ways at
+5200, the band both ways with the loopback prover at each frequency, quick sweeps at 5400 / 4800 / 5800, then random joint
+draws of every parameter with a soak each hour (half with the analyzer sweeping, half paused).  `twoboard_report.py`
+tabulates the newest records.  **Stop it with SIGINT** (it quiets both boards) before anything else touches the boards;
+`aimtone.py` and `qpvtests.py` (the round trip over the air, the soak with a note, the supply walk, the cold start, the
+autonomous channel) need the boards to themselves.  The prover's own two antennas (V's RX ANT and P's TX ANT onto FPV
+antennas) are the first thing to cable tomorrow (`QPV_TIMING_REVIEW.md` section 6a, the ranked list); the review's
+section 0 table is what the numbers answer.  The supply watchdog (PID in the scratchpad's `logs/watch.pid`) runs to
+about 04:20; start another before it ends if the boards stay on.
+
 **Power (the E3646A, USB serial):** output 1 the board at 5.30 V, 1.5 A limit (the board draws about 0.9 A); output 2
 the PYNQ at 12.0 V, 1.5 A limit, OVP 13.5 V.  One switch serves both outputs; the board is switched by its output's
 voltage (0 V or 5.3 V).  `python3 bringup/bench.py --board A psu up | cycle | pynq-off`; the watchdog's pause is
