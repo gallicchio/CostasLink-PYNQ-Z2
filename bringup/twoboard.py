@@ -347,6 +347,15 @@ def rx_tables(ctx, s, first_edge=False, seconds=0.01, margin_v=0.004):
         return use.idle_vector(), lut, use.slow_exp(), info
     i_idle = s.rx_idle_point()[0]
     cmp_i_idle = vec & 1
+    # a window whose level barely moves across the scheme's points carries nothing (board A's IP at the dish level: 9 mV
+    # between (1, 0) and (-1, 0) against IN's 350, BRINGUP_LOG 4.63-4.64): it is taken both ways in every vector
+    pts_all = [tuple(s.idle)] + [tuple(m) for m in s.msgs]
+    dead = set()
+    for w in WIN_INDEX:
+        vals = [lv[p][w] for p in pts_all if p in lv and lv[p].get(w) is not None]
+        if len(vals) >= 2 and max(vals) - min(vals) < 5 * margin_v:
+            dead.add(w)
+    info["dead_windows"] = sorted(dead)
     owners, clash = {}, set()
     for m, pt in enumerate(s.msgs):
         bits = []
@@ -357,7 +366,7 @@ def rx_tables(ctx, s, first_edge=False, seconds=0.01, margin_v=0.004):
             bits.append((cmp_i_idle,) if (pi > 0) == (i_idle > 0) else (1 - cmp_i_idle,))
         levels = lv.get(tuple(pt)) or {}
         for w, k in WIN_INDEX.items():
-            if w not in th or levels.get(w) is None:
+            if w in dead or w not in th or levels.get(w) is None:
                 bits.append((0, 1))
             elif abs(levels[w] - th[w]) < margin_v:
                 bits.append((0, 1))
