@@ -36,6 +36,14 @@ budget, 10-29), `docs/SYSTEM.md` section 1 (the prover's turnaround in the QPV c
 | bitstream latency | the ladder pins to CMP_I 20.0-23.75 ns at every rate (0.5-100 MBd) and level; over the dishes add 139.75 ns and half a symbol |
 | bitstream rate | 100 MBd open at 1-2 of 5 sampling phases, 50 MBd at 3 of 5, 33 MBd and below at all 5 |
 
+**Filled in at 00:40 by the cross-board sweeps over the dishes (BRINGUP_LOG 4.63, 5200 MHz, the link's own level):**
+
+| question | measured over the dishes |
+|---|---|
+| idle-to-1-in-N, right decisions | A2, A3, B1 and B2 decode every message at 99-100 % across the decision delay, settle, quiet, window place 0.2-0.8 and event width 5-40 clocks; A1 (the I flip) 100 %.  Limits: events every 50 clocks (2 MHz) overrun every scheme; the pilot schemes (B1 / B2) need the challenges' duty under about 1 % (they fail from 0.5-1 MHz and at 40-100 clock events: the events pull the pilot's lock round); 20 ns events fail everywhere; A3's I = -1 corners need delay 8 or more |
+| bitstream over the dishes | **BPSK on the sign of I: 0 errors at every rate from 0.1 to 20 MBd (20 Mbit at 20 MBd), at every CMP_I trim and at every receiver level over 32 dB**; the flip and on-off on the I windows likewise to 20 MBd, tolerant of the threshold over half the gap and of 12-14 dB of level; the Q bit 1-3e-6 at 4-20 MBd and worse at slower rates, Q on-off 1e-3: **use the I channel for bitstreams** |
+| an asymmetry to look at | board A's IP window barely responds at the dish level (14 mV against IN's 170 and board B's 180), so A1w and A3's I windows fail on A's receiver and not on B's; hardware or the scope's load on A's I MON: the scope, tomorrow |
+
 **The one structural fact:** with the cabling as it is (one dish per board behind its T/R switch), **no round trip over the
 air is possible at speed** (REVB 55): each switch block passes the board's own TX to its own RX 25 dB down in either state
 (about -17 dBm against the far board's -55), and rev A has no mute that is both fast and quiet (DSOP takes 112-126 ns to
