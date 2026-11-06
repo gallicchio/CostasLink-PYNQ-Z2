@@ -287,7 +287,10 @@ def scheme_windows(ctx, s, frac=0.5):
     """the four windows for scheme s from its received constellation (point_levels, kept per scheme and DSA): each between
     the highest level among the points that must leave it quiet and the lowest among those that must fire it, frac of the
     way across that gap (0.5 the middle; low frac is near the quiet points, so it fires early).  A window no point fires
-    sits above them all.  Returns (thresholds, levels, gaps)."""
+    sits at the rail, out of any transient's reach (until 2026-11-06 it sat 50 mV past the quiet points, and the flip's edge
+    transient in the Q arm, -30 % of the leg for 20 ns, reached QN's from a 370 mV leg up: A1 decided 74 / 6 / 1 % of its
+    events at 370 / 570 / 838 mV, BRINGUP_LOG 4.73); one every point fires sits at the other rail.  Returns (thresholds,
+    levels, gaps)."""
     rcl = ctx.rx_cl()
     key = (s.name, rcl._dsa_db, getattr(ctx, "s", 1))     # per lock side: the Q offsets flip with it (REVB 41, 4.62)
     cache = getattr(ctx, "slev", None)
@@ -310,10 +313,10 @@ def scheme_windows(ctx, s, frac=0.5):
             v = lo + frac * (hi - lo) if hi > lo else 0.5 * (sum(on) / len(on) + sum(off) / len(off))
             gaps[w] = round(1e3 * (hi - lo), 1)               # mV; negative: the points overlap on this comparator
         elif off:
-            v = max(off) + 0.05
+            v = 2.499                                     # no point fires it: the rail, out of any transient's reach
             gaps[w] = None
         elif on:
-            v = min(on) - 0.05
+            v = 0.0                                       # every point fires it: the other rail
             gaps[w] = None
         else:
             continue
