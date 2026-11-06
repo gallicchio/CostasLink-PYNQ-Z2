@@ -756,16 +756,29 @@ def pilot_cal(ctx, rho=C.RHO, angle=0, d0=0.08, tries=10):
 
     if angle == 0:
         ux, uy = ctx.txp(1.0, 0.0)
-        cands = [search(ux, uy)]
-    else:
-        ux, uy = ctx.txp(1 / math.sqrt(2), 1 / math.sqrt(2))
+        cands = [search(ux, uy), search(ux, uy, sign=-1.0)]   # both signs of the VR_I offset (Jason, 11-06 14:45): the
+    else:                                                     # pilot rides on the ladder's +1 for the (1, 0) point, and one
+        ux, uy = ctx.txp(1 / math.sqrt(2), 1 / math.sqrt(2))  # sign pushes it out of the modulator's range (4.77)
         cands = [search(ux, uy), search(ux, -uy)]
     cands = [c for c in cands if c is not None and abs(abs(c[2]) - rho) <= 0.06]
     if not cands:
         cl.dac(VR_I=vi0, VR_Q=vq0)
         cl.hold_point(*ctx.txp(1, 0))
         return {"vr": None, "rho": None, "trace": trace, "a": a}
-    got = min(cands, key=lambda c: c[3])
+    if angle == 0 and len(cands) > 1:
+        # the full point with each pilot in place: the sign that keeps it linear (the larger amplitude) wins
+        amps = []
+        for c in cands:
+            cl.dac(VR_I=c[0], VR_Q=c[1])
+            cl.hold_point(*full)
+            time.sleep(0.1)
+            o = observe()
+            amps.append(abs(o["di"]))
+            trace.append(("full+pilot", round(c[0], 4), round(c[1], 4), o["di"], o["dq"]))
+        got = max(zip(cands, amps), key=lambda ca: (ca[1], -ca[0][3]))[0]
+        trace.append(("chosen", round(got[0], 4), round(got[1], 4), [round(x, 4) for x in amps]))
+    else:
+        got = min(cands, key=lambda c: c[3])
     cl.hold_point(*full)
     time.sleep(0.05)
     cl.dac(VR_I=got[0], VR_Q=got[1])
