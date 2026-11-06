@@ -155,6 +155,13 @@ What the laptop needs that the bench PC has:
   SINGLE then ARM) returns records without a trigger on this firmware (SINGLE alone, then wait for Stop, triggers every time), and
   TRDL's sign is the other way from the driver's `waveform()` formula (a positive delay puts the trigger after the screen's centre).
   `scopelat.py --report FILE` tabulates its records.
+* **The round trip is running (from 17:30, to 07:30 on 11-06):** `qpvtests.py roundtrip --v A --p B --mhz-c 4800 --mhz-r 5400 --scheme A3 A2
+  --minutes 840` (PID in `data/twoboard/roundtrip.pid`, output `roundtrip_night.out`, records `qpv_roundtrip_*.jsonl`), the WiFi monitor
+  beside it (scratchpad `logs/wifimon.pid`).  The cabling since 17:00: A's TX ANT -> its switch -> the left dish (the challenge), B's
+  switch -> B's RX ANT from the right dish; B's TX ANT and A's RX ANT on two FPV antennas 30 cm apart on the bench (the reply); A's I MON
+  pigtail open; the scope on B's TRIG A (ch1) and A's CMP I MON (ch4).  BRINGUP_LOG 4.70 has the first exchange (A2 20 000 of 20 000 at
+  217.5 ns, A3 99.4 %) and the three faults fixed on the way; the challenge is at 4800 because the laptop's WiFi sits on channel 48
+  (5210-5250 MHz).  Stop it with SIGINT (started by nohup from the shell, it takes SIGINT) and check it is gone; it quiets both boards.
 * **The night's results:** BRINGUP_LOG 4.62 (the timing step: the prover's distributions, PRBS challenges, event timing, the
   bitstream's latency), 4.63 (the 5200 sweeps both ways), 4.64 (the band), 4.65 (5400 / 4800 / 5800); the review's section 0
   tables (`QPV_TIMING_REVIEW.md`) carry the answers; `twoboard_report.py <records>` tabulates any file.  The framework's
