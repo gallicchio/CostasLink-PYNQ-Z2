@@ -262,14 +262,20 @@ def point_levels(ctx, idle, pts, W=20, N=500):
             b = base[w]
             hi = _level(rcl, w, duty_target=0.5 * d)            # where the events reach above the idle
             lo = _level(rcl, w, duty_target=1.0 - 0.5 * d)      # where they reach below it
+            # one of the two is the events' level, the other the idle's own noise quantile (a search for events above an
+            # idle the events leave downward ends 3-40 mV above it: the 2 % tail); the larger departure is the events'.
+            # Taking the upward one whenever it cleared 3 mV (until 2026-11-05) recorded A3's -I corners at +11 to +40
+            # on IP instead of -300 and made IP "dead" or wrong on every table (BRINGUP_LOG 4.71)
+            eh = (hi - b) if (b is not None and hi is not None) else 0.0
+            el = (b - lo) if (b is not None and lo is not None) else 0.0
             if b is None:
                 row[w] = None
-            elif hi is not None and hi > b + 0.003:
-                row[w] = hi
-            elif lo is not None and lo < b - 0.003:
-                row[w] = lo
-            else:
+            elif max(eh, el) < 0.003:
                 row[w] = b
+            elif eh >= el:
+                row[w] = hi
+            else:
+                row[w] = lo
         ctx.events_off()
         ctx.hold(idle)
         time.sleep(0.02)
