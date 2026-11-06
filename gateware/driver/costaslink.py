@@ -32,6 +32,7 @@ board_constants.py, which the build generates from sim/budget.py.
 """
 import math
 import os
+import socket
 import statistics
 import sys
 import time
@@ -80,6 +81,11 @@ MCP4728_VDD = 3.3
 # puts the I ladder's 11 point (the gateware's idle) at 2.0 V on IBBP and the Q ladder with TRIG IN high at 2.2 V,
 # against the ADL5375's 0-2 V absolute maximum (its Table 2; found at bring-up, 2026-10-28)
 DAC_DEFAULT_V = {DAC1: (VR_I_V, VR_Q_V, V_MID, V_MID), DAC2: (V_MID, V_MID, V_MID, V_MID)}
+# Per-board power-up values beyond DAC_DEFAULT_V, by the PYNQ's hostname: the same values are in that board's DAC EEPROM,
+# so the shadow a fresh server starts with matches the hardware (every DAC write sends all four channels from the
+# shadow, and linkd's loop_center puts the arm trims back to what the shadow says).  Board B's fast Q arm sat 23 mV
+# above its loop's reference until Q_OFF_F was trimmed to 2.79 V (BRINGUP_LOG 4.76-4.77, 2026-11-06).
+BOARD_DAC_V = {"pynq-b": {"Q_OFF_F": 2.79}}
 VR_MAX_V = 0.6              # the most dac() lets VR_I / VR_Q have: IBBP 1.18 V, QBBP 1.47 V at worst (every leg high)
 
 
@@ -339,6 +345,9 @@ class CostasLink:
     def __init__(self, bus, check=True):
         self.bus = bus
         self._dac = {d: [dac_code(v) for v in DAC_DEFAULT_V[d]] for d in (DAC1, DAC2)}
+        for name, volts in BOARD_DAC_V.get(socket.gethostname(), {}).items():     # this board's EEPROM values (BOARD_DAC_V)
+            which, names = (DAC1, DAC1_CH) if name in DAC1_CH else (DAC2, DAC2_CH)
+            self._dac[which][names[name]] = dac_code(volts)
         self._pll = {0: (5800.0, 25.0, None), 1: (5800.0, 25.0, None)}   # the words PLL_INIT sends (max2871_words.vh)
         self._lo_mon = {0: False, 1: False}                                # RFOUTB, the LO MON jacks: off in PLL_INIT
         if check:
