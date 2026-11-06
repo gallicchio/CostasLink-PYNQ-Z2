@@ -1072,12 +1072,22 @@ def _fast_load(cl, entries, mode="oneshot", clocks=1, arm_on="tx"):
         cl.wr("FP_MAP%d" % k, words[k])
     cl.wr("FP_USE", use)
     cl.wr("FP_TIME", max(1, int(clocks)))
-    cl.wr("FP_CTRL", {"oneshot": 0, "ring": 1}[mode] << 2 | {None: 0, "tx": 1 << 3, "rx": 1 << 4}[arm_on])
+    word = {"oneshot": 0, "ring": 1}[mode] << 2 | {None: 0, "tx": 1 << 3, "rx": 1 << 4}[arm_on]
+    cl.wr("FP_CTRL", word)
     t0 = time.time()
     while cl.rd("FP_CTRL") & (1 << 5):              # the tables shift into their LUTs
         if time.time() - t0 > 1.0:
             raise TimeoutError("FP_CTRL still loading")
         time.sleep(0.001)
+    return word
+
+
+def _fast_arm(cl, word):
+    """arm the fast path now, keeping its re-arm source: every write to FP_CTRL sets the mode and the arm-on bits from the
+    word written (turnaround.v), and the driver's fast_arm() writes its own _fp_mode, which _fast_load's register writes
+    never set, so on the PYNQ it wrote 1 and cleared them: the duplex prover answered its first challenge only (the fast
+    state 'drove 1, armed 0, arm_on_rx 0', 2026-11-05 17:21, 3873 replies of 20000 and most of those false)"""
+    cl.wr("FP_CTRL", word | 1)
 
 
 def _loop_arm(loop, s, path, rmap, first_edge, delay, reply_width, fp_clocks, quiet=4, confirm=6, window=100, settle=0):

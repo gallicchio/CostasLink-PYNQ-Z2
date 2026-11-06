@@ -180,8 +180,8 @@ def roundtrip_point(dx, scheme="A3", path="fast", reply="xor1", count=20000, per
             cm = T._code_map(dx.PV)
             owners = out["p_rx_info"].get("owners") or {}
             ent = {v_: cm[C.point_code(*s.msgs[rmap[k]])] for v_, k in owners.items() if k < len(rmap)}
-            T._fast_load(P, ent, "oneshot", fp_clocks, "rx")
-            P.fast_arm()
+            fp_word = T._fast_load(P, ent, "oneshot", fp_clocks, "rx")
+            T._fast_arm(P, fp_word)                 # not P.fast_arm(): it clears the arm-on-RX bit (T._fast_arm's note)
         elif path == "hardware":                    # row 14: a lead from P's comparator monitor to its own TRIG IN keys +Q
             P.fast_off()                            # on the air (JP203): no gateware in the reply; P's idle must have Q = 0
             P.reply_off()
@@ -203,6 +203,10 @@ def roundtrip_point(dx, scheme="A3", path="fast", reply="xor1", count=20000, per
         out["v_idle_false_per_s"] = V.rx_stats()["events"] / idle_s
         res = {}
         for what in ("ref_to_event", "ref_to_decision"):
+            # the idle after a run (tx.idle: hold_point) rewrites the TX points: both boards' points again before each run
+            # (17:25: the second run of every point sent the wrong challenges, P decoded none or one constant message)
+            V.tx_points(dx.VP.pt(*s.idle), [dx.VP.pt(*m) for m in s.msgs])
+            P.tx_points(dx.PV.pt(*s.idle), [dx.PV.pt(*m) for m in s.msgs])
             V.rx_config(v_iv, s.mask, v_lut, v_sexp, delay=delay, quiet=quiet, confirm=confirm, window=window,
                         first_edge=first_edge, settle=settle, row="tx")
             V.hist_config(what, 0)
