@@ -147,6 +147,14 @@ What the laptop needs that the bench PC has:
   `logs/watch2.pid`, to 16:10).  Both quiet the boards when stopped: SIGINT the campaign and **check it is gone** (HANDOFF
   section 2's rule) before anything else drives the boards.  The watchdog's process ignores SIGINT (started from a
   script): `kill -TERM` it.
+* **The afternoon (13:26-16:30):** the TRIG IN reference across the boards (4.68: a 2-ft SMA from B's TRIG A, J205, to A's TRIG IN,
+  J207: A1's events 132.5 ns after the reference, every one, in A's own 1.25 ns samples), then the same lead moved to the scope: **B's
+  TRIG A on ch1, A's CMP I MON (J103) on ch4, both through 50 ohm feed-throughs** (ch2 / ch3 stay on A's I MON / Q MON at 50 ohm; ERR MON
+  is off the scope), and `scopelat.py` (4.69) measures the one-way time edge to edge on the scope's 1 GSa/s clock while B sends A1's
+  events.  Two quirks of the SDS1104X-E found on the way, both handled in the script, neither in the lab driver: `arm()` (TRMD
+  SINGLE then ARM) returns records without a trigger on this firmware (SINGLE alone, then wait for Stop, triggers every time), and
+  TRDL's sign is the other way from the driver's `waveform()` formula (a positive delay puts the trigger after the screen's centre).
+  `scopelat.py --report FILE` tabulates its records.
 * **The night's results:** BRINGUP_LOG 4.62 (the timing step: the prover's distributions, PRBS challenges, event timing, the
   bitstream's latency), 4.63 (the 5200 sweeps both ways), 4.64 (the band), 4.65 (5400 / 4800 / 5800); the review's section 0
   tables (`QPV_TIMING_REVIEW.md`) carry the answers; `twoboard_report.py <records>` tabulates any file.  The framework's
