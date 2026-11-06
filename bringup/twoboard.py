@@ -63,6 +63,12 @@ HOSTS = {"A": "192.168.2.99", "B": "192.168.2.98"}
 # each board's TX output null (VR_I, VR_Q) by frequency, measured on the DSA875 at TX ANT (BRINGUP_LOG 4.55, 4.58)
 VR_NULL = {"A": {5200: (0.2482, 0.2712)}, "B": {5200: (0.2343, 0.2609)}}
 TX_ANT_NULL = {b: dict(t) for b, t in VR_NULL.items()}      # measured on the analyzer at TX ANT itself
+Q_OFF_F_V = {"A": 1.65, "B": 2.79}     # DAC1 Q_OFF_F per board (BRINGUP_LOG 4.76, 2026-11-06): B's fast Q arm sat 23 mV above its loop's
+#   reference (1.655 against 1.632 V), which turned every point it received and lost it every pilot; the trim moves the arm
+#   -19.8 mV per V, so +1.14 V centres it (B2 / A4 / B1 decode at 155 mV there, nothing at the default).  A's arm is 2 mV
+#   off: the default.  Applied at Node() and again at Link.up() (the driver's DAC shadow starts at the default when a
+#   server starts, and every DAC write sends all four channels, so an EEPROM default alone is undone by the first write);
+#   B's EEPROM holds 2.79 V since 11-06 13:52.
 NULL_FILE = os.path.join(DATA, "vr_null.json")         # `twoboard.py nulls`: each board's null by frequency, on the FPV
 try:
     for _b, _t in json.load(open(NULL_FILE)).items():
@@ -158,6 +164,8 @@ class Node:
         self.cl = Proxy(RemoteCostasLink(HOSTS[name], 5800))
         self.clk_mhz = self.cl.clk_mhz
         self.ser = self.cl.ser
+        if name in Q_OFF_F_V:
+            self.cl.dac(Q_OFF_F=Q_OFF_F_V[name])          # the fast Q arm centred on the loop's reference (4.76)
 
     def vr(self, mhz):
         """the nearest measured output null (and how far it is from mhz)"""
@@ -465,11 +473,15 @@ class Link:
             self.rx.cl.safe()
             self.rx.cl.ctrl(tr_a=1)
             self._carrier = False
+            if self.rx.name in Q_OFF_F_V:
+                self.rx.cl.dac(Q_OFF_F=Q_OFF_F_V[self.rx.name])    # again at every setup (4.76)
             t0 = time.time()
             ok = self.ld.setup(self.cfg)
             self.info = {"ok": ok, "setup_s": round(time.time() - t0, 1), "dsa": self.rx.cl._dsa_db, "leg": self.ld.leg,
                          "vc_lock": self.ld.vc_lock, "i0": self.ld.i0, "q0": self.ld.q0, "cen": self.ld.cen, "try": k}
             if ok:
+                if self.rx.name in Q_OFF_F_V:                 # linkd's loop_center steered the trims and restores what it found
+                    self.rx.cl.dac(Q_OFF_F=Q_OFF_F_V[self.rx.name])    # (since 11-06 14:20); asserted once more here
                 self.frame()
                 self.wcal = None
                 self.slev = None
@@ -517,6 +529,9 @@ class Link:
             return s
         ok, starts = self.ld.recover()
         say("%s: lock lost (%s); recover %s (%d starts)" % (self.name, s, ok, starts))
+        if self.rx.name in Q_OFF_F_V:
+            self.rx.cl.dac(Q_OFF_F=Q_OFF_F_V[self.rx.name])    # after linkd's loop_center (4.76)
+        self.wcal = self.slev = None                       # the windows and levels measured before the loss are stale
         if not ok:
             if not self.up(tries=1):
                 raise LinkDown("%s at %g MHz: no lock after recover and setup" % (self.name, self.mhz))

@@ -479,7 +479,9 @@ class LinkD:
         cl = self.server.cl
         cl.ctrl(loop_hold=1, tx_dis=1)
         cl.dac(DAC1, VC_OFF=V_MID)
-        rate = {}
+        rest = cl.dac_volts()                             # the arm trims as set (B's Q_OFF_F 2.79 V, BRINGUP_LOG 4.76): the
+        rest_i, rest_q = rest["I_OFF_F"], rest["Q_OFF_F"]  # steering works about V_MID as before (restored there, the lock
+        rate = {}                                         # search found no lock otherwise, 14:18-14:22), the trims put back at the end
         try:
             for _ in range(max_steps):
                 time.sleep(0.05)
@@ -522,8 +524,8 @@ class LinkD:
                     rate[up] = abs(vc2 - vc) / dt
             return abs(cl.adc("VC") - target_v) <= tol_v
         finally:
-            cl.dac(DAC2, I_OFF_F=V_MID)
-            cl.dac(DAC1, Q_OFF_F=V_MID)
+            cl.dac(DAC2, I_OFF_F=rest_i)
+            cl.dac(DAC1, Q_OFF_F=rest_q)
             cl.ctrl(loop_hold=1)
 
     # ---- the loop ----
