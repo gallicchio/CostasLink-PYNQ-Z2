@@ -59,14 +59,36 @@ def usbtmc_by_serial(serial, vendor=USB_VENDOR, product=USB_PRODUCT):
     raise IOError("no USBTMC device %04x:%04x with serial %s" % (vendor, product, serial))
 
 
+class Scope(SDS1104XE):
+    """The lab driver, with the waveform read that both firmwares answer: scope B's 8.1.6.1.35R2 never answers
+    `SANU? C2` or `SANU? C4` (the second channel of each ADC pair; a 10 s timeout, 2026-11-06 12:04) while it answers C1
+    and C3 and serves every channel's `WF? DAT2` block with its length in the header.  The pair shares its sample count,
+    so the odd channel's count stands for the even one's."""
+
+    def waveform(self, ch, points=None, start=0):
+        vdiv, voff = self.qf("C%d:VDIV?" % ch), self.qf("C%d:OFST?" % ch)
+        tdiv, delay = self.qf("TDIV?"), self.qf("TRDL?")
+        fs = self.qf("SARA?")
+        total = int(self.qf("SANU? C%d" % (ch if ch % 2 else ch - 1)))
+        n = min(points or total, total - start)
+        self.w("WFSU SP,0,NP,%d,FP,%d" % (points or 0, start))
+        raw = self.link.query_block("C%d:WF? DAT2" % ch)[:n]
+        codes = np.frombuffer(raw, dtype=np.int8).astype(float)
+        volts = codes * (vdiv / 25.0) - voff                                # CODES_PER_DIV = 25 (the guide, WF?)
+        t = delay - 7.0 * tdiv + (start + np.arange(len(volts))) / fs      # 14 divisions, the centre `delay` after the trigger
+        info = dict(points=len(volts), vdiv=vdiv, voffset=voff, sample_rate=fs, dt=1 / fs, tdiv=tdiv, delay=delay,
+                    codes_min=float(codes.min()), codes_max=float(codes.max()))
+        return t, volts, info
+
+
 def open_scope(which="A"):
     """Scope A or B by its serial number; scope A falls back to the first SDS1104X-E on USB (one scope, as before 11-06)."""
     try:
-        return SDS1104XE(usb=usbtmc_by_serial(SCOPES[which]))
+        return Scope(usb=usbtmc_by_serial(SCOPES[which]))
     except IOError:
         if which != "A":
             raise
-        return SDS1104XE(usb=usbtmc_node(USB_VENDOR, USB_PRODUCT))
+        return Scope(usb=usbtmc_node(USB_VENDOR, USB_PRODUCT))
 
 
 def setup(s, tdiv=1e-3):
