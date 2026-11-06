@@ -10,6 +10,15 @@ The channels (Jason cabled them on 2026-11-03, BRINGUP_LOG 4.45):
     ch4  ERR MON (J106, MMCX): the Costas loop's error through 1 k; 1 Mohm, so full size (1.65 V +- 0.125)
 The SDS1000X-E's inputs are 1 Mohm only: the 50 ohm are external feed-through terminators.  No *RST is ever sent (the
 lab's rule for the Siglents); the scope is left running in AUTO.
+
+Two SDS1104X-E since 2026-11-06 (both on USB; `usbtmc_node` returns whichever enumerated first, so each is opened by
+its serial number, SCOPES below): scope A on board A's monitors (serial ...R1353), scope B on board B's (serial
+...R6919, plugged in 11-06 10:44).  The cabling planned for the two (BRINGUP_LOG 4.74), every input through a 50 ohm
+feed-through:
+    scope A  ch1 board B's TRIG A (J205, SMA)   ch2 board A's I MON (J104)   ch3 Q MON (J105)   ch4 CMP I MON (J103)
+    scope B  ch1 board A's TRIG A (J205, SMA)   ch2 board B's I MON (J104)   ch3 Q MON (J105)   ch4 CMP I MON (J103)
+(the trigger is the other board's mark: each scope watches a receiver, triggered by the sender).  `check` and
+`capture` take `--scope A|B`; `check` compares against that board's own ADC.
 """
 import argparse
 import json
@@ -31,8 +40,33 @@ CHANNELS = {1: "TRIG A", 2: "I MON", 3: "Q MON", 4: "ERR MON"}
 SETUP = {1: (0.5, -0.85), 2: (0.005, -0.078), 3: (0.005, -0.078), 4: (0.05, -1.63)}   # 5 mV/div = 0.1 V/div at the arm, the bench's
 
 
-def open_scope():
-    return SDS1104XE(usb=usbtmc_node(USB_VENDOR, USB_PRODUCT))
+SCOPES = {"A": "SDSMMEBC3R1353", "B": "SDSMMFCQ5R6919"}     # each SDS1104X-E's serial number (its *IDN?)
+BOARD_API = {"A": "http://192.168.2.99:8080", "B": "http://192.168.2.98:8080"}
+
+
+def usbtmc_by_serial(serial, vendor=USB_VENDOR, product=USB_PRODUCT):
+    """/dev/usbtmcN of the USBTMC device with this vendor / product id and serial number, found in sysfs."""
+    for d in sorted(os.listdir("/sys/class/usbmisc")):
+        dev = "/sys/class/usbmisc/%s/device/.." % d
+        try:
+            v = int(open("%s/idVendor" % dev).read(), 16)
+            p = int(open("%s/idProduct" % dev).read(), 16)
+            sn = open("%s/serial" % dev).read().strip()
+        except OSError:
+            continue
+        if (v, p, sn) == (vendor, product, serial):
+            return "/dev/" + d
+    raise IOError("no USBTMC device %04x:%04x with serial %s" % (vendor, product, serial))
+
+
+def open_scope(which="A"):
+    """Scope A or B by its serial number; scope A falls back to the first SDS1104X-E on USB (one scope, as before 11-06)."""
+    try:
+        return SDS1104XE(usb=usbtmc_by_serial(SCOPES[which]))
+    except IOError:
+        if which != "A":
+            raise
+        return SDS1104XE(usb=usbtmc_node(USB_VENDOR, USB_PRODUCT))
 
 
 def setup(s, tdiv=1e-3):
@@ -43,19 +77,23 @@ def setup(s, tdiv=1e-3):
 
 
 def grab(s, tdiv):
+    """One acquisition of every channel that is on (a channel that is off never answers SANU?, and the read times out)."""
     s.timebase(scale=tdiv, delay=0)
+    on = [ch for ch in CHANNELS if s.q("C%d:TRA?" % ch).strip().upper() == "ON"]
     s.acquire_now()
     out = {}
-    for ch in CHANNELS:
-        t, v, info = s.waveform(ch)
-        out[ch] = (t, v, info)
-    s.run()
+    try:
+        for ch in on:
+            t, v, info = s.waveform(ch)
+            out[ch] = (t, v, info)
+    finally:
+        s.run()                   # never leave the scope stopped
     return out
 
 
-def board_now():
+def board_now(board="A"):
     import urllib.request
-    with urllib.request.urlopen("http://192.168.2.99:8080/api/now", timeout=10) as r:
+    with urllib.request.urlopen(BOARD_API[board] + "/api/now", timeout=10) as r:
         return json.load(r)
 
 
@@ -65,10 +103,10 @@ def stats(v, info):
             "clipped": bool(clipped)}
 
 
-def check():
-    d = board_now()
+def check(board="A"):
+    d = board_now(board)
     adc = d.get("adc") or {}
-    s = open_scope()
+    s = open_scope(board)
     try:
         setup(s)
         slow = grab(s, 1e-3)          # 14 ms: the DC levels
@@ -118,7 +156,7 @@ def check():
 def capture(name, tdiv=1e-6, board="A"):
     out = os.path.join(HERE, "data", "board_%s" % board, "scope")
     os.makedirs(out, exist_ok=True)
-    s = open_scope()
+    s = open_scope(board)
     try:
         g = grab(s, tdiv)
     finally:
@@ -134,11 +172,12 @@ def main():
     ap.add_argument("action", choices=("check", "capture"))
     ap.add_argument("name", nargs="?", default="capture")
     ap.add_argument("--tdiv", type=float, default=1e-6)
+    ap.add_argument("--scope", choices=tuple(SCOPES), default="A", help="scope A (board A's monitors) or B (board B's)")
     a = ap.parse_args()
     if a.action == "check":
-        check()
+        check(a.scope)
     else:
-        print(capture(a.name, a.tdiv))
+        print(capture(a.name, a.tdiv, a.scope))
 
 
 if __name__ == "__main__":
