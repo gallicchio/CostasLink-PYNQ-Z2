@@ -766,17 +766,26 @@ def pilot_cal(ctx, rho=C.RHO, angle=0, d0=0.08, tries=10):
         cl.hold_point(*ctx.txp(1, 0))
         return {"vr": None, "rho": None, "trace": trace, "a": a}
     if angle == 0 and len(cands) > 1:
-        # the full point with each pilot in place: the sign that keeps it linear (the larger amplitude) wins
+        # both axis points with each pilot in place (the pilot's offset rides under the ladder's +1 on one side and its
+        # -1 on the other, and the modulator's 0-1 V pins compress whichever lands near a rail): the sign whose weaker
+        # point is the larger wins
+        anti = ctx.txp(-1, 0)
         amps = []
         for c in cands:
             cl.dac(VR_I=c[0], VR_Q=c[1])
-            cl.hold_point(*full)
-            time.sleep(0.1)
-            o = observe()
-            amps.append(abs(o["di"]))
-            trace.append(("full+pilot", round(c[0], 4), round(c[1], 4), o["di"], o["dq"]))
+            a_full = []
+            for p in (full, anti):
+                cl.hold_point(*p)
+                time.sleep(0.1)
+                o = observe()
+                a_full.append(abs(o["di"]))
+                trace.append(("point+pilot", p, round(c[0], 4), round(c[1], 4), o["di"], o["dq"]))
+            amps.append(min(a_full))
         got = max(zip(cands, amps), key=lambda ca: (ca[1], -ca[0][3]))[0]
         trace.append(("chosen", round(got[0], 4), round(got[1], 4), [round(x, 4) for x in amps]))
+        cl.dac(VR_I=vi0, VR_Q=vq0)                        # the lock back on the plain full point before the pilot goes in
+        cl.hold_point(*full)
+        time.sleep(0.1)
     else:
         got = min(cands, key=lambda c: c[3])
     cl.hold_point(*full)
