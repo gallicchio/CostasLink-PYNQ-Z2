@@ -37,7 +37,8 @@ for HOST in "$@"; do
     H=xilinx@$HOST
     NEW=costaslink_$STAMP
     echo "== $HOST: $(${SSH} "$H" hostname) -> $NEW from $SRC, overlay $(basename "$OV")"
-    ${SSH} "$H" "set -e; cd ~; if [ -e $NEW ]; then echo '$NEW exists'; exit 1; fi; cp -a \$(readlink -f costaslink_current) $NEW; rm -rf $NEW/__pycache__"
+    # the copy as root: the service wrote some of the files there (its state, its byte-code) and they are root's
+    echo xilinx | ${SSH} "$H" "set -e; cd ~; if [ -e $NEW ]; then echo '$NEW exists'; exit 1; fi; sudo -S sh -c 'cp -a \$(readlink -f costaslink_current) $NEW && rm -rf $NEW/__pycache__ && chown xilinx:xilinx $NEW' 2>/dev/null; ls -ld $NEW"
     scp -o StrictHostKeyChecking=no -p "${FILES[@]}" "$H:$NEW/"
     printf 'deployed %s from %s (%s) on %s\n' "$NEW" "$SRC" "$(basename "$OV")" "$(date '+%Y-%m-%d %H:%M %Z')" | ${SSH} "$H" "cat >> $NEW/SOURCE.txt"
     ${SSH} "$H" "cd ~/$NEW && chmod +x pynq_serve.sh install_service.sh && sha256sum costaslink_top.bit costaslink_top.hwh linkd.py costaslink.py netbus.py | cut -c1-16,65- > SHA256SUMS && cat SHA256SUMS && cd ~ && ln -sfn $NEW costaslink_current && ls -l costaslink_current"
