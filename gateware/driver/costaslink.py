@@ -333,6 +333,16 @@ SCHEMES = {s.name: s for s in [
            [(1, 0), (-1, 0), (0, 1), (0, -1)], [CMP_IP, CMP_IN, CMP_QP, CMP_QN], pilot=(RHO, 0.0)),
     Scheme("B2", "2 bits: the pilot at 45 degrees and the four corners onto the axes, one window each", (0, 0),
            [(1, 1), (-1, -1), (-1, 1), (1, -1)], [CMP_IP, CMP_IN, CMP_QP, CMP_QN], rot_deg=-45.0, pilot=_P45),
+    # the ladders' whole 3 x 3 grid (2026-11-06, Jason: 'enough comparators for idle to 1-in-N with N > 4?'): the four
+    # windows read each axis as -1 / 0 / +1 (QP, QN; IP, IN), nine vectors for nine points, so eight messages (the
+    # gateware's limit too: TX_POINTS holds eight, the table's message field is 3 bits) and 3 bits an event.  A8: the
+    # full idle and the other eight, (0, 0) among them (the carrier off for the event; sign(I) undefined there, so the
+    # windows alone decide it).  B3: the pilot on +I and all eight ladder points round it.
+    Scheme("A8", "3 bits: the full idle at +I and the eight other ladder points, the four windows deciding", (1, 0),
+           [(-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1), (0, 0)], [CMP_QP, CMP_QN, CMP_IP, CMP_IN]),
+    Scheme("B3", "3 bits: the weak pilot on +I and the eight ladder points round it, the four windows deciding", (0, 0),
+           [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)], [CMP_IP, CMP_IN, CMP_QP, CMP_QN],
+           pilot=(RHO, 0.0)),
 ]}
 
 
