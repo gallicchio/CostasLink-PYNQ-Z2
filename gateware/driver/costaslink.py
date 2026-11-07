@@ -709,8 +709,12 @@ class CostasLink:
                 "evt_ts": self.rd("TX_EVT_TS")}
 
     def hold_point(self, i, q):
-        """TX_MODE 5: one ladder point held (the arms' offsets, the carrier null with (0, 0), the scope)"""
-        self.tx_points(point_code(1, 0), [point_code(i, q)])
+        """TX_MODE 5: one ladder point held (the arms' offsets, the carrier null with (0, 0), the scope).  TX_IDLE is
+        written as the held point too (2026-11-06 21:50): the hold mode puts out TX_POINTS[0] and the event modes put
+        out TX_IDLE between events, so with TX_IDLE at (1, 0) a later tx_points() in hold mode put the carrier at the
+        first message's point, or off for (0, 0), for the milliseconds until the events started, and the loop then
+        came back on either side (BRINGUP_LOG 4.84); with both the same, a change of mode leaves the pins alone"""
+        self.tx_points(point_code(i, q), [point_code(i, q)])
         self.tx_msg(0)
         self.tx_mode("hold")
 

@@ -571,9 +571,12 @@ class Link:
 
     def events_on(self, p, W, N, idle=(1, 0)):
         t = self.tx.cl
+        # the mode first: in the event mode the pins show TX_IDLE (the held point, since hold_point writes it there too),
+        # so writing the points puts nothing on the air; the other order held the message point, or no carrier for
+        # (0, 0), for the milliseconds before the events, and the loop came back on either side (4.84, 11-06 21:50)
+        t.events(period=N, width=W, count=10000000, source="fixed", n=1)     # count 0 sends none
         t.tx_points(self.pt(*idle), [self.pt(*p)])
         t.tx_msg(0)
-        t.events(period=N, width=W, count=10000000, source="fixed", n=1)     # count 0 sends none
         t.tx_go()
 
     def events_off(self):
@@ -629,9 +632,9 @@ def prbs_point(link, const="bpsk", period=50, poly=15, gain=4, one_pol=None, pha
     phase = None if phase_frac is None else int(phase_frac * period * link.rx.ser)
     tx.tx_timing(period=period)
     rx.tx_timing(period=period)                     # the check's symbol length is the checker's own TX_PERIOD
+    tx.tx_mode("prbs", n=2)                         # the mode first (its pins at TX_IDLE until TX_GO), then the points (4.84)
     tx.tx_points(link.pt(1, 0), [link.pt(*p0), link.pt(*p1)])
     tx.tx_prbs(poly)
-    tx.tx_mode("prbs", n=2)
     tx.tx_go()
     time.sleep(0.02)
     try:
@@ -867,8 +870,10 @@ def events_point(link, scheme="A3", msg=None, period=1000, width=20, count=20000
     shift = max(0, int(math.ceil(math.log2(2.6 * n_samp / 1024.0))))
     rows = {}
     try:
-        # the idle alone: false events a second
+        # the idle alone: false events a second.  The event mode first (stopped, its pins at TX_IDLE = the held idle), then
+        # the points: in the hold mode the points' write put message 0's point on the air for the whole count (4.84)
         iv, lut_full, sexp, out["rx_info"] = rx_tables(link, s, first_edge)
+        tx.events(period=period, width=width, count=count, source="fixed", n=s.n)
         tx.tx_points(idle, [link.pt(*p) for p in s.msgs])
         rx.rx_config(iv, s.mask, lut_full, sexp, delay=delay, quiet=quiet, confirm=confirm, window=window,
                      first_edge=first_edge, settle=settle, ref=ref)
@@ -1048,9 +1053,9 @@ class Loop:
 
     def events_on(self, p, W, N, idle=(1, 0)):
         t = self.node.cl
+        t.events(period=N, width=W, count=10000000, source="fixed", n=1)     # the mode first (Link.events_on); count 0 sends none
         t.tx_points(self.pt(*idle), [self.pt(*p)])
         t.tx_msg(0)
-        t.events(period=N, width=W, count=10000000, source="fixed", n=1)     # count 0 sends none
         t.tx_go()
 
     def events_off(self):
