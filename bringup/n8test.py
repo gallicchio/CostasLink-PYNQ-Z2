@@ -119,9 +119,9 @@ def gap_test(L, log, rs=None, keeper=None):
         time.sleep(0.05)
         o0 = L.ld.observe()
         t = L.tx.cl
-        t.tx_points(L.pt(1, 0), [L.pt(0, 0)])
+        t.events(period=1000, width=20, count=count, source="fixed", n=1)    # the mode first (4.84): in hold mode the
+        t.tx_points(L.pt(1, 0), [L.pt(0, 0)])                                   # points' write put (0, 0) out for ms
         t.tx_msg(0)
-        t.events(period=1000, width=20, count=count, source="fixed", n=1)
         t.tx_go()
         time.sleep(0.02 + count * 1e-5)
         t.tx_stop()
