@@ -74,56 +74,50 @@ def step0_servers(nodes, log):
     return out
 
 
-def q_trim(L, log):
-    """the loop's null against the arm's centre on L's receiver, and the trim if it is off (step 1)"""
+def centres(nodes, log):
+    """each board's arms with no carrier (both boards quiet, the loop held): the Q and I centres, the sign comparator's
+    duty.  Taken before any lock, so no lock has to be broken for them (the first run broke A -> B twice, 15:58)."""
+    out = {}
+    for n in nodes.values():
+        n.quiet()
+    time.sleep(0.5)
+    for n, node in nodes.items():
+        cl = node.cl
+        q0 = sum(cl.adc("Q") for _ in range(8)) / 8.0
+        i0 = sum(cl.adc("I") for _ in range(4)) / 4.0
+        ones = sum(cl.cmp_state()["CMP_I"] for _ in range(200))
+        out[n] = {"centre_q_v": q0, "centre_i_v": i0, "cmp_i_duty_no_carrier": ones / 200.0, "q_off_f": cl.dac_volts()["Q_OFF_F"]}
+        T.say("   %s with no carrier: Q arm %.4f V, I arm %.4f V, CMP_I high %.0f %% of the time (50 %% is a centred sign comparator), Q_OFF_F %.3f V" % (
+            n, q0, i0, 100 * out[n]["cmp_i_duty_no_carrier"], out[n]["q_off_f"]))
+    log(label="pairup centres", tag="centres", **out)
+    return out
+
+
+def q_trim(L, cen, log):
+    """the loop's null (the locked idle's Q on the ADC) against the arm's centre measured with no carrier, and the trim
+    if they differ (step 1); the lock is kept throughout"""
     rx = L.rx.cl
-    rec = {"rx": L.rx.name, "link": L.name, "mhz": L.mhz}
-    v0 = rx.dac_volts()["Q_OFF_F"]
-    rec["q_off_f_before"] = v0
-
-    def measure():
-        L.hold((1, 0))
-        time.sleep(0.15)
-        ref = sum(rx.adc("Q") for _ in range(4)) / 4.0
-        (vi0, vq0), _ = L.tx.vr(L.mhz)
-        L.tx.cl.dac(VR_I=vi0, VR_Q=vq0)
-        L.tx.cl.hold_point(0, 0)
-        time.sleep(0.3)
-        q0 = sum(rx.adc("Q") for _ in range(6)) / 6.0
-        i0 = sum(rx.adc("I") for _ in range(4)) / 4.0
-        L.hold((1, 0))
-        time.sleep(0.3)
-        L.ensure()
-        return ref, q0, i0
-
-    ref, q0, i0 = measure()
-    rec.update(loop_null_v=ref, centre_q_v=q0, centre_i_v=i0, offset_mv=1e3 * (ref - q0))
+    c = cen[L.rx.name]
+    rec = {"rx": L.rx.name, "link": L.name, "mhz": L.mhz, "q_off_f_before": c["q_off_f"], "centre_q_v": c["centre_q_v"]}
+    L.hold((1, 0))
+    time.sleep(0.15)
+    ref = sum(rx.adc("Q") for _ in range(6)) / 6.0
+    rec.update(loop_null_v=ref, offset_mv=1e3 * (ref - c["centre_q_v"]))
     T.say("   %s's loop nulls Q at %.4f V, the arm's centre is %.4f V: the loop sits %+.1f mV from the centre (Q_OFF_F %.3f V)" % (
-        L.rx.name, ref, q0, rec["offset_mv"], v0))
+        L.rx.name, ref, c["centre_q_v"], rec["offset_mv"], c["q_off_f"]))
     if abs(rec["offset_mv"]) > TRIM_MIN_MV:
-        new = v0 + (ref - q0) / Q_LEVER_V_PER_V
-        new = float(min(3.0, max(0.3, new)))
+        new = float(min(3.0, max(0.3, c["q_off_f"] + (ref - c["centre_q_v"]) / Q_LEVER_V_PER_V)))
         rx.dac(Q_OFF_F=new)
         T.Q_OFF_F_V[L.rx.name] = new                      # kept through every later setup and recover (twoboard)
         time.sleep(0.3)
         L.ensure()
-        ref2, q02, _ = measure()
-        rec.update(q_off_f_after=new, offset_after_mv=1e3 * (ref2 - q02), loop_null_after_v=ref2, centre_after_v=q02)
-        T.say("   trimmed Q_OFF_F %.3f -> %.3f V: the loop now sits %+.1f mV from the centre.  To keep it: BOARD_DAC_V[%r] "
-              "and dac_eeprom(DAC1, [VR_I_V, VR_Q_V, %.3f, V_MID]) on that board (a calibration change)" % (
-                  v0, new, rec["offset_after_mv"], "pynq-%s" % L.rx.name.lower(), new))
+        rec.update(q_off_f_after=new, centre_predicted_v=c["centre_q_v"] + Q_LEVER_V_PER_V * (new - c["q_off_f"]))
+        T.say("   trimmed Q_OFF_F %.3f -> %.3f V (the centre should now be %.4f V; checked with no carrier at the end).  To keep it: "
+              "BOARD_DAC_V[%r] and dac_eeprom(DAC1, [VR_I_V, VR_Q_V, %.3f, V_MID]) on that board (a calibration change)" % (
+                  c["q_off_f"], new, rec["centre_predicted_v"], "pynq-%s" % L.rx.name.lower(), new))
     else:
-        rec["q_off_f_after"] = v0
+        rec["q_off_f_after"] = c["q_off_f"]
         T.say("   inside %.0f mV: no trim" % TRIM_MIN_MV)
-    # the sign comparator's duty with no carrier
-    L.tx.cl.hold_point(0, 0)
-    time.sleep(0.2)
-    ones = sum(rx.cmp_state()["CMP_I"] for _ in range(200))
-    rec["cmp_i_duty_no_carrier"] = ones / 200.0
-    L.hold((1, 0))
-    time.sleep(0.3)
-    L.ensure()
-    T.say("   CMP_I high %.0f %% of the time with no carrier (50 %% is a centred sign comparator)" % (100 * rec["cmp_i_duty_no_carrier"]))
     log(label="pairup trim", tag="trim", state=L.state(), **rec)
     return rec
 
@@ -246,12 +240,13 @@ def main():
                 if off > 1:
                     T.say("note: %s's null at %g MHz is the one measured %g MHz away" % (lk[0], m, off))
         if want_trim:
-            T.say("==== 1. each receiver's Q arm against its loop's reference (at %g MHz)" % mhzs[0])
+            T.say("==== 1. each receiver's Q arm against its loop's reference (the centres with no carrier, then a lock at %g MHz)" % mhzs[0])
+            out["centres"] = cen = centres(nodes, log)
             for lk in links:
                 L = T.Link(nodes[lk[0]], nodes[lk[1]], mhzs[0])
                 try:
                     if L.up():
-                        out["trims"][lk[1]] = q_trim(L, log)
+                        out["trims"][lk[1]] = q_trim(L, cen, log)
                     else:
                         T.say("   %s: no lock at %g: the trim step skipped for %s" % (lk, mhzs[0], lk[1]))
                 except T.LinkDown as e:
@@ -275,12 +270,22 @@ def main():
                 finally:
                     for n in nodes.values():
                         n.quiet()
-        T.say("==== 3. the choice")
-        for lk in links:
-            rows = [r for r in out["rows"] if r["link"] == lk and "score" in r]
-            if not rows:
-                continue
-            best = max(rows, key=lambda r: (r["score"], r.get("gap_min_mv") or 0, (r.get("lock") or {}).get("leg") or 0))
+        T.say("==== 3. the choice (one frequency per direction, different ones: each board transmits and receives at once)")
+
+        def key(r):
+            return (r["score"], r.get("gap_min_mv") or 0, (r.get("lock") or {}).get("leg") or 0)
+
+        rows = {lk: [r for r in out["rows"] if r["link"] == lk and "score" in r] for lk in links}
+        if all(rows.get(lk) for lk in ("AB", "BA")):
+            pairs = [(a, b) for a in rows["AB"] for b in rows["BA"] if a["mhz"] != b["mhz"]]
+            if pairs:                                     # the first run (15:57) put both on 4800 and B's own TX spoilt A -> B
+                a, b = max(pairs, key=lambda ab: (key(ab[0])[0] + key(ab[1])[0], min(key(ab[0])[1], key(ab[1])[1])))
+                chosen = {"AB": a, "BA": b}
+            else:
+                chosen = {lk: max(rows[lk], key=key) for lk in ("AB", "BA")}
+        else:
+            chosen = {lk: max(rs, key=key) for lk, rs in rows.items() if rs}
+        for lk, best in chosen.items():
             out["best"][lk] = {"mhz": best["mhz"], "score": best["score"], "gap_min_mv": best.get("gap_min_mv"), "lock": best.get("lock"), "why": best.get("why")}
             T.say("   %s: %g MHz (score %d of 7%s)" % (lk, best["mhz"], best["score"], "" if best["score"] == 7 else "; " + "; ".join(best.get("why") or [])))
         if want_duplex and all(lk in out["best"] for lk in ("AB", "BA")):
@@ -306,6 +311,14 @@ def main():
             finally:
                 for n in nodes.values():
                     n.quiet()
+        if any("centre_predicted_v" in t for t in out["trims"].values()):
+            T.say("==== 5. the centres again with no carrier (the trims checked)")
+            out["centres_after"] = centres(nodes, log)
+            for rx, t in out["trims"].items():
+                if "centre_predicted_v" in t:
+                    t["centre_after_v"] = out["centres_after"][rx]["centre_q_v"]
+                    t["offset_after_mv"] = 1e3 * (t["loop_null_v"] - t["centre_after_v"])
+                    T.say("   %s: the loop's null %.4f V against the centre %.4f V now: %+.1f mV" % (rx, t["loop_null_v"], t["centre_after_v"], t["offset_after_mv"]))
     finally:
         path = os.path.join(T.DATA, "pairup_%s.json" % stamp)
         json.dump(out, open(path, "w"), indent=1, default=str)

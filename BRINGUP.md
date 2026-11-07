@@ -467,3 +467,33 @@ quiet one for the 5.2 GHz direction if it is empty).
 | 13 | **new:** the TCXO's pin 1 is undocumented in its datasheet text (control or NC); the symbol leaves it open | nothing | 2.1 | if the TX synthesizer's reference is off frequency, pin 1 wants 1.65 V: a rework wire to the VCXO's divider |
 | 14 | **new:** the HMC536's control sense (A high = receive) and the mux's select sense (S low = B1) were written backwards in two notes | the notes and the jumper default corrected; the switch rests in receive by its pull-ups | 3.3, 4.4 | the gateware's T/R table is one line |
 | 15 | **new (Prompt 42):** the accessories' numbers were assumptions (PLAN.md section 11, question 3): the LNA module 15 dB, the PA 40 dB, the cables 5 dB, the panels flat 24 dBi | measured on the 8720ES before delivery (the VNA table): 29 dB, 46 dB, 10 dB each, 22-24 dBi grids with two feeds turned wrong; every pad a file | 0 (done, 2026-10-21); 4.0 checks the receiver against the room link | the PA's pad 26-30 dB; the frequency plan inside the module's passband; the amplifiers at the antenna; the budget's section 2c at the rebuild |
+
+## A pair of boards up from nothing (2026-11-06, BRINGUP_LOG 4.81)
+
+`python3 bringup/pairup.py [--mhz 4800 5000 5400]` does the whole thing in about 15 minutes, with nothing on the bench
+but the two PYNQs serving (`costaslink-netbus`, deployed by `bringup/deploy_pynq.sh`), the boards powered after them,
+and the null table (`data/twoboard/vr_null.json`) for the frequencies tried.  In order:
+
+1. **The servers.**  Each PYNQ's ID and DAC shadows are read; a board's trims (B's Q_OFF_F 2.79 V, in its EEPROM and
+   in `costaslink.BOARD_DAC_V` by hostname) must already show there.  Both boards go to the safe state.
+2. **The centres.**  With no carrier, each board's I and Q arms and its sign comparator's duty.
+3. **The Q trim.**  Each receiver locked at the first frequency; its loop nulls the Q arm at V_MID (1.632 V), and the
+   arm's own centre must sit there too, or every point it receives is turned and a pilot is lost (BRINGUP_LOG 4.76).
+   A difference over 4 mV is trimmed out with DAC1 Q_OFF_F (-19.8 mV at the arm per V) for the run and printed with
+   the EEPROM command: writing it there is a calibration change.
+4. **Every direction at every frequency.**  linkd's setup (the attenuator for a 150 mV leg, the lock), A1 / A2 / A3
+   (the one-in-N family), B1 / B2 (the pilot schemes), the PRBS at 50 and 20 clocks a bit, the comparator windows'
+   smallest gap.  Score: 4 for the A family all right, 2 for both PRBS runs error-free, 1 for both pilots, -1 for any
+   false event at the idle.
+5. **The choice.**  The best pair of frequencies, one per direction and different, since each board transmits and
+   receives at once (on one frequency the board's own transmitter sits on its receiver: 4.81).
+6. **The duplex.**  Both links up together at the chosen pair (`qpvtests.Duplex`) and A3 decoded on each with both
+   transmitters on.
+
+Every record goes to `data/twoboard/pairup_<stamp>.jsonl`, the summary to `pairup_<stamp>.json`.  When a scheme fails
+the summary says where to look: false events at the idle mean the windows sit too close to it or the lock is unsteady;
+dead windows mean the comparator DAC's range at that level; no pilot means the null at that frequency or the pilot's
+sign; PRBS mismatches with the schemes fine mean the sampling phase or the symbol period; a leg under 80 mV means the
+link, not the decoder.  What the first runs found (11-06): 4800 and 5000 MHz clean in both directions in both antenna
+orientations; 5200 unusable by day (the WiFi band); 5400 clean over the dishes and lost on an FPV antenna beside the
+laptop's own WiFi.
