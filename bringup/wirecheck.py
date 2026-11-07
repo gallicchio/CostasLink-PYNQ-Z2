@@ -31,12 +31,12 @@ def scope_setup2(s, scale=0.005):
     s.trigger(source=1, level=TS.MARK_V, slope="rising", mode="auto")
 
 
-def arm_decoder(L, name, delay, frac=0.4):
+def arm_decoder(L, name, delay, frac=0.4, settle=0):
     s = C.SCHEMES[name]
     th, lv, gaps = T.scheme_windows(L, s, frac)
     iv, lut, sexp, info = T.rx_tables(L, s, False)
     rx = L.rx.cl
-    rx.rx_config(iv, s.mask, lut, sexp, delay=delay, quiet=4, confirm=6, window=100, first_edge=False, settle=0, ref="trig_in")
+    rx.rx_config(iv, s.mask, lut, sexp, delay=delay, quiet=4, confirm=6, window=100, first_edge=False, settle=settle, ref="tx")
     rx.rx_clear()
     rx.rx_enable(True)
     return s, info, gaps

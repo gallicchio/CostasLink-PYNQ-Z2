@@ -115,7 +115,8 @@ def run_link(L, rs, keeper, log):
             rec["frac"].append(N2.gw_point(L, log, "A8", dl, "frac%.1f" % frac, frac=frac))
     rec["frac"].append(N2.gw_point(L, log, "A8", 7, "d7", count=100000))
     rec["frac"].append(N2.gw_point(L, log, "A3", 7, "d7", count=100000))
-    rec["frac"].append(N2.gw_point(L, log, "A8", 8, "d8_1e5", count=100000))
+    rec["frac"].append(N2.gw_point(L, log, "A8", 8, "d8_1e6", count=1000000))
+    rec["frac"].append(N2.gw_point(L, log, "A8", 8, "d8_w5_p100_1e6", count=1000000, period=100, width=5))
     return rec
 
 

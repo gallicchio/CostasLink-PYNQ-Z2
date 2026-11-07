@@ -106,8 +106,9 @@ def lat_probe(L, log, tag, reads=80, pt=(-1, 0)):
     return r
 
 
-def scope_points(L, rs, keeper, sc, delay, pts, nshots, lat, **meta):
-    """the decoder armed for scheme sc at `delay`; each point sent as events: mark -> TRIG B on the scope, the arms"""
+def scope_points(L, rs, keeper, sc, delay, pts, nshots, lat, settle=0, **meta):
+    """the decoder armed for scheme sc at `delay` (or the settled decision, `settle` samples, `delay` the cap); each
+    point sent as events: mark -> TRIG B on the scope, the arms"""
     leg = L.leg()
     TS.set_arms(rs, leg)
     L.hold((1, 0))
@@ -115,7 +116,7 @@ def scope_points(L, rs, keeper, sc, delay, pts, nshots, lat, **meta):
     TS.centre(rs)
     bb = TS.scope_dc(rs, (2, 3))
     base = {2: bb[2]["dc"], 3: bb[3]["dc"]}
-    s, info, gaps = W.arm_decoder(L, sc, delay)
+    s, info, gaps = W.arm_decoder(L, sc, delay, settle=settle)
     rows = []
     for pt in pts:
         side = L.recheck_side()
@@ -125,7 +126,7 @@ def scope_points(L, rs, keeper, sc, delay, pts, nshots, lat, **meta):
         L.events_off()
         rs.trigger(source=1, level=TS.MARK_V, slope="rising", mode="auto")
         nums = [W.shot_nums(g, base, lat) for g in got]
-        keeper.keep(got, point=list(pt), base=base, leg=leg, scheme=sc, delay=delay, side=side, link=L.name, **meta)
+        keeper.keep(got, point=list(pt), base=base, leg=leg, scheme=sc, delay=delay, settle=settle, side=side, link=L.name, **meta)
         r = {"point": list(pt), "n": len(got), "side": side, "leg_mv": 1e3 * leg}
         for k in ("mark_high", "trigb_high", "mark_to_dec", "i_plateau", "q_plateau"):
             vals = [x[k] for x in nums if x.get(k) is not None]
@@ -135,12 +136,12 @@ def scope_points(L, rs, keeper, sc, delay, pts, nshots, lat, **meta):
                 r["mark_to_dec_min"] = float(min(vals)) if vals else None
                 r["mark_to_dec_max"] = float(max(vals)) if vals else None
         rows.append(r)
-        T.say("   scope %s d%d (%+d,%+d): mark -> decision %s ns (%s..%s, %d of %d), I %s, Q %s mV" % (
-            sc, delay, pt[0], pt[1], "%.1f" % r["mark_to_dec"] if r["mark_to_dec"] is not None else "NONE",
+        T.say("   scope %s d%d%s (%+d,%+d): mark -> decision %s ns (%s..%s, %d of %d), I %s, Q %s mV" % (
+            sc, delay, " settle %d" % settle if settle else "", pt[0], pt[1], "%.1f" % r["mark_to_dec"] if r["mark_to_dec"] is not None else "NONE",
             "%.1f" % r["mark_to_dec_min"] if r["mark_to_dec_min"] is not None else "-", "%.1f" % r["mark_to_dec_max"] if r["mark_to_dec_max"] is not None else "-",
             r["mark_to_dec_n"], len(got), "%.0f" % r["i_plateau"] if r["i_plateau"] is not None else "-", "%.0f" % r["q_plateau"] if r["q_plateau"] is not None else "-"))
     L.rx.cl.rx_enable(True)
-    return {"leg_mv": 1e3 * leg, "scheme": sc, "delay": delay, "gaps_mv": gaps, "rows": rows}
+    return {"leg_mv": 1e3 * leg, "scheme": sc, "delay": delay, "settle": settle, "gaps_mv": gaps, "rows": rows}
 
 
 def link_up(L, log, rs):
@@ -221,8 +222,9 @@ def stage_long(L, rs, log):
 
 def cycle_link(L, rs, keeper, log, cycle):
     rec = {"lock": link_up(L, log, rs)}
-    rec["A8"] = gw_point(L, log, "A8", 6, "cycle%d" % cycle)
-    rec["A3"] = gw_point(L, log, "A3", 6, "cycle%d" % cycle)
+    rec["A8"] = gw_point(L, log, "A8", 8, "cycle%d" % cycle)       # delay 8: the robust minimum (4.88); 6 is marginal on (-1, +1)
+    rec["A3"] = gw_point(L, log, "A3", 8, "cycle%d" % cycle)
+    rec["settle"] = [gw_point(L, log, "A8", 16, "cycle%d" % cycle, settle=k) for k in (2, 4, 6)]   # the settled decision's right fraction
     try:
         p = T.prbs_point(L, **dict(T.PRBS_BASE, period=20, seconds=5.0))
         rec["prbs20"] = {k: p.get(k) for k in ("ber", "bits", "mismatches", "error")}
@@ -232,7 +234,8 @@ def cycle_link(L, rs, keeper, log, cycle):
     except Exception as e:                                # noqa: BLE001
         rec["prbs20"] = {"error": repr(e)[:200]}
     rec["LAT"] = lat_probe(L, log, "cycle%d" % cycle, reads=40)
-    rec["scope"] = scope_points(L, rs, keeper, "A8", 6, CYCLE_SCOPE_PTS, 4, W.LAT_NS[L.name], stage="cycle", cycle=cycle)
+    rec["scope"] = scope_points(L, rs, keeper, "A8", 8, CYCLE_SCOPE_PTS, 4, W.LAT_NS[L.name], stage="cycle", cycle=cycle)
+    rec["scope_settle2"] = scope_points(L, rs, keeper, "A8", 16, CYCLE_SCOPE_PTS, 4, W.LAT_NS[L.name], settle=2, stage="cycle", cycle=cycle)
     return rec
 
 
