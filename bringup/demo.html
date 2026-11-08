@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CostasLink station</title>
+<style>
+  :root { --bg: #f7f7f5; --panel: #ffffff; --ink: #1b1b1b; --muted: #6b6b6b; --line: #e3e3e0;
+          --blue: #2a78d6; --orange: #eb6834; --aqua: #1baf7a; --red: #e34948; --green: #008300; --violet: #6250d6; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #141414; --panel: #1e1e1e; --ink: #ededed; --muted: #a0a0a0; --line: #333; } }
+  :root[data-theme="dark"] { --bg: #141414; --panel: #1e1e1e; --ink: #ededed; --muted: #a0a0a0; --line: #333; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--ink); font: 16px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+  header h1 { font-size: 26px; margin: 0; font-weight: 600; }
+  header .sub { color: var(--muted); }
+  .pill { padding: 4px 12px; border-radius: 999px; font-weight: 600; color: #fff; background: var(--muted); }
+  .pill.ok { background: var(--green); } .pill.bad { background: var(--red); } .pill.wait { background: var(--orange); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-height: 150px; }
+  .tile h2 { margin: 0 0 6px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .big { font-size: 56px; font-weight: 650; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .big small { font-size: 20px; color: var(--muted); font-weight: 500; margin-left: 6px; }
+  .mid { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .row { display: flex; gap: 18px; flex-wrap: wrap; align-items: baseline; }
+  .kv { color: var(--muted); font-size: 14px; } .kv b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .bar { height: 14px; background: var(--line); border-radius: 7px; overflow: hidden; margin: 8px 0 4px; }
+  .bar i { display: block; height: 100%; background: var(--blue); border-radius: 7px; transition: width .3s; }
+  .hist { display: flex; align-items: flex-end; gap: 1px; height: 90px; margin-top: 8px; border-bottom: 1px solid var(--line); }
+  .hist i { flex: 1 1 0; background: var(--orange); border-radius: 2px 2px 0 0; min-width: 2px; }
+  .axis { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
+  .msgs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+  .msgs div { text-align: center; padding: 8px 4px; border-radius: 6px; background: var(--line); font-variant-numeric: tabular-nums; }
+  .msgs div span { display: block; font-size: 12px; color: var(--muted); }
+  .cm { border-collapse: collapse; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .cm td, .cm th { border: 1px solid var(--line); padding: 3px 8px; text-align: right; font-size: 14px; } .cm th { color: var(--muted); font-weight: 500; }
+  .cm td.hit { background: color-mix(in srgb, var(--aqua) 25%, transparent); font-weight: 600; }
+  .strip { color: var(--muted); font-size: 14px; } .strip b { color: var(--ink); }
+  .hidden { display: none; }
+  footer { margin-top: 12px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">CostasLink</h1>
+  <span class="sub" id="subtitle"></span>
+  <span class="pill" id="lockpill">starting</span>
+  <span class="sub" id="age"></span>
+</header>
+
+<div class="grid" id="A" >
+  <div class="tile">
+    <h2>Round trip, this second</h2>
+    <div class="big"><span id="p50">—</span><small>ns median</small></div>
+    <div class="row kv"><span>p99.9 <b id="p999">—</b> ns</span><span>max <b id="pmax">—</b> ns</span><span>min <b id="pmin">—</b> ns</span></div>
+    <div class="hist" id="hist"></div>
+    <div class="axis"><span id="hlo"></span><span id="hhi"></span></div>
+  </div>
+  <div class="tile">
+    <h2>Path</h2>
+    <div class="big"><span id="metres">—</span><small>m there and back &divide; 2</small></div>
+    <div class="kv" id="t0note"></div>
+    <div class="strip" style="margin-top:10px" id="budget"></div>
+  </div>
+  <div class="tile">
+    <h2>Challenges answered</h2>
+    <div class="big"><span id="right">—</span><small>% right</small></div>
+    <div class="row kv">
+      <span>sent <b id="chal">—</b>/s</span><span>answered <b id="repl">—</b>/s</span><span>missed <b id="miss">—</b>/s</span><span>wrong <b id="wrong">—</b>/s</span>
+    </div>
+    <div class="row kv" style="margin-top:6px"><span>since start: <b id="tot_chal">—</b> sent, <b id="tot_miss">—</b> missed, <b id="tot_wrong">—</b> wrong</span></div>
+    <table class="cm" id="cm"></table>
+  </div>
+  <div class="tile">
+    <h2>The return path, at this receiver</h2>
+    <div class="mid"><span id="sigA">—</span> mV &nbsp;<span class="kv">(<b id="dbmA">—</b> dBm at RX ANT)</span></div>
+    <div class="bar"><i id="barA"></i></div>
+    <div class="row kv"><span>loop <b id="modeA">—</b></span><span>VC <b id="vcA">—</b> V</span><span>DSA <b id="dsaA">—</b> dB</span><span>losses <b id="lossA">—</b></span><span>side <b id="sideA">—</b></span></div>
+  </div>
+</div>
+
+<div class="grid" id="B">
+  <div class="tile">
+    <h2>Received signal</h2>
+    <div class="big"><span id="sigB">—</span><small>mV</small></div>
+    <div class="bar"><i id="barB"></i></div>
+    <div class="row kv"><span><b id="dbmB">—</b> dBm at RX ANT</span><span>band power <b id="logB">—</b> dBm</span><span>DSA <b id="dsaB">—</b> dB</span></div>
+  </div>
+  <div class="tile">
+    <h2>The lock</h2>
+    <div class="mid" id="modeB">—</div>
+    <div class="row kv" style="margin-top:8px"><span>VC <b id="vcB">—</b> V</span><span>lost <b id="lossB">—</b> times</span><span>recovered <b id="recB">—</b></span><span>last recovery <b id="lastrecB">—</b> s</span><span>side <b id="sideB">—</b></span></div>
+    <div class="kv" id="lostforB" style="margin-top:8px"></div>
+  </div>
+  <div class="tile">
+    <h2>Symbols decoded</h2>
+    <div class="big"><span id="decB">—</span><small>per second</small></div>
+    <div class="row kv"><span>arriving <b id="evB">—</b>/s</span><span>undecided <b id="undB">—</b>/s</span><span>false <b id="falB">—</b>/s</span></div>
+    <div class="msgs" id="msgs"></div>
+  </div>
+  <div class="tile">
+    <h2>The echo</h2>
+    <div class="mid" id="echoB">—</div>
+    <div class="kv" style="margin-top:8px">Every symbol that arrives is answered within about 25 ns by the FPGA's fast path: a corner goes back as its neighbour, and station A times the round trip.</div>
+  </div>
+</div>
+
+<footer id="foot"></footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const f0 = x => (x == null ? "—" : Math.round(x).toLocaleString());
+const f1 = (x, d = 1) => (x == null ? "—" : Number(x).toFixed(d));
+function pill(lock, starting) {
+  const p = $("lockpill");
+  if (starting) { p.textContent = "setting up"; p.className = "pill wait"; return; }
+  if (lock && lock.locked) { p.textContent = "locked"; p.className = "pill ok"; }
+  else { p.textContent = lock ? (lock.mode || "lost").slice(0, 40) : "—"; p.className = "pill bad"; }
+}
+function bar(id, mv) { $(id).style.width = Math.max(0, Math.min(100, (mv || 0) / 2.5)) + "%"; }
+function render(s) {
+  const isA = s.station === "A";
+  $("A").classList.toggle("hidden", !isA); $("B").classList.toggle("hidden", isA);
+  $("title").textContent = "CostasLink station " + s.station + (isA ? " — the beam's sender" : " — the beam's receiver");
+  $("subtitle").textContent = "sending " + s.tx_mhz + " MHz, receiving " + s.rx_mhz + " MHz, " + (s.scheme || "") + " every " + s.period_ns + " ns";
+  pill(s.lock, s.starting);
+  const L = s.lock || {};
+  if (isA && s.A) {
+    const a = s.A, rt = a.roundtrip || {};
+    $("p50").textContent = rt.p50_ns == null ? "—" : f1(rt.p50_ns, 1);
+    $("p999").textContent = f1(rt.p999_ns, 1); $("pmax").textContent = f1(rt.max_ns, 1); $("pmin").textContent = f1(rt.min_ns, 1);
+    const h = $("hist"); h.innerHTML = "";
+    const bins = rt.bins || [];
+    if (bins.length) {
+      const lo = bins[0][0], hi = bins[bins.length - 1][0], peak = Math.max(...bins.map(b => b[1]));
+      const by = {}; bins.forEach(b => by[b[0]] = b[1]);
+      for (let k = lo; k <= hi; k++) { const i = document.createElement("i"); i.style.height = (100 * (by[k] || 0) / peak) + "%"; h.appendChild(i); }
+      $("hlo").textContent = f1(lo * rt.bin_ns, 1) + " ns"; $("hhi").textContent = f1(hi * rt.bin_ns, 1) + " ns";
+    }
+    $("metres").textContent = a.path_m == null ? "—" : f1(a.path_m, 2);
+    $("t0note").textContent = a.t0_ns == null ? "not calibrated yet: the median above minus the zero-path time, times c, over two" : "zero path " + f1(a.t0_ns, 1) + " ns; 1 m of courtyard is 6.7 ns";
+    $("budget").innerHTML = (a.budget || []).map(b => "<b>" + b[0] + "</b> " + b[1]).join(" &middot; ");
+    const r = a.rates || {};
+    $("right").textContent = a.right_frac == null ? "—" : (100 * a.right_frac).toFixed(3);
+    $("chal").textContent = f0(r.challenges_s); $("repl").textContent = f0(r.replies_s); $("miss").textContent = f0(r.missed_s); $("wrong").textContent = f0(r.wrong_s);
+    const t = a.totals || {};
+    $("tot_chal").textContent = f0(t.challenges); $("tot_miss").textContent = f0(t.missed); $("tot_wrong").textContent = f0(t.wrong);
+    const m = a.confusion || [], rm = a.reply_map || [];
+    let html = "<tr><th>sent \\ heard</th>" + m.map((_, j) => "<th>" + j + "</th>").join("") + "</tr>";
+    m.forEach((row, i) => { html += "<tr><th>" + i + "</th>" + row.map((v, j) => "<td class='" + (rm[i] === j ? "hit" : "") + "'>" + f0(v) + "</td>").join("") + "</tr>"; });
+    $("cm").innerHTML = html;
+    $("sigA").textContent = f0(L.signal_mv); $("dbmA").textContent = f1(L.rx_ant_dbm, 1); bar("barA", L.signal_mv);
+    $("modeA").textContent = L.mode || "—"; $("vcA").textContent = f1(L.vc, 3); $("dsaA").textContent = f1(L.dsa_db, 2); $("lossA").textContent = f0(L.losses); $("sideA").textContent = L.side == null ? "—" : (L.side > 0 ? "+" : "−");
+  } else if (!isA) {
+    $("sigB").textContent = f0(L.signal_mv); bar("barB", L.signal_mv);
+    $("dbmB").textContent = f1(L.rx_ant_dbm, 1); $("logB").textContent = f1((s.det || {}).log_dbm, 1); $("dsaB").textContent = f1(L.dsa_db, 2);
+    $("modeB").textContent = L.locked ? "locked on the beam" : (L.mode || "—");
+    $("vcB").textContent = f1(L.vc, 3); $("lossB").textContent = f0(L.losses); $("recB").textContent = f0(L.recoveries); $("lastrecB").textContent = f1(L.last_recovery_s, 1);
+    $("sideB").textContent = L.side == null ? "—" : (L.side > 0 ? "+" : "−");
+    $("lostforB").textContent = L.lost_for_s ? ("the beam has been gone for " + f1(L.lost_for_s, 0) + " s") : "";
+    const b = s.B || {}, r = b.rates || {};
+    $("decB").textContent = f0(r.decided_s); $("evB").textContent = f0(r.events_s); $("undB").textContent = f0(r.undec_s); $("falB").textContent = f0(r.false_s);
+    const msgs = $("msgs"); msgs.innerHTML = "";
+    const row = b.messages || [], tot = row.reduce((x, y) => x + y, 0) || 1;
+    const names = ["(+1,+1)", "(+1,−1)", "(−1,+1)", "(−1,−1)"];
+    row.forEach((v, k) => { const d = document.createElement("div"); d.innerHTML = (100 * v / tot).toFixed(1) + "%<span>" + (names[k] || k) + "</span>"; msgs.appendChild(d); });
+    const e = b.echo || {};
+    $("echoB").textContent = e.armed ? "armed, answering" : "not armed";
+  }
+  $("foot").textContent = "temperature " + f1((s.det || {}).temp_c, 1) + " °C · up " + f0(s.up_s) + " s · " + new Date(1000 * s.t).toLocaleTimeString();
+}
+let lastT = 0;
+async function tick() {
+  try {
+    const s = await (await fetch("/api/demo", {cache: "no-store"})).json();
+    render(s); lastT = Date.now();
+    $("age").textContent = "";
+  } catch (e) { $("age").textContent = "no data for " + Math.round((Date.now() - lastT) / 1000) + " s"; }
+}
+setInterval(tick, 500); tick();
+</script>
+</body>
+</html>
