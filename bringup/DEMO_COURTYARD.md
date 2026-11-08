@@ -61,7 +61,7 @@ With one pair of dishes there are two ways to run, and they do not combine:
   measures a one-way delay without a cable or a shared clock between the boards (the loops lock the phase, not the
   time; a VCXO in holdover drifts far more than 3 ns in a second).  The constellation and the blocking still work.
 
-This plan takes the first; the second is the fallback if the delay demo is dropped (O2).
+This plan takes the first; Jason (11-07 late) agreed: full duplex, the return on the FPV antennas, which have less gain but a much shorter cable.
 
 ## 4. The two stations (full duplex)
 
@@ -76,7 +76,15 @@ This plan takes the first; the second is the fallback if the delay demo is dropp
 
 * No T/R switch anywhere.  The FPV pair carried 5400 across the room with 12 dB of DSA to spare (4.72: a 182-191 mV
   leg at DSA 11.75), so it carries the courtyard; each FPV antenna sits on its own board's RX ANT / TX ANT jack with
-  a short lead.
+  a short lead.  **The antennas (Jason):** lollipop omnis (about 2 dBi, circular) and round patches of two sizes with
+  an RHCP and an LHCP port each (8-14 dBi, 5.8 GHz designs).  For the return use the two patches of one size facing
+  each other, **RHCP port to RHCP port** (a circular link between two antennas of the same hand facing each other
+  works; a wall's reflection flips the hand and is rejected, which helps outdoors), the LHCP ports on 50 ohm loads;
+  the lollipops are the spare.  At 15 m and 5.4-5.8 GHz the free-space loss is 71 dB; two 10 dBi patches leave 51,
+  against the 62 that gives the design leg at DSA 0: 11 dB in hand before the DSA, 20 more in the leg.  Check the
+  connectors: FPV antennas are often RP-SMA, the boards are SMA (adapters).  The patches' own band is 5.8 GHz: the
+  return carrier is tried at 5400 (measured on the FPV pair, 4.70) and at 5800 (the antennas' band and the ISM band's
+  centre) at R1, and the stronger lock wins.
 * Two carriers, 4800 for the beam and 5400 for the return, as in 4.70 (the receivers are homodyne: a board's own TX
   at the other carrier is 600 MHz out of its arms' band).  5400 sits in the WiFi gap; 4800 is below the WiFi channels.
   The 5 GHz unlicensed bands are 5150-5350 and 5470-5850 MHz: radiating 4800 outdoors with +4 dBm into an 18 dBi dish
@@ -235,9 +243,7 @@ the 4 s / 1 s alternation: a gateware item for later).  Nothing in the demo need
 ## 8. Open questions (Jason)
 
 * O1: the beam's carrier outdoors: 4800 as measured, or inside an unlicensed band (5800, or 5500-5700)?
-* O2: full duplex with the beam's direction fixed (this plan: the delay demo works, scope B shows the beam, scope A
-  the round trip), or half duplex on the switches with the direction alternating (both scopes show the beam in turn,
-  no delay demo)?  A second dish pair would give both.
+* O2 (settled 11-07): full duplex with the beam's direction fixed; the return on the FPV patches.
 * O3: a TV or projector for the laptops' pages, or the laptops' own screens?
 * O4: who carries dish B, and on what (tripod, cart)?  The metres readout wants a straight walk of 2-3 m.
 * O5: two independent stations (this plan; nothing needed of the venue), or one page showing both (a network between
