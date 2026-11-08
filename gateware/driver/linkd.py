@@ -107,7 +107,7 @@ class LinkD:
                          "thresholds_mv": {w: round(1e3 * (v - self.cen[w]), 1) for w, v in self.thresholds().items()}}
                         if self.cal else None), "config": self.cfg, "idle_s": self.idle_s,
                 "lost_for_s": (time.time() - self.lost_since) if self.lost_since else None,
-                "i0": self.i0, "q0": self.q0, "mid_t": self.mid_t,
+                "i0": self.i0, "q0": self.q0, "mid_t": self.mid_t, "cen": self.cen, "duplex": self.duplex,   # for a keeper adopting this lock
                 "next_try_in_s": max(0.0, self.next_try - time.time()) if self.mode == "backing off" else None,
                 **self.counts}
 
