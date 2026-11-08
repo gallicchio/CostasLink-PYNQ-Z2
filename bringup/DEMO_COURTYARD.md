@@ -157,12 +157,21 @@ the trigger a division from the left: **a pulse pair every 500 ns, the gap betwe
 the bench's 3 m of cable; the courtyard adds 6.7 ns a metre of dish spacing), the scope's own first-rise-to-first-rise
 measurement printing its mean in ns.  Block the beam and the pong is gone; carry dish B a metre and the mean moves.
 
+### How live the pages are
+
+The scopes are instant; the pages were not (Jason, 11-08: waving arms in the beam must show).  Each station now reads
+its I arm and its event counter ten times a second (6 ms and 1 ms over the network) and the page polls five times a
+second, so the signal number, its 15 s strip and the symbols-a-second number move within about 0.2-0.3 s of the
+hand; the round trip, the matrix and the totals still come once a second.  The strip is the thing to watch while
+waving: it is the I arm's level, the same thing the scope's I trace shows.
+
 ### Laptop B's page
 
-* **RECEIVED SIGNAL**: the I arm's level in mV as a bar, dBm at RX ANT, the band's power from the log detector, the DSA.
+* **RECEIVED SIGNAL**: the I arm's level in mV as a number and a bar, ten times a second, with its last 15 s as a strip;
+  dBm at RX ANT, the band's power from the log detector, the DSA.
 * **THE LOCK**: locked / lost / waiting for the carrier, VC, how often lost and recovered, the last recovery's time,
   and while the beam is blocked: "the beam has been gone for N s".
-* **SYMBOLS DECODED**: per second (2 000 000), arriving, undecided, false; the four messages' shares (25 % each).
+* **SYMBOLS DECODED**: per second (2 000 000, ten times a second), arriving, undecided; the four messages' shares (25 % each).
 * **THE ECHO**: the fast path armed and answering.
 
 ### Laptop A's page
@@ -171,7 +180,8 @@ measurement printing its mean in ns.  Block the beam and the pong is gone; carry
 * **PATH**: metres from the median less the zero-path time (B4's calibration), "1 m of courtyard is 6.7 ns".
 * **CHALLENGES ANSWERED**: % right in large type; sent, answered, missed and wrong a second; the totals since the
   start; the 4 x 4 matrix of sent against heard with the expected diagonal marked.
-* **THE RETURN PATH**: A's own receiver: signal, dBm, the loop's state, VC, DSA, losses, the lock's side.
+* **THE RETURN PATH**: A's own receiver: signal (ten times a second, with its strip), dBm, the loop's state, VC, DSA,
+  losses, the lock's side.
 * A footer with the board's temperature and the uptime.
 
 ### Things a visitor can do, with nobody at a keyboard
@@ -192,16 +202,25 @@ colours are the Siglent's own (ch1 yellow, ch2 pink, ch3 cyan, ch4 green) and th
 so a printed card by each scope names the four traces.  All four inputs through 50 ohm feed-throughs, as on the
 bench.  `bringup/demoscope.py preset A|B` sets each view once; `demoscope.py shot A|B` saves the screen.
 
-### Scope B, by the dish that gets blocked: "the bits, and the lock"
+### Scope B, by the dish that gets blocked: "the bits, and the lock", and every 5 s the constellation
+
+Jason (11-08): the one thing worth alternating is scope B's view: 5 s of the time traces, 5 s of the I/Q constellation
+(XY).  This firmware's XY mode plots **channel 1 against channel 2 and nothing else** (tried 11-08 10:48), so I and Q
+go on ch1 and ch2; `demoscope.py cycle B` switches the view every 5 s for ever (XYDS ON / OFF, nothing else changes;
+the trigger on the bit keeps acquiring, persistence builds the five dots within a second).
 
 | trace | jack | what the trustee sees | scale, place |
 |---|---|---|---|
-| ch2 pink, **I** | J104 I MON | the in-phase arm: a random waveform, one level a symbol | 10 mV/div, centred 3 div up |
-| ch3 cyan, **Q** | J105 Q MON | the quadrature arm: a second random waveform, independent of the first (the two bits of each QPSK symbol) | 10 mV/div, centred 1 div up |
-| ch1 yellow, **the bit** | J103 CMP I MON | the comparator's clean 0 / 1 under I: the analog wiggle above becomes a digital bit here; the scope triggers on its edges | 0.2 V/div, centred 1 div down |
-| ch4 green, **the lock** | J107 VC MON | the VCXO's control voltage: a flat line at 1.65 V while the loop holds the carrier; block the beam and the line walks away to a rail, unblock and it slides back | 1 V/div, centred 3 div down |
+| ch1 yellow, **I** | J104 I MON | the in-phase arm: a random waveform, one level a symbol; in XY the horizontal axis | 10 mV/div, centred (XY wants the idle in the middle) |
+| ch2 pink, **Q** | J105 Q MON | the quadrature arm: a second random waveform, independent of the first (the two bits of each QPSK symbol); in XY the vertical axis | 10 mV/div, centred |
+| ch3 cyan, **the bit** | J103 CMP I MON | the comparator's clean 0 / 1 under I: the analog wiggle above becomes a digital bit here; the scope triggers on its edges | 0.2 V/div, centred 2 div down |
+| ch4 green, **the lock** | J107 VC MON | the VCXO's control voltage: a flat line at 1.65 V while the loop holds the carrier; block the beam and the line walks away to a rail, unblock and it slides back | 1 V/div, centred 3.5 div down |
 
-Timebase 100 ns/div (two 500 ns symbols across, each corner 200 ns of it), trigger on ch1 rising at 0.15 V, normal mode,
+In XY the constellation is small through the 50 ohm feed-throughs (a 180 mV leg is 9 mV at the scope: 0.9 div at
+10 mV/div, 1.8 at 5): the feed-throughs off ch1 and ch2 (1 Mohm, `--scale 0.05`) make it 3.6 div at 50 mV/div, with the
+time traces' edges rounded by the lead; to be judged by eye at R1.
+
+Timebase 100 ns/div (two 500 ns symbols across, each corner 200 ns of it), trigger on ch3 rising at 0.15 V, normal mode,
 **persistence 1 s**:
 with the trigger on the bit's edge the frames pile up into an eye diagram on I and Q, open while the link is clean;
 a hand in the beam closes the eye (the levels shrink, then the traces smear as the loop lets go), and the green line
@@ -238,7 +257,7 @@ cabling (ch1 = the board's own TRIG A on A, CMP I MON on B) is R1's.
 | B4 | **The metres calibration**: T0 from one round trip at a tape-measured dish spacing (`--t0_ns` on A, or a file); the page then shows metres | the delay number must read as a distance | `demo.py` | R1, 15 min with the dishes |
 | B5 | **The adopt path**: a restarted `demo.py` takes over a running loop without the 60 s setup (the middles, centres, VC and leg from the PYNQ's linkd through `/api/now`) | a restart during the demo cost a minute | `demo.py`, `linkd.state()` | **done 11-08 10:42**: both stations adopted and were answering within 2 s of starting; each PYNQ's own linkd (`link.json`, duplex) brought the pair up unattended after the deploy (A at once, B in 66 s) |
 | B6 | **The band panel** (optional): the receiver's survey as a bar chart on laptop B, taken in the gaps | interference is part of the story | `survey()` exists | Tue if time |
-| R1 | **Rehearsal 1, Mon**: the dishes across the room, the two TFP-1s on their boards across the room too (the first time the return crosses more than 30 cm): A's leg at 5400 and at 5800, RHCP to RHCP, LHCP loaded, the carrier and the antenna size decided on it (section 4); **the scopes cabled for section 5a** (A: ch1 its own TRIG A, ch4 TRIG B; B: ch1 CMP I MON, ch4 VC MON; no TRIG IN leads anywhere); both laptops; then the full loop for an hour with nobody touching anything, then the blocking and the carrying; B4 | find what breaks; the return's real leg | | Mon pm |
+| R1 | **Rehearsal 1, Mon**: the dishes across the room, the two TFP-1s on their boards across the room too (the first time the return crosses more than 30 cm): A's leg at 5400 and at 5800, RHCP to RHCP, LHCP loaded, the carrier and the antenna size decided on it (section 4); **the scopes cabled for section 5a** (A: ch1 its own TRIG A, ch2 I, ch3 Q, ch4 TRIG B; B: ch1 I, ch2 Q, ch3 CMP I MON, ch4 VC MON; no TRIG IN leads anywhere), `demoscope.py preset A`, `preset B`, `cycle B`; both laptops; then the full loop for an hour with nobody touching anything, then the blocking and the carrying; B4 | find what breaks; the return's real leg | | Mon pm |
 | R2 | **Rehearsal 2, Tue or Wed**: the courtyard itself, power from the building, the laptops' WiFi off, the sun on the screens, the survey of the outdoor band; the carrier choice (O1) settled by it | the outdoors | | Wed |
 
 Not for Thursday: the gateware's pipeline (REVB 68), the TRIG IN pairing (REVB 69).  Nothing in the demo needs a

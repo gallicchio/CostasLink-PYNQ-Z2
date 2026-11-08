@@ -37,6 +37,8 @@
   .tile { overflow-x: auto; }
   .cm td.hit { background: color-mix(in srgb, var(--aqua) 25%, transparent); font-weight: 600; }
   .strip { color: var(--muted); font-size: 14px; } .strip b { color: var(--ink); }
+  .spark { width: 100%; height: 60px; display: block; margin-top: 6px; }
+  .spark polyline { fill: none; stroke: var(--blue); stroke-width: 2; vector-effect: non-scaling-stroke; }
   .hidden { display: none; }
   footer { margin-top: 12px; color: var(--muted); font-size: 12px; }
 </style>
@@ -76,6 +78,8 @@
     <h2>The return path, at this receiver</h2>
     <div class="mid"><span id="sigA">—</span> mV &nbsp;<span class="kv">(<b id="dbmA">—</b> dBm at RX ANT)</span></div>
     <div class="bar"><i id="barA"></i></div>
+    <svg class="spark" id="sparkA" viewBox="0 0 300 60" preserveAspectRatio="none"><polyline id="plA" points=""/></svg>
+    <div class="axis"><span>15 s ago</span><span>now</span></div>
     <div class="row kv"><span>loop <b id="modeA">—</b></span><span>VC <b id="vcA">—</b> V</span><span>DSA <b id="dsaA">—</b> dB</span><span>losses <b id="lossA">—</b></span><span>side <b id="sideA">—</b></span></div>
   </div>
 </div>
@@ -85,6 +89,8 @@
     <h2>Received signal</h2>
     <div class="big"><span id="sigB">—</span><small>mV</small></div>
     <div class="bar"><i id="barB"></i></div>
+    <svg class="spark" id="sparkB" viewBox="0 0 300 60" preserveAspectRatio="none"><polyline id="plB" points=""/></svg>
+    <div class="axis"><span>15 s ago</span><span>now</span></div>
     <div class="row kv"><span><b id="dbmB">—</b> dBm at RX ANT</span><span>band power <b id="logB">—</b> dBm</span><span>DSA <b id="dsaB">—</b> dB</span></div>
   </div>
   <div class="tile">
@@ -119,6 +125,12 @@ function pill(lock, starting) {
   else { p.textContent = lock ? (lock.mode || "lost").slice(0, 40) : "—"; p.className = "pill bad"; }
 }
 function bar(id, mv) { $(id).style.width = Math.max(0, Math.min(100, (mv || 0) / 2.5)) + "%"; }
+function spark(id, pts) {
+  if (!pts || !pts.length) { $(id).setAttribute("points", ""); return; }
+  const top = Math.max(50, 1.1 * Math.max(...pts.map(p => p[1])));
+  $(id).setAttribute("points", pts.map(p => ((15 - Math.min(15, p[0])) * 20).toFixed(1) + "," + (60 - 60 * p[1] / top).toFixed(1)).join(" "));
+}
+function fresh(f) { return f && f.age_s != null && f.age_s < 1.0; }
 function render(s) {
   const isA = s.station === "A";
   $("A").classList.toggle("hidden", !isA); $("B").classList.toggle("hidden", isA);
@@ -150,17 +162,20 @@ function render(s) {
     let html = "<tr><th>sent \\ heard</th>" + m.map((_, j) => "<th>" + j + "</th>").join("") + "</tr>";
     m.forEach((row, i) => { html += "<tr><th>" + i + "</th>" + row.map((v, j) => "<td class='" + (rm[i] === j ? "hit" : "") + "'>" + f0(v) + "</td>").join("") + "</tr>"; });
     $("cm").innerHTML = html;
-    $("sigA").textContent = f0(L.signal_mv); $("dbmA").textContent = f1(L.rx_ant_dbm, 1); bar("barA", L.signal_mv);
+    const fa = s.fast || {}; const sa = fresh(fa) ? fa.signal_mv : L.signal_mv;
+    $("sigA").textContent = f0(sa); $("dbmA").textContent = f1(L.rx_ant_dbm, 1); bar("barA", sa); spark("plA", fa.strip);
+    if (fresh(fa) && fa.rate_s != null) $("repl").textContent = f0(fa.rate_s);
     $("modeA").textContent = L.mode || "—"; $("vcA").textContent = f1(L.vc, 3); $("dsaA").textContent = f1(L.dsa_db, 2); $("lossA").textContent = f0(L.losses); $("sideA").textContent = L.side == null ? "—" : (L.side > 0 ? "+" : "−");
   } else if (!isA) {
-    $("sigB").textContent = f0(L.signal_mv); bar("barB", L.signal_mv);
+    const fb = s.fast || {}; const sb = fresh(fb) ? fb.signal_mv : L.signal_mv;
+    $("sigB").textContent = f0(sb); bar("barB", sb); spark("plB", fb.strip);
     $("dbmB").textContent = f1(L.rx_ant_dbm, 1); $("logB").textContent = f1((s.det || {}).log_dbm, 1); $("dsaB").textContent = f1(L.dsa_db, 2);
     $("modeB").textContent = L.locked ? "locked on the beam" : (L.mode || "—");
     $("vcB").textContent = f1(L.vc, 3); $("lossB").textContent = f0(L.losses); $("recB").textContent = f0(L.recoveries); $("lastrecB").textContent = f1(L.last_recovery_s, 1);
     $("sideB").textContent = L.side == null ? "—" : (L.side > 0 ? "+" : "−");
     $("lostforB").textContent = L.lost_for_s ? ("the beam has been gone for " + f1(L.lost_for_s, 0) + " s") : "";
     const b = s.B || {}, r = b.rates || {};
-    $("decB").textContent = f0(r.decided_s); $("evB").textContent = f0(r.events_s); $("undB").textContent = f0(r.undec_s);
+    $("decB").textContent = f0(fresh(fb) && fb.rate_s != null ? fb.rate_s : r.decided_s); $("evB").textContent = f0(r.events_s); $("undB").textContent = f0(r.undec_s);
     const msgs = $("msgs"); msgs.innerHTML = "";
     const row = b.messages || [], tot = row.reduce((x, y) => x + y, 0) || 1;
     const names = ["(+1,+1)", "(+1,−1)", "(−1,+1)", "(−1,−1)"];
@@ -178,7 +193,7 @@ async function tick() {
     $("age").textContent = "";
   } catch (e) { $("age").textContent = "no data for " + Math.round((Date.now() - lastT) / 1000) + " s"; }
 }
-setInterval(tick, 500); tick();
+setInterval(tick, 200); tick();
 </script>
 </body>
 </html>

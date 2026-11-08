@@ -15,6 +15,7 @@ themselves.
     --trig_a off      on the bench, where TRIG A is wired into the other board's TRIG IN (JP203 puts it on the Q ladder)
 """
 import argparse
+import collections
 import http.server
 import json
 import math
@@ -108,6 +109,9 @@ class Station:
         self.info = {}
         self.cal = {}
         self.totals = {}
+        self.strip = collections.deque(maxlen=160)         # (t, signal mV, events a second) ten times a second
+        self.f_i = 1.0                                     # the idle's share of the time from the last look (DemoKeeper)
+        self.stop = False
         self.prev = None
         self.det = {}
         self.t_det = 0.0
@@ -117,6 +121,38 @@ class Station:
         stamp = time.strftime("%Y%m%d_%H%M%S")
         self.logf = open(os.path.join(T.DATA, "demo_%s_%s.jsonl" % (self.name, stamp)), "a")
         self.t_start = time.time()
+
+    # ---- the quick look, ten times a second: the signal and the rate for the page's strip ----
+    def fast(self):
+        """one ADC read and one counter read a tenth of a second (6 ms and 1 ms over the network) whenever the lock is
+        free: the page shows the signal's wiggle within about 0.2 s (Jason, 11-08: waving arms in the beam must show)"""
+        prev = None
+        while not self.stop:
+            time.sleep(0.1)
+            if not self.locked() or not self.lock.acquire(timeout=0.05):
+                continue
+            try:
+                t = time.time()
+                i = self.cl.adc("I")
+                n = self.cl.rd("RX_EVENTS")
+            except Exception:                                 # noqa: BLE001
+                continue
+            finally:
+                self.lock.release()
+            sig = abs(i - self.ld.i0) / max(0.2, self.f_i)
+            rate = None
+            if prev is not None and n >= prev[1] and t - prev[0] < 1.0:
+                rate = (n - prev[1]) / (t - prev[0])
+            prev = (t, n)
+            self.strip.append((t, 1e3 * sig, rate))
+
+    def fast_state(self):
+        now = time.time()
+        pts = [(round(now - t, 2), round(s, 1)) for t, s, r in self.strip if now - t < 15.0]
+        last = self.strip[-1] if self.strip else None
+        rates = [r for t, s, r in self.strip if r is not None and now - t < 0.6]
+        return {"t": last[0] if last else None, "age_s": (now - last[0]) if last else None, "signal_mv": last[1] if last else None,
+                "rate_s": (sum(rates) / len(rates)) if rates else None, "strip": pts}
 
     # ---- the loop's keeper, in its own thread ----
     def keep(self):
@@ -222,6 +258,8 @@ class Station:
         cl = self.cl
         now = time.time()
         o = self.ld.observe()
+        f = abs(2 * o.get("duty_i", 1.0) - 1)
+        self.f_i = f if (o["e_i"] >= 50 and f >= 0.2) else 1.0
         st = {"t": now, "station": self.name, "role": self.role, "tx_mhz": self.a.tx, "rx_mhz": self.a.rx, "scheme": SCHEME,
               "period_ns": 10.0 * self.a.period, "up_s": now - self.t_start, "starting": False}
         sig = abs(o["di"])                                   # the leg now (the keeper's look corrects for the data)
@@ -371,6 +409,7 @@ class Station:
                 self.cl.reply_off()                           # loop is not yet locked, is garbage for the far station
             self.adopt()
         threading.Thread(target=self.keep, daemon=True, name="keeper").start()
+        threading.Thread(target=self.fast, daemon=True, name="fast").start()
         self.stop = False
         while not self.stop:
             if not self.lock.acquire(timeout=0.5):            # the keeper in a setup or a recovery: stay answerable
@@ -407,7 +446,9 @@ def serve(station, port):
 
         def do_GET(self):
             if self.path.startswith("/api/demo"):
-                body = json.dumps(station.state, default=str).encode()
+                st = dict(station.state)
+                st["fast"] = station.fast_state()
+                body = json.dumps(st, default=str).encode()
                 ct = "application/json"
             else:
                 try:
