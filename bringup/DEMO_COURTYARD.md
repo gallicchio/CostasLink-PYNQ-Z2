@@ -1,6 +1,7 @@
 # The courtyard demo (Thursday 2026-11-12): two stations, no cable between them
 
-Written 2026-11-07 (Sat) from the bench results to date; the build list below is what has to happen by Thursday.
+Written 2026-11-07 (Sat) from the bench results to date, rewritten 11-08 (Sun) after the demo's software ran on the
+bench (section 9); the build list below is what has to happen by Thursday.
 Jason's brief: the pair of antennas outside across a courtyard the size of the lab (15-20 m), for trustees and
 donors; each board with its own laptop, power and oscilloscope; the long cable coiled between each board and its
 antenna; nothing between the boards but air.  They should see a random bitstream over QPSK on the scopes, see the
@@ -61,7 +62,10 @@ With one pair of dishes there are two ways to run, and they do not combine:
   measures a one-way delay without a cable or a shared clock between the boards (the loops lock the phase, not the
   time; a VCXO in holdover drifts far more than 3 ns in a second).  The constellation and the blocking still work.
 
-This plan takes the first; Jason (11-07 late) agreed: full duplex, the return on the FPV antennas, which have less gain but a much shorter cable.
+This plan takes the first; Jason (11-07 late) agreed: full duplex, the return on the FPV antennas, which have less gain
+but a much shorter cable.  **11-08: nothing alternates any more, not even the beam's content.**  Every symbol of the
+random QPSK stream is a challenge that B answers at once on the return, so the stream, the exchange and the delay
+number are one continuous thing (section 5), and a visitor at either scope sees the beam's effect at every moment.
 
 ## 4. The two stations (full duplex)
 
@@ -118,70 +122,67 @@ This plan takes the first; Jason (11-07 late) agreed: full duplex, the return on
 
 ## 5. What runs, and what the audience sees
 
-The demo driver (`bringup/demo.py`, one instance a laptop, started once) keeps both loops up through linkd and
-cycles the beam's content by itself:
+One continuous mode (built and run on the bench 11-08, `bringup/demo.py`, the numbers in section 9):
 
 ```
-  on the beam (A -> B), repeating forever:
-     4 s   the random QPSK stream: TX_MODE prbs with the four corners, 5-10 M symbols a second
-     1 s   the exchange: 20 000 one-of-2 challenges at 1 in 1000 clocks; B replies on the return path
-  on the return (B -> A), all the time:
-     B's fast-path reply to each challenge (24 ns turnaround), and between exchanges B's own random stream
+  station A, the sender, for ever:    A3's four corners at random, one every 500 ns (2 bits a symbol, 4 Mbit/s), the
+                                      idle (1, 0) between: the random QPSK stream on scope B.  Every symbol is also a
+                                      challenge: A's receiver, on the return path, decodes B's echo of it and pairs it
+                                      with A's own TX event (the gateware's reference), so the round trip's histogram
+                                      and the replies right / missed / false come out of the FPGA at 2 million a second
+  station B, the receiver, for ever:  decodes every symbol (the decision 20 ns after its first edge) and the fast path
+                                      answers it within about 25 ns on the return carrier: a corner comes back as its
+                                      neighbour (the reply map xor1), so a reply is never the challenge itself
+  each station's keeper:              linkd's own code in duplex mode (the board's TX never muted, parked or retuned:
+                                      the other station's loop hangs on it); the loop from nothing in about 60 s, a
+                                      lost lock back in 1-2 s; the decoder's windows measured from the data itself and
+                                      armed again after every recovery; each laptop talks only to its own board
 ```
 
-Nothing changes on the scopes between the two phases: scope B stays in XY and the constellation simply changes
-shape (four dots during the stream, two during the exchange); scope A stays in the time view triggered on its own
-challenge mark, in normal trigger mode, so the last exchange's two pulses and the delay number stay on screen through
-the stream phase and refresh every 5 s.  The tiles on the laptops refresh from whichever phase last ran.
+`demo.py A` and `demo.py B`, one a laptop, started once (`python3 demo.py A`; the carriers, the port and the symbol
+period are arguments), serve their tiles at `http://localhost:8090/` (`demo.html` beside it, `/api/demo` the numbers)
+and log a line a second to `data/twoboard/demo_<station>_<stamp>.jsonl`.
 
-### Scope B (the receiver, by the dish that gets blocked)
+### Scope B (the receiver, by the dish that gets blocked): the bits and the lock
 
-* ch2 = I MON, ch3 = Q MON of board B's receiver, **XY mode with persistence**: four dots for the QPSK stream, two
-  during the exchange, the dots' size the noise.  A hand in the beam shrinks the dots toward the centre (the level),
-  then the lock drops and the dots smear into a ring (the loop running free); the hand away, the dots snap back
-  within a second or two (linkd's recovery).
-* ch4 = TRIG B: the receiver's decision pulses (one per challenge during the exchange, the stream's symbol decisions
-  otherwise), for anyone who asks what the FPGA is doing.
+Section 5a's view: I and Q as two random waveforms (a symbol every 500 ns, the corner 200 ns of it), the recovered
+bit under them, the VCXO's control voltage as a flat line while the loop holds.  A hand in the beam: the levels
+shrink, the traces smear as the loop lets go, the green line leaves its place; the hand away: all of it back within a
+second or two.
 
-### Scope A (the sender, the delay on screen)
+### Scope A (the sender): the ping and the pong
 
-* ch1 = board A's own TRIG A (the challenge leaving), ch4 = board A's TRIG B (the reply arriving, detected):
-  **two pulses about 220 ns apart on one screen, with the scope's own delay measurement (ch1 rise to ch4 rise)
-  printed in ns at the bottom**.  Carry dish B a metre further: the ch4 pulse walks right by 3.3 ns and the number
-  follows; carry station B a metre (dish and FPV antenna both): 6.7 ns.  Block the beam: the ch4 pulse vanishes (no
-  challenge gets through, so no reply), and returns with the beam.
-* ch2 / ch3 = A's own arms: the return path's constellation during B's stream, for the curious.
+Section 5a's view: A's own TRIG A (the challenge leaving) and TRIG B (the echo recognised) on one baseline, 50 ns/div,
+the trigger a division from the left: **a pulse pair every 500 ns, the gap between them the round trip** (120 ns on
+the bench's 3 m of cable; the courtyard adds 6.7 ns a metre of dish spacing), the scope's own first-rise-to-first-rise
+measurement printing its mean in ns.  Block the beam and the pong is gone; carry dish B a metre and the mean moves.
 
-### Laptop B (the receiver's page, big tiles)
+### Laptop B's page
 
-* **RECEIVED POWER**: dBm at RX ANT from the log detector (`received_dBm`), a bar, and the last 60 s as a strip
-  chart; the leg in mV beside it.  Amber below -55 dBm, red when the lock is lost.
-* **LOCK**: locked / searching, the VCXO's VC, time since the last loss, how many recoveries today.
-* **DATA**: the stream's bits counted since the last reset (running up at 5-10 million a second during the stream
-  phases), the errors, the BER over the last phase and overall.  Blocking the beam makes errors appear; the counter
-  keeps the history ("2.4 billion bits, 31 errors, all while someone stood in the beam").
-* **MESSAGES**: the 8 x 8 grid of the gateware's confusion matrix (sent against decoded) from the exchange, and
-  item B5's one-of-8 key.
-* The constellation mirrored from the scope through /api/scope, as the bench page already does.
+* **RECEIVED SIGNAL**: the I arm's level in mV as a bar, dBm at RX ANT, the band's power from the log detector, the DSA.
+* **THE LOCK**: locked / lost / waiting for the carrier, VC, how often lost and recovered, the last recovery's time,
+  and while the beam is blocked: "the beam has been gone for N s".
+* **SYMBOLS DECODED**: per second (2 000 000), arriving, undecided, false; the four messages' shares (25 % each).
+* **THE ECHO**: the fast path armed and answering.
 
-### Laptop A (the sender's page)
+### Laptop A's page
 
-* **ROUND TRIP**: the last exchange's 20 000 challenges as a histogram in 1.25 ns bins, p50 / p99.9 / max in large
-  type; **PATH**: (p50 - T0) x c / 2 in metres, T0 calibrated once at a tape-measured spacing (item B4), so moving the
-  dish reads out in metres to a decimal, refreshed every 5 s.
-* **THE BUDGET**: a fixed strip with the measured pieces: cable 5 ns a metre, air 3.3 ns a metre, the boards' RF 1-3 ns,
-  the sampler's path 65 ns, the decision 10 ns, the whole 100 ns, with the date measured.
-* **CHALLENGES**: sent, replied, right (%), the reply's latency p50, as counters since the last reset.
-* **THE BAND** (optional, item B6): the receiver's survey of 4.4-6.0 GHz, what WiFi is around the courtyard.
+* **ROUND TRIP, THIS SECOND**: the median in ns in large type, p99.9, max, min, the histogram in 1.25 ns bins.
+* **PATH**: metres from the median less the zero-path time (B4's calibration), "1 m of courtyard is 6.7 ns".
+* **CHALLENGES ANSWERED**: % right in large type; sent, answered, missed and wrong a second; the totals since the
+  start; the 4 x 4 matrix of sent against heard with the expected diagonal marked.
+* **THE RETURN PATH**: A's own receiver: signal, dBm, the loop's state, VC, DSA, losses, the lock's side.
+* A footer with the board's temperature and the uptime.
 
 ### Things a visitor can do, with nobody at a keyboard
 
-1. Stand in the beam, step out: at scope B the constellation collapses and the lock drops, at scope A the reply pulse
-   vanishes; laptop B's power bar falls and errors tick; everything comes back within two seconds of stepping out.
-2. Carry dish B along the courtyard: the round trip and the metres follow; carry it back.
-3. Turn dish B 90 degrees (polarization) or point it off: the power falls by 20 dB and the loop lets go.
-4. Press a key on laptop A (item B5): a message (one of 8) appears on laptop B's grid, with its latency.
-5. Hold a phone's hotspot near a dish (item B6): the band panel lights the channel and the errors tick.
+1. **Stand in the beam, step out.**  Scope B: the stream dies, the lock line walks away.  Laptop B: the signal bar
+   falls, "the beam has been gone for 3 s", symbols a second 0.  Laptop A: answered 0, **missed 2 000 000 a second**,
+   the histogram empty.  Scope A: the pong vanishes.  Step out: B's loop back in 1-2 s, A's replies the same second,
+   everything counting again (measured 11-08, section 9).
+2. **Carry dish B along the courtyard**: the round trip and the metres follow; carry it back.
+3. **Turn dish B 90 degrees** (polarization) or point it off: the signal falls by 20 dB and the loop lets go.
+4. **Hold a phone's hotspot near a dish** (if B6 is built): the band panel lights the channel and the errors tick.
 
 ## 5a. The scopes' views: I and Q and two more things, readable in a few seconds
 
@@ -200,7 +201,8 @@ bench.  `bringup/demoscope.py preset A|B` sets each view once; `demoscope.py sho
 | ch1 yellow, **the bit** | J103 CMP I MON | the comparator's clean 0 / 1 under I: the analog wiggle above becomes a digital bit here; the scope triggers on its edges | 0.2 V/div, centred 1 div down |
 | ch4 green, **the lock** | J107 VC MON | the VCXO's control voltage: a flat line at 1.65 V while the loop holds the carrier; block the beam and the line walks away to a rail, unblock and it slides back | 1 V/div, centred 3 div down |
 
-Timebase 100 ns/div (seven 200 ns symbols across), trigger on ch1 rising at 0.15 V, normal mode, **persistence 1 s**:
+Timebase 100 ns/div (two 500 ns symbols across, each corner 200 ns of it), trigger on ch1 rising at 0.15 V, normal mode,
+**persistence 1 s**:
 with the trigger on the bit's edge the frames pile up into an eye diagram on I and Q, open while the link is clean;
 a hand in the beam closes the eye (the levels shrink, then the traces smear as the loop lets go), and the green line
 leaves its place.  Blocking the beam thus moves every trace at once.  The level: a 150-180 mV leg is 7-9 mV at the
@@ -217,39 +219,52 @@ decision is made at R1 by looking.
 | ch1 yellow, **ping** | J205 TRIG A | the challenge leaving the board: a pulse at the left of the screen | 1 V/div, baseline 2.5 div down |
 | ch4 green, **pong** | J206 TRIG B | the reply recognised by A's FPGA: a pulse to the right of the ping, on the same baseline, **the gap between them is the courtyard** | 1 V/div, the same baseline |
 
-Timebase 50 ns/div with the trigger 1 div from the left (the pong lands 4.4 div right at 220 ns), trigger on ch1
-rising at 0.85 V, **auto mode**: between exchanges the screen free-runs on the return stream's I and Q (alive), and
-every few seconds the two pulses appear.  The scope's own delay measurement, first rising edge of ch1 to first rising
+Timebase 50 ns/div with the trigger 1 div from the left (the pong lands 2.4 div right at the bench's 120 ns, 4-5 div
+across the courtyard), trigger on ch1 rising at 0.85 V: a pair every 500 ns, the previous pair's pong off the screen
+to the left.  The scope's own delay measurement, first rising edge of ch1 to first rising
 edge of ch4 (`MEAD FRR,C1-C4`) with statistics on, prints the mean in ns at the bottom and holds it between
-exchanges; carry dish B a metre and the mean moves 3.3 ns.  Blocking the beam removes the pong and the mean stops
-updating.
+looks; carry dish B a metre and the mean moves 6.7 ns (there and back).  Blocking the beam removes the pong and the
+mean stops updating.  On the bench (11-08, `plots/demoscope_bench_A_20261108_1014.png`, `_B_`) ch1 is the far
+board's TRIG A, so the presets were tried with the trigger on ch4 (`demoscope.py preset A --trig 4`); the demo's own
+cabling (ch1 = the board's own TRIG A on A, CMP I MON on B) is R1's.
 
 ## 6. The build list, in order
 
-| | what | why | where | estimate |
+| | what | why | where | state |
 |---|---|---|---|---|
-| B1 | **Duplex unattended and self-healing**: both PYNQs bring the exchange up from `link.json` (A: tx 4800 / rx 5400, B: tx 5400 / rx 4800), each loop recovers without muting its own TX (4.71's open item), a blocked beam re-locks within 2 s of clearing, and a lost return path (unlikely: it is not blockable) the same | the demo must survive a hand in the beam and a restart with nobody typing | `linkd.py` (the duplex release_at from `qpvtests.Duplex` folded in), `link.json` on each PYNQ, `deploy_pynq.sh` | Sun |
-| B2 | **The demo driver** (`bringup/demo.py`, one a laptop, started once): on A the 4 s / 1 s cycle of section 5 (prbs mode with the four corners, then the A2 exchange with the fast path on B) and the tiles' numbers at 2-5 Hz to the page; on B the BER checker on the stream, the reply armed, the tiles | the numbers in section 5 | `demo.py`, `dashboard.py` (a `/api/demo` route and the tile page `demo.html`) | Sun-Mon |
-| B3 | **Scope presets**, set once at the start by `demo.py`: scope B in XY with persistence on ch2 / ch3; scope A in the time view at 50 ns/div, normal trigger on ch1, the ch1 -> ch4 delay measurement on screen; nothing changes afterwards | the scopes are half the show | `scope_e` with raw `XYDS`, `PESU`, `PACU` commands | Mon |
-| B4 | **The metres calibration**: T0 from one round trip at a tape-measured dish spacing, and the cables' 85 ns from 4.43; the page shows ns and metres | the delay number must read as a distance | `demo.py` | Mon, 15 min with the dishes |
-| B5 | **The message key**: a key on laptop A sends one of 8 (TX_MSG + a single event) in the next exchange phase, laptop B shows which arrived; ten a second is plenty | the 3-bit scheme made tangible | `demo.py` | Tue |
+| B1 | **Duplex unattended and self-healing**: each board's loop kept by linkd's code in duplex mode (its TX never muted, parked or retuned; the no-carrier work on a parked RX synthesizer; the sequencer's centring steps with the TX kept on; the recovery's releases +10 / +16 / -10 kHz first) | the demo must survive a hand in the beam and a restart with nobody typing | `linkd.py` (72b3314), `duplex_up.py` | **done on the laptop side 11-08** (both keepers from nothing at once in about 60 s, a 3 s block recovered in 1.5 s with the other loop untouched, the far board gone and back re-locked by itself); `link.json` with `"duplex": true` on each PYNQ for the unattended boot: to deploy and try |
+| B2 | **The demo driver** `bringup/demo.py` + `demo.html`: the continuous mode of section 5, the keeper, the windows from the data, the tiles | the numbers in section 5 | `demo.py`, `demo.html`, `demo_bench.sh` | **done on the bench 11-08** (section 9) |
+| B3 | **Scope presets** `demoscope.py preset A|B` (section 5a) | the scopes are half the show | `demoscope.py` | written; the mechanics tried on the bench with the trigger on ch4; the real views need R1's cabling |
+| B4 | **The metres calibration**: T0 from one round trip at a tape-measured dish spacing (`--t0_ns` on A, or a file); the page then shows metres | the delay number must read as a distance | `demo.py` | R1, 15 min with the dishes |
+| B5 | **The adopt path**: a restarted `demo.py` takes over a running loop without the 60 s setup (the middles and centres from the PYNQ's linkd) | a restart during the demo costs a minute now | `demo.py`, `dashboard.py`'s `/api/now` | if time |
 | B6 | **The band panel** (optional): the receiver's survey as a bar chart on laptop B, taken in the gaps | interference is part of the story | `survey()` exists | Tue if time |
-| R1 | **Rehearsal 1, Mon**: the dishes across the room as 4.70, the two TFP-1s on their boards across the room too (the first time the return crosses more than 30 cm): A's leg at 5400 and at 5800, RHCP to RHCP, LHCP loaded, the carrier and the antenna size decided on it (section 4); then both laptops, the full loop of section 5 for an hour with nobody touching anything, then the blocking and the carrying | find what breaks; the return's real leg | | Mon pm |
+| R1 | **Rehearsal 1, Mon**: the dishes across the room, the two TFP-1s on their boards across the room too (the first time the return crosses more than 30 cm): A's leg at 5400 and at 5800, RHCP to RHCP, LHCP loaded, the carrier and the antenna size decided on it (section 4); **the scopes cabled for section 5a** (A: ch1 its own TRIG A, ch4 TRIG B; B: ch1 CMP I MON, ch4 VC MON; no TRIG IN leads anywhere); both laptops; then the full loop for an hour with nobody touching anything, then the blocking and the carrying; B4 | find what breaks; the return's real leg | | Mon pm |
 | R2 | **Rehearsal 2, Tue or Wed**: the courtyard itself, power from the building, the laptops' WiFi off, the sun on the screens, the survey of the outdoor band; the carrier choice (O1) settled by it | the outdoors | | Wed |
 
-Not for Thursday: the gateware's pipeline (REVB 68), the settled decision as the default (tonight's cycle says
-whether it is right), the TRIG IN pairing (REVB 69), a stream with challenges embedded in it (which would remove
-the 4 s / 1 s alternation: a gateware item for later).  Nothing in the demo needs a gateware change.
+Not for Thursday: the gateware's pipeline (REVB 68), the TRIG IN pairing (REVB 69).  Nothing in the demo needs a
+gateware change.
 
 ## 7. What can go wrong, and the answer
 
 * **WiFi outdoors** at 5150-5350 / 5470-5850: the beam at 4800 avoids it, the return at 5400 sits in the gap; the
   survey at R2 confirms; the errors a phone causes become a demo (section 5, item 5).
-* **The loops when the beam is blocked**: B's loop loses the beam, A's loop keeps the return (the FPV pair is not
-  blocked), B recovers alone when the beam returns; with B1 done this is the 1-2 s linkd already shows on the bench.
-  Without B1 a lost lock needs a keypress: the fallback is `demo.py` calling `recover` itself.
-* **The exchange phase while the beam is blocked**: no replies, the histogram empty, the PATH tile shows "no path";
-  the stream phase then shows the errors: both are the demo working.
+* **The loops when the beam is blocked** (measured 11-08): B's loop loses the beam and waits for the carrier, A's loop
+  keeps the return; the beam back, B re-locks in 1-2 s and arms its decoder again, A's replies return the same second
+  (A's own windows untouched).  The return blocked: A the same, B untouched.  Through a 3 s block nothing needs a key.
+* **While the beam is blocked**: laptop B shows the signal gone and counts the seconds; laptop A shows 2 million
+  challenges a second missed and an empty histogram: both are the demo working.
+* **The two carriers must be 600 MHz apart or more** (4800 / 5400 as planned; 4800 / 5000 on the bench put each board's
+  own TX events into its own receiver through the demodulator's 390 MHz baseband: a false 'reply' 85 ns after every
+  challenge, 11-08 09:22).  5800 for the return (if R1 prefers it) is 1000 from 4800: fine.
+* **No TRIG IN lead anywhere in the courtyard**: with JP203 fitted TRIG IN drives the Q ladder, and the bench's
+  TRIG A -> tee -> TRIG IN cross-wiring put every TX event of one board into the other's Q (09:22).  `demo.py`'s
+  `--trig_a off` is for the bench only; in the courtyard A's TRIG A is the ping on scope A.
+* **The (-1, +1) corner at a weak return**: its I arm lags its Q (REVB 66), so at delay 8 A left that echo undecided on
+  its 75 mV return; delay 24 and the I windows at 0.4 of the swing decode 98 % of it (the other three 100 %); the
+  missing 2 % show as 'answered' without 'decided' and cost nothing else.  A stronger return (section 4) will help.
+* **The keeper's leg under the stream**: linkd learns the leg from the idle carrier; under the stream I's mean is 0.6 of
+  it, so B's setup stopped two DSA steps high (13.75 for a 127 mV leg instead of 150).  Harmless for the demo (the
+  windows come from the data), noted for linkd.
 * **Alignment outdoors**: the power tile is the alignment tool; an 18 dBi dish is about 8 degrees wide; a 9.4 dBi
   patch is about 60 degrees wide (the 14 dBi array 35), pointed by eye at its twin.  Polarization: both dishes the
   same way up; the patches are circular and do not care how they are turned.
@@ -267,3 +282,29 @@ the 4 s / 1 s alternation: a gateware item for later).  Nothing in the demo need
 * O4: who carries dish B, and on what (tripod, cart)?  The metres readout wants a straight walk of 2-3 m.
 * O5: two independent stations (this plan; nothing needed of the venue), or one page showing both (a network between
   the laptops at the courtyard)?
+
+## 9. The bench rehearsal (11-08, 09:53-10:15): the demo's software over the cables
+
+The bench as the night's (A -> B on the 2 m cable, B -> A on the 1 m, 50 dB of pads each), A sending at 4800 and
+receiving at 5400, B the mirror; `demo_bench.sh start` ran both stations from this laptop (A's TRIG A off: the bench's
+TRIG IN wiring).  What it did:
+
+* **From nothing**: both keepers set up at once, A locked in 58 s (a 76 mV leg on the 5400 return, DSA 7.75), B in 62 s
+  (4800, 127 mV at DSA 13.75); A streaming within a second of its lock, B decoding within two of its.
+* **Steady**: A 1.9-2.0 million challenges a second, **replies 100 %, missed 0, false 0-1 a second, wrong 0** (the
+  four challenges 1.000 each over 540 000 of each a second); B 2.0 million symbols a second decoded, the four messages
+  25.0 % each; **the round trip 120 ns median, 112.5-125 ns min to max** (A's decision 30 ns after the echo's first
+  edge, B's 20 ns after the symbol's; the 12 ns spread is the word clock's phase on both boards).
+* **The beam blocked 3 s** (A's TX muted): B 'waiting for the carrier' within 0.5 s, A's replies 0 and missed 1.9 M/s
+  for the 3 s; the carrier back, **B locked again after 1 s** and decoding after 3 (its windows measured again), A's
+  replies back the same second at 100 %.  **The return blocked 3 s**: A waiting, then locked 2 s after the carrier
+  returned, armed 2 s later; B never noticed.
+* The earlier runs found the pieces this depends on: the carriers 600 MHz apart (4800 / 5000 gave false replies at
+  85 ns); the recovery's releases near the lock (B at 4800 captures within +16 / -8 kHz and has false locks at -31
+  and +43-49 kHz: `recov_probe.py`); the sequencer's centring steps muting the TX by default (A's lock flickered at
+  every one of B's releases); the windows from the keeper's leg while the stream runs sat too low (B decided the
+  (-1, +1) corner as (+1, +1) and vetoed it 27 % of the time) and the fast path's 40 ns echo too short for A's I arm:
+  the windows now come from the data's own duty staircase, the echo lasts 80 ns, A decides at 30 ns.
+* Records: `data/twoboard/demo_A_20261108_101227.jsonl`, `demo_B_20261108_101228.jsonl` (a line a second),
+  `duplex_up_20261108_094918.json`, `contrun_20261108_091739.json`; the bench screens
+  `plots/demoscope_bench_A_20261108_1014.png`, `_B_`.
