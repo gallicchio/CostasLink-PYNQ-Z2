@@ -24,6 +24,7 @@ import twoboard as T                                      # noqa: E402
 import costaslink as C                                    # noqa: E402
 import scope_e                                            # noqa: E402
 import twoscope as TS                                     # noqa: E402
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # again: twoscope's import put bringup first
 import wirecheck as W                                     # noqa: E402  (scope_setup2, arm_decoder, shot_nums, LAT_NS)
 import soak_night as SN                                   # noqa: E402  (quiet_readings)
 
