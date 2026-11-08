@@ -41,15 +41,27 @@ BUDGET = [("cable", "5.0 ns a metre (4.43)"), ("air", "3.34 ns a metre"), ("the 
 
 
 class DemoKeeper(linkd.LinkD):
-    """linkd's keeper with a lock test that survives data on the carrier: the corners at random with the idle between
-    leave I's mean at half the leg and Q's at nothing, while linkd's own rule wants an idle carrier (few edges)"""
+    """linkd's keeper with a look that survives data on the carrier.  linkd's own rule wants an idle carrier (few edges,
+    I's mean the leg); under the corners at random I's mean is the leg times the idle's share of the time and Q's is
+    nothing.  CMP_I's duty gives that share (1 at the idle on this side, 0 on the other, 1 - dc/2 under the stream), so
+    the leg is I's mean over |2 duty - 1|, and a lock under data is a clear I mean with Q's mean small beside it.  Without
+    this B's setup under A's stream found 'no carrier' at every level (10:37) and its leg read 0.6 of itself (10:05)"""
     def observe(self):
-        o = super().observe()
-        if not o["locked"] and self.leg:
-            a = max(self.leg, abs(o["di"]))
-            if abs(o["di"]) > 0.3 * self.leg and abs(o["dq"]) < 0.5 * a:
-                o["locked"] = True
-        return o
+        cl = self.server.cl
+        g = cl.gate(seconds=0.01, inputs=("CMP_I", "CMP_QP", "CMP_QN"))
+        i, q, vc = cl.adc("I"), cl.adc("Q"), cl.adc("VC")
+        di, dq = i - self.i0, q - self.q0
+        e_i, e_q = g["CMP_I"]["edges"], g["CMP_QP"]["edges"] + g["CMP_QN"]["edges"]
+        duty = g["CMP_I"]["duty"]
+        f = abs(2 * duty - 1)
+        di_raw = di
+        if e_i >= 50 and f >= 0.2:
+            di = di / f
+        a = max(self.leg or 0.1, abs(di))
+        locked = (e_i < 50 and abs(di) > 0.5 * a and abs(dq) < 0.35 * a) or (e_q < 20 and abs(dq) < 0.35 * a and abs(di) > 0.03)
+        if not locked and e_i >= 50 and abs(di) > 0.02 and abs(dq) < 0.5 * abs(di):
+            locked = True
+        return {"locked": locked, "di": di, "dq": dq, "vc": vc, "e_i": e_i, "e_q": e_q, "di_raw": di_raw, "duty_i": duty}
 
 
 def nominal_tables(cl, s, first_edge=False):
@@ -147,6 +159,10 @@ class Station:
         p_minus, p_qs = dc / 2, dc / 2                                                # the (-1, q) corners; one sign of Q
         plan = {"IP": (1 - p_minus) / 2, "IN": p_minus / 2, "QP": p_qs / 2, "QN": p_qs / 2}       # on-level targets
         far = {"IP": 1 - p_minus / 2, "IN": 1 - (1 - p_minus) / 2, "QP": 0.5, "QN": 0.5}          # the other level's
+        side = 1 if cl.gate(seconds=0.01, inputs=("CMP_I",))["CMP_I"]["duty"] > 0.5 else -1
+        if side < 0:                                                                  # the loop's other lock point: the
+            plan["IP"], plan["IN"] = plan["IN"], plan["IP"]                           # idle reads -1, the (-1, q) corners
+            far["IP"], far["IN"] = far["IN"], far["IP"]                               # +1 (B on side -1 found nothing, 10:41)
         lv, thr, ok = {}, {}, True
         for w in ("IP", "IN", "QP", "QN"):
             on = T._level(cl, w, duty_target=plan[w], seconds=0.01)
@@ -164,9 +180,9 @@ class Station:
                 thr.setdefault(w, min(2.499, max(0.0, self.ld.cen[w] + 0.5 * leg)))
         for w, v in thr.items():
             cl.threshold(w, v)
-        self.cal = {"ok": ok, "why": "" if ok else "a level not found", "levels": {w: tuple(None if x is None else round(x, 4) for x in v) for w, v in lv.items()},
+        self.cal = {"ok": ok, "why": "" if ok else "a level not found", "side": side, "levels": {w: tuple(None if x is None else round(x, 4) for x in v) for w, v in lv.items()},
                     "thresholds": {w: round(v, 4) for w, v in thr.items()}, "t": time.time()}
-        say("%s windows from the data: %s; levels %s" % (self.name, "ok" if ok else "PLAIN (a level not found)", self.cal["levels"]))
+        say("%s windows from the data (side %+d): %s; levels %s" % (self.name, side, "ok" if ok else "PLAIN (a level not found)", self.cal["levels"]))
         return ok
 
     def arm(self):
@@ -208,8 +224,7 @@ class Station:
         o = self.ld.observe()
         st = {"t": now, "station": self.name, "role": self.role, "tx_mhz": self.a.tx, "rx_mhz": self.a.rx, "scheme": SCHEME,
               "period_ns": 10.0 * self.a.period, "up_s": now - self.t_start, "starting": False}
-        duty = 0.5 if self.role == "echo" else 1.0           # the stream: the idle half the time at B
-        sig = abs(o["di"]) / duty
+        sig = abs(o["di"])                                   # the leg now (the keeper's look corrects for the data)
         dsa = cl._dsa_db
         dbm = None
         if sig > 2 * C.ADC_LSB_V:
@@ -229,6 +244,9 @@ class Station:
         st["det"] = self.det
         st["cal"] = self.cal
         if self.role == "sender":
+            if not (cl.rd("TX_GO") & 1):                     # the stream stopped by something else: arm again
+                say("%s: the stream is not running: arming again" % self.name)
+                self.armed_key = None
             q = cl.rx_stats()
             h = cl.histogram()
             cm = cl.confusion()
@@ -292,13 +310,66 @@ class Station:
                 say("%s: symbols arriving but %.1f %% decided for three looks: the windows again" % (self.name, 100 * rates["decided_s"] / rates["events_s"]))
                 self.armed_key = None                          # the side slipped, or the windows are off
                 self.bad_looks = 0
-        if not self.cal.get("ok") and o["e_q"] > 500 and now - self.cal.get("t", 0) > 3.0:
-            self.armed_key = None                              # data on the carrier now: the windows from it
+        if not self.cal.get("ok") and o["e_q"] > 500 and now - self.cal.get("t", 0) > (3.0 if self.cal.get("why", "").startswith("no data") else 20.0):
+            self.armed_key = None                              # data on the carrier now: the windows from it (a failed
+                                                               # measurement is tried again after 20 s, not every look)
         self.state = st
         self.logf.write(json.dumps({k: v for k, v in st.items() if k != "A"} | ({"A": {k: v for k, v in st["A"].items() if k not in ("budget",)}} if "A" in st else {}), default=str) + "\n")
         self.logf.flush()
 
+    def adopt(self):
+        """the PYNQ's own linkd (link.json, duplex) may hold the loop already: take its lock over instead of the 60 s
+        setup (its middles, centres, VC and leg from the dashboard's /api/now; the synthesizers' and the DSA's settings
+        into this proxy's shadows, which recover() reads)"""
+        import urllib.request
+        try:
+            r = json.loads(urllib.request.urlopen("http://%s:8080/api/now" % T.HOSTS[self.name], timeout=4).read())
+        except Exception as e:                                # noqa: BLE001
+            say("%s: no dashboard to adopt from (%r)" % (self.name, e))
+            return False
+        ld = r.get("linkd") or {}
+        # its mode may read 'paused: a program is driving' for a minute after the last demo process: what counts is that
+        # it set the link up (its centres and VC are there) at these carriers, and that the loop reads locked now
+        if not ld.get("cen") or ld.get("vc_lock") is None or not ld.get("leg") or not ld.get("duplex") or r.get("tx_mhz") != self.a.tx or r.get("rx_mhz") != self.a.rx:
+            say("%s: nothing to adopt (linkd %s, tx %s rx %s, duplex %s)" % (self.name, ld.get("mode"), r.get("tx_mhz"), r.get("rx_mhz"), ld.get("duplex")))
+            return False
+        cl = self.cl
+        cl._pll = {0: (float(r["tx_mhz"]), 25.0, None), 1: (float(r["rx_mhz"]), 25.0, None)}
+        cl._dsa_db = float(r["dsa_db"])
+        k = self.ld
+        k.i0, k.q0, k.cen = ld["i0"], ld["q0"], ld["cen"]
+        k.vc_lock, k.leg = ld["vc_lock"], ld["leg"]
+        k.leg_setup = ld.get("leg_setup") or ld["leg"]
+        k.leg_windows = ld.get("leg_windows") or ld["leg"]
+        k.mid_t = ld.get("mid_t")
+        k.duplex = True
+        o = k.observe()
+        if not o["locked"]:
+            say("%s: the PYNQ's lock (leg %.0f mV, DSA %.2f, VC %.4f) does not read locked now: setting up instead" % (self.name, 1e3 * (k.leg or 0), cl._dsa_db, k.vc_lock))
+            return False
+        k.set_up, k.mode = True, "locked"
+        say("%s: adopted the PYNQ's lock (leg %.0f mV, DSA %.2f, VC %.4f)" % (self.name, 1e3 * (k.leg or 0), cl._dsa_db, k.vc_lock))
+        return True
+
+    def selftest_off(self):
+        """the PYNQ's self-test plan drives the TX in steps when nothing else does: off for the demo (pynq-a's was on and
+        put A's TX in hold a moment after the stream started, 10:34)"""
+        import urllib.request
+        try:
+            req = urllib.request.Request("http://%s:8080/api/selftest" % T.HOSTS[self.name], data=b'{"on": false}',
+                                         headers={"Content-Type": "application/json"}, method="POST")
+            urllib.request.urlopen(req, timeout=4).read()
+            say("%s: the PYNQ's self-test plan switched off" % self.name)
+        except Exception as e:                                # noqa: BLE001
+            say("%s: could not reach the dashboard to switch the self-test off (%r)" % (self.name, e))
+
     def run(self):
+        self.selftest_off()
+        with self.lock:
+            if self.role == "echo":
+                self.cl.fast_off()                            # a previous process's echo path, answering a beat while the
+                self.cl.reply_off()                           # loop is not yet locked, is garbage for the far station
+            self.adopt()
         threading.Thread(target=self.keep, daemon=True, name="keeper").start()
         self.stop = False
         while not self.stop:
