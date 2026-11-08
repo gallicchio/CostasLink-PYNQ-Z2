@@ -22,8 +22,8 @@ electronics decide in 100.
   4800 MHz into RX ANT, a 180-190 mV leg at DSA 10-16; the A family and the PRBS 100 % / error-free over cable, by day
   over the dishes 2e-7 to 5e-6 BER at 2-5 Mb/s with the errors in WiFi bursts (4.60, 4.66, 4.67).
 * **The round trip over the air with no cable between the boards** (4.70, `qpvtests.py roundtrip`, the `Duplex`
-  class): A's challenge over the dishes at 4800, B's reply over a pair of FPV antennas at 5400 (one on each board),
-  both loops locked to the other's carrier at once.  20 000 challenges, 20 000 replies, 0 missed, the reply **217.5 ns
+  class): A's challenge over the dishes at 4800, B's reply over a pair of FPV antennas at 5400 (the lollipop omnis,
+  one on each board, 30 cm apart on the bench: Jason, 11-07), both loops locked to the other's carrier at once.  20 000 challenges, 20 000 replies, 0 missed, the reply **217.5 ns
   after the challenge's own TX event, p99.9 220, max 221**, 99.99 % right for one-of-2; one-of-4 99.4 %.  Of the
   217.5 ns: 139.75 the dish path (54.5 ns of air and dishes plus the two 42.5 ns cables, 4.43), 25 the Prover's fast
   path, about 45 the two receive engines' detection, 3 the RF.  That spread is the resolution of the delay demo:
@@ -70,21 +70,38 @@ This plan takes the first; Jason (11-07 late) agreed: full duplex, the return on
    board A + PYNQ + laptop A + scope A + 5 V                board B + PYNQ + laptop B + scope B + 5 V
    TX ANT --- long cable (coiled) --- dish A  ))))))))))))  dish B --- long cable (coiled) --- RX ANT
                                         the beam at 4800 MHz (the one people block)
-   RX ANT --- FPV antenna  ((((((((((((((((((((((((((((((((((((((  FPV antenna --- TX ANT
-                                        the return at 5400 MHz (the reply; nobody needs to see it)
+   RX ANT --- TFP-1 patch  ((((((((((((((((((((((((((((((((((((((  TFP-1 patch --- TX ANT
+                                   the return at 5400 or 5800 MHz (the reply; nobody needs to see it)
 ```
 
-* No T/R switch anywhere.  The FPV pair carried 5400 across the room with 12 dB of DSA to spare (4.72: a 182-191 mV
-  leg at DSA 11.75), so it carries the courtyard; each FPV antenna sits on its own board's RX ANT / TX ANT jack with
-  a short lead.  **The antennas (Jason):** lollipop omnis (about 2 dBi, circular) and round patches of two sizes with
-  an RHCP and an LHCP port each (8-14 dBi, 5.8 GHz designs).  For the return use the two patches of one size facing
-  each other, **RHCP port to RHCP port** (a circular link between two antennas of the same hand facing each other
-  works; a wall's reflection flips the hand and is rejected, which helps outdoors), the LHCP ports on 50 ohm loads;
-  the lollipops are the spare.  At 15 m and 5.4-5.8 GHz the free-space loss is 71 dB; two 10 dBi patches leave 51,
-  against the 62 that gives the design leg at DSA 0: 11 dB in hand before the DSA, 20 more in the leg.  Check the
-  connectors: FPV antennas are often RP-SMA, the boards are SMA (adapters).  The patches' own band is 5.8 GHz: the
-  return carrier is tried at 5400 (measured on the FPV pair, 4.70) and at 5800 (the antennas' band and the ISM band's
-  centre) at R1, and the stronger lock wins.
+* No T/R switch anywhere.  Every FPV measurement so far (4.70, 4.72, 4.73, 4.80) was the two lollipop omnis 30 cm
+  apart on the bench, the boards side by side (Jason, 11-07), not across the room: 4.72's 182-191 mV leg at DSA
+  11.75 at 5400 is that 30 cm.  Each FPV antenna sits on its own board's RX ANT / TX ANT jack with a short lead.
+  **The antennas (Jason, 11-07, photos for the record):** lollipop omnis (about 2 dBi, circular), and
+  the "Triple Feed Patch" family by Maarten Baert and Robin Theunis (open-source hardware, CC BY-SA, 5.8 GHz designs):
+  the small black **TFP-1, 9.4 dBi** (a 75 mm round board, one patch, three feeds through a hybrid) and the large red
+  **TFPA-1 array, 14 dBi** (seven patches on a 200 mm board).  Each has two SMA jacks on the back, **LHCP** and
+  **RHCP**, and ships with an SMA plug-to-plug lead, a 50 ohm SMA load and an RP-SMA adapter.  Its silkscreen says
+  it: "Do not connect RX and TX to the same antenna!  Terminate unused connectors with 50 ohm terminator for optimal
+  axial ratio" (the two ports are the two hands of one radiator, isolated by the axial ratio only).
+  **The return uses the two small TFP-1s** (Jason: they hang off the board on a stiff SMA lead, pointing at their
+  twin), **RHCP port to RHCP port**: a circular link between two antennas of the same hand facing each other works,
+  and a wall's reflection flips the hand and is rejected, which helps outdoors.  Each antenna carries one direction
+  only (A's RX, B's TX), as the silkscreen asks; the LHCP ports get the supplied 50 ohm loads; the RP-SMA adapters
+  stay in the bag (the boards' jacks are SMA, the supplied lead mates directly).  The lollipops are the spare, the
+  array the reserve if the small pair runs short of margin.
+  **The return's budget at 15 m**, from two measurements at 5400 that agree within 1 dB: the lollipops 30 cm apart
+  (4.72: 185 mV at DSA 11.75; the free-space loss at 30 cm is 37 dB, less 4 dB of omni gain) and the dishes across
+  the room (4.65: -57.5 dBm into RX ANT gave a 61 mV leg, so the design leg of 150 mV needs -50 dBm at 5400, and
+  the board's TX at 5400 comes out near -5 dBm, 10 dB under its 4800 output).  At 15 m the free-space loss is 71 dB
+  and two TFP-1s leave 52 dB of path: about -57 dBm into A's RX ANT, **a 65-80 mV leg at DSA 0**.  Enough for the
+  one-of-2 replies (A2 decodes down to 22-35 mV, 4.89: 6-9 dB of margin) but no DSA headroom and nothing for rain, a
+  misaim or a hand in the way.  The array pair would give 190-230 mV; one array at either end (+4.6 dB) 110-135 mV.
+  5800 is the patch's own band while 5400 is 7 % below it, where a patch's gain and axial ratio are off by an amount
+  only a measurement gives; the TX chain at 5800 is 11 dB under 4800 (4.65), about 1 dB under 5400.  So R1 across
+  the room (the courtyard's size) measures the small pair at 5400 and at 5800, the stronger lock wins, and if A's
+  leg is under about 100 mV an array on a stand replaces one small patch.  The beam's budget is separate and
+  comfortable (4800 over the dishes: -45.5 dBm, 180-190 mV at DSA 10-16).
 * Two carriers, 4800 for the beam and 5400 for the return, as in 4.70 (the receivers are homodyne: a board's own TX
   at the other carrier is 600 MHz out of its arms' band).  5400 sits in the WiFi gap; 4800 is below the WiFi channels.
   The 5 GHz unlicensed bands are 5150-5350 and 5470-5850 MHz: radiating 4800 outdoors with +4 dBm into an 18 dBi dish
@@ -216,7 +233,7 @@ updating.
 | B4 | **The metres calibration**: T0 from one round trip at a tape-measured dish spacing, and the cables' 85 ns from 4.43; the page shows ns and metres | the delay number must read as a distance | `demo.py` | Mon, 15 min with the dishes |
 | B5 | **The message key**: a key on laptop A sends one of 8 (TX_MSG + a single event) in the next exchange phase, laptop B shows which arrived; ten a second is plenty | the 3-bit scheme made tangible | `demo.py` | Tue |
 | B6 | **The band panel** (optional): the receiver's survey as a bar chart on laptop B, taken in the gaps | interference is part of the story | `survey()` exists | Tue if time |
-| R1 | **Rehearsal 1, Mon**: the dishes across the room as 4.70, both laptops, the full loop of section 5 for an hour with nobody touching anything, then the blocking and the carrying | find what breaks | | Mon pm |
+| R1 | **Rehearsal 1, Mon**: the dishes across the room as 4.70, the two TFP-1s on their boards across the room too (the first time the return crosses more than 30 cm): A's leg at 5400 and at 5800, RHCP to RHCP, LHCP loaded, the carrier and the antenna size decided on it (section 4); then both laptops, the full loop of section 5 for an hour with nobody touching anything, then the blocking and the carrying | find what breaks; the return's real leg | | Mon pm |
 | R2 | **Rehearsal 2, Tue or Wed**: the courtyard itself, power from the building, the laptops' WiFi off, the sun on the screens, the survey of the outdoor band; the carrier choice (O1) settled by it | the outdoors | | Wed |
 
 Not for Thursday: the gateware's pipeline (REVB 68), the settled decision as the default (tonight's cycle says
@@ -232,8 +249,9 @@ the 4 s / 1 s alternation: a gateware item for later).  Nothing in the demo need
   Without B1 a lost lock needs a keypress: the fallback is `demo.py` calling `recover` itself.
 * **The exchange phase while the beam is blocked**: no replies, the histogram empty, the PATH tile shows "no path";
   the stream phase then shows the errors: both are the demo working.
-* **Alignment outdoors**: the power tile is the alignment tool; an 18 dBi dish is about 8 degrees wide, the FPV pair
-  does not care.  Polarization: both dishes the same way up.
+* **Alignment outdoors**: the power tile is the alignment tool; an 18 dBi dish is about 8 degrees wide; a 9.4 dBi
+  patch is about 60 degrees wide (the 14 dBi array 35), pointed by eye at its twin.  Polarization: both dishes the
+  same way up; the patches are circular and do not care how they are turned.
 * **The second laptop**: needs the repo, python3 with numpy and the lab driver for the scope, the bench config for its
   PYNQ; set up and tested at R1.
 * **Power and weather**: section 4; a dry run at R2.
