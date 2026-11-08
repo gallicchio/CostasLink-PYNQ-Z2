@@ -74,9 +74,10 @@ This plan takes the first; Jason (11-07 late) agreed: full duplex, the return on
                                    the return at 5400 or 5800 MHz (the reply; nobody needs to see it)
 ```
 
-* No T/R switch anywhere.  Every FPV measurement so far (4.70, 4.72, 4.73, 4.80) was the two lollipop omnis 30 cm
-  apart on the bench, the boards side by side (Jason, 11-07), not across the room: 4.72's 182-191 mV leg at DSA
-  11.75 at 5400 is that 30 cm.  Each FPV antenna sits on its own board's RX ANT / TX ANT jack with a short lead.
+* No T/R switch anywhere.  Every board-to-board FPV measurement (4.70, 4.72, 4.73, 4.80) was the two lollipop omnis
+  30 cm apart on the bench, the boards side by side (Jason, 11-08), not across the room: 4.72's 182-191 mV leg at
+  DSA 11.75 at 5400 is that 30 cm.  (The first days' tests of one board against the B210 in Jason's office, 4.0,
+  used the directional patches; nothing from them bears on the pair.)  Each FPV antenna sits on its own board's RX ANT / TX ANT jack with a short lead.
   **The antennas (Jason, 11-07, photos for the record):** lollipop omnis (about 2 dBi, circular), and
   the "Triple Feed Patch" family by Maarten Baert and Robin Theunis (open-source hardware, CC BY-SA, 5.8 GHz designs):
   the small black **TFP-1, 9.4 dBi** (a 75 mm round board, one patch, three feeds through a hybrid) and the large red
