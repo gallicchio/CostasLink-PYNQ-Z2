@@ -46,8 +46,24 @@ DAC1, DAC2 = 0x60, 0x61                 # the two AD5696R (costaslink.DAC1, DAC2
 CAL_FILE = os.path.join(HERE, "windows.json")    # each lock point's calibration, kept across a restart
 
 
+def park(rx_mhz, tx_mhz=None):
+    """a frequency for the RX synthesizer with no carrier at the mixer: 300 MHz or more from the link's carrier and
+    500 or more from this board's own TX (its leak into its own receiver is a beat the demodulator's 390 MHz baseband
+    passes: 4800 / 5000 on the bench, 11-08), inside 3000-6000 and on the 25 MHz grid"""
+    for off in (-300.0, 300.0, -600.0, 600.0, -900.0, 900.0, -1200.0, 1200.0):
+        p = rx_mhz + off
+        if 3000.0 <= p <= 6000.0 and (tx_mhz is None or abs(p - tx_mhz) >= 500.0):
+            return float(25 * round(p / 25.0))
+    return 5800.0 if rx_mhz < 5500.0 else 5200.0
+
+
 class LinkD:
-    STARTS_KHZ = (20, 40, 70, 120)
+    # the recovery's releases, kHz from the learned lock, in order.  Board B on a strong 4800 MHz carrier (a 155 mV leg at
+    # DSA 9.75) has false locks 31 kHz below and 43-49 kHz above its lock, and its capture range from a release is
+    # about +16 / -8 kHz: +8, +12, +16 and -8 locked in 0.6-1.2 s, -16 and +30 fell into the false locks, and the old
+    # (20, 40, 70, 120) failed four times in a row after every 3 s beam block (2026-11-08 09:44-09:48, recov_probe);
+    # setup escapes this by meeting the carrier weak first (DSA 31.75 down).  The old starts stay as the fallbacks
+    STARTS_KHZ = (10, 16, -10, 24, 40, 70, 120)
 
     def __init__(self, server, idle_s=60.0, poll_s=0.2, off_khz_min=8.0, t_lost=0.5, backoff_s=(5.0, 60.0), config=None):
         self.server = server
@@ -58,6 +74,10 @@ class LinkD:
         except (OSError, ValueError):
             self.cfg = None
         self.set_up = self.cfg is None                   # nothing to set up: learn from the first lock seen
+        # duplex (link.json "duplex": true): this board's TX carries the other board's loop, so this keeper never mutes,
+        # parks or retunes it after setup put it on tx_mhz; the no-carrier work (the middles, the centring) parks the RX
+        # synthesizer instead (bringup/qpvtests.Duplex's release, 4.70, folded in for the courtyard demo, 11-08)
+        self.duplex = bool(self.cfg and self.cfg.get("duplex"))
         self.setup_next = 0.0
         self.setup_wait = backoff_s[0]
         self.idle_s, self.poll_s, self.off_khz_min, self.t_lost = idle_s, poll_s, off_khz_min, t_lost
@@ -238,16 +258,32 @@ class LinkD:
         # synthesizer on tx_mhz, the RX one on rx_mhz; VR, the TX's carrier null, belongs to tx_mhz)
         tx_mhz = float(cfg.get("tx_mhz", cfg.get("mhz")))
         rx_mhz = float(cfg.get("rx_mhz", cfg.get("mhz")))
+        self.duplex = duplex = bool(cfg.get("duplex"))
         self.mode = ("setting up the link at %g MHz" % rx_mhz if tx_mhz == rx_mhz else
                      "setting up the link: receiving at %g MHz, sending at %g MHz" % (rx_mhz, tx_mhz))
-        cl.ctrl(loop_hold=1, tx_dis=1)
-        cl.pll_tune(0, tx_mhz)
-        cl.pll_tune(1, rx_mhz)
-        time.sleep(RELOCK_S)
         vr = cfg.get("vr")
-        if vr:
-            cl.dac(DAC1, VR_I=float(vr["VR_I"]), VR_Q=float(vr["VR_Q"]))
-        cl.hold_point(1, 0)
+        if duplex:
+            # the TX on at its idle from the start and left alone after: the other board's loop hangs on it.  Its
+            # synthesizer is tuned only if it is not already there (a keeper taking over a running board)
+            if cfg.get("q_off_f") is not None:
+                cl.dac(DAC1, Q_OFF_F=float(cfg["q_off_f"]))   # the fast Q arm's trim (board B: 2.79 V, 4.76)
+            cl.ctrl(loop_hold=1)
+            if abs(float(cl._pll.get(0, (0.0,))[0]) - tx_mhz) > 1e-6:
+                cl.pll_tune(0, tx_mhz)
+            if vr:
+                cl.dac(DAC1, VR_I=float(vr["VR_I"]), VR_Q=float(vr["VR_Q"]))
+            cl.hold_point(1, 0)
+            cl.ctrl(tx_dis=0)
+            cl.pll_tune(1, park(rx_mhz, tx_mhz))         # no carrier at the mixer for the middles and the centres
+        else:
+            cl.ctrl(loop_hold=1, tx_dis=1)
+            cl.pll_tune(0, tx_mhz)
+            cl.pll_tune(1, rx_mhz)
+            time.sleep(RELOCK_S)
+            if vr:
+                cl.dac(DAC1, VR_I=float(vr["VR_I"]), VR_Q=float(vr["VR_Q"]))
+            cl.hold_point(1, 0)
+        time.sleep(RELOCK_S)
         cl.dsa(31.75)
         time.sleep(0.1)
         self.i0 = sum(cl.adc("I") for _ in range(8)) / 8.0
@@ -261,6 +297,9 @@ class LinkD:
             except ValueError:
                 cen[w] = V_MID
         self.cen = cen
+        if duplex:
+            cl.pll_tune(1, rx_mhz)
+            time.sleep(RELOCK_S)
         target = float(cfg.get("leg_target", 0.15))
         pll = dict(cl._pll)
         self.vc_lock = VC_NOMINAL
@@ -279,7 +318,10 @@ class LinkD:
                 break
             dsa -= 2.0
         if got is None:
-            cl.ctrl(loop_hold=1, tx_dis=1)
+            if duplex:
+                cl.ctrl(loop_hold=1)                     # the TX stays on for the other board
+            else:
+                cl.ctrl(loop_hold=1, tx_dis=1)
             return False
         if abs(dsa - got[0]) > 1e-9:                      # the last step did not lock: back to the best one
             self.release_at(VC_NOMINAL + got[2] / self.kv(), pll, got[0], 0)
@@ -449,22 +491,34 @@ class LinkD:
 
     def release_at(self, vc, pll, dsa, tx_dis, settle_s=1.5):
         cl = self.server.cl
-        cl.ctrl(loop_hold=1, tx_dis=1)
-        cl.dsa(31.75)
-        cl.pll_tune(0, 5800.0)
-        cl.pll_tune(1, 5800.0)
-        time.sleep(RELOCK_S)
-        self.loop_center()
-        for which in (0, 1):
-            f, f_pfd, cp = pll.get(which, (5800.0, 25.0, None))
-            cl.pll_tune(which, f, f_pfd=f_pfd, cp=cp)
+        if self.duplex:
+            # the RX synthesizer alone is moved away for the centring and back; the TX (the other board's carrier) and
+            # its mute are not touched (qpvtests.Duplex's release, 4.70)
+            cl.ctrl(loop_hold=1)
+            cl.dsa(31.75)
+            f, f_pfd, cp = pll.get(1, (5800.0, 25.0, None))
+            cl.pll_tune(1, park(f, pll.get(0, (None,))[0]))
+            time.sleep(RELOCK_S)
+            self.loop_center()
+            cl.pll_tune(1, f, f_pfd=f_pfd, cp=cp)
+        else:
+            cl.ctrl(loop_hold=1, tx_dis=1)
+            cl.dsa(31.75)
+            cl.pll_tune(0, 5800.0)
+            cl.pll_tune(1, 5800.0)
+            time.sleep(RELOCK_S)
+            self.loop_center()
+            for which in (0, 1):
+                f, f_pfd, cp = pll.get(which, (5800.0, 25.0, None))
+                cl.pll_tune(which, f, f_pfd=f_pfd, cp=cp)
         time.sleep(RELOCK_S)
         cl.dsa(dsa)
         u = 3 * V_MID - cl.adc("VC") - cl.dac_volts()["VC_OFF"]             # the integrator, held
         cl.dac(DAC1, VC_OFF=float(min(3.2, max(0.1, 3 * V_MID - u - vc))))
         time.sleep(0.05)
-        cl.ctrl(tx_dis=tx_dis)
-        time.sleep(0.05)
+        if not self.duplex:
+            cl.ctrl(tx_dis=tx_dis)
+            time.sleep(0.05)
         cl.ctrl(loop_hold=0)
         t0 = time.time()
         while time.time() - t0 < settle_s:
@@ -477,7 +531,16 @@ class LinkD:
         """bringup/stages.py's loop_center on the driver alone: the integrator back to mid-scale with no carrier, by
         the trims that put ERR on the side that moves VC the right way and timed releases of the hold"""
         cl = self.server.cl
-        cl.ctrl(loop_hold=1, tx_dis=1)
+        if self.duplex:
+            cl.ctrl(loop_hold=1)                          # the carrier is away because the RX synthesizer is parked
+            # the sequencer's steps below drive CTRL's outputs themselves while they run, every bit not named 1 (the
+            # safe state: muted): in duplex the TX stays on through them (the other board's loop hangs on it; A's lock
+            # flickered at every one of B's releases until this, 11-08 09:30), the switch as it is
+            c = cl.rd("CTRL")
+            keep = {"tx_dis": 0, "tr_a": c >> cl.CTRL_BITS["tr_a"] & 1}
+        else:
+            cl.ctrl(loop_hold=1, tx_dis=1)
+            keep = {}
         cl.dac(DAC1, VC_OFF=V_MID)
         rest = cl.dac_volts()                             # the arm trims as set (B's Q_OFF_F 2.79 V, BRINGUP_LOG 4.76): the
         rest_i, rest_q = rest["I_OFF_F"], rest["Q_OFF_F"]  # steering works about V_MID as before (restored there, the lock
@@ -498,7 +561,7 @@ class LinkD:
                     cl.dac(DAC1, Q_OFF_F=trims.get("Q_OFF_F", V_MID))
                     time.sleep(0.03)
                     v_a = cl.adc("VC")
-                    cl.seq_program([(0.003 / cl.t_clk, {"loop_hold": 0})])       # muted on purpose: no carrier
+                    cl.seq_program([(0.003 / cl.t_clk, dict(keep, loop_hold=0))])   # muted on purpose (one board): no carrier
                     cl.seq_run()
                     time.sleep(0.02)
                     dv = (cl.adc("VC") - v_a) * want
@@ -513,7 +576,7 @@ class LinkD:
                 rate.setdefault(up, best[1] / 0.003)
                 r = rate.get(up, abs(err - V_MID) / 1e-3)
                 dt = min(0.5, max(1e-4, abs(target_v - vc) / max(r, 1.0)))
-                cl.seq_program([(dt / cl.t_clk, {"loop_hold": 0})])
+                cl.seq_program([(dt / cl.t_clk, dict(keep, loop_hold=0))])
                 cl.seq_run()
                 time.sleep(dt + 0.02)
                 cl.dac(DAC2, I_OFF_F=V_MID)
