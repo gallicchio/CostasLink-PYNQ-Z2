@@ -157,6 +157,47 @@ the stream phase and refresh every 5 s.  The tiles on the laptops refresh from w
 4. Press a key on laptop A (item B5): a message (one of 8) appears on laptop B's grid, with its latency.
 5. Hold a phone's hotspot near a dish (item B6): the band panel lights the channel and the errors tick.
 
+## 5a. The scopes' views: I and Q and two more things, readable in a few seconds
+
+Jason (11-07): each scope shows I and Q and up to two other interesting things, scaled and shifted so a trustee who
+looks for a few seconds sees what is going on.  Both scopes keep one fixed view; nothing is switched.  The channels'
+colours are the Siglent's own (ch1 yellow, ch2 pink, ch3 cyan, ch4 green) and this firmware has no channel labels,
+so a printed card by each scope names the four traces.  All four inputs through 50 ohm feed-throughs, as on the
+bench.  `bringup/demoscope.py preset A|B` sets each view once; `demoscope.py shot A|B` saves the screen.
+
+### Scope B, by the dish that gets blocked: "the bits, and the lock"
+
+| trace | jack | what the trustee sees | scale, place |
+|---|---|---|---|
+| ch2 pink, **I** | J104 I MON | the in-phase arm: a random waveform, one level a symbol | 10 mV/div, centred 3 div up |
+| ch3 cyan, **Q** | J105 Q MON | the quadrature arm: a second random waveform, independent of the first (the two bits of each QPSK symbol) | 10 mV/div, centred 1 div up |
+| ch1 yellow, **the bit** | J103 CMP I MON | the comparator's clean 0 / 1 under I: the analog wiggle above becomes a digital bit here; the scope triggers on its edges | 0.2 V/div, centred 1 div down |
+| ch4 green, **the lock** | J107 VC MON | the VCXO's control voltage: a flat line at 1.65 V while the loop holds the carrier; block the beam and the line walks away to a rail, unblock and it slides back | 1 V/div, centred 3 div down |
+
+Timebase 100 ns/div (seven 200 ns symbols across), trigger on ch1 rising at 0.15 V, normal mode, **persistence 1 s**:
+with the trigger on the bit's edge the frames pile up into an eye diagram on I and Q, open while the link is clean;
+a hand in the beam closes the eye (the levels shrink, then the traces smear as the loop lets go), and the green line
+leaves its place.  Blocking the beam thus moves every trace at once.  The level: a 150-180 mV leg is 7-9 mV at the
+scope through the 1 k tap, 0.7-0.9 div at 10 mV/div in a 2-division band; if the eye wants to be bigger, the ch2 /
+ch3 feed-throughs come off (1 Mohm: x21 larger, the edges rounded by the lead's capacitance, 50 mV/div) and the
+decision is made at R1 by looking.
+
+### Scope A, the sender: "the ping and the pong"
+
+| trace | jack | what the trustee sees | scale, place |
+|---|---|---|---|
+| ch2 pink, **I** | J104 I MON | A's own receiver: the return path's random stream most of the time, the reply's blip during an exchange | 10 mV/div, centred 3 div up |
+| ch3 cyan, **Q** | J105 Q MON | the same for Q | 10 mV/div, centred 1 div up |
+| ch1 yellow, **ping** | J205 TRIG A | the challenge leaving the board: a pulse at the left of the screen | 1 V/div, baseline 2.5 div down |
+| ch4 green, **pong** | J206 TRIG B | the reply recognised by A's FPGA: a pulse to the right of the ping, on the same baseline, **the gap between them is the courtyard** | 1 V/div, the same baseline |
+
+Timebase 50 ns/div with the trigger 1 div from the left (the pong lands 4.4 div right at 220 ns), trigger on ch1
+rising at 0.85 V, **auto mode**: between exchanges the screen free-runs on the return stream's I and Q (alive), and
+every few seconds the two pulses appear.  The scope's own delay measurement, first rising edge of ch1 to first rising
+edge of ch4 (`MEAD FRR,C1-C4`) with statistics on, prints the mean in ns at the bottom and holds it between
+exchanges; carry dish B a metre and the mean moves 3.3 ns.  Blocking the beam removes the pong and the mean stops
+updating.
+
 ## 6. The build list, in order
 
 | | what | why | where | estimate |
