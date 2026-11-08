@@ -134,7 +134,8 @@ class Station:
             try:
                 t = time.time()
                 i = self.cl.adc("I")
-                n = self.cl.rd("RX_EVENTS")
+                n = self.cl.rd("RX_DECIDED" if self.role == "echo" else "RX_EVENTS")   # B: symbols decoded (events go on
+                                                                                   # counting noise while the beam is blocked)
             except Exception:                                 # noqa: BLE001
                 continue
             finally:
