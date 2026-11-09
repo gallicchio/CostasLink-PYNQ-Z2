@@ -10,8 +10,10 @@ serves its tiles at http://<laptop>:8090/ (demo.html beside this file, /api/demo
 block the beam and B's symbols stop, A's replies stop and its missed count climbs; clear it and both loops come back by
 themselves.
 
-    python3 demo.py A [--tx 4800 --rx 5400] [--port 8090] [--period 50] [--window 45] [--t0_ns T]
-    python3 demo.py B [--tx 5400 --rx 4800] [--port 8090]
+    python3 demo.py A [--tx 4800 --rx 5400] [--port 8090] [--period 50] [--window 45] [--t0_ns T] [--host IP]
+    python3 demo.py B [--tx 5400 --rx 4800] [--port 8090] [--host IP]
+    (the bench's tuning is the default: A decides 24 samples after the echo's edge with its I windows at 0.4 of the
+    swing, B at 16 and 0.5; the keeper's attenuator floor 0 dB)
     --trig_a off      on the bench, where TRIG A is wired into the other board's TRIG IN (JP203 puts it on the Q ladder)
 """
 import argparse
@@ -90,14 +92,20 @@ class Station:
         self.a = a
         self.name = a.station
         self.role = "sender" if self.name == "A" else "echo"
+        if a.host:
+            T.HOSTS[self.name] = a.host                      # another address (a second laptop's dongle, a WiFi link)
         self.node = T.Node(self.name)
         self.cl = self.node.cl
         self.lock = threading.RLock()
         self.s = C.SCHEMES[SCHEME]
         self.rmap = T.reply_maps(self.s.n)[REPLY]
-        (vi, vq), _ = self.node.vr(a.tx)
-        self.cfg = dict(T.LINK_CFG, duplex=True, tx_mhz=float(a.tx), rx_mhz=float(a.rx), vr={"VR_I": vi, "VR_Q": vq},
-                        track_windows=False)
+        vr = self.pynq_null(a.tx)                            # the PYNQ's own link.json first: a second laptop has no
+        if vr is None:                                       # data/twoboard/vr_null.json, and the 5200 null is not 4800's
+            (vi, vq), off = self.node.vr(a.tx)
+            vr = {"VR_I": vi, "VR_Q": vq}
+            say("%s: the carrier null from this laptop's table (%g MHz from the carrier): %s" % (self.name, off, vr))
+        self.cfg = dict(T.LINK_CFG, duplex=True, tx_mhz=float(a.tx), rx_mhz=float(a.rx), vr=vr, track_windows=False,
+                        dsa_min=float(a.dsa_min))
         if self.name in T.Q_OFF_F_V:
             self.cfg["q_off_f"] = T.Q_OFF_F_V[self.name]
         path = os.path.join(T.DATA, "cfg_%s_demo.json" % self.name)
@@ -121,6 +129,19 @@ class Station:
         stamp = time.strftime("%Y%m%d_%H%M%S")
         self.logf = open(os.path.join(T.DATA, "demo_%s_%s.jsonl" % (self.name, stamp)), "a")
         self.t_start = time.time()
+
+    def pynq_null(self, tx_mhz):
+        """the TX carrier's null the PYNQ's link.json holds, when it is for this carrier"""
+        import urllib.request
+        try:
+            r = json.loads(urllib.request.urlopen("http://%s:8080/api/now" % T.HOSTS[self.name], timeout=4).read())
+            cfg = (r.get("linkd") or {}).get("config") or {}
+            if cfg.get("vr") and abs(float(cfg.get("tx_mhz", 0)) - float(tx_mhz)) < 1e-6:
+                say("%s: the carrier null from the PYNQ's link.json: %s" % (self.name, cfg["vr"]))
+                return {"VR_I": float(cfg["vr"]["VR_I"]), "VR_Q": float(cfg["vr"]["VR_Q"])}
+        except Exception as e:                                # noqa: BLE001
+            say("%s: the PYNQ's link.json not read (%r)" % (self.name, e))
+        return None
 
     # ---- the quick look, ten times a second: the signal and the rate for the page's strip ----
     def fast(self):
@@ -479,10 +500,13 @@ def main():
     p.add_argument("--window", type=int, default=45, help="A's pairing window in clocks (under the period)")
     p.add_argument("--fp_clocks", type=int, default=8, help="B's echo held this many clocks (4 left A's I arm short of the (-1, q) corners)")
     p.add_argument("--width", type=int, default=20, help="clocks a corner is held")
-    p.add_argument("--delay", type=int, default=16, help="the decision this many samples after the event's first edge (16: at 8 the (-1, +1) echo "
-                   "went undecided on A's 75 mV return, its I arm still falling when Q had crossed, REVB 66; the night's A8 d16 was 100 %%)")
+    p.add_argument("--delay", type=int, default=None, help="the decision this many samples after the event's first edge (default B 16, A 24: "
+                   "at 8 the (-1, +1) echo went undecided on A's 75 mV return, its I arm still falling when Q had crossed, REVB 66)")
     p.add_argument("--settle", type=int, default=0, help="or the settled decision on this many samples (2) with --delay as the cap (16)")
-    p.add_argument("--frac_i", type=float, default=0.5, help="IP / IN thresholds at this fraction of their measured swing")
+    p.add_argument("--frac_i", type=float, default=None, help="IP / IN thresholds at this fraction of their measured swing (default B 0.5, A 0.4)")
+    p.add_argument("--dsa_min", type=float, default=0.0, help="the keeper's setup steps the attenuator down to here (0: a weak over-air "
+                   "return needs all of it; the bench's floor was 6)")
+    p.add_argument("--host", default=None, help="the PYNQ's address (default A 192.168.2.99, B 192.168.2.98)")
     p.add_argument("--frac_q", type=float, default=0.5, help="QP / QN thresholds at this fraction of their measured swing")
     p.add_argument("--t0_ns", type=float, default=None, help="the round trip at zero path (B4's calibration)")
     p.add_argument("--trig_a", choices=("tx_event", "off"), default="tx_event")
@@ -491,6 +515,10 @@ def main():
         a.tx = 4800.0 if a.station == "A" else 5400.0
     if a.rx is None:
         a.rx = 5400.0 if a.station == "A" else 4800.0
+    if a.delay is None:
+        a.delay = 24 if a.station == "A" else 16              # the bench's tuning (11-08 10:12, 21.5 h clean after)
+    if a.frac_i is None:
+        a.frac_i = 0.4 if a.station == "A" else 0.5
     st = Station(a)
     st.stop = False
 

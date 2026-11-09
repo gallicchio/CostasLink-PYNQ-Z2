@@ -29,8 +29,9 @@ import time
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.expanduser("~/lab-instrument-control"))
-sys.path.insert(0, os.path.expanduser("~/lab-instrument-control/siglent"))
+LIC = os.path.expanduser(os.environ.get("LAB_INSTRUMENT_CONTROL", "~/lab-instrument-control"))   # as bench.py: a station kit
+sys.path.insert(0, LIC)                                                                     # carries its own copy
+sys.path.insert(0, os.path.join(LIC, "siglent"))
 from scpi_link import usbtmc_node                                      # noqa: E402
 from siglent_SDS1104XE import SDS1104XE, USB_VENDOR, USB_PRODUCT       # noqa: E402
 

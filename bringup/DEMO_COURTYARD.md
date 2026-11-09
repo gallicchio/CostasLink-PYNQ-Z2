@@ -213,8 +213,10 @@ the trigger on the bit keeps acquiring, persistence builds the five dots within 
 |---|---|---|---|
 | ch1 yellow, **I** | J104 I MON | the in-phase arm: a random waveform, one level a symbol; in XY the horizontal axis | 10 mV/div, centred (XY wants the idle in the middle) |
 | ch2 pink, **Q** | J105 Q MON | the quadrature arm: a second random waveform, independent of the first (the two bits of each QPSK symbol); in XY the vertical axis | 10 mV/div, centred |
-| ch3 cyan, **the bit** | J103 CMP I MON | the comparator's clean 0 / 1 under I: the analog wiggle above becomes a digital bit here; the scope triggers on its edges | 0.2 V/div, centred 2 div down |
-| ch4 green, **the lock** | J107 VC MON | the VCXO's control voltage: a flat line at 1.65 V while the loop holds the carrier; block the beam and the line walks away to a rail, unblock and it slides back | 1 V/div, centred 3.5 div down |
+| ch3 cyan, **the bit** | J103 CMP I MON, through a feed-through (its /10 output is made for 50 ohm: 0.33 V) | the comparator's clean 0 / 1 under I: the analog wiggle above becomes a digital bit here; the scope triggers on its edges | 0.5 V/div, its low level 1.3 div down |
+| ch4 green, **the lock** | J107 VC MON, **no feed-through** (1 Mohm: its full voltage, as on the bench since 10-30) | the VCXO's control voltage: a flat line near 1.87 V while the loop holds the carrier; block the beam and the line walks away to a rail, unblock and it slides back | 1 V/div, 1.65 V at 2.5 div down |
+
+In the time view I sits 2.5 div up and Q 0.5 div up; `cycle B` moves both to the middle for XY and back (11-09).
 
 In XY the constellation is small through the 50 ohm feed-throughs (a 180 mV leg is 9 mV at the scope: 0.9 div at
 10 mV/div, 1.8 at 5): the feed-throughs off ch1 and ch2 (1 Mohm, `--scale 0.05`) make it 3.6 div at 50 mV/div, with the
@@ -327,3 +329,39 @@ TRIG IN wiring).  What it did:
 * Records: `data/twoboard/demo_A_20261108_101227.jsonl`, `demo_B_20261108_101228.jsonl` (a line a second),
   `duplex_up_20261108_094918.json`, `contrun_20261108_091739.json`; the bench screens
   `plots/demoscope_bench_A_20261108_1014.png`, `_B_`.
+
+## 10. Laptops, networks and who runs what (11-09)
+
+* **Two laptops, each wired only to its own PYNQ** (a USB-Ethernet dongle or the laptop's port, a fixed address on
+  192.168.2.0/24; PYNQ A answers at .99, B at .98 with no DHCP server present).  The stations need nothing between them:
+  everything the demo measures goes over the air.  Each laptop runs its station (`demo.py A` / `demo.py B`), shows its
+  own page, and on B drives scope B's 5 s view cycle over USB.  **WiFi off, or 2.4 GHz only** on both.
+* **A second laptop** gets `bringup/station_kit.sh`'s tarball (148 kB: demo.py, demoscope.py and what they load, the
+  two lab-instrument-control files the scope needs, `run_station.sh`, `STATION.txt`); it needs python3 with numpy and
+  the scope's /dev/usbtmc readable (group plugdev).  Tested 11-09 in a clean environment: every module loads from the kit.
+* **The PYNQs' WiFi, if ever wanted** (both images PYNQ 3.0, kernel 5.15.19, read 11-09, nothing changed): drivers and
+  firmware present for MediaTek **MT7601U** and Ralink **RT5370 / RT3070 / RT2870** (2.4 GHz only), Realtek
+  RTL8188CUS / RTL8192CU / RTL8723BU / RTL8192EU, Atheros AR9170, some Broadcom USB; **not** for Atheros AR9271 (its
+  firmware is there, its driver is not), Realtek RTL8188EUS (most cheap Realtek nanos), MediaTek MT7610U / MT7612U, or
+  the Realtek AC dongles (RTL8811 / 8812 / 8821).  Client only (wpa_supplicant 2.10 with ifupdown's hooks; no hostapd,
+  no NetworkManager): it would join a 2.4 GHz hotspot.  Against it: it changes the PYNQ's network setup, puts a radio
+  on the RF board, uses the PYNQ-Z2's one USB host port, and the PYNQ's kernel has no USB scope driver (no usbtmc), so
+  scope B's view cycle and station B's page still want a laptop at station B.  The USB IDs each driver claims are in
+  the scratchpad's `pynqwifi/usb_wifi_aliases.txt` for matching a dongle's `lsusb`.
+* **Agents**: the demo needs none; it runs from two commands.  One agent (on zmash) for setup and debugging; a second
+  one with access to both boards would break the one-driver rule.  In the courtyard, if zmash should see station B, a
+  2.4 GHz link between the two laptops (zmash's hotspot) and ssh to laptop B, not WiFi on the PYNQs.
+* **The bench soak before it** (11-08 11:22 to 11-09 08:55, both stations from zmash over the cables, 21.6 h): no lost
+  lock on either; after the first two minutes A sent about 155 billion challenges with 0 missed and 1 wrong, false
+  replies about 10 000 in all (0-1 a second); the round trip's median 118.75-125 ns in every second.
+
+### The lab rehearsal (11-09), the cabling
+
+1. Off the bench: both inter-board cables and their pads, the TRIG A tees, both TRIG IN leads (JP203 can stay).
+2. The beam: A's TX ANT, its long cable, dish A; dish B, its long cable, B's RX ANT (no T/R switch).
+3. The return: B's TX ANT and A's RX ANT each on a TFP-1's **RHCP** port by the stiff lead, the LHCP ports on the
+   supplied loads, the two patches facing each other.  Never a TX ANT cable straight to an RX ANT (+1 dBm maximum).
+4. Scope A: ch1 A's TRIG A (J205), ch2 I MON, ch3 Q MON, ch4 TRIG B (J206), all four through feed-throughs.
+5. Scope B: ch1 B's I MON, ch2 Q MON, ch3 CMP I MON (J103), all through feed-throughs; ch4 VC MON (J107) with none.
+6. Then: both stations restarted with the demo's settings (no `--trig_a off`), `demoscope.py preset A`, `preset B`,
+   `cycle B`; the return's leg at 5400, then 5800 (link.json and the stations' `--tx` / `--rx` on both).

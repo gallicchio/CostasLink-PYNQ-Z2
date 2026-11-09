@@ -1,5 +1,6 @@
 """The two scopes' fixed views for the courtyard demo (DEMO_COURTYARD.md section 5a), set once, and scope B's cycle:
-    python3 demoscope.py preset B      the receiver: I (ch1), Q (ch2), the bit (CMP I MON, ch3), the lock (VC MON, ch4)
+    python3 demoscope.py preset B      the receiver: I (ch1), Q (ch2), the bit (CMP I MON, ch3), the lock (VC MON, ch4,
+                                       no feed-through)
     python3 demoscope.py preset A      the sender: I (ch2), Q (ch3), the ping (TRIG A, ch1), the pong (TRIG B, ch4)
     python3 demoscope.py cycle B [--time 5 --xy 5]   scope B for ever: the time view, then the I/Q constellation (XY),
                                        the two views in turn; Ctrl-C leaves the time view
@@ -33,9 +34,23 @@ def arm_dc(scale):
     return NOMINAL if scale <= 0.02 else 1.65
 
 
+# scope B's two views (Jason 11-08: 5 s of time traces, 5 s of the constellation).  Only ch1 / ch2's offsets differ:
+# in the time view I and Q sit apart (I high, Q under it); in XY both at the middle, so the idle's dot is near the centre
+VIEW_TIME = {1: 2.5, 2: 0.5}                              # divisions from the middle: I, Q
+VIEW_XY = {1: 0.0, 2: 0.0}
+
+
+def b_offsets(s, scale, view):
+    dc = arm_dc(scale)
+    for ch, div in view.items():
+        s.w("C%d:OFST %.6fV" % (ch, place(scale, div, dc)))
+
+
 def preset_B(s, bench=False, scale=0.010):
     """the receiver: I and Q, the recovered bit, the lock; the trigger on the bit's edge; persistence for the eye and
-    for the constellation.  In XY the I and Q offsets put the idle's centre at the screen's middle"""
+    for the constellation.  ch1 I MON and ch2 Q MON through 50 ohm feed-throughs at 10 mV/div (or none, --scale 0.05);
+    ch3 CMP I MON through a feed-through (its /10 output is made for 50 ohm: 0.33 V); ch4 VC MON with NO feed-through
+    (1 Mohm: its full 1.65 V, as on the bench since 10-30, 4.0's cabling)"""
     dc = arm_dc(scale)
     s.timebase(scale=100e-9, delay=0.0)
     if bench:
@@ -45,10 +60,10 @@ def preset_B(s, bench=False, scale=0.010):
         s.channel(4, on=True, scale=1.0, offset=place(1.0, -3, 0.0), coupling="DC", probe=1)           # this board's TRIG B
         s.trigger(source=4, level=0.85, slope="rising", mode="normal")
     else:
-        s.channel(1, on=True, scale=scale, offset=place(scale, 0, dc), coupling="DC", probe=1)         # I: the middle (XY's X)
-        s.channel(2, on=True, scale=scale, offset=place(scale, 0, dc), coupling="DC", probe=1)         # Q: the middle (XY's Y)
-        s.channel(3, on=True, scale=0.2, offset=place(0.2, -2, 0.15), coupling="DC", probe=1)          # CMP I MON, the bit
-        s.channel(4, on=True, scale=1.0, offset=place(1.0, -3.5, V_LOCK), coupling="DC", probe=1)      # VC MON, the lock
+        s.channel(1, on=True, scale=scale, offset=place(scale, VIEW_TIME[1], dc), coupling="DC", probe=1)   # I (XY's X)
+        s.channel(2, on=True, scale=scale, offset=place(scale, VIEW_TIME[2], dc), coupling="DC", probe=1)   # Q (XY's Y)
+        s.channel(3, on=True, scale=0.5, offset=place(0.5, -1.3, 0.0), coupling="DC", probe=1)              # CMP I MON, the bit
+        s.channel(4, on=True, scale=1.0, offset=place(1.0, -2.5, V_LOCK), coupling="DC", probe=1)           # VC MON, the lock
         s.trigger(source=3, level=0.15, slope="rising", mode="normal")
     s.w("XYDS OFF")
     s.w("PESU 1")                                                                                       # 1 s persistence
@@ -72,7 +87,7 @@ def preset_A(s, bench=False, scale=0.010):
     s.run()
 
 
-def cycle_B(s, t_time=5.0, t_xy=5.0, bench=False):
+def cycle_B(s, t_time=5.0, t_xy=5.0, bench=False, scale=0.010):
     """the time view and the constellation in turn, for ever; the view's name is printed at each change.  A SIGTERM
     (or Ctrl-C) leaves the time view: without the handler `timeout` left the scope in XY (11-08 11:21)"""
     import signal
@@ -83,13 +98,19 @@ def cycle_B(s, t_time=5.0, t_xy=5.0, bench=False):
     try:
         while True:
             s.w("XYDS OFF")
+            if not bench:
+                b_offsets(s, scale, VIEW_TIME)
             print(time.strftime("%H:%M:%S"), "time view", flush=True)
             time.sleep(t_time)
+            if not bench:
+                b_offsets(s, scale, VIEW_XY)
             s.w("XYDS ON")
             print(time.strftime("%H:%M:%S"), "XY: I against Q" if not bench else "XY (the bench: ch1 against ch2)", flush=True)
             time.sleep(t_xy)
     finally:
         s.w("XYDS OFF")
+        if not bench:
+            b_offsets(s, scale, VIEW_TIME)
 
 
 def main():
@@ -105,7 +126,7 @@ def main():
             t_time = float(sys.argv[sys.argv.index("--time") + 1]) if "--time" in sys.argv else 5.0
             t_xy = float(sys.argv[sys.argv.index("--xy") + 1]) if "--xy" in sys.argv else 5.0
             print("scope %s: %s; the time view %.0f s, XY %.0f s, in turn" % (which, s.idn, t_time, t_xy))
-            cycle_B(s, t_time, t_xy, bench=bench)
+            cycle_B(s, t_time, t_xy, bench=bench, scale=scale)
         elif what == "shot":
             path = sys.argv[3] if len(sys.argv) > 3 and not sys.argv[3].startswith("--") else os.path.join(HERE, "plots", "demoscope_%s_%s.bmp" % (which, time.strftime("%Y%m%d_%H%M%S")))
             n = s.screenshot(path)
