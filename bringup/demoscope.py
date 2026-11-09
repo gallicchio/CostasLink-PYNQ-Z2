@@ -10,7 +10,9 @@
     --scale V   I and Q volts a division at the scope (0.010 through the 50 ohm feed-through and the 1 k tap; 0.050
                 with the feed-throughs off, 1 Mohm)
 This firmware's XY mode plots channel 1 (X) against channel 2 (Y) and nothing else (tried 11-08 10:48), which is why
-scope B's I and Q sit on ch1 and ch2 for the demo.  The scopes are found by serial as in twoscope (scope_e.open_scope)."""
+scope B's I and Q sit on ch1 and ch2 for the demo.  Everything goes through the lab driver (siglent_SDS1104XE) by
+scope_e.open_scope; the display settings it has no method for (XY, persistence, the on-screen measurements and their
+statistics: XYDS, PESU, PACU, MEAD, PASTAT) are sent through its w().  The scopes are found by serial as in twoscope (scope_e.open_scope)."""
 import os
 import sys
 import time
@@ -43,7 +45,7 @@ VIEW_XY = {1: 0.0, 2: 0.0}
 def b_offsets(s, scale, view):
     dc = arm_dc(scale)
     for ch, div in view.items():
-        s.w("C%d:OFST %.6fV" % (ch, place(scale, div, dc)))
+        s.channel(ch, offset=place(scale, div, dc))                # the lab driver's channel(): only the offset changes
 
 
 def preset_B(s, bench=False, scale=0.010):
