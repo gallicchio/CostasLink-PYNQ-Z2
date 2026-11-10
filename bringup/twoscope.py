@@ -44,7 +44,7 @@ GAIN = 21.0                                               # the 1 k tap into 50 
 NOMINAL = 1.65 / GAIN                                     # an arm's centre at the scope
 TDIV = 100e-9
 PRE = 200e-9                                              # the screen starts this long before the trigger
-DELAY = -(7 * TDIV - PRE)                                 # this firmware: a positive TRDL puts the trigger after the centre
+DELAY = -(7 * TDIV - PRE)                                 # TRDL: where the trigger sits right of the screen's centre
 SCALES = [0.002, 0.005, 0.01, 0.02, 0.05]
 CH = {1: "TRIG A", 2: "I MON", 3: "Q MON", 4: "CMP I MON"}
 MARK_V, CMP_V = 0.85, 0.15                                # the mark's and the comparator's thresholds at the scope
@@ -70,17 +70,18 @@ def arg(name, default):
 # the scopes
 # ---------------------------------------------------------------------------------------------------------------------
 def single(s, timeout=3.0):
-    s.w("TRMD SINGLE")
+    """the lab driver's single() (TRMD SINGLE without ARM since 11-09); False if nothing triggered"""
     try:
-        return s.wait_stop(timeout)
+        return s.single(timeout)
     except TimeoutError:
         return False
 
 
 def wave(s, ch):
-    """(t, v) of a channel's last acquisition, t in seconds with the trigger at 0"""
+    """(t, v) of a channel's last acquisition, t in seconds with the trigger at 0 (the lab driver's own t since 11-09;
+    before, it was 2 * TRDL off and this took it away)"""
     t, v, info = s.waveform(ch)
-    return t - 2 * DELAY, v
+    return t, v
 
 
 def shots(s, src, level, slope, n, chans):

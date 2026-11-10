@@ -11,8 +11,8 @@ The channels (Jason cabled them on 2026-11-03, BRINGUP_LOG 4.45):
 The SDS1000X-E's inputs are 1 Mohm only: the 50 ohm are external feed-through terminators.  No *RST is ever sent (the
 lab's rule for the Siglents); the scope is left running in AUTO.
 
-Two SDS1104X-E since 2026-11-06 (both on USB; `usbtmc_node` returns whichever enumerated first, so each is opened by
-its serial number, SCOPES below): scope A on board A's monitors (serial ...R1353), scope B on board B's (serial
+Two SDS1104X-E since 2026-11-06 (both on USB; `usbtmc_node` without a serial returns whichever enumerated first, so each
+is opened by its serial number, SCOPES below): scope A on board A's monitors (serial ...R1353), scope B on board B's (serial
 ...R6919, plugged in 11-06 10:44).  The cabling planned for the two (BRINGUP_LOG 4.74), every input through a 50 ohm
 feed-through:
     scope A  ch1 board B's TRIG A (J205, SMA)   ch2 board A's I MON (J104)   ch3 Q MON (J105)   ch4 CMP I MON (J103)
@@ -32,8 +32,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 LIC = os.path.expanduser(os.environ.get("LAB_INSTRUMENT_CONTROL", "~/lab-instrument-control"))   # as bench.py: a station kit
 sys.path.insert(0, LIC)                                                                     # carries its own copy
 sys.path.insert(0, os.path.join(LIC, "siglent"))
-from scpi_link import usbtmc_node                                      # noqa: E402
-from siglent_SDS1104XE import SDS1104XE, USB_VENDOR, USB_PRODUCT       # noqa: E402
+from siglent_SDS1104XE import SDS1104XE                               # noqa: E402
 
 PROBE_FACTOR = 21.0          # a 1 k tap into 50 ohm: (1000 + 50) / 50
 CHANNELS = {1: "TRIG A", 2: "I MON", 3: "Q MON", 4: "ERR MON"}
@@ -45,51 +44,17 @@ SCOPES = {"A": "SDSMMEBC3R1353", "B": "SDSMMFCQ5R6919"}     # each SDS1104X-E's 
 BOARD_API = {"A": "http://192.168.2.99:8080", "B": "http://192.168.2.98:8080"}
 
 
-def usbtmc_by_serial(serial, vendor=USB_VENDOR, product=USB_PRODUCT):
-    """/dev/usbtmcN of the USBTMC device with this vendor / product id and serial number, found in sysfs."""
-    for d in sorted(os.listdir("/sys/class/usbmisc")):
-        dev = "/sys/class/usbmisc/%s/device/.." % d
-        try:
-            v = int(open("%s/idVendor" % dev).read(), 16)
-            p = int(open("%s/idProduct" % dev).read(), 16)
-            sn = open("%s/serial" % dev).read().strip()
-        except OSError:
-            continue
-        if (v, p, sn) == (vendor, product, serial):
-            return "/dev/" + d
-    raise IOError("no USBTMC device %04x:%04x with serial %s" % (vendor, product, serial))
-
-
-class Scope(SDS1104XE):
-    """The lab driver, with the waveform read that both firmwares answer: scope B's 8.1.6.1.35R2 never answers
-    `SANU? C2` or `SANU? C4` (the second channel of each ADC pair; a 10 s timeout, 2026-11-06 12:04) while it answers C1
-    and C3 and serves every channel's `WF? DAT2` block with its length in the header.  The pair shares its sample count,
-    so the odd channel's count stands for the even one's."""
-
-    def waveform(self, ch, points=None, start=0):
-        vdiv, voff = self.qf("C%d:VDIV?" % ch), self.qf("C%d:OFST?" % ch)
-        tdiv, delay = self.qf("TDIV?"), self.qf("TRDL?")
-        fs = self.qf("SARA?")
-        total = int(self.qf("SANU? C%d" % (ch if ch % 2 else ch - 1)))
-        n = min(points or total, total - start)
-        self.w("WFSU SP,0,NP,%d,FP,%d" % (points or 0, start))
-        raw = self.link.query_block("C%d:WF? DAT2" % ch)[:n]
-        codes = np.frombuffer(raw, dtype=np.int8).astype(float)
-        volts = codes * (vdiv / 25.0) - voff                                # CODES_PER_DIV = 25 (the guide, WF?)
-        t = delay - 7.0 * tdiv + (start + np.arange(len(volts))) / fs      # 14 divisions, the centre `delay` after the trigger
-        info = dict(points=len(volts), vdiv=vdiv, voffset=voff, sample_rate=fs, dt=1 / fs, tdiv=tdiv, delay=delay,
-                    codes_min=float(codes.min()), codes_max=float(codes.max()))
-        return t, volts, info
-
-
 def open_scope(which="A"):
-    """Scope A or B by its serial number; scope A falls back to the first SDS1104X-E on USB (one scope, as before 11-06)."""
+    """Scope A or B by its serial number (the lab driver's SDS1104XE(serial=...)); scope A falls back to the first
+    SDS1104X-E on USB (one scope, as before 11-06).  Until 11-09 this file found the serial in sysfs itself and replaced the
+    driver's waveform(), whose sample-count query scope B's firmware (8.1.6.1.35R2) never answers for C2 and C4; the
+    driver does both now (lab-instrument-control 57a4fcf)."""
     try:
-        return Scope(usb=usbtmc_by_serial(SCOPES[which]))
+        return SDS1104XE(serial=SCOPES[which])
     except IOError:
         if which != "A":
             raise
-        return Scope(usb=usbtmc_node(USB_VENDOR, USB_PRODUCT))
+        return SDS1104XE(usb=True)
 
 
 def setup(s, tdiv=1e-3):
@@ -102,7 +67,7 @@ def setup(s, tdiv=1e-3):
 def grab(s, tdiv):
     """One acquisition of every channel that is on (a channel that is off never answers SANU?, and the read times out)."""
     s.timebase(scale=tdiv, delay=0)
-    on = [ch for ch in CHANNELS if s.q("C%d:TRA?" % ch).strip().upper() == "ON"]
+    on = [ch for ch in CHANNELS if s.channel(ch)["on"]]
     s.acquire_now()
     out = {}
     try:

@@ -206,8 +206,9 @@ bench.  `bringup/demoscope.py preset A|B` sets each view once; `demoscope.py sho
 
 Jason (11-08): the one thing worth alternating is scope B's view: 5 s of the time traces, 5 s of the I/Q constellation
 (XY).  This firmware's XY mode plots **channel 1 against channel 2 and nothing else** (tried 11-08 10:48), so I and Q
-go on ch1 and ch2; `demoscope.py cycle B` switches the view every 5 s for ever (XYDS ON / OFF, nothing else changes;
-the trigger on the bit keeps acquiring, persistence builds the five dots within a second).
+go on ch1 and ch2; `demoscope.py cycle B` switches the view every 5 s for ever (the lab driver's `xy()` on / off and
+ch1 / ch2's offsets, nothing else changes; the trigger on the bit keeps acquiring, persistence builds the five dots
+within a second).
 
 | trace | jack | what the trustee sees | scale, place |
 |---|---|---|---|

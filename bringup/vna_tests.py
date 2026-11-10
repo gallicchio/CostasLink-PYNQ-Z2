@@ -104,7 +104,7 @@ def _measure(name, dsa, board, tx_null, ctrl, out, stamp, path, bench):
                     bench.board_call("ctrl", **ctrl)
                 f, data[p] = vna.trace(p)
         finally:
-            vna.w("HOLD;")
+            vna.hold()
         settings = "%d points, %.0f-%.0f Hz, IF bandwidth %.0f Hz, source %+.2f dBm, kit %s" % (
             len(f), f[0], f[-1], vna.if_bandwidth(), pw, vna.cal_kit())
         with open(path, "w") as fh:
@@ -171,8 +171,8 @@ def compress(name, cws_ghz, start, stop, dsa=None, board="A", ctrl=None, registe
                 print(line)
                 rows.append(line)
         finally:
-            vna._opc("RECAREG%d;" % register, sweeps=2, floor=30)
-            vna.w("HOLD;")
+            vna.recall(register)
+            vna.hold()
             print("recalled register %d, held; corrected %s, power %+.1f dBm" % (register, vna.corrected(), vna.power()))
     return rows
 
@@ -212,8 +212,8 @@ def levels(name, powers, dsa=None, board="A", ctrl=None, register=29, home=-40.0
         finally:
             vna.power(home)
             if not ok or not vna.corrected():
-                vna._opc("RECAREG%d;" % register, sweeps=2, floor=30)
-            vna.w("HOLD;")
+                vna.recall(register)
+            vna.hold()
             print("back at %+.1f dBm, held; corrected %s" % (vna.power(), vna.corrected()))
     path = os.path.join(out, "%s_%s_levels.csv" % (stamp, name))
     with open(path, "w") as fh:

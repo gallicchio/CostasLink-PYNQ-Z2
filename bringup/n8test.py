@@ -56,7 +56,7 @@ def flip_capture(L, rs, keeper, pt, period, width, seconds, cycle_tag):
     # the level half a leg below the centre: the events themselves take I to the centre (I = 0 for (0, q)), only a
     # change of side takes it past
     rs.trigger(source=2, level=base[2] - 1.5 * leg / TS.GAIN, slope="falling", mode="normal")
-    rs.w("TRMD SINGLE")
+    rs.arm()                                              # TRMD SINGLE (the lab driver's, no ARM)
     time.sleep(0.3)
     L.events_on(pt, width, period, idle=(1, 0))
     time.sleep(seconds)

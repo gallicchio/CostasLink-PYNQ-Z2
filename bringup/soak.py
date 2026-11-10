@@ -572,7 +572,7 @@ class Soak:
         sc = B.s
         try:
             time.sleep(min(1.0, 0.3 * p["seconds"]))
-            old = sc.q(":TIMebase:SCALe?")
+            old = sc.timebase()[0]
             tdiv = max(1e-7, 4 * p["period"] * 1e-8) if kind == "data" else max(1e-6, min(50e-6, 0.3 * p["period"] * 1e-8))
             sc.timebase(scale=tdiv)
             time.sleep(0.3)

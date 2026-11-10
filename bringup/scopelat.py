@@ -47,19 +47,19 @@ def screen_for(w_clocks, clk_mhz):
 
 
 def single(s, timeout=5.0):
-    """one triggered acquisition: TRMD SINGLE and wait for 'Stop'.  Not the driver's arm() (TRMD SINGLE then ARM): on this
-    firmware ARM gives records without a trigger (16:05: 4 of 6 captures with no TRIG A pulse in them, the records fresh each
-    time), where SINGLE alone, or NORM then STOP, triggered on every pulse 12 of 12 times."""
-    s.w("TRMD SINGLE")
-    return s.wait_stop(timeout)
+    """one triggered acquisition: the lab driver's single().  Its arm() sent ARM after TRMD SINGLE until 11-09, and on this
+    firmware ARM gives records without a trigger (11-05 16:05: 4 of 6 captures with no TRIG A pulse in them, the records
+    fresh each time), where SINGLE alone, or NORM then STOP, triggered on every pulse 12 of 12 times; the driver now sends
+    TRMD SINGLE alone (lab-instrument-control 57a4fcf)."""
+    return s.single(timeout)
 
 
 def wave(s, ch, delay):
-    """the driver's t has the trigger `delay` before the screen centre; on this firmware (8.1.6.1.26, 15:55) a positive TRDL
-    puts the trigger `delay` after the centre (ch1's rise at +399 ns on a 50 ns/div screen with TRDL 200 ns), so t is
-    moved by 2 * delay to put the trigger at 0"""
+    """t with the trigger at 0: the lab driver's own since 11-09.  Before, its t had the trigger `delay` before the screen
+    centre, where this firmware (8.1.6.1.26, 11-05 15:55) puts it `delay` after (ch1's rise at +399 ns on a 50 ns/div screen
+    with TRDL 200 ns), and this moved t by 2 * delay; `delay` is kept for the callers"""
     t, v, info = s.waveform(ch)
-    return t - 2 * delay, v, info
+    return t, v, info
 
 
 def cross(t, v, lo, hi, after=None, rising=None):

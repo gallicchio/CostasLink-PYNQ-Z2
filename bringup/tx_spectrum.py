@@ -181,7 +181,7 @@ def main():
                 else:
                     sa.frequency(center=fc, span=2 * half)
                 sa.bandwidth(rbw=rbw, vbw=rbw if det == "RMS" else 3 * rbw)
-                sa.w(":SENSe:DETector:FUNCtion %s" % det)
+                sa.detector(det)
                 tr = []
                 for _ in range(a.avg):
                     f, y = sa.trace(binary=True)
@@ -225,7 +225,7 @@ def main():
             {k: v for k, v in cl("dac_volts").items() if k.startswith("VR")}), flush=True)
         sa.frequency(center=fc, span=500e6)
         sa.bandwidth(rbw="auto", vbw="auto")
-        sa.w(":SENSe:DETector:FUNCtion POSitive")
+        sa.detector("POSitive")
         sa.run()
         print("records in %s.npz / .json; the analyzer left at fc +-250 MHz, 30 dB attenuation, sweeping" % base,
               flush=True)

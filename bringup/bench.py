@@ -320,15 +320,14 @@ class Bench:
         output off otherwise."""
         c = self.cfg["psu"]
         if c.get("pynq_out"):
-            self.psu.select(c.get("out", 1))
-            self.psu.w("VOLTage 0")
+            self.psu.set_volts(0.0, out=c.get("out", 1))
         else:
             self.psu.output(False)
 
     def board_on(self):
         """The board's output live: the switch on and, when the PYNQ shares the supply, the board's setting above 0 V."""
         p = self.psu
-        if p.q("OUTPut?") != "1":
+        if not p.output():                         # the switch, read only
             return False
         return not self.cfg["psu"].get("pynq_out") or p.setting(self.cfg["psu"].get("out", 1))["volts"] > 0.05
 
@@ -376,7 +375,7 @@ class Bench:
         if not pynq:
             if on and self.cfg["psu"].get("pynq_serial"):          # the PYNQ on its own supply: the same interlock
                 s, o = self.pynq_supply()
-                if s.q("OUTPut?") != "1" or s.setting(o)["volts"] < PYNQ_V - 1:
+                if not s.output() or s.setting(o)["volts"] < PYNQ_V - 1:
                     raise IOError("the PYNQ's supply is off: psu up (or psu pynq-on) first")
                 if not reachable(self.cfg["pynq_host"], self.cfg["pynq_port"], timeout=3):
                     raise IOError("the PYNQ's server does not answer: the board is powered once its overlay is loaded")
@@ -385,7 +384,7 @@ class Bench:
             return got
         p, out = self.psu, self.cfg["psu"].get("out", 1)
         if on:
-            if p.q("OUTPut?") != "1" or p.setting(pynq)["volts"] < PYNQ_V - 1:
+            if not p.output() or p.setting(pynq)["volts"] < PYNQ_V - 1:
                 raise IOError("the PYNQ (output %d) is unpowered: psu up (or psu pynq-on) first" % pynq)
             if not reachable(self.cfg["pynq_host"], self.cfg["pynq_port"], timeout=3):
                 raise IOError("the PYNQ's server does not answer: the board is powered once its overlay is loaded")
@@ -393,8 +392,7 @@ class Bench:
                 raise IOError("psu_setup first: the board's voltage is not set in this process")
             p.set(*self._board_set, out=out)
         else:
-            p.select(out)
-            p.w("VOLTage 0")
+            p.set_volts(0.0, out=out)
         got = self.board_on()
         self.record("psu_output", on=bool(on), got=got, out=out, pynq_left_on=True)
         return got
@@ -426,7 +424,7 @@ class Bench:
             got = p.output(False)
             self.record("psu_pynq", on=False, got=got)
             return got
-        if p.q("OUTPut?") == "1" and p.setting(pynq)["volts"] >= volts - 0.05:
+        if p.output() and p.setting(pynq)["volts"] >= volts - 0.05:
             return check("already on", lambda v, i, m: True)
         self._board_zero()
         p.set(0.0, 0.10, out=pynq)

@@ -1506,7 +1506,7 @@ def null_fpv(node, other, mhz, sa, start=None, att=0, ref=-40.0):
     cl.hold_point(1, 0)
     cl.ctrl(tr_a=0, tx_dis=0)
     time.sleep(0.1)
-    sa.w(":SENSe:DETector:FUNCtion POSitive")
+    sa.detector("POSitive")
     sa.amplitude(attenuation=att, ref_level=ref)
 
     def peak(center, span, rbw):
@@ -1579,7 +1579,7 @@ def cmd_nulls(a, log):
                     VR_NULL[b][float(mhz)] = tuple(r["vr"])
     finally:
         sa.amplitude(attenuation=30, ref_level=20)
-        sa.w(":SENSe:FREQuency:SPAN:FULL")
+        sa.frequency(span="full")
         sa.bandwidth(rbw="auto", vbw="auto")
         sa.run()
 
@@ -1622,7 +1622,7 @@ class WifiThread:
             try:
                 fc = self.carrier_mhz * 1e6
                 lo, hi = max(4.2e9, min(5.10e9, fc - 150e6)), max(5.35e9, fc + 150e6)
-                self.sa.w(":SENSe:DETector:FUNCtion POSitive")
+                self.sa.detector("POSitive")
                 self.sa.amplitude(attenuation=self.att, ref_level=self.ref)
                 self.sa.frequency(start=lo, stop=hi)
                 self.sa.bandwidth(rbw=1e6, vbw=1e6)
@@ -1840,7 +1840,7 @@ def cmd_campaign(a, log):
         if sa:
             try:
                 sa.amplitude(attenuation=30, ref_level=20)
-                sa.w(":SENSe:FREQuency:SPAN:FULL")
+                sa.frequency(span="full")
                 sa.bandwidth(rbw="auto", vbw="auto")
                 sa.run()
             except Exception as e:                              # noqa: BLE001
@@ -1864,7 +1864,7 @@ def ripple(tx, rx, sa, f0=5200.0, half=50.0, step=1.0, f_pfd=1.0):
     tx.cl.dac(VR_I=vi, VR_Q=vq)
     tx.cl.hold_point(1, 0)
     tx.cl.ctrl(tr_a=0, tx_dis=0)
-    sa.w(":SENSe:DETector:FUNCtion POSitive")
+    sa.detector("POSitive")
     sa.amplitude(attenuation=0, ref_level=-40)
     sa.bandwidth(rbw=3e3, vbw=3e3)
     rows = []
@@ -1916,7 +1916,7 @@ def cmd_ripple(a, log):
                 r.get("fpv_dbm_delay_strength", 0), d[1], r.get("log_dbm_ripple_pp_db", 0), r.get("log_dbm_delay_ns", 0), r.get("log_dbm_delay_strength", 0)))
     finally:
         sa.amplitude(attenuation=30, ref_level=20)
-        sa.w(":SENSe:FREQuency:SPAN:FULL")
+        sa.frequency(span="full")
         sa.bandwidth(rbw="auto", vbw="auto")
         sa.run()
 

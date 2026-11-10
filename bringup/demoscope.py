@@ -10,9 +10,11 @@
     --scale V   I and Q volts a division at the scope (0.010 through the 50 ohm feed-through and the 1 k tap; 0.050
                 with the feed-throughs off, 1 Mohm)
 This firmware's XY mode plots channel 1 (X) against channel 2 (Y) and nothing else (tried 11-08 10:48), which is why
-scope B's I and Q sit on ch1 and ch2 for the demo.  Everything goes through the lab driver (siglent_SDS1104XE) by
-scope_e.open_scope; the display settings it has no method for (XY, persistence, the on-screen measurements and their
-statistics: XYDS, PESU, PACU, MEAD, PASTAT) are sent through its w().  The scopes are found by serial as in twoscope (scope_e.open_scope)."""
+scope B's I and Q sit on ch1 and ch2 for the demo.  Everything goes through the lab driver (siglent_SDS1104XE, found by
+serial: scope_e.open_scope), the display too since 11-09 (xy, persistence, show_measurement, show_delay, statistics; they
+were raw XYDS / PESU / PACU / MEAD / PASTAT before the driver had them).  Scope A's firmware (8.1.6.1.26) cannot clear its
+measurements remotely (it ignores MEACL): a preset adds its own if missing, and the front panel's Measure, Clear removes
+the rest."""
 import os
 import sys
 import time
@@ -48,6 +50,15 @@ def b_offsets(s, scale, view):
         s.channel(ch, offset=place(scale, div, dc))                # the lab driver's channel(): only the offset changes
 
 
+def shown(how, *args):
+    """a measurement under the traces; on a scope whose five places are full (scope A's firmware cannot clear them remotely)
+    a note instead of a failed preset"""
+    try:
+        how(*args)
+    except ValueError as e:
+        print("  (not shown: %s)" % e)
+
+
 def preset_B(s, bench=False, scale=0.010):
     """the receiver: I and Q, the recovered bit, the lock; the trigger on the bit's edge; persistence for the eye and
     for the constellation.  ch1 I MON and ch2 Q MON through 50 ohm feed-throughs at 10 mV/div (or none, --scale 0.05);
@@ -67,9 +78,9 @@ def preset_B(s, bench=False, scale=0.010):
         s.channel(3, on=True, scale=0.5, offset=place(0.5, -1.3, 0.0), coupling="DC", probe=1)              # CMP I MON, the bit
         s.channel(4, on=True, scale=1.0, offset=place(1.0, -2.5, V_LOCK), coupling="DC", probe=1)           # VC MON, the lock
         s.trigger(source=3, level=0.15, slope="rising", mode="normal")
-    s.w("XYDS OFF")
-    s.w("PESU 1")                                                                                       # 1 s persistence
-    s.w("PACU PKPK,C%d" % (2 if bench else 1))                                                          # the eye's height
+    s.xy(False)
+    s.persistence(1)                                                                                    # 1 s persistence
+    shown(s.show_measurement, "PKPK", 2 if bench else 1)                                                # the eye's height
     s.run()
 
 
@@ -82,10 +93,10 @@ def preset_A(s, bench=False, scale=0.010):
     s.channel(1, on=True, scale=1.0, offset=place(1.0, -2.5, 0.0), coupling="DC", probe=1)            # TRIG A, the ping
     s.channel(4, on=True, scale=1.0, offset=place(1.0, -2.5, 0.0), coupling="DC", probe=1)            # TRIG B, the pong
     s.trigger(source=4 if bench else 1, level=0.85, slope="rising", mode="auto")
-    s.w("XYDS OFF")
-    s.w("PESU OFF")
-    s.w("MEAD FRR,C1-C4")                                                                              # first rise of ch1 to first rise of ch4
-    s.w("PASTAT ON")
+    s.xy(False)
+    s.persistence("OFF")
+    shown(s.show_delay, "FRR", 1, 4)                                                                   # first rise of ch1 to first rise of ch4
+    s.statistics(True)
     s.run()
 
 
@@ -99,18 +110,18 @@ def cycle_B(s, t_time=5.0, t_xy=5.0, bench=False, scale=0.010):
     signal.signal(signal.SIGTERM, leave)
     try:
         while True:
-            s.w("XYDS OFF")
+            s.xy(False)
             if not bench:
                 b_offsets(s, scale, VIEW_TIME)
             print(time.strftime("%H:%M:%S"), "time view", flush=True)
             time.sleep(t_time)
             if not bench:
                 b_offsets(s, scale, VIEW_XY)
-            s.w("XYDS ON")
+            s.xy(True)
             print(time.strftime("%H:%M:%S"), "XY: I against Q" if not bench else "XY (the bench: ch1 against ch2)", flush=True)
             time.sleep(t_xy)
     finally:
-        s.w("XYDS OFF")
+        s.xy(False)
         if not bench:
             b_offsets(s, scale, VIEW_TIME)
 

@@ -34,28 +34,24 @@ FACTOR = 21.0
 
 
 def _trig_get(sc):
-    """the scope's edge trigger as it stands: (source, level, slope), to put back exactly"""
-    if SCOPE_E:
-        t = sc.trigger()
-        return (t["source"], t["level"], t["slope"])
-    return (sc.q(":TRIGger:EDGE:SOURce?"), sc.q(":TRIGger:EDGE:LEVel?"), sc.q(":TRIGger:EDGE:SLOPe?"))
+    """the scope's edge trigger as it stands: (source, level, slope), to put back exactly (either lab driver's trigger())"""
+    t = sc.trigger()
+    return (t["source"], t["level"], t["slope"])
 
 
 def _trig_set(sc, src, level, slope, at_arm=True):
-    """src 'C2' or 2; level in volts at the arm (at_arm) or at the scope's input (as _trig_get gave it)"""
-    if SCOPE_E:
-        ch = int(str(src).upper().lstrip("C"))
-        up = str(slope).upper()
-        sl = "rising" if up.startswith(("RIS", "POS")) else "falling" if up.startswith(("FAL", "NEG")) else "alternate"
-        sc.trigger(source=ch, level=float(level) / (FACTOR if at_arm else 1.0), slope=sl)
-        return
-    sc.w(":TRIGger:EDGE:SOURce %s" % (src if str(src).upper().startswith("C") else "C%d" % src))
-    sc.w(":TRIGger:EDGE:LEVel %s" % (("%.4f" % level) if isinstance(level, float) else level))
-    sc.w(":TRIGger:EDGE:SLOPe %s" % slope)
+    """src 'C2' or 2; level in volts at the arm (at_arm) or at the scope's input (as _trig_get gave it); slope 'rising' /
+    'falling', or as either driver reports it ('POS', 'RISing', ...).  The SDS2104X has the probe factor 21 set, so its
+    levels are at the arm already"""
+    s = str(src).upper()
+    ch = int(s[1:]) if s.startswith("C") else int(s) if s.isdigit() else s
+    up = str(slope).upper()
+    sl = "rising" if up.startswith(("RIS", "POS")) else "falling" if up.startswith(("FAL", "NEG")) else "alternate"
+    sc.trigger(source=ch, level=float(level) / (FACTOR if at_arm and SCOPE_E else 1.0), slope=sl)
 
 
 def _tdiv(sc):
-    return sc.qf("TDIV?") if SCOPE_E else float(sc.q(":TIMebase:SCALe?"))
+    return sc.timebase()[0]
 
 
 def _wave(sc, ch):
