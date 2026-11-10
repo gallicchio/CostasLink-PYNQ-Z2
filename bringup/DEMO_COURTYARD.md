@@ -340,6 +340,8 @@ TRIG IN wiring).  What it did:
 * **A second laptop** gets `bringup/station_kit.sh`'s tarball (148 kB: demo.py, demoscope.py and what they load, the
   two lab-instrument-control files the scope needs, `run_station.sh`, `STATION.txt`); it needs python3 with numpy and
   the scope's /dev/usbtmc readable (group plugdev).  Tested 11-09 in a clean environment: every module loads from the kit.
+  Any of the labs' SDS1104X-E will do (11-10): `scope_e.open_scope` uses the only one on USB whatever its serial (one
+  claimed by the other station excepted), and `SCOPE_A` / `SCOPE_B` = a serial or an IP address names one.
 * **The PYNQs' WiFi, if ever wanted** (both images PYNQ 3.0, kernel 5.15.19, read 11-09, nothing changed): drivers and
   firmware present for MediaTek **MT7601U** and Ralink **RT5370 / RT3070 / RT2870** (2.4 GHz only), Realtek
   RTL8188CUS / RTL8192CU / RTL8723BU / RTL8192EU, Atheros AR9170, some Broadcom USB; **not** for Atheros AR9271 (its

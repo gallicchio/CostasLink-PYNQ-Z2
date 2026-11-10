@@ -39,7 +39,9 @@ cat > "$K/STATION.txt" <<TXT
 CostasLink courtyard demo, one station's laptop (packed $(date '+%Y-%m-%d %H:%M') from $SRC).
 
 Needs: python3 with numpy; a USB-Ethernet dongle (or the laptop's own port) wired straight to this station's PYNQ;
-the scope on USB, readable by this user (Ubuntu: the user in group plugdev, /dev/usbtmc* group plugdev).
+the scope on USB, readable by this user (Ubuntu: the user in group plugdev, /dev/usbtmc* group plugdev).  Any SDS1104X-E:
+the only one on USB is used whatever its serial number; with two or more, name it: SCOPE_B=<serial or IP> ./run_station.sh B
+(the serial is in its *IDN?, or: python3 lic/scpi_link.py usb).
 
 1. The wired port: a fixed address on the PYNQs' subnet, no gateway, e.g.
      sudo nmcli con add type ethernet ifname <dongle> con-name pynq ipv4.method manual ipv4.addresses 192.168.2.120/24 ipv6.method disabled

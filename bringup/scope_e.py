@@ -13,7 +13,8 @@ lab's rule for the Siglents); the scope is left running in AUTO.
 
 Two SDS1104X-E since 2026-11-06 (both on USB; `usbtmc_node` without a serial returns whichever enumerated first, so each
 is opened by its serial number, SCOPES below): scope A on board A's monitors (serial ...R1353), scope B on board B's (serial
-...R6919, plugged in 11-06 10:44).  The cabling planned for the two (BRINGUP_LOG 4.74), every input through a 50 ohm
+...R6919, plugged in 11-06 10:44).  The labs have many SDS1104X-E, so any other one works too (open_scope): SCOPE_A=<serial
+or IP> / SCOPE_B=... name it, and a laptop with a single SDS1104X-E whose serial is not the other station's uses that one.  The cabling planned for the two (BRINGUP_LOG 4.74), every input through a 50 ohm
 feed-through:
     scope A  ch1 board B's TRIG A (J205, SMA)   ch2 board A's I MON (J104)   ch3 Q MON (J105)   ch4 CMP I MON (J103)
     scope B  ch1 board A's TRIG A (J205, SMA)   ch2 board B's I MON (J104)   ch3 Q MON (J105)   ch4 CMP I MON (J103)
@@ -32,7 +33,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 LIC = os.path.expanduser(os.environ.get("LAB_INSTRUMENT_CONTROL", "~/lab-instrument-control"))   # as bench.py: a station kit
 sys.path.insert(0, LIC)                                                                     # carries its own copy
 sys.path.insert(0, os.path.join(LIC, "siglent"))
-from siglent_SDS1104XE import SDS1104XE                               # noqa: E402
+from scpi_link import usbtmc_devices                                  # noqa: E402
+from siglent_SDS1104XE import SDS1104XE, USB_VENDOR, USB_PRODUCT     # noqa: E402
 
 PROBE_FACTOR = 21.0          # a 1 k tap into 50 ohm: (1000 + 50) / 50
 CHANNELS = {1: "TRIG A", 2: "I MON", 3: "Q MON", 4: "ERR MON"}
@@ -40,21 +42,44 @@ CHANNELS = {1: "TRIG A", 2: "I MON", 3: "Q MON", 4: "ERR MON"}
 SETUP = {1: (0.5, -0.85), 2: (0.005, -0.078), 3: (0.005, -0.078), 4: (0.05, -1.63)}   # 5 mV/div = 0.1 V/div at the arm, the bench's
 
 
-SCOPES = {"A": "SDSMMEBC3R1353", "B": "SDSMMFCQ5R6919"}     # each SDS1104X-E's serial number (its *IDN?)
+SCOPES = {"A": "SDSMMEBC3R1353", "B": "SDSMMFCQ5R6919"}     # the bench's two (*IDN? serials); SCOPE_A / SCOPE_B override
 BOARD_API = {"A": "http://192.168.2.99:8080", "B": "http://192.168.2.98:8080"}
 
 
+def wanted(which):
+    """The serial number (or IP address) station `which`'s scope is asked for: $SCOPE_<which>, else SCOPES."""
+    return os.environ.get(f"SCOPE_{which}") or SCOPES.get(which)
+
+
+def pick(which, found):
+    """Which of the SDS1104X-E serials `found` on USB is station `which`'s scope: the one asked for (wanted()) if it is
+    there; else, if exactly one of them is not another station's, that one (the labs have many of these scopes: a
+    station laptop with whichever one is to hand); else an IOError naming them.  A serial named in SCOPE_<which> is
+    never swapped for another."""
+    want = wanted(which)
+    if want in found:
+        return want
+    if os.environ.get(f"SCOPE_{which}"):
+        raise IOError(f"scope {which}: SCOPE_{which}={want} is not on USB; the SDS1104X-E there are {found or 'none'}")
+    others = {wanted(w) for w in SCOPES if w != which}
+    free = [sn for sn in found if sn not in others]
+    if len(free) == 1:
+        print(f"scope {which}: {want} is not on USB; using the only other SDS1104X-E, {free[0]}", file=sys.stderr)
+        return free[0]
+    raise IOError(f"scope {which}: {want} is not on USB, and the SDS1104X-E there are {found or 'none'}; "
+                  f"name it with SCOPE_{which}=<serial or IP address>")
+
+
 def open_scope(which="A"):
-    """Scope A or B by its serial number (the lab driver's SDS1104XE(serial=...)); scope A falls back to the first
-    SDS1104X-E on USB (one scope, as before 11-06).  Until 11-09 this file found the serial in sysfs itself and replaced the
-    driver's waveform(), whose sample-count query scope B's firmware (8.1.6.1.35R2) never answers for C2 and C4; the
-    driver does both now (lab-instrument-control 57a4fcf)."""
-    try:
-        return SDS1104XE(serial=SCOPES[which])
-    except IOError:
-        if which != "A":
-            raise
-        return SDS1104XE(usb=True)
+    """Station `which`'s scope (A: board A's monitors, B: board B's) through the lab driver: by IP address if
+    SCOPE_<which> is one, else on USB by serial number (pick()).  Until 11-09 this file found the serial in sysfs itself
+    and replaced the driver's waveform(), whose sample-count query scope B's firmware (8.1.6.1.35R2) never answers for C2
+    and C4; the driver does both now (lab-instrument-control 57a4fcf).  Any other serial since 11-10 (pick())."""
+    want = wanted(which)
+    if want and all(part.isdigit() for part in want.split(".")) and want.count(".") == 3:
+        return SDS1104XE(want)
+    found = [sn for node, vendor, product, sn in usbtmc_devices() if (vendor, product) == (USB_VENDOR, USB_PRODUCT) and sn]
+    return SDS1104XE(serial=pick(which, found))
 
 
 def setup(s, tdiv=1e-3):
