@@ -233,19 +233,24 @@ scope through the 1 k tap, 0.7-0.9 div at 10 mV/div in a 2-division band; if the
 ch3 feed-throughs come off (1 Mohm: x21 larger, the edges rounded by the lead's capacitance, 50 mV/div) and the
 decision is made at R1 by looking.
 
-### Scope A, the sender: "the ping and the pong"
+### Scope A, the sender: "the ping and the pong", and every 5 s the return's constellation
+
+Since 11-10 (Jason: the I/Q constellation on scope A too) I and Q are on ch1 and ch2, the only pair this firmware's XY
+plots, and the ping and the pong on ch3 and ch4; `demoscope.py cycle A` alternates the time view (persistence off,
+the ping and the pong crisp) with XY (persistence 1 s), as `cycle B` does; `--time 0` keeps XY only.  Every input
+through a 50 ohm feed-through.
 
 | trace | jack | what the trustee sees | scale, place |
 |---|---|---|---|
-| ch2 pink, **I** | J104 I MON | A's own receiver: the return path's random stream most of the time, the reply's blip during an exchange | 10 mV/div, centred 3 div up |
-| ch3 cyan, **Q** | J105 Q MON | the same for Q | 10 mV/div, centred 1 div up |
-| ch1 yellow, **ping** | J205 TRIG A | the challenge leaving the board: a pulse at the left of the screen | 1 V/div, baseline 2.5 div down |
-| ch4 green, **pong** | J206 TRIG B | the reply recognised by A's FPGA: a pulse to the right of the ping, on the same baseline, **the gap between them is the courtyard** | 1 V/div, the same baseline |
+| ch1 yellow, **I** | J104 I MON (U.FL) | A's own receiver: the return path's random stream most of the time, the reply's blip during an exchange; in XY the horizontal axis | 10 mV/div, 3 div up (XY: centred) |
+| ch2 pink, **Q** | J105 Q MON (U.FL) | the same for Q; in XY the vertical axis | 10 mV/div, 1 div up (XY: centred) |
+| ch3 cyan, **ping** | J205 TRIG A (SMA) | the challenge leaving the board: a pulse at the left of the screen | 1 V/div, baseline 2.5 div down |
+| ch4 green, **pong** | J206 TRIG B (SMA) | the reply recognised by A's FPGA: a pulse to the right of the ping, on the same baseline, **the gap between them is the courtyard** | 1 V/div, the same baseline |
 
 Timebase 50 ns/div with the trigger 1 div from the left (the pong lands 2.4 div right at the bench's 120 ns, 4-5 div
-across the courtyard), trigger on ch1 rising at 0.85 V: a pair every 500 ns, the previous pair's pong off the screen
-to the left.  The scope's own delay measurement, first rising edge of ch1 to first rising
-edge of ch4 (`MEAD FRR,C1-C4`) with statistics on, prints the mean in ns at the bottom and holds it between
+across the courtyard), trigger on ch3 (the ping) rising at 0.85 V: a pair every 500 ns, the previous pair's pong off
+the screen to the left.  The scope's own delay measurement, first rising edge of ch3 to first rising
+edge of ch4 (`MEAD FRR,C3-C4`) with statistics on, prints the mean in ns at the bottom and holds it between
 looks; carry dish B a metre and the mean moves 6.7 ns (there and back).  Blocking the beam removes the pong and the
 mean stops updating.  On the bench (11-08, `plots/demoscope_bench_A_20261108_1014.png`, `_B_`) ch1 is the far
 board's TRIG A, so the presets were tried with the trigger on ch4 (`demoscope.py preset A --trig 4`); the demo's own
@@ -395,7 +400,9 @@ TRIG IN wiring).  What it did:
 2. The beam: A's TX ANT, its long cable, dish A; dish B, its long cable, B's RX ANT (no T/R switch).
 3. The return: B's TX ANT and A's RX ANT each on a TFP-1's **RHCP** port by the stiff lead, the LHCP ports on the
    supplied loads, the two patches facing each other.  Never a TX ANT cable straight to an RX ANT (+1 dBm maximum).
-4. Scope A: ch1 A's TRIG A (J205), ch2 I MON, ch3 Q MON, ch4 TRIG B (J206), all four through feed-throughs.
+4. Scope A: ch1 I MON (J104), ch2 Q MON (J105), ch3 A's TRIG A (J205, the ping), ch4 TRIG B (J206, the pong), all
+   four through feed-throughs (since 11-10: I and Q on ch1 / ch2 for XY).
 5. Scope B: ch1 B's I MON, ch2 Q MON, ch3 CMP I MON (J103), all through feed-throughs; ch4 VC MON (J107) with none.
 6. Then: both stations restarted with the demo's settings (no `--trig_a off`), `demoscope.py preset A`, `preset B`,
+   `cycle A`,
    `cycle B`; the return's leg at 5400, then 5800 (link.json and the stations' `--tx` / `--rx` on both).

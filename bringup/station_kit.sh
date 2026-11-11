@@ -30,7 +30,8 @@ if [ "$W" = B ] && [ -z "${NO_SCOPE:-}" ]; then
     python3 demoscope.py preset B && { python3 demoscope.py cycle B > "$D/scope_cycle.log" 2>&1 & echo $! > "$D/scope_cycle.pid"; }
     trap 'kill -TERM $(cat "$D/scope_cycle.pid") 2>/dev/null' EXIT
 elif [ "$W" = A ] && [ -z "${NO_SCOPE:-}" ]; then
-    python3 demoscope.py preset A
+    python3 demoscope.py preset A && { python3 demoscope.py cycle A > "$D/scope_cycle.log" 2>&1 & echo $! > "$D/scope_cycle.pid"; }
+    trap 'kill -TERM $(cat "$D/scope_cycle.pid") 2>/dev/null' EXIT
 fi
 python3 demo.py "$W" "$@"
 RUN
