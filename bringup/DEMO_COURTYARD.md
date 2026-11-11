@@ -237,7 +237,8 @@ decision is made at R1 by looking.
 
 Since 11-10 (Jason: the I/Q constellation on scope A too) I and Q are on ch1 and ch2, the only pair this firmware's XY
 plots, and the ping and the pong on ch3 and ch4; `demoscope.py cycle A` alternates the time view (persistence off,
-the ping and the pong crisp) with XY (persistence 1 s), as `cycle B` does; `--time 0` keeps XY only.  Every input
+the ping and the pong crisp, 5 s) with XY (persistence 1 s, 10 s: Jason, 11-10, the scope's on-screen tags for a
+changed setting take a few seconds to fade), as `cycle B` does; `--time 0` keeps XY only.  Every input
 through a 50 ohm feed-through.
 
 | trace | jack | what the trustee sees | scale, place |

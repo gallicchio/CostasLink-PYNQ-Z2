@@ -2,7 +2,7 @@
     python3 demoscope.py preset B      the receiver: I (ch1), Q (ch2), the bit (CMP I MON, ch3), the lock (VC MON, ch4,
                                        no feed-through)
     python3 demoscope.py preset A      the sender: I (ch1), Q (ch2), the ping (TRIG A, ch3), the pong (TRIG B, ch4)
-    python3 demoscope.py cycle A|B [--time 5 --xy 5]   for ever: the time view, then the I/Q constellation (XY), the
+    python3 demoscope.py cycle A|B [--time 5 --xy 10]  for ever: the time view, then the I/Q constellation (XY), the
                                        two views in turn (--time 0: XY only); Ctrl-C leaves the time view
     python3 demoscope.py shot A|B [path]   the screen to a BMP (default plots/demoscope_<which>_<stamp>.bmp)
     --bench     the bench's cabling (I on ch2, Q on ch3, ch1 the far board's TRIG A, ch4 this board's TRIG B): the trigger
@@ -127,7 +127,7 @@ def preset_A(s, bench=False, scale=0.010, measure=False):
     s.run()
 
 
-def cycle(s, which="B", t_time=5.0, t_xy=5.0, bench=False, scale=0.010):
+def cycle(s, which="B", t_time=5.0, t_xy=10.0, bench=False, scale=0.010):
     """the time view and the constellation in turn, for ever (t_time 0: the constellation only); the view's name is
     printed at each change.  Scope A's time view has persistence off (the ping and the pong crisp), its XY 1 s (the
     constellation builds up), as scope B's both.  A SIGTERM (or Ctrl-C) leaves the time view: without the handler
@@ -183,7 +183,8 @@ def main():
             print("scope %s: %s preset%s" % (which, s.idn, " (the bench's cabling)" if bench else ""))
         elif what == "cycle":
             t_time = float(sys.argv[sys.argv.index("--time") + 1]) if "--time" in sys.argv else 5.0
-            t_xy = float(sys.argv[sys.argv.index("--xy") + 1]) if "--xy" in sys.argv else 5.0
+            t_xy = float(sys.argv[sys.argv.index("--xy") + 1]) if "--xy" in sys.argv else 10.0   # Jason 11-10: XY twice as long
+                                                                                                  # (the scope's change tags fade first)
             print("scope %s: %s; the time view %.0f s, XY %.0f s, in turn" % (which, s.idn, t_time, t_xy))
             cycle(s, which, t_time, t_xy, bench=bench, scale=scale)
         elif what == "shot":
