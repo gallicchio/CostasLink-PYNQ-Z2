@@ -127,6 +127,9 @@ def cycle_B(s, t_time=5.0, t_xy=5.0, bench=False, scale=0.010):
 
 
 def main():
+    if len(sys.argv) < 3 or sys.argv[1] not in ("preset", "cycle", "shot") or sys.argv[2] not in ("A", "B"):
+        print(__doc__.split("\nThis firmware")[0])
+        sys.exit(0 if any(a in ("-h", "--help") for a in sys.argv[1:]) else 2)
     what, which = sys.argv[1], sys.argv[2]
     bench = "--bench" in sys.argv
     scale = float(sys.argv[sys.argv.index("--scale") + 1]) if "--scale" in sys.argv else 0.010
