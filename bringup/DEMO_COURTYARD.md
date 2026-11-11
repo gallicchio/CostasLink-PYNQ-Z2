@@ -338,8 +338,15 @@ TRIG IN wiring).  What it did:
   192.168.2.0/24; PYNQ A answers at .99, B at .98 with no DHCP server present).  The stations need nothing between them:
   everything the demo measures goes over the air.  Each laptop runs its station (`demo.py A` / `demo.py B`), shows its
   own page, and on B drives scope B's 5 s view cycle over USB.  The wired port: `nmcli con add type ethernet ifname <port>
-  con-name pynq ipv4.method manual ipv4.addresses 192.168.2.119/24 ipv4.never-default yes ipv6.method disabled` (zmash
-  keeps the .119 it has had from the lab router; laptop B .120), no gateway, so the internet stays on the WiFi.
+  con-name pynq ipv4.method manual ipv4.addresses 192.168.2.10/24 ipv4.never-default yes ipv6.method disabled` (zmash
+  .10, laptop B .11), no gateway, so the internet stays on the WiFi.  **Why 192.168.2.x:** the PYNQ image's fixed
+  address is 192.168.2.99 (its documented direct-cable default, `eth0:1` beside DHCP on `eth0`; B's .98 is ours, 11-04),
+  and the lab router (the Netgear R7800 at 192.168.2.1, OpenWrt: LuCI, domain `lan`, 12 h leases) was set to the same
+  subnet, which is not OpenWrt's default (192.168.1.1): on the router's network each PYNQ answers at its DHCP address
+  (A .142, B .178 on 11-10) and at its fixed one, so the scripts' .99 / .98 work there and on a direct cable alike.  The
+  laptops' host numbers matter only in staying off .98 / .99, and under .100 they stay clear of OpenWrt's default DHCP
+  pool (.100-.249; the leases seen, .119 / .142 / .178, fit it), should a laptop's fixed profile ever come up on the
+  router's network.
 * **WiFi (11-10).** The demo needs none; only the agent on zmash wants the internet (Claremont-ETC).  The courtyard's
   access points are not the lab's (Jason: not necessarily the same make or setup; this building already has two kinds,
   Claremont-ETC's and Nile's, which broadcast their own SSIDs, Nile-Claremont-ETC among them), so on site

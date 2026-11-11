@@ -44,7 +44,9 @@ the only one on USB is used whatever its serial number; with two or more, name i
 (the serial is in its *IDN?, or: python3 lic/scpi_link.py usb).
 
 1. The wired port: a fixed address on the PYNQs' subnet, no gateway, e.g.
-     sudo nmcli con add type ethernet ifname <dongle> con-name pynq ipv4.method manual ipv4.addresses 192.168.2.120/24 ipv6.method disabled
+     sudo nmcli con add type ethernet ifname <dongle> con-name pynq ipv4.method manual ipv4.addresses 192.168.2.11/24 ipv4.never-default yes ipv6.method disabled
+   (.11: any 192.168.2.x but the PYNQs' .98 / .99 works on the direct cable; under .100 keeps clear of the lab router's DHCP
+   pool, should the profile ever come up on the router's network.)
    PYNQ A answers at 192.168.2.99, PYNQ B at 192.168.2.98 (each also asks for DHCP first; with none it keeps the fixed one).
    Check: ping 192.168.2.98; the PYNQ's own page http://192.168.2.98:8080/ shows its link.
 2. WiFi: the demo needs none.  Off (nmcli radio wifi off), or on 2.4 GHz, or on a 5 GHz channel outside the return's band:
