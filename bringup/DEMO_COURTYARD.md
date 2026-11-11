@@ -113,7 +113,8 @@ number are one continuous thing (section 5), and a visitor at either scope sees 
   is Jason's call; the alternatives are 5800 (the ISM band's top, where the TX chain is 11 dB down and the dish link was
   the band's weakest, 4.65) or 5500-5700 (WiFi's DFS channels, usually empty outdoors).  Item O1.
 * Each laptop talks to its own PYNQ over Ethernet (192.168.2.99 / .98 today); the laptops need not see each other.
-  **Both laptops' WiFi off**: the laptop's radio was the 5200-5400 interferer in the lab (4.80, 4.82).
+  **Both laptops' WiFi off, on 2.4 GHz, or on a channel outside the return's band** (section 10, `wifi_check.py`): the
+  laptop's radio was the 5200-5400 interferer in the lab (4.80, 4.82).
 * Power: each station needs mains for the PYNQ (12 V), the board (5 V), the scope and the laptop: one extension cord
   a station.  The laptops' screens are the demo's screens, so shade.
 * Dish B on something that can be carried a metre or two along the courtyard for the delay demo (a tripod, a cart);
@@ -336,7 +337,20 @@ TRIG IN wiring).  What it did:
 * **Two laptops, each wired only to its own PYNQ** (a USB-Ethernet dongle or the laptop's port, a fixed address on
   192.168.2.0/24; PYNQ A answers at .99, B at .98 with no DHCP server present).  The stations need nothing between them:
   everything the demo measures goes over the air.  Each laptop runs its station (`demo.py A` / `demo.py B`), shows its
-  own page, and on B drives scope B's 5 s view cycle over USB.  **WiFi off, or 2.4 GHz only** on both.
+  own page, and on B drives scope B's 5 s view cycle over USB.  The wired port: `nmcli con add type ethernet ifname <port>
+  con-name pynq ipv4.method manual ipv4.addresses 192.168.2.119/24 ipv4.never-default yes ipv6.method disabled` (zmash
+  keeps the .119 it has had from the lab router; laptop B .120), no gateway, so the internet stays on the WiFi.
+* **WiFi (11-10).** The demo needs none; only the agent on zmash wants the internet (Claremont-ETC).  The courtyard's
+  access points are not the lab's (Jason: not necessarily the same make or setup; this building already has two kinds,
+  Claremont-ETC's and Nile's, which broadcast their own SSIDs, Nile-Claremont-ETC among them), so on site
+  `bringup/wifi_check.py` lists, for the return at 5400 and at 5800, every access point within the receiver's +-94 MHz
+  (twoboard.wifi_tag's band) and whether the laptop's own channel is one of them, and whether the WiFi's subnet overlaps
+  192.168.2.0/24.  Take the return carrier that is clear, and keep each laptop's own channel out of it: 2.4 GHz
+  (`nmcli con modify <ssid> 802-11-wireless.band bg`; a laptop that roams can land on an in-band channel), or WiFi off
+  (laptop B never needs it: its receiver is the beam's, at 4800, below every WiFi channel; but its radio faces A's).
+  In the lab on 11-10: zmash on Claremont-ETC ch 116 (5570-5610 MHz, outside both bands; ch 1 at 2.4 GHz at signal 95);
+  5400's band holds only Claremont's ch 100 (5490-5530) at signal 34; 5800's holds the lab router, the Netgear R7800's
+  ch 149 at 80 MHz (5735-5815, signal 100), and Nile's ch 149 / 157: R1's 5800 leg runs beside it.
 * **A second laptop** gets `bringup/station_kit.sh`'s tarball (148 kB: demo.py, demoscope.py and what they load, the
   two lab-instrument-control files the scope needs, `run_station.sh`, `STATION.txt`); it needs python3 with numpy and
   the scope's /dev/usbtmc readable (group plugdev).  Tested 11-09 in a clean environment: every module loads from the kit.

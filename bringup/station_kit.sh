@@ -12,7 +12,7 @@ T=$(mktemp -d)
 trap 'rm -rf "$T"' EXIT
 K=$T/costaslink_station
 mkdir -p "$K/bringup" "$K/gateware/driver" "$K/lic/siglent"
-cp "$HERE"/{demo.py,demo.html,twoboard.py,bench.py,scope_e.py,demoscope.py,bench_config_laptop.json} "$K/bringup/"
+cp "$HERE"/{demo.py,demo.html,twoboard.py,bench.py,scope_e.py,demoscope.py,wifi_check.py,bench_config_laptop.json} "$K/bringup/"
 cp "$P"/gateware/driver/{costaslink.py,netbus.py,linkd.py} "$K/gateware/driver/"
 cp "$P"/gateware/{regmap.py,max2871_regs.py,board_constants.py} "$K/gateware/"
 cp "$LIC/scpi_link.py" "$K/lic/"
@@ -47,8 +47,10 @@ the only one on USB is used whatever its serial number; with two or more, name i
      sudo nmcli con add type ethernet ifname <dongle> con-name pynq ipv4.method manual ipv4.addresses 192.168.2.120/24 ipv6.method disabled
    PYNQ A answers at 192.168.2.99, PYNQ B at 192.168.2.98 (each also asks for DHCP first; with none it keeps the fixed one).
    Check: ping 192.168.2.98; the PYNQ's own page http://192.168.2.98:8080/ shows its link.
-2. WiFi: OFF, or 2.4 GHz only (the 5 GHz WiFi channels sit on and beside the return carrier; the laptop's own 5 GHz radio
-   was the interferer in the lab, BRINGUP_LOG 4.80 / 4.82):  nmcli radio wifi off
+2. WiFi: the demo needs none.  Off (nmcli radio wifi off), or on 2.4 GHz, or on a 5 GHz channel outside the return's band:
+   python3 bringup/wifi_check.py lists this laptop's channel and every access point within +-94 MHz of 5400 and of 5800
+   (the laptop's own 5 GHz radio was the interferer in the lab, BRINGUP_LOG 4.80 / 4.82).  2.4 GHz only:
+     nmcli con modify <the WiFi's name> 802-11-wireless.band bg; nmcli con up <the WiFi's name>
 3. Station B (the beam's receiver):  ./run_station.sh B        Station A (the sender):  ./run_station.sh A
    The scope preset is set at start (B: I ch1, Q ch2, CMP I MON ch3, VC MON ch4 with no feed-through; and its view
    cycles every 5 s between the time traces and the I/Q constellation).  NO_SCOPE=1 ./run_station.sh B runs without it.
