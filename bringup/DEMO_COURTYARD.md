@@ -203,7 +203,7 @@ colours are the Siglent's own (ch1 yellow, ch2 pink, ch3 cyan, ch4 green) and th
 so a printed card by each scope names the four traces.  All four inputs through 50 ohm feed-throughs, as on the
 bench.  `bringup/demoscope.py preset A|B` sets each view once; `demoscope.py shot A|B` saves the screen.
 
-### Scope B, by the dish that gets blocked: "the bits, and the lock", and every 5 s the constellation
+### Scope B, by the dish that gets blocked: "the bits, and the lock", and every 15 s the constellation (10 s of it)
 
 Jason (11-08): the one thing worth alternating is scope B's view: 5 s of the time traces, 5 s of the I/Q constellation
 (XY).  This firmware's XY mode plots **channel 1 against channel 2 and nothing else** (tried 11-08 10:48), so I and Q
@@ -233,7 +233,7 @@ scope through the 1 k tap, 0.7-0.9 div at 10 mV/div in a 2-division band; if the
 ch3 feed-throughs come off (1 Mohm: x21 larger, the edges rounded by the lead's capacitance, 50 mV/div) and the
 decision is made at R1 by looking.
 
-### Scope A, the sender: "the ping and the pong", and every 5 s the return's constellation
+### Scope A, the sender: "the ping and the pong", and every 15 s the return's constellation (10 s of it)
 
 Since 11-10 (Jason: the I/Q constellation on scope A too) I and Q are on ch1 and ch2, the only pair this firmware's XY
 plots, and the ping and the pong on ch3 and ch4; `demoscope.py cycle A` alternates the time view (persistence off,
@@ -408,3 +408,29 @@ TRIG IN wiring).  What it did:
 6. Then: both stations restarted with the demo's settings (no `--trig_a off`), `demoscope.py preset A`, `preset B`,
    `cycle A`,
    `cycle B`; the return's leg at 5400, then 5800 (link.json and the stations' `--tx` / `--rx` on both).
+
+## 11. What the night of 11-10 / 11 settled (BRINGUP_LOG 4.93-4.94)
+
+The setup as the courtyard will have it, on the desk: two laptops, each wired only to its own PYNQ, the beam over the
+dishes across the room, the return over two FPV omnis on the desk (the TFP-1s' places), both scopes cycling.
+
+* **Starting it, cold:** the PYNQs' supply; their servers come up with the overlay in about 2 minutes (each answers on
+  its port 8080; while its board is unpowered the page shows an ADC error instead of the board, which is right); then
+  the boards' 5 V.  Each PYNQ's own linkd sets its link up from link.json and locks about a minute later, with no
+  laptop.  Then the stations, whenever (`./run_station.sh A` / `B`): each adopts its PYNQ's lock and arms in seconds.
+  Measured 03:19-03:21: 5 V on, both PYNQs locked 63 s later, both stations armed 10 s after that.
+* **A power glitch fixes itself** (since e805682, on the PYNQs since 11-11 03:09): the boards' 5 V off and on under
+  running PYNQs used to leave both links dead for good (the synthesizers need their power-up sequence, which nothing
+  sent); now each keeper sets the link up again when its board answers, and the demo was back 51 s after the 5 V.
+* **A laptop's loss costs the link nothing:** with station B stopped, board A stayed 100 % right (the boards answer by
+  themselves); a station's restart costs about 1 s of misses and is back at 99.99 % within 4-10 s.
+* **The return's level:** cleanest at 50-90 mV (2.8e-9 at 86 mV); a strong return makes board A decide on noise near
+  the idle (6.4e-5 at 314 mV with the bench's attenuation kept, 6.8e-6 at the keeper's 150 mV target).  The budget for
+  the TFP-1s at 15 m (section 4: 65-80 mV at DSA 0) is in the clean range; on the desk, `demo.py A --dsa_min 16` gives
+  the same level.  `demo.py --fresh` sets the attenuation for the day's level instead of keeping the PYNQ's.
+* **The return's carrier:** 5400 and 5800 both clean at night (1.5e-6, 7e-7); 5600 and 5200 not (Claremont's WiFi in
+  band).  On site, `wifi_check.py` first.
+* **The round trip** reads 245 ns in the room (the dish path's 140 ns against the bench cables').
+* **Open:** the beam's margin (board B's setup with its attenuation forced up under A's stream locked falsely: the
+  method, not the beam); the T0 calibration (B4); the TFP-1s on the return; the scopes' views judged by eye (Jason, 11-10:
+  the XY view now 10 s, the measurements off).
