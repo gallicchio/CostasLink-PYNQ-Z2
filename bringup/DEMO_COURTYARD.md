@@ -114,7 +114,9 @@ number are one continuous thing (section 5), and a visitor at either scope sees 
   the band's weakest, 4.65) or 5500-5700 (WiFi's DFS channels, usually empty outdoors).  Item O1.
 * Each laptop talks to its own PYNQ over Ethernet (192.168.2.99 / .98 today); the laptops need not see each other.
   **Both laptops' WiFi off, on 2.4 GHz, or on a channel outside the return's band** (section 10, `wifi_check.py`): the
-  laptop's radio was the 5200-5400 interferer in the lab (4.80, 4.82).
+  laptop's radio was the 5200-5400 interferer in the lab (4.80, 4.82).  **On 2.4 GHz is not enough:** the band setting
+  limits the association, not the background scans, which visit every 5 GHz channel every 5 minutes and make station
+  A's only errors (4.95, section 11): off is the clean answer, or the laptops away from the antennas.
 * Power: each station needs mains for the PYNQ (12 V), the board (5 V), the scope and the laptop: one extension cord
   a station.  The laptops' screens are the demo's screens, so shade.
 * Dish B on something that can be carried a metre or two along the courtyard for the delay demo (a tripod, a cart);
@@ -360,7 +362,8 @@ TRIG IN wiring).  What it did:
   `bringup/wifi_check.py` lists, for the return at 5400 and at 5800, every access point within the receiver's +-94 MHz
   (twoboard.wifi_tag's band) and whether the laptop's own channel is one of them, and whether the WiFi's subnet overlaps
   192.168.2.0/24.  Take the return carrier that is clear, and keep each laptop's own channel out of it: 2.4 GHz
-  (`nmcli con modify <ssid> 802-11-wireless.band bg`; a laptop that roams can land on an in-band channel), or WiFi off
+  (`nmcli con modify <ssid> 802-11-wireless.band bg`; a laptop that roams can land on an in-band channel; it still
+  scans all of 5 GHz every 5 min, which costs station A a second of errors each time, 4.95), or WiFi off
   (laptop B never needs it: its receiver is the beam's, at 4800, below every WiFi channel; but its radio faces A's).
   In the lab on 11-10: zmash on Claremont-ETC ch 116 (5570-5610 MHz, outside both bands; ch 1 at 2.4 GHz at signal 95);
   5400's band holds only Claremont's ch 100 (5490-5530) at signal 34; 5800's holds the lab router, the Netgear R7800's
@@ -409,7 +412,7 @@ TRIG IN wiring).  What it did:
    `cycle A`,
    `cycle B`; the return's leg at 5400, then 5800 (link.json and the stations' `--tx` / `--rx` on both).
 
-## 11. What the night of 11-10 / 11 settled (BRINGUP_LOG 4.93-4.94)
+## 11. What the night of 11-10 / 11 settled (BRINGUP_LOG 4.93-4.95)
 
 The setup as the courtyard will have it, on the desk: two laptops, each wired only to its own PYNQ, the beam over the
 dishes across the room, the return over two FPV omnis on the desk (the TFP-1s' places), both scopes cycling.
@@ -431,6 +434,14 @@ dishes across the room, the return over two FPV omnis on the desk (the TFP-1s' p
 * **The return's carrier:** 5400 and 5800 both clean at night (1.5e-6, 7e-7); 5600 and 5200 not (Claremont's WiFi in
   band).  On site, `wifi_check.py` first.
 * **The round trip** reads 245 ns in the room (the dish path's 140 ns against the bench cables').
+* **The soak, 3 h 35 min with nothing touched** (03:55-07:31, station A at the courtyard's return level): station A
+  1.5e-6 (25.6 billion challenges), locked every second, the round trip 246.25 ns in every minute; station B every one
+  of 25.7 billion symbols decided; no loss, no re-arm, kate's USB clean.
+* **The laptops' WiFi scans make station A's only errors:** each laptop's background scan (every 5 min, ~3.5 s, every
+  5 GHz channel although the profile is 2.4 GHz only) costs 1-2 s at 99.98 % right; zmash's scans most of it, a scan
+  asked for by hand made errors on the second.  In the courtyard: **the laptops' WiFi off once the stations run** (the
+  demo needs none; the pages' cells for the other laptop go red), or the laptops a few metres from the antennas and
+  behind the TFP-1s.  Locking the profile to one access point's BSSID may stop the scans: untested.
 * **Open:** the beam's margin (board B's setup with its attenuation forced up under A's stream locked falsely: the
   method, not the beam); the T0 calibration (B4); the TFP-1s on the return; the scopes' views judged by eye (Jason, 11-10:
   the XY view now 10 s, the measurements off).
