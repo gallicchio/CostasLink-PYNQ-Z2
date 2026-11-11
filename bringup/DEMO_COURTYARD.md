@@ -363,6 +363,16 @@ TRIG IN wiring).  What it did:
   the scope's /dev/usbtmc readable (group plugdev).  Tested 11-09 in a clean environment: every module loads from the kit.
   Any of the labs' SDS1104X-E will do (11-10): `scope_e.open_scope` uses the only one on USB whatever its serial (one
   claimed by the other station excepted), and `SCOPE_A` / `SCOPE_B` = a serial or an IP address names one.
+* **Names on Claremont-ETC (measured 11-10, zmash and kate on the same access point, one /18 subnet): none.**  The
+  campus DNS (172.29.x.x) has no record of either laptop, forward or reverse, though each sends its hostname
+  with DHCP; and the WiFi delivers no multicast or broadcast between clients: a listener on the mDNS group heard
+  nothing in 25 s on either laptop (on a network of hundreds of phones and Macs), kate's 12 UDP broadcasts never reached
+  zmash while its one unicast did, and the same probe over zmash's cable to PYNQ A heard zmash's queries, and zmash's
+  own avahi answered it.  So `kate.local` fails because of the network's setting, not the laptops' (avahi runs on
+  both, nss-mdns is configured, no firewall).  Unicast works (ssh, and kate's page from zmash at :8090).  zmash's
+  `~/.ssh/config` has `Host kate` with the address by hand (kate prints it: `ip -br addr show wlo1`); a name that
+  survives an address change on any network needs something like Tailscale on both laptops (Jason's call).  The
+  courtyard's access points may behave differently: try `getent hosts kate.local` there.
 * **The PYNQs' WiFi, if ever wanted** (both images PYNQ 3.0, kernel 5.15.19, read 11-09, nothing changed): drivers and
   firmware present for MediaTek **MT7601U** and Ralink **RT5370 / RT3070 / RT2870** (2.4 GHz only), Realtek
   RTL8188CUS / RTL8192CU / RTL8723BU / RTL8192EU, Atheros AR9170, some Broadcom USB; **not** for Atheros AR9271 (its
