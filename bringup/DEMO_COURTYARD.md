@@ -109,9 +109,10 @@ number are one continuous thing (section 5), and a visitor at either scope sees 
   comfortable (4800 over the dishes: -45.5 dBm, 180-190 mV at DSA 10-16).
 * Two carriers, 4800 for the beam and 5400 for the return, as in 4.70 (the receivers are homodyne: a board's own TX
   at the other carrier is 600 MHz out of its arms' band).  5400 sits in the WiFi gap; 4800 is below the WiFi channels.
-  The 5 GHz unlicensed bands are 5150-5350 and 5470-5850 MHz: radiating 4800 outdoors with +4 dBm into an 18 dBi dish
-  is Jason's call; the alternatives are 5800 (the ISM band's top, where the TX chain is 11 dB down and the dish link was
-  the band's weakest, 4.65) or 5500-5700 (WiFi's DFS channels, usually empty outdoors).  Item O1.
+  The 5 GHz unlicensed bands are 5150-5350 and 5470-5850 MHz.  **The beam stays at 4800 outdoors** (Jason, 11-11,
+  O1 settled): the courtyard is a basement courtyard, with a concrete basement wall behind each dish to take what
+  the dishes radiate.  (The alternatives were 5800, the ISM band's top, where the TX chain is 11 dB down and the
+  dish link was the band's weakest, 4.65, or 5500-5700, WiFi's DFS channels.)
 * Each laptop talks to its own PYNQ over Ethernet (192.168.2.99 / .98 today); the laptops need not see each other.
   **Both laptops' WiFi off, on 2.4 GHz, or on a channel outside the return's band** (section 10, `wifi_check.py`): the
   laptop's radio was the 5200-5400 interferer in the lab (4.80, 4.82).  **On 2.4 GHz is not enough:** the band setting
@@ -271,7 +272,7 @@ cabling (ch1 = the board's own TRIG A on A, CMP I MON on B) is R1's.
 | B5 | **The adopt path**: a restarted `demo.py` takes over a running loop without the 60 s setup (the middles, centres, VC and leg from the PYNQ's linkd through `/api/now`) | a restart during the demo cost a minute | `demo.py`, `linkd.state()` | **done 11-08 10:42**: both stations adopted and were answering within 2 s of starting; each PYNQ's own linkd (`link.json`, duplex) brought the pair up unattended after the deploy (A at once, B in 66 s) |
 | B6 | **The band panel** (optional): the receiver's survey as a bar chart on laptop B, taken in the gaps | interference is part of the story | `survey()` exists | Tue if time |
 | R1 | **Rehearsal 1, Mon**: the dishes across the room, the two TFP-1s on their boards across the room too (the first time the return crosses more than 30 cm): A's leg at 5400 and at 5800, RHCP to RHCP, LHCP loaded, the carrier and the antenna size decided on it (section 4); **the scopes cabled for section 5a** (A: ch1 its own TRIG A, ch2 I, ch3 Q, ch4 TRIG B; B: ch1 I, ch2 Q, ch3 CMP I MON, ch4 VC MON; no TRIG IN leads anywhere), `demoscope.py preset A`, `preset B`, `cycle B`; both laptops; then the full loop for an hour with nobody touching anything, then the blocking and the carrying; B4 | find what breaks; the return's real leg | | Mon pm |
-| R2 | **Rehearsal 2, Tue or Wed**: the courtyard itself, power from the building, the laptops' WiFi off, the sun on the screens, the survey of the outdoor band; the carrier choice (O1) settled by it | the outdoors | | Wed |
+| R2 | **Rehearsal 2, Tue or Wed**: the courtyard itself, power from the building, the laptops' WiFi off, the sun on the screens, the survey of the outdoor band (the beam at 4800 is settled, O1; the survey picks the return's 5400 or 5800) | the outdoors | | Wed |
 
 Not for Thursday: the gateware's pipeline (REVB 68), the TRIG IN pairing (REVB 69).  Nothing in the demo needs a
 gateware change.
@@ -308,7 +309,8 @@ gateware change.
 
 ## 8. Open questions (Jason)
 
-* O1: the beam's carrier outdoors: 4800 as measured, or inside an unlicensed band (5800, or 5500-5700)?
+* O1 (settled 11-11): the beam's carrier outdoors stays 4800 as measured: a basement courtyard, a concrete wall
+  behind each dish.
 * O2 (settled 11-07): full duplex with the beam's direction fixed; the return on the FPV patches.
 * O3: a TV or projector for the laptops' pages, or the laptops' own screens?
 * O4: who carries dish B, and on what (tripod, cart)?  The metres readout wants a straight walk of 2-3 m.
