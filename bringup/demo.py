@@ -12,6 +12,8 @@ themselves.
 
     python3 demo.py A [--tx 4800 --rx 5400] [--port 8090] [--period 50] [--window 45] [--t0_ns T] [--host IP]
     python3 demo.py B [--tx 5400 --rx 4800] [--port 8090] [--host IP]
+    --peer IP[:port]  the other station's laptop: each page shows the four addresses (both laptops, both PYNQs), green
+                      when reachable from here, yellow for the other PYNQ through the other laptop, red when not at all
     (the bench's tuning is the default: A decides 24 samples after the echo's edge with its I windows at 0.4 of the
     swing, B at 16 and 0.5; the keeper's attenuator floor 0 dB)
     --trig_a off      on the bench, where TRIG A is wired into the other board's TRIG IN (JP203 puts it on the Q ladder)
@@ -19,14 +21,20 @@ themselves.
 import argparse
 import collections
 import http.server
+import ipaddress
 import json
 import math
 import os
+import re
 import signal
+import socket
+import subprocess
 import sys
 import threading
 import time
 import traceback
+import urllib.parse
+import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -459,7 +467,110 @@ class Station:
         say("%s: stopped (the board left as it is)" % self.name)
 
 
-def serve(station, port):
+PYNQ_NET = ipaddress.ip_network("192.168.2.0/24")
+
+
+class NetWatch(threading.Thread):
+    """The four addresses that matter (each laptop and each PYNQ) and how each answers from this laptop, every few
+    seconds, for both stations' pages (DEMO_COURTYARD 10): green, directly; yellow, the other PYNQ through the other
+    laptop (not from here, but the other station reaches it: ssh there to get at it); red, not at all.  The other
+    laptop's address comes from --peer and, better, from the other station's own polls of /api/net (their source
+    address), so when one laptop's WiFi address changes, the side that can still reach the other learns it."""
+    PERIOD = 3.0
+
+    def __init__(self, me, port, peer=None):
+        super().__init__(daemon=True, name="net")
+        self.me, self.other, self.port = me, ("B" if me == "A" else "A"), port
+        ip, _, p = (peer or "").partition(":")
+        self.configured = (ip, int(p) if p else port) if ip else None
+        self.learned = None                  # (ip, port, t) of the other station's last /api/net poll
+        self.last_ok = {}                    # address -> when it last answered
+        self.peer_seen = {}                  # the other station's last answer (its name, addresses and PYNQ)
+        self.state = {}
+        self.host = socket.gethostname()
+
+    def heard_from(self, ip, port):
+        self.learned = (ip, port or self.port, time.time())
+
+    @staticmethod
+    def laptop_ips():
+        out = subprocess.run(["ip", "-4", "-o", "addr", "show"], capture_output=True, text=True, timeout=3).stdout
+        return [{"dev": m.group(1), "ip": m.group(2), "cable": ipaddress.ip_address(m.group(2)) in PYNQ_NET}
+                for m in re.finditer(r"^\d+:\s+(\S+)\s+inet\s+([\d.]+)/", out, re.M) if not m.group(2).startswith("127.")]
+
+    @staticmethod
+    def ping(ip):
+        try:
+            return subprocess.run(["ping", "-c1", "-W1", "-n", ip], capture_output=True, timeout=3).returncode == 0
+        except (OSError, subprocess.SubprocessError):
+            return False
+
+    @staticmethod
+    def tcp(ip, port):
+        try:
+            with socket.create_connection((ip, port), timeout=1.0):
+                return True
+        except OSError:
+            return False
+
+    def ask(self, ip, port):
+        try:
+            url = "http://%s:%d/api/net?from=%s&port=%d" % (ip, port, self.me, self.port)
+            return json.loads(urllib.request.urlopen(url, timeout=2).read())
+        except (OSError, ValueError):
+            return None
+
+    def mark(self, ip, ok, now):
+        if ok:
+            self.last_ok[ip] = now
+        return self.last_ok.get(ip)
+
+    def check(self):
+        now = time.time()
+        mine = self.laptop_ips()
+        pynq = T.HOSTS[self.me]
+        pynq_ok = self.ping(pynq)
+        tries = [self.learned[:2]] if self.learned else []
+        if self.configured and self.configured not in tries:
+            tries.append(self.configured)
+        peer, at = None, (tries[0] if tries else None)
+        for c in tries:
+            peer = self.ask(*c)
+            if peer:
+                at = c
+                break
+        if peer:
+            self.peer_seen = {"name": (peer.get("this") or {}).get("name"), "ips": (peer.get("this") or {}).get("ips"),
+                              "pynq": peer.get("pynq") or {}}
+        laptop = {"name": self.peer_seen.get("name"), "ip": at[0] if at else None, "ok": bool(peer),
+                  "how": None if not at else ("learned" if self.learned and at == self.learned[:2] else "configured"),
+                  "ssh": bool(peer) and self.tcp(at[0], 22), "ips": self.peer_seen.get("ips")}
+        laptop["last_ok"] = self.mark(laptop["ip"], laptop["ok"], now) if laptop["ip"] else None
+        theirs = (self.peer_seen.get("pynq") or {})
+        oip = theirs.get("ip") or T.HOSTS[self.other]
+        if self.ping(oip):
+            other = {"level": "green", "how": "direct"}
+        elif peer and theirs.get("ok"):
+            other = {"level": "yellow", "how": "through %s" % (laptop["name"] or laptop["ip"])}
+        else:
+            other = {"level": "red", "how": "no answer"}
+        other.update(ip=oip, last_ok=self.mark(oip, other["level"] != "red", now))
+        self.state = {"t": now, "station": self.me,
+                      "this": {"name": self.host, "ips": mine},
+                      "pynq": {"ip": pynq, "ok": pynq_ok, "last_ok": self.mark(pynq, pynq_ok, now)},
+                      "peer": laptop, "other_pynq": other}
+
+    def run(self):
+        while True:
+            t0 = time.time()
+            try:
+                self.check()
+            except Exception as e:                                  # the page must keep going whatever happens here
+                self.state = dict(self.state, error=repr(e), t=time.time())
+            time.sleep(max(0.5, self.PERIOD - (time.time() - t0)))
+
+
+def serve(station, port, net=None):
     page = os.path.join(HERE, "demo.html")
 
     class H(http.server.BaseHTTPRequestHandler):
@@ -467,9 +578,16 @@ def serve(station, port):
             pass
 
         def do_GET(self):
-            if self.path.startswith("/api/demo"):
+            if self.path.startswith("/api/net"):
+                q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                if net and q.get("from", [""])[0] == net.other:
+                    net.heard_from(self.client_address[0], int(q.get("port", ["0"])[0] or 0))
+                body = json.dumps(net.state if net else {}, default=str).encode()
+                ct = "application/json"
+            elif self.path.startswith("/api/demo"):
                 st = dict(station.state)
                 st["fast"] = station.fast_state()
+                st["net"] = net.state if net else None
                 body = json.dumps(st, default=str).encode()
                 ct = "application/json"
             else:
@@ -510,6 +628,9 @@ def main():
     p.add_argument("--frac_q", type=float, default=0.5, help="QP / QN thresholds at this fraction of their measured swing")
     p.add_argument("--t0_ns", type=float, default=None, help="the round trip at zero path (B4's calibration)")
     p.add_argument("--trig_a", choices=("tx_event", "off"), default="tx_event")
+    p.add_argument("--peer", default=os.environ.get("COSTAS_PEER"),
+                   help="the other station's laptop, IP[:port] (or $COSTAS_PEER), for the page's network row; learned "
+                        "anyway from the other station's polls once it knows this laptop")
     a = p.parse_args()
     if a.tx is None:
         a.tx = 4800.0 if a.station == "A" else 5400.0
@@ -526,7 +647,9 @@ def main():
         st.stop = True
     signal.signal(signal.SIGTERM, on_signal)
     signal.signal(signal.SIGINT, on_signal)
-    serve(st, a.port)
+    net = NetWatch(a.station, a.port, a.peer)
+    net.start()
+    serve(st, a.port, net)
     say("station %s: the %s, TX %g MHz, RX %g MHz, %s every %d clocks" % (a.station, st.role, a.tx, a.rx, SCHEME, a.period))
     st.run()
 

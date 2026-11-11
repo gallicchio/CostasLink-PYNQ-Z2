@@ -6,7 +6,8 @@
 <title>CostasLink station</title>
 <style>
   :root { --bg: #f7f7f5; --panel: #ffffff; --ink: #1b1b1b; --muted: #6b6b6b; --line: #e3e3e0;
-          --blue: #2a78d6; --orange: #eb6834; --aqua: #1baf7a; --red: #e34948; --green: #008300; --violet: #6250d6; }
+          --blue: #2a78d6; --orange: #eb6834; --aqua: #1baf7a; --red: #e34948; --green: #008300; --violet: #6250d6;
+          --yellow: #e0a800; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #141414; --panel: #1e1e1e; --ink: #ededed; --muted: #a0a0a0; --line: #333; } }
   :root[data-theme="dark"] { --bg: #141414; --panel: #1e1e1e; --ink: #ededed; --muted: #a0a0a0; --line: #333; }
   * { box-sizing: border-box; }
@@ -41,6 +42,15 @@
   .spark polyline { fill: none; stroke: var(--blue); stroke-width: 2; vector-effect: non-scaling-stroke; }
   .hidden { display: none; }
   footer { margin-top: 12px; color: var(--muted); font-size: 12px; }
+  .net { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .net > div { background: var(--panel); border: 1px solid var(--line); border-left: 8px solid var(--muted); border-radius: 10px; padding: 8px 12px; }
+  .net > div.g { border-left-color: var(--green); } .net > div.y { border-left-color: var(--yellow); } .net > div.r { border-left-color: var(--red); }
+  .net .who { font-size: 13px; color: var(--muted); letter-spacing: .04em; }
+  .net .ip { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; margin: 2px 0; }
+  .net .st { font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .net .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); flex: none; }
+  .net .g .dot { background: var(--green); } .net .y .dot { background: var(--yellow); } .net .r .dot { background: var(--red); }
+  .net .more { font-size: 12px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -50,6 +60,8 @@
   <span class="pill" id="lockpill">starting</span>
   <span class="sub" id="age"></span>
 </header>
+
+<div class="net hidden" id="net"></div>
 
 <div class="grid" id="A" >
   <div class="tile">
@@ -185,11 +197,42 @@ function render(s) {
   }
   $("foot").textContent = "temperature " + f1((s.det || {}).temp_c, 1) + " °C · up " + f0(s.up_s) + " s · " + new Date(1000 * s.t).toLocaleTimeString();
 }
+const hhmm = t => (t ? new Date(1000 * t).toLocaleTimeString() : null);
+const esc = x => String(x == null ? "" : x).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+function cell(lvl, who, ip, st, more) {
+  return '<div class="' + lvl + '"><div class="who">' + esc(who) + '</div><div class="ip">' + esc(ip || "—") +
+         '</div><div class="st"><span class="dot"></span>' + esc(st) + '</div>' + (more ? '<div class="more">' + esc(more) + '</div>' : "") + '</div>';
+}
+function gone(last) { return last ? "no answer since " + hhmm(last) : "no answer"; }
+function renderNet(n) {
+  const box = $("net");
+  if (!n || !n.station) { box.classList.add("hidden"); return; }
+  box.classList.remove("hidden");
+  const me = n.station, other = me === "A" ? "B" : "A";
+  const ips = (n.this.ips || []), wifi = ips.filter(x => !x.cable).map(x => x.ip), cable = ips.filter(x => x.cable).map(x => x.ip);
+  const stale = Date.now() / 1000 - n.t > 12;
+  const cells = {};
+  cells["L" + me] = cell("g", "Laptop " + me + " · " + n.this.name + " (this one)", wifi.join(", ") || cable.join(", "),
+                         "this laptop", cable.length ? "cable " + cable.join(", ") : "");
+  const p = n.pynq || {};
+  cells["P" + me] = cell(p.ok ? "g" : "r", "PYNQ " + me, p.ip, p.ok ? "direct" : gone(p.last_ok), "");
+  const q = n.peer || {};
+  const qc = (q.ips || []).filter(x => x.cable).map(x => x.ip);
+  let qst, qlvl;
+  if (!q.ip) { qlvl = "r"; qst = "not known yet: start station " + other + " with --peer " + (wifi[0] || "this laptop's address"); }
+  else if (q.ok) { qlvl = "g"; qst = "direct" + (q.ssh ? ", ssh open" : ", no ssh"); }
+  else { qlvl = "r"; qst = gone(q.last_ok) + (q.how === "configured" ? " (the --peer address)" : " (its last address)"); }
+  cells["L" + other] = cell(qlvl, "Laptop " + other + (q.name ? " · " + q.name : ""), q.ip, qst, qc.length ? "cable " + qc.join(", ") : "");
+  const o = n.other_pynq || {};
+  const olvl = {green: "g", yellow: "y", red: "r"}[o.level] || "r";
+  cells["P" + other] = cell(olvl, "PYNQ " + other, o.ip, o.level === "red" ? gone(o.last_ok) : o.how, "");
+  box.innerHTML = cells.LA + cells.PA + cells.LB + cells.PB + (stale ? '<div class="r"><div class="who">network check</div><div class="st"><span class="dot"></span>stale: last at ' + hhmm(n.t) + '</div></div>' : "");
+}
 let lastT = 0;
 async function tick() {
   try {
     const s = await (await fetch("/api/demo", {cache: "no-store"})).json();
-    render(s); lastT = Date.now();
+    render(s); renderNet(s.net); lastT = Date.now();
     $("age").textContent = "";
   } catch (e) { $("age").textContent = "no data for " + Math.round((Date.now() - lastT) / 1000) + " s"; }
 }
