@@ -180,6 +180,14 @@ What the laptop needs that the bench PC has:
 
 ### 3a. The lab laptop as found (`zmash`, 2026-11-03, BRINGUP_LOG 4.35)
 
+**Since 2026-11-10 (read this first; the rest of 3a is the 11-03 snapshot):** two laptops, each wired only to its own
+PYNQ: zmash (station A) at 192.168.2.10 on `enp0s31f6` to PYNQ A (.99), kate (station B, user labuser, `ssh kate`
+from zmash) at .11 on a USB dongle to PYNQ B (.98); both on Claremont-ETC at 2.4 GHz for the internet; the lab router
+(the Netgear R7800, OpenWrt, 192.168.2.1) is no longer on the PYNQs' wires, so PYNQ B is reached through kate
+(`ssh -o ProxyJump=kate xilinx@192.168.2.98`).  Both PYNQs' servers run `~/costaslink_20261111_pllinit` through
+`~/costaslink_current` (the 11-11 power-loss fix, BRINGUP_LOG 4.94; the previous `costaslink_20261108_1028` kept for
+undo).  DEMO_COURTYARD 10-11 has the networks, the stations, the cold start and the night's results.
+
 * **Config:** `COSTAS_BENCH_CONFIG=bringup/bench_config_laptop.json` in front of every `bench.py` command (the PC's
   `bench_config.json` is left alone).  `bench.py check` answers for both supplies and the board.
 * **Power: two E3632As, not the E3646A.**  The "top" one (FTDI `FTER3DQU`, `CAL:COUNt?` +29) is the board's, 5.30 V,
