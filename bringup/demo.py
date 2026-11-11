@@ -437,7 +437,10 @@ class Station:
             if self.role == "echo":
                 self.cl.fast_off()                            # a previous process's echo path, answering a beat while the
                 self.cl.reply_off()                           # loop is not yet locked, is garbage for the far station
-            self.adopt()
+            if self.a.fresh:
+                say("%s: --fresh: the keeper's own setup, not the PYNQ's lock" % self.name)
+            else:
+                self.adopt()
         threading.Thread(target=self.keep, daemon=True, name="keeper").start()
         threading.Thread(target=self.fast, daemon=True, name="fast").start()
         self.stop = False
@@ -628,6 +631,8 @@ def main():
     p.add_argument("--frac_q", type=float, default=0.5, help="QP / QN thresholds at this fraction of their measured swing")
     p.add_argument("--t0_ns", type=float, default=None, help="the round trip at zero path (B4's calibration)")
     p.add_argument("--trig_a", choices=("tx_event", "off"), default="tx_event")
+    p.add_argument("--fresh", action="store_true", help="set the link up from nothing (the attenuator and the centres for "
+                   "today's level) instead of adopting the PYNQ's lock")
     p.add_argument("--peer", default=os.environ.get("COSTAS_PEER"),
                    help="the other station's laptop, IP[:port] (or $COSTAS_PEER), for the page's network row; learned "
                         "anyway from the other station's polls once it knows this laptop")
