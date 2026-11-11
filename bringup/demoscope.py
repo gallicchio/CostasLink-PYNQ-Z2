@@ -7,6 +7,8 @@
     python3 demoscope.py shot A|B [path]   the screen to a BMP (default plots/demoscope_<which>_<stamp>.bmp)
     --bench     the bench's cabling (I on ch2, Q on ch3, ch1 the far board's TRIG A, ch4 this board's TRIG B): the trigger
                 on ch4, and XY shows ch1 against ch2, so no constellation there
+    --measure   the on-screen measurements too (A: the ping-to-pong delay with statistics; B: I's peak-to-peak); off by
+                default since 11-10 (Jason: they are in the way, and the page shows the round trip)
     --scale V   I and Q volts a division at the scope (0.010 through the 50 ohm feed-through and the 1 k tap; 0.050
                 with the feed-throughs off, 1 Mohm)
 This firmware's XY mode plots channel 1 (X) against channel 2 (Y) and nothing else (tried 11-08 10:48), which is why
@@ -61,7 +63,18 @@ def shown(how, *args):
         print("  (not shown: %s)" % e)
 
 
-def preset_B(s, bench=False, scale=0.010):
+def no_measurements(s):
+    """no measurements under the traces: statistics off, and the measurements cleared where the firmware can (8.1.6.1.26,
+    scope A's, ignores MEACL: there the front panel's Measure, Clear)"""
+    s.statistics(False)
+    try:
+        s.clear_measurements()
+    except ValueError:
+        if any(s.measurements()):
+            print("  (this scope's firmware keeps its measurements: clear them on the front panel, Measure, Clear)")
+
+
+def preset_B(s, bench=False, scale=0.010, measure=False):
     """the receiver: I and Q, the recovered bit, the lock; the trigger on the bit's edge; persistence for the eye and
     for the constellation.  ch1 I MON and ch2 Q MON through 50 ohm feed-throughs at 10 mV/div (or none, --scale 0.05);
     ch3 CMP I MON through a feed-through (its /10 output is made for 50 ohm: 0.33 V); ch4 VC MON with NO feed-through
@@ -82,11 +95,14 @@ def preset_B(s, bench=False, scale=0.010):
         s.trigger(source=3, level=0.15, slope="rising", mode="normal")
     s.xy(False)
     s.persistence(1)                                                                                    # 1 s persistence
-    shown(s.show_measurement, "PKPK", 2 if bench else 1)                                                # the eye's height
+    if measure:
+        shown(s.show_measurement, "PKPK", 2 if bench else 1)                                            # the eye's height
+    else:
+        no_measurements(s)
     s.run()
 
 
-def preset_A(s, bench=False, scale=0.010):
+def preset_A(s, bench=False, scale=0.010, measure=False):
     """the sender: the ping and the pong on one baseline, the delay measured on screen; the pair every 500 ns.  Since
     11-10 I and Q on ch1 / ch2 (XY plots ch1 against ch2 only) and the ping / pong on ch3 / ch4; --bench keeps the
     bench's cabling (I ch2, Q ch3, the far board's TRIG A on ch1, the trigger on ch4)"""
@@ -103,8 +119,11 @@ def preset_A(s, bench=False, scale=0.010):
     s.trigger(source=trig, level=0.85, slope="rising", mode="auto")
     s.xy(False)
     s.persistence("OFF")
-    shown(s.show_delay, "FRR", ping, pong)                                                             # the ping's first rise to the pong's
-    s.statistics(True)
+    if measure:
+        shown(s.show_delay, "FRR", ping, pong)                                                         # the ping's first rise to the pong's
+        s.statistics(True)
+    else:
+        no_measurements(s)
     s.run()
 
 
@@ -160,7 +179,7 @@ def main():
     s = scope_e.open_scope(which)
     try:
         if what == "preset":
-            (preset_A if which == "A" else preset_B)(s, bench=bench, scale=scale)
+            (preset_A if which == "A" else preset_B)(s, bench=bench, scale=scale, measure="--measure" in sys.argv)
             print("scope %s: %s preset%s" % (which, s.idn, " (the bench's cabling)" if bench else ""))
         elif what == "cycle":
             t_time = float(sys.argv[sys.argv.index("--time") + 1]) if "--time" in sys.argv else 5.0

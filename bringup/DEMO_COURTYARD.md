@@ -249,7 +249,8 @@ through a 50 ohm feed-through.
 
 Timebase 50 ns/div with the trigger 1 div from the left (the pong lands 2.4 div right at the bench's 120 ns, 4-5 div
 across the courtyard), trigger on ch3 (the ping) rising at 0.85 V: a pair every 500 ns, the previous pair's pong off
-the screen to the left.  The scope's own delay measurement, first rising edge of ch3 to first rising
+the screen to the left.  (Since 11-10 the presets show no measurements, Jason: they were in the way and the page
+shows the round trip; `--measure` brings back the following.)  The scope's own delay measurement, first rising edge of ch3 to first rising
 edge of ch4 (`MEAD FRR,C3-C4`) with statistics on, prints the mean in ns at the bottom and holds it between
 looks; carry dish B a metre and the mean moves 6.7 ns (there and back).  Blocking the beam removes the pong and the
 mean stops updating.  On the bench (11-08, `plots/demoscope_bench_A_20261108_1014.png`, `_B_`) ch1 is the far
