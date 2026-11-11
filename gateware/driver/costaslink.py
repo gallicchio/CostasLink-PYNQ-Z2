@@ -459,9 +459,15 @@ class CostasLink:
         self._wait("SPI_CTRL", 0x3)
 
     def pll_init(self, timeout=1.0):
-        """both synthesizers' power-up sequence (the words compiled in from max2871_regs.py)"""
+        """both synthesizers' power-up sequence (the words compiled in from max2871_regs.py), which leaves both on
+        5800 MHz with RFOUTB off: the shadows say so after it, so that a later pll_tune to the link's frequency is never
+        skipped as 'already there' (2026-11-11, BRINGUP_LOG 4.93: after the boards' 5 V went off and on under running
+        PYNQs, the shadows still read the link's carriers, setup skipped the TX synthesizer and neither board sent a
+        carrier)"""
         self.wr("PLL_INIT", 1)
         self._wait("PLL_INIT", 0x1, timeout)
+        self._pll = {0: (5800.0, 25.0, None), 1: (5800.0, 25.0, None)}
+        self._lo_mon = {0: False, 1: False}
         return bool(self.rd("PLL_INIT") & 2)
 
     def pll_tune(self, which, f_mhz, f_pfd=25.0, cp=None, lo_mon=None):

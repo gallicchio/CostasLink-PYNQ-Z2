@@ -30,6 +30,18 @@ stepped down from 31.75 dB in 2 dB steps, the loop released 60 kHz above the nom
 above it comes down into the lock), until it locks with the I leg at leg_target or more; the windows at window_frac
 of the leg, V_T2.  If it finds no carrier (the far board off, the path blocked) it backs off and tries again.
 Without link.json it waits for someone to set the link up, and learns from the first lock it sees.
+
+The board's own power (2026-11-11, BRINGUP_LOG 4.93).  The synthesizers need their power-up sequence (the gateware's
+PLL_INIT: the MAX2871's registers twice, 20 ms apart) whenever their supply has come up, and no retune replaces it:
+with the boards' 5 V off and on under running PYNQs, neither linkd nor the stations' setups brought a carrier back in
+5 minutes.  So every setup starts with PLL_INIT (a board powered after its PYNQ: the server's first setup fails on the
+unpowered board, backs off, and the next try after the 5 V comes on finds the synthesizers' supply up), a setup that
+raises (the board's parts not answering) counts as a failed try with the same back-off, and a link lost for
+`setup_after_s` (120 s) with link.json to set it up from falls back to a setup: recoveries take seconds, and a board
+whose 5 V went off and on under the PYNQ is never recovered without one.  The 5 V going off shows at once: the board's
+ADC stops answering ('no valid conversion'); the first look after it answers again starts a setup, on each board (its
+own receiver may lock on the far board's carrier while its own TX synthesizer is still unprogrammed, which the 120 s
+alone did not catch: 11-11 02:37, station A locked on B's carrier and B never heard A).
 """
 import json
 import os
@@ -65,7 +77,8 @@ class LinkD:
     # setup escapes this by meeting the carrier weak first (DSA 31.75 down).  The old starts stay as the fallbacks
     STARTS_KHZ = (10, 16, -10, 24, 40, 70, 120)
 
-    def __init__(self, server, idle_s=60.0, poll_s=0.2, off_khz_min=8.0, t_lost=0.5, backoff_s=(5.0, 60.0), config=None):
+    def __init__(self, server, idle_s=60.0, poll_s=0.2, off_khz_min=8.0, t_lost=0.5, backoff_s=(5.0, 60.0), config=None,
+                 setup_after_s=120.0):
         self.server = server
         path = config or os.path.join(HERE, "link.json")
         try:
@@ -82,6 +95,9 @@ class LinkD:
         self.setup_wait = backoff_s[0]
         self.idle_s, self.poll_s, self.off_khz_min, self.t_lost = idle_s, poll_s, off_khz_min, t_lost
         self.backoff_s = backoff_s
+        self.setup_after_s = setup_after_s               # a loss this long (with link.json): set up from nothing again
+        self.last_setup_error = None
+        self.board_gone = False                          # the board's ADC stopped answering: its 5 V went off
         self.vc_lock = self.leg = None
         self.i0, self.q0 = 1.6535, 1.628
         self.mid_t = None                                # when the arms' middles were measured (setup)
@@ -109,6 +125,7 @@ class LinkD:
                 "lost_for_s": (time.time() - self.lost_since) if self.lost_since else None,
                 "i0": self.i0, "q0": self.q0, "mid_t": self.mid_t, "cen": self.cen, "duplex": self.duplex,   # for a keeper adopting this lock
                 "next_try_in_s": max(0.0, self.next_try - time.time()) if self.mode == "backing off" else None,
+                "last_setup_error": self.last_setup_error,
                 **self.counts}
 
     # ---- the looks ----
@@ -143,12 +160,17 @@ class LinkD:
             self.led(recovering=True)
             try:
                 ok = self.setup(self.cfg)
+            except Exception as e:                                   # noqa: BLE001 - the board unpowered, its parts
+                ok = False                                           # not answering: a failed try, backed off below
+                self.last_setup_error = "%s: %s" % (type(e).__name__, str(e)[:120])
+                self.counts["setup_errors"] = self.counts.get("setup_errors", 0) + 1
             finally:
                 self.led(recovering=False)
             if ok:
                 self.set_up = True
                 self.mode = "locked"
                 self.setup_wait = self.backoff_s[0]
+                self.counts["setups"] = self.counts.get("setups", 0) + 1     # a keeper above re-arms on this (demo.py)
             else:
                 self.mode = "setup found no carrier: trying again"
                 self.setup_next = time.time() + self.setup_wait
@@ -158,7 +180,22 @@ class LinkD:
             self.mode = "parked: the loop is held by a program"
             self.lost_since = None
             return
-        o = self.observe()
+        try:
+            o = self.observe()
+        except Exception:
+            # the board's own parts not answering (the ADC over I2C: 'no valid conversion', seen only when its 5 V went
+            # off, 11-11): when they answer again its synthesizers need their power-up sequence, so a setup then
+            self.board_gone = True
+            raise
+        if self.board_gone:
+            self.board_gone = False
+            if self.cfg:
+                self.counts["setups_after_power"] = self.counts.get("setups_after_power", 0) + 1
+                self.set_up = False
+                self.setup_next = 0.0
+                self.setup_wait = self.backoff_s[0]
+                self.mode = "the board answers again: setting the link up from nothing"
+                return
         now = time.time()
         # locked by the comparators but far from the learned lock: locked to something else (a strong CW captured the
         # loop: soak14 #50, a CW 9.7 MHz away at gain 87 held it 600 kHz off with I up and Q quiet), so not learned
@@ -198,6 +235,15 @@ class LinkD:
             self.counts["losses"] += 1
             self.counts["t_last_loss"] = now
             self._loss_open = True
+        # lost this long with link.json to set up from: the board may have lost its power under the PYNQ (its
+        # synthesizers then need the power-up sequence, which only a setup sends): set the link up from nothing
+        if self.cfg and self.setup_after_s and now - self.lost_since > self.setup_after_s:
+            self.counts["setups_after_loss"] = self.counts.get("setups_after_loss", 0) + 1
+            self.set_up = False
+            self.setup_next = 0.0
+            self.setup_wait = self.backoff_s[0]
+            self.mode = "lost %.0f s: setting the link up from nothing" % (now - self.lost_since)
+            return
         # no carrier at all (the board's lock monitor: nothing arrives): a recovery cannot find one, so do not try,
         # and do not back off: start the moment one is seen again.  Trying held the board 11 s for four starts with the
         # carrier gone, then waited out 5 s of back-off after it came back (soak13 #12: locked 7 s after the carrier
@@ -252,6 +298,9 @@ class LinkD:
     # ---- the link from nothing ----
     def setup(self, cfg):
         cl = self.server.cl
+        # the synthesizers' power-up sequence first (the docstring's 'The board's own power'): it leaves both on
+        # 5800 MHz and the shadows saying so, so the tuning below always reaches the link's carriers
+        cl.pll_init()
         self.cal = None                                  # new centres: the self-test calibrates again
         self.cal_by_side = {}
         # one carrier both ways (one board to itself), or two apart (two boards, each receiving the other's TX: the TX

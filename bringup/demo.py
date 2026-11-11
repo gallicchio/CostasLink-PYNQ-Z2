@@ -449,7 +449,8 @@ class Station:
                 continue
             try:
                 if self.locked():
-                    key = (self.ld.counts["recoveries"], self.ld.counts["losses"])
+                    # a setup (the keeper's own, after the board's 5 V came back) leaves the TX at its idle: arm again
+                    key = (self.ld.counts["recoveries"], self.ld.counts["losses"], self.ld.counts.get("setups", 0))
                     if self.armed_key != key:
                         self.arm()
                         self.armed_key = key

@@ -138,6 +138,12 @@ class Proxy:
         self._dsa_db = float(db)
         return self.r.dsa(float(db))
 
+    def pll_init(self, timeout=1.0):
+        """the synthesizers' power-up sequence; it leaves both on 5800 MHz, so this proxy's shadows say so too"""
+        ok = self.r.pll_init(timeout)
+        self._pll = {0: (5800.0, 25.0, None), 1: (5800.0, 25.0, None)}
+        return ok
+
     def __getattr__(self, n):
         v = getattr(self.r, n)
         if not callable(v):
