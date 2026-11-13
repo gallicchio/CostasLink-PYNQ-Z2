@@ -4497,3 +4497,6 @@ corner error is not the RF chain, it is a bilinear I x Q term that grows with th
 symbols; the held-loop test is impossible on rev A (the hold's charge injection, 600 Hz); the loop's error path's
 coupling into the arms is the candidate, for tomorrow's probe.  The campaigns parked the loop; the server restarted to
 bring the link back, and setup's attenuator fine-tune now lands on the nearest step (`a977064`).
+
+
+The bring-up's prompts and responses continue in `bringup/CLAUDE_CODE_CHAT_BRINGUP.md`, from Prompt 44.
