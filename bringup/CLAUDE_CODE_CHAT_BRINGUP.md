@@ -5009,3 +5009,13 @@ Yup. showtime. Keep going. Great.
 ## Response 231 (2026-11-13 07:55 - 08:05 PST)
 
 The night (01:30-08:00) on the beam 5000 / return 4400: every 30-minute window from 04:00 on had 0-3 errors in about 3 billion challenges, 1 false a second, station B nothing undecided, both supplies at 1.02 A, no alert. The 08:00 check: station A 1.92-1.98 M challenges a second, all answered, 0 missed, 1 false, 0 wrong, round trip 370 ns; station B every symbol decided; board A at DSA 11.75 (+5V_RF 4.95 V, 51 C), board B at 15.75 (4.97 V, 54 C); WiFi clear at 4400 and 5000 from both laptops; both scopes' constellations as set (scope A +-1.9, scope B +-2.5 divisions). The 07:30-08:00 window's 8 seconds of heavy errors were people in the beam at showtime. Monitoring continues to 13:00.
+
+
+## Prompt 232 (2026-11-13 ~08:40 PST)
+
+If there is anything to commit on OpticsPCBs or lab-instrument-control, do that now.
+
+
+## Response 232 (2026-11-13 08:40 - 08:45 PST)
+
+Both working trees were clean (OpticsPCBs 9 ahead, lab-instrument-control 1 ahead). The night's three standalone tools that BRINGUP_LOG 4.96 cites were only in the scratchpad, so they went into bringup/ and 4.96 now points at them: `survey_board.py` (each board's own receiver surveys the band through its dish, both at once with both TXs off, with the adaptive threshold ladder), `survey_fig.py` (its figure), `shot_view.py` (a scope's screen taken inside one view of the demo's cycle). Committed (c003187); nothing pushed. The demo kept running: since 08:01 the only errors were three short episodes of people in the beam (08:01, 08:03, 08:27); every other minute 0 missed, 0 wrong, about 0.6 false a second.
