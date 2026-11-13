@@ -4949,3 +4949,22 @@ You should have a scope now here on zmash. I forget if you can control the trans
 - **The change:** both PYNQs' link.json carriers to 5000 / 4400 (backups `link.json.4800_5400_20261113`; VR untouched), servers restarted; both locked by themselves and both stations adopted in 1 s. Station A: 0 missed, 0-1 false, 0 wrong a second; station B every symbol decided.
 - **Scopes:** XY now has its own scale (`demoscope.py cycle --xy_scale`): scope A 3.5 mV/div, scope B 3.0 mV/div, the constellation at about +-2.5 divisions so it shrinks visibly when the beam is blocked; time views unchanged at 10 mV/div. The scope flashes "Fine adjustment" for a moment after each switch.
 - **The first 15 minutes' errors** were station A's windows taken while the boards were cold (26 -> 48 C); a fresh start on warm boards cleared them.
+
+
+## Prompt 228 (2026-11-13 ~03:10 PST)
+
+Keep going, but can you turn off the beep on each of the oscilloscopes as you change settings?
+
+*Typed while that turn ran:*
+
+- If you can turn off the setting for "beep when you change settings," it would be less annoying for people in the room.
+
+
+## Response 228 (2026-11-13 03:10 - 03:30 PST)
+
+Both scopes' beepers are off: scope A and scope B each read on before and off after (the SDS1104X-E's `BUZZ` command). So it stays off after a power cycle or a restart, demoscope's presets and its view cycle now switch the beeper off whenever they start.
+
+- **lab-instrument-control:** a new `buzzer()` method on the SDS1104X-E driver (on, off, or read), its test and a note in `siglent.md`. The test passed on scope A over USB; on scope B the method set it off and read it back. Commit e58ed43.
+- **OpticsPCBs:** demoscope.py's presets and cycle call it (commit ec3ca04); kate has the same driver and demoscope.
+
+The link has been clean all night on the new plan (beam 5000, return 4400): from 02:00 to 03:00, 195 errors in about 6.4 billion challenges, no second over 1e-3, station B nothing undecided, both supplies at 1.02 A.
