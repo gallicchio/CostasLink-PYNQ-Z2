@@ -80,11 +80,22 @@ def no_measurements(s):
             print("  (this scope's firmware keeps its measurements: clear them on the front panel, Measure, Clear)")
 
 
+def quiet(s):
+    """the scope's beeper off: it sounds at every setting a program changes, so the cycle's view switches beeped in the
+    room every few seconds (Jason, 11-13: "less annoying for people in the room").  The lab driver's buzzer() (BUZZ);
+    an older driver copy without it is left alone"""
+    try:
+        s.buzzer(False)
+    except AttributeError:
+        print("  (this lab driver has no buzzer(): the beeper stays as it is)")
+
+
 def preset_B(s, bench=False, scale=0.010, measure=False):
     """the receiver: I and Q, the recovered bit, the lock; the trigger on the bit's edge; persistence for the eye and
     for the constellation.  ch1 I MON and ch2 Q MON through 50 ohm feed-throughs at 10 mV/div (or none, --scale 0.05);
     ch3 CMP I MON through a feed-through (its /10 output is made for 50 ohm: 0.33 V); ch4 VC MON with NO feed-through
     (1 Mohm: its full 1.65 V, as on the bench since 10-30, 4.0's cabling)"""
+    quiet(s)
     dc = arm_dc(scale)
     s.timebase(scale=100e-9, delay=0.0)
     if bench:
@@ -112,6 +123,7 @@ def preset_A(s, bench=False, scale=0.010, measure=False):
     """the sender: the ping and the pong on one baseline, the delay measured on screen; the pair every 500 ns.  Since
     11-10 I and Q on ch1 / ch2 (XY plots ch1 against ch2 only) and the ping / pong on ch3 / ch4; --bench keeps the
     bench's cabling (I ch2, Q ch3, the far board's TRIG A on ch1, the trigger on ch4)"""
+    quiet(s)
     dc = arm_dc(scale)
     s.timebase(scale=50e-9, delay=-6 * 50e-9)                                                         # the trigger 1 div from the left
     if bench:
@@ -144,6 +156,7 @@ def cycle(s, which="B", t_time=5.0, t_xy=10.0, bench=False, scale=0.010, xy_scal
         raise SystemExit(0)
     signal.signal(signal.SIGTERM, leave)
     t_view = VIEW_TIME[which]
+    quiet(s)
 
     two = xy_scale is not None and xy_scale != scale
 
