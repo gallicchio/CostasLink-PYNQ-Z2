@@ -4968,3 +4968,24 @@ Both scopes' beepers are off: scope A and scope B each read on before and off af
 - **OpticsPCBs:** demoscope.py's presets and cycle call it (commit ec3ca04); kate has the same driver and demoscope.
 
 The link has been clean all night on the new plan (beam 5000, return 4400): from 02:00 to 03:00, 195 errors in about 6.4 billion challenges, no second over 1e-3, station B nothing undecided, both supplies at 1.02 A.
+
+
+## Prompt 229 (2026-11-13 ~03:18 PST)
+
+Let me know when your sequence is going and the beeper should be off. I still hear it.
+
+*Then, while the next turns ran:*
+
+- No, it's still beeping, When the screen says "Fine adjustment" and again when it goes to the XY IQ plot.
+- The scope on B seems quiet. The scope on A still beeps
+- It's 2 beeps when it goes to the time view and 1 beep when it goes to XY
+- Wait, now only one beep when you took off and on the yellow.
+- Same beeping.
+- not 1, not 2, not 3, not 4, yes 5, yes 6.
+- ok, so far no beep since you made that change.
+- That scale is fine.
+
+
+## Response 229 (2026-11-13 03:18 - 03:30 PST)
+
+Both beepers read OFF, and scope B (firmware 8.1.6.1.35R2) went quiet, but scope A (8.1.6.1.26) kept beeping at its view switches. Not its error queue (empty across a switch), not its persistence change (removed, same beeping). One change at a time on scope A, 10 s apart, with Jason listening: ch1 offset moved and back, XY on and off, all silent; ch1 to 3.5 mV/div and back to 10 mV/div, both beeped. **Scope A's firmware beeps at every volts-a-division change, beeper or not.** So scope A now runs one scale in both views, 5 mV/div (the constellation at about +-1.9 divisions; the time view re-laid: I steps up from a baseline shared with Q, Q goes up or down, the ping and pong at the bottom), its persistence set once to 1 s; its cycle only moves offsets and toggles XY. Silent since 03:26:30. Scope B keeps its separate XY scale (3.0 mV/div), quietly. demoscope.py committed (eef6bdc), DEMO_COURTYARD 12's commands updated.
