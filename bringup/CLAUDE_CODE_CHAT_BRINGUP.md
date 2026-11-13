@@ -4823,3 +4823,106 @@ Two files came in with your SyzygyRadioDrivers commits that you may not have mea
 - `SyzygyRadioBoard.kicad_pcb.20261112-151559.bak`, a 155,000-line backup of the board file.
 
 I also deleted a stray `CostasLink-PYNQ-Z2/consolecap.pid` that I'd left in the project directory last night. It was never committed.
+
+
+## Prompt 223 (2026-11-12 ~23:43 PST)
+
+There was a slight change of plans. We are inside a large lecture hall instead of outside (due to chance of rain.) Also, I rotated the polarizations properly on the 2nd set of parabolic antennas. Now, PYNQ A transmits horizontally from left to right across the front of the lecture hall. PYNQ B transmits vertically from right to left. Both have similar cables, though I haven't measured them on a VNA. The other laptop, kate, now has IP address 172.28.x.x, which I can ping. The two PYNQ boards should have booted and gotten their static IP addresses on each side with the direct ethernet. Test this connection. Test that each laptop can talk to the PYNQ, the oscilloscope, and an Agilent E3632A power supply.
+
+The only thing I have not connected is the USB-C ports from the Agilent E3632A power supplies to the Costas boards. I want you to turn on each of the power supplies (here and on kate) to 5V to power the costas boards. This is different from before. I got a 12V wall-wart for the each of the PYNQs, and you cannot cut their power. If you really need to do that, or if you really need to monitor the current of the PYNQ (rather than just the two Costas boards), I can try to get a 2nd controllable power supply on each side for the PYNQ 12V. I want you to turn on both power supplies to 5V and a reasonable current limit for a single Costas board (each). When that looks good, I'll plug in the USB-C.
+
+You should be recording all of these prompts and all of your respones in a document called something like CLAUDE_CODE_CHAT.md associated with this Costas project (or maybe a second one that's just for bringup. If you haven't been doing that, do that now.)
+
+
+## Response 223 (2026-11-12 23:43 - 23:47 PST)
+
+Board A is powered and healthy, and zmash's side is ready apart from scope A. **kate's side needs you first:** kate sees no USB device at all.
+
+**zmash (station A):**
+
+| Link | Result |
+|---|---|
+| PYNQ A, direct Ethernet (192.168.2.10 to .99) | OK. Ping 0.3 ms; PYNQ A up 12 min, server running with our overlay (ID 0x434C000D). |
+| E3632A (serial FTER3DQU) | OK, and switched on (settings below). |
+| Scope A | **Not found.** No scope on zmash's USB. Is it powered and its USB cable in? |
+| kate over WiFi (172.28.x.x) | OK. Ping 23-48 ms, and ssh works. |
+
+**kate (station B):** kate rebooted at 23:33. Since then it has seen no external USB device: no Ethernet dongle (so PYNQ B at 192.168.2.98 doesn't answer), no scope B, and no E3632A. Whatever hub or cables they're on isn't reaching kate; is the hub plugged in and powered? Once kate sees them I'll check all three and set its supply the same way.
+
+**zmash's E3632A:** I set 5.30 V rather than 5.00 V.
+- The bench has run the boards at 5.30 V since late October. The board's input path drops about 0.3 V at 1 A, and the 5 V rail feeding its RF chips must stay at or above 4.85 V.
+- Limit 1.5 A, as BRINGUP.md asks for one board. Overvoltage trip 5.5 V, on (it had come up at the 32 V default).
+- Say if you want exactly 5.00 V and I'll change it.
+
+**Board A, since you plugged it in:**
+- The supply reads 0.955 A at 5.294 V, constant voltage.
+- Board A's RF 5 V rail reads 4.98 V and its temperature 25.8 C.
+- Its TX is on at 4800 MHz. PYNQ A's linkd is waiting for board B's 5400 MHz carrier, as expected until board B has power.
+
+**PYNQs:** understood that they're on wall warts. I won't try to cut their power, and I don't need their current.
+
+**Chat record:** nothing had been logged since Prompt 43 on 11-02. A background task is rebuilding everything since then from this session's transcript into `bringup/CLAUDE_CODE_CHAT_BRINGUP.md` (from Prompt 44, WiFi password scrubbed). I'll log each prompt and response there from now on. I'll tell you when the rebuild is committed.
+
+Once kate's side works, I'll write up the new lecture-hall layout. Both directions now go over the dishes: the beam A->B horizontal, the return B->A vertical.
+
+
+## Prompt 224 (2026-11-12 ~23:47 PST)
+
+I plugged in the costas board here (A). If you set the other supply to 5V or 5.3V or whatever is appropriate, I'll plug that one in too and you can start the RF tests.
+
+
+## Response 224 (2026-11-12 23:47 - 23:48 PST)
+
+kate still sees no USB device (checked 23:48:11): no E3632A, no Ethernet dongle to PYNQ B, no scope B. So I can't set the second supply from kate. Two ways forward:
+
+1. **Fix kate's USB (best).** The hub or cables those three are on aren't reaching kate: check that the hub is plugged in and powered, or try another USB port on kate. kate needs them anyway: station B talks to PYNQ B through the dongle, and scope B is on kate's USB. As soon as they show up, I'll set the supply, check PYNQ B and scope B, and start the RF tests.
+
+2. **Set the supply by hand from its front panel**, if you want board B powered now: the 15 V / 7 A range; 5.30 V; current limit 1.5 A; overvoltage trip 5.5 V, on (it powers up at 32 V); output on, check it reads about 5.3 V, then plug in board B. PYNQ B's own linkd then sets up its link from its config by itself in about a minute. From zmash I'd see board B's 5400 MHz return arriving at board A, but nothing on board B's side until kate can reach PYNQ B.
+
+Board A is fine meanwhile: 0.955 A, TX on at 4800 MHz, waiting for board B's carrier.
+
+
+## Prompt 225 (2026-11-12 ~23:49 PST)
+
+I replugged kate's USB
+
+*Typed while that turn ran:*
+
+- (~23:51) If the password is the PYNQ default of xilinx, that's ok to know and write down.
+- (~23:52) Rewrite whatever file has that Claremont-ETC password to remove it.
+- (~23:52) remove the password from the file, I mean
+- (~23:53) The scope here at station A does not look interesting. As you debug, keep the scope on a setting where I
+- (~23:53) I would see something.
+
+
+## Response 225 (2026-11-12 23:49 - 23:54 PST)
+
+Everything now shows up on kate: the hub, the E3632A (serial FTEP2CPY), scope B and the Ethernet dongle, and PYNQ B answers ping (0.48 ms). PYNQ B's server is up (its linkd retrying with board B unpowered) and scope B (SDSMMFCQ5R6919) answers. kate's E3632A was at the same power-on defaults as zmash's; set the same way: 5.30 V, 1.5 A limit, overvoltage trip 5.5 V, output on, 5.301 V at 0.4 mA, constant voltage, no errors. **You can plug in board B now.**
+
+Board B plugged in at 23:50:11: 0.967 A at 5.301 V. Both links locked by themselves at 23:51:26, 76 s after board B got its 5 V:
+
+| Board (direction it receives) | Signal level | Attenuator (DSA) |
+|---|---|---|
+| Board B: the beam, 4800 MHz, horizontal | 190 mV | 17.75 dB |
+| Board A: the return, 5400 MHz, vertical | 116-122 mV | 1.75 dB |
+
+Board B's 17.75 dB of attenuation in use means the beam has plenty to spare. The return is a little above the 50-90 mV where board A decided best, so station A starts with its attenuation floor at 5 dB (`--dsa_min 5`). Station B started on kate (fresh setup, with scope B's cycle), then station A on zmash, without its scope.
+
+To the messages typed meanwhile: the password I was keeping out of git is the Claremont-ETC WiFi one in the notes file, not the PYNQ's; the PYNQ's stock `xilinx` login stays in the chat log and docs as written. The password is out of the file: its line now reads `Claremont-ETC  (the WiFi password was here; removed 2026-11-12, ask Jason)`, and no other file on zmash or kate holds it. **Scope A isn't on zmash's USB at all** (no Siglent device, no `/dev/usbtmc`), so it can't be put on a useful view until its USB cable is in zmash; then its demo preset and the 5 s time view / 10 s XY cycle.
+
+Station B set up fresh in 44 s and armed as the echo, the beam at 183 mV on board B; station A was still in its own setup at the end of the turn.
+
+
+## Prompt 226 (2026-11-12 ~23:53 PST)
+
+Oh, it's USB cable must be back in the lab. I'll get it.
+
+
+## Response 226 (2026-11-12 23:53 - 23:57 PST)
+
+Station A armed at 23:53:41, and both directions work across the hall.
+
+- **Station A (zmash, board A):** 1.92-1.98 M challenges a second, every one answered and right (right 1.00000), missed 0, wrong 0, 1-5 false a second. The return reads 73 mV with the attenuation floor at 5 dB, inside the 50-90 mV band where board A decided best last night.
+- **The round trip:** median 370.0 ns (99.9 % under 375-377.5 ns, the longest 380 ns), against 245 ns in the room last night: now both directions go through long cables and dishes. If the second set's cables match the first set's (42.5 ns each), that is roughly 14 m of air each way; a rough figure, not the T0 calibration.
+- **Station B (kate, board B):** 2.0 M symbols a second, all decided, none undecided; the beam at 180-190 mV with 17.75 dB of attenuation in use, so about 16 dB to spare. Its "false" count equals its symbols, exactly as in last night's clean soak: B's counter cannot know A's challenges, so it is not an error.
+- Scope B is cycling; scope A waits for its USB cable, then its preset and the cycle.
