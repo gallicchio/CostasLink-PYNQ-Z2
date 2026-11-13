@@ -4999,3 +4999,13 @@ Great. Keep going. Then find the visually most interesting set of settings at 8a
 ## Response 230 (2026-11-13 03:35 - 04:15 PST)
 
 The overnight monitor kept running (30-minute summaries: 03:30-04:00 no errors at all). With the hall quiet, four demo variants were tried that change the scopes' pictures without touching the scopes' settings (so scope A does not beep), each with both stations restarted by adopting the PYNQs' locks, 60 s measured and both scopes screenshotted in both views: the current settings; station B's echo held 16 clocks instead of 8; that plus station A's symbols held 30 clocks instead of 20; and the 30-clock symbols alone. All four error-free, re-armed in 10-11 s. The longer echo only crowded scope A's time view; the 30-clock symbols space scope B's time view more evenly and brighten its constellation's points a little, scope A unchanged. Kept: station A `--width 30`. The screenshots are in `data/twoboard/hall_20261113/vis/`. Plan: at 8:00 fresh screenshots and a WiFi and level check under the day's conditions; until 13:00 watch for moved dishes and interference, and say so in bold (and a push) if something needs Jason.
+
+
+## Prompt 231 (2026-11-13 ~07:55 PST)
+
+Yup. showtime. Keep going. Great.
+
+
+## Response 231 (2026-11-13 07:55 - 08:05 PST)
+
+The night (01:30-08:00) on the beam 5000 / return 4400: every 30-minute window from 04:00 on had 0-3 errors in about 3 billion challenges, 1 false a second, station B nothing undecided, both supplies at 1.02 A, no alert. The 08:00 check: station A 1.92-1.98 M challenges a second, all answered, 0 missed, 1 false, 0 wrong, round trip 370 ns; station B every symbol decided; board A at DSA 11.75 (+5V_RF 4.95 V, 51 C), board B at 15.75 (4.97 V, 54 C); WiFi clear at 4400 and 5000 from both laptops; both scopes' constellations as set (scope A +-1.9, scope B +-2.5 divisions). The 07:30-08:00 window's 8 seconds of heavy errors were people in the beam at showtime. Monitoring continues to 13:00.
