@@ -4926,3 +4926,26 @@ Station A armed at 23:53:41, and both directions work across the hall.
 - **The round trip:** median 370.0 ns (99.9 % under 375-377.5 ns, the longest 380 ns), against 245 ns in the room last night: now both directions go through long cables and dishes. If the second set's cables match the first set's (42.5 ns each), that is roughly 14 m of air each way; a rough figure, not the T0 calibration.
 - **Station B (kate, board B):** 2.0 M symbols a second, all decided, none undecided; the beam at 180-190 mV with 17.75 dB of attenuation in use, so about 16 dB to spare. Its "false" count equals its symbols, exactly as in last night's clean soak: B's counter cannot know A's challenges, so it is not an error.
 - Scope B is cycling; scope A waits for its USB cable, then its preset and the cycle.
+
+
+## Prompt 227 (2026-11-13 ~00:03 PST)
+
+You should have a scope now here on zmash. I forget if you can control the transmit power level. Can you? If so, what is it (and what is the range of control)? I know that you can control the receive power level with a step attenuator. What are each of the boards currently set at (and what is the range of possibilities)? I basically want to know if this link (with no external LNA and no external power amplifier, just Costas board TX ANT to other Costas board RX ANT) is too loud, too quiet, or within the range where the Costas board should perform near optimally. Also, we made a frequency plan with the FPV antennas in mind. Do an interference scan, a WiFi scan, and a scan over possible frequencies in each direction. The lecture hall is currently empty except for me, so who know what will happen tomorrow. But this will be a good baseline. I'll leave this link on and running all night, so feel free to do tests. By 8am, I want it running the demo until around 1pm, but you should be monitoring things from now until then and yelling to me in bold if something needs my attention.
+
+*Typed while that turn ran:*
+
+- (~01:05) Remember that your goal for these plans might be good technical specs, but I'm also looking for good visuals on the scope for tomorrow. I'm happy for you to characterize the link, especially because this is the first time that we've had two of the parabolic antennas right on top of each other and potentially interfering with each other. But for tomorrow I want you to have demo that looks good on both scopes. The XY IQ plot does this. The other view does this. And I expect you to choose nice parameters. I'll come and block the beam with my arms and stuff, so the amplitudes will go down. This is part of the demo.
+
+
+## Response 227 (2026-11-13 00:03 - 01:35 PST)
+
+**The demo is running on a new carrier plan, beam 5000 MHz / return 4400 MHz, with both scopes resized for the show and a monitor watching until 13:30.**  Details in BRINGUP_LOG 4.96 and DEMO_COURTYARD 12.
+
+- **Transmit:** rev A has no TX level control (TX_DIS on / off only; the synthesizer's output setting is the modulator's LO drive, not a TX level). Measured +8.3 / +8.5 dBm at TX ANT at 5200 MHz, +2 to +4 at 5800, higher toward 4500.
+- **Receive:** each board's attenuator, 0-31.75 dB in 0.25 dB steps. On the old plan the beam reached board B at about -35 dBm (17.75 dB of attenuation in use) and the return board A at about -58 dBm (1.75 dB): loud but well within range, nowhere near the +1 dBm limit; no external LNA or PA needed. On the new plan board A uses 11.75 dB and board B 15.75 dB: both directions have more than 10 dB to spare.
+- **WiFi:** every WiFi channel from 5150 to 5850 MHz is in use in the hall; nothing below 5150. 5400's band has channels 64 and 100 at its edges.
+- **The boards' own interference survey** (both TXs off, each receiver through its dish, 4300-6000 MHz; the driver's survey had to be redone with an adaptive ladder): the floor near the receivers' own noise; WiFi bursts only from 5120 MHz up; each board's own TX synthesizer leaks into its own receiver from the stacked dish, 600 MHz from the other carrier. `plots/hall_survey_20261113_0017.png`.
+- **15 carrier plans:** the return is clean at 5200-5400 and poor at 5500-5800; 5000/4400 and 4400/5000 had no errors in 2.3e8 challenges each with 1 false a second. 2 of 15 fresh setups (4700, 4500) put the attenuator 14-20 dB off and kept it; never with the adopt path.
+- **The change:** both PYNQs' link.json carriers to 5000 / 4400 (backups `link.json.4800_5400_20261113`; VR untouched), servers restarted; both locked by themselves and both stations adopted in 1 s. Station A: 0 missed, 0-1 false, 0 wrong a second; station B every symbol decided.
+- **Scopes:** XY now has its own scale (`demoscope.py cycle --xy_scale`): scope A 3.5 mV/div, scope B 3.0 mV/div, the constellation at about +-2.5 divisions so it shrinks visibly when the beam is blocked; time views unchanged at 10 mV/div. The scope flashes "Fine adjustment" for a moment after each switch.
+- **The first 15 minutes' errors** were station A's windows taken while the boards were cold (26 -> 48 C); a fresh start on warm boards cleared them.

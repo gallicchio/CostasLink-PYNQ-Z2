@@ -11,6 +11,8 @@
                 default since 11-10 (Jason: they are in the way, and the page shows the round trip)
     --scale V   I and Q volts a division at the scope (0.010 through the 50 ohm feed-through and the 1 k tap; 0.050
                 with the feed-throughs off, 1 Mohm)
+    --xy_scale V  (cycle) I and Q volts a division in the XY view only, so the constellation fills the screen while the
+                time view keeps --scale (the lecture hall, 11-13: a 100-180 mV leg is +-0.5-0.9 div at 10 mV/div)
 This firmware's XY mode plots channel 1 (X) against channel 2 (Y) and nothing else (tried 11-08 10:48), which is why
 both scopes' I and Q sit on ch1 and ch2 for the demo (scope A's too since 11-10, Jason: the constellation on A as well).  Everything goes through the lab driver (siglent_SDS1104XE, found by
 serial: scope_e.open_scope), the display too since 11-09 (xy, persistence, show_measurement, show_delay, statistics; they
@@ -47,11 +49,15 @@ VIEW_TIME = {"A": {1: 3.0, 2: 1.0}, "B": {1: 2.5, 2: 0.5}}     # divisions from 
 VIEW_XY = {1: 0.0, 2: 0.0}
 
 
-def b_offsets(s, scale, view):
-    """ch1 / ch2's offsets for a view ({channel: divisions from the middle})"""
+def b_offsets(s, scale, view, set_scale=False):
+    """ch1 / ch2's offsets for a view ({channel: divisions from the middle}); with set_scale their volts a division too
+    (the cycle's --xy_scale: the constellation larger than the time view's traces)"""
     dc = arm_dc(scale)
     for ch, div in view.items():
-        s.channel(ch, offset=place(scale, div, dc))                # the lab driver's channel(): only the offset changes
+        if set_scale:
+            s.channel(ch, scale=scale, offset=place(scale, div, dc))
+        else:
+            s.channel(ch, offset=place(scale, div, dc))            # the lab driver's channel(): only the offset changes
 
 
 def shown(how, *args):
@@ -127,7 +133,7 @@ def preset_A(s, bench=False, scale=0.010, measure=False):
     s.run()
 
 
-def cycle(s, which="B", t_time=5.0, t_xy=10.0, bench=False, scale=0.010):
+def cycle(s, which="B", t_time=5.0, t_xy=10.0, bench=False, scale=0.010, xy_scale=None):
     """the time view and the constellation in turn, for ever (t_time 0: the constellation only); the view's name is
     printed at each change.  Scope A's time view has persistence off (the ping and the pong crisp), its XY 1 s (the
     constellation builds up), as scope B's both.  A SIGTERM (or Ctrl-C) leaves the time view: without the handler
@@ -139,16 +145,18 @@ def cycle(s, which="B", t_time=5.0, t_xy=10.0, bench=False, scale=0.010):
     signal.signal(signal.SIGTERM, leave)
     t_view = VIEW_TIME[which]
 
+    two = xy_scale is not None and xy_scale != scale
+
     def time_view():
         s.xy(False)
         if not bench:
-            b_offsets(s, scale, t_view)
+            b_offsets(s, scale, t_view, set_scale=two)
         if which == "A":
             s.persistence("OFF")
 
     def xy_view():
         if not bench:
-            b_offsets(s, scale, VIEW_XY)
+            b_offsets(s, xy_scale if two else scale, VIEW_XY, set_scale=two)
         if which == "A":
             s.persistence(1)
         s.xy(True)
@@ -185,8 +193,10 @@ def main():
             t_time = float(sys.argv[sys.argv.index("--time") + 1]) if "--time" in sys.argv else 5.0
             t_xy = float(sys.argv[sys.argv.index("--xy") + 1]) if "--xy" in sys.argv else 10.0   # Jason 11-10: XY twice as long
                                                                                                   # (the scope's change tags fade first)
-            print("scope %s: %s; the time view %.0f s, XY %.0f s, in turn" % (which, s.idn, t_time, t_xy))
-            cycle(s, which, t_time, t_xy, bench=bench, scale=scale)
+            xy_scale = float(sys.argv[sys.argv.index("--xy_scale") + 1]) if "--xy_scale" in sys.argv else None
+            print("scope %s: %s; the time view %.0f s, XY %.0f s, in turn%s" % (which, s.idn, t_time, t_xy,
+                  "; I and Q at %g V/div in the time view, %g in XY" % (scale, xy_scale) if xy_scale else ""))
+            cycle(s, which, t_time, t_xy, bench=bench, scale=scale, xy_scale=xy_scale)
         elif what == "shot":
             path = sys.argv[3] if len(sys.argv) > 3 and not sys.argv[3].startswith("--") else os.path.join(HERE, "plots", "demoscope_%s_%s.bmp" % (which, time.strftime("%Y%m%d_%H%M%S")))
             n = s.screenshot(path)

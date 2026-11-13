@@ -447,3 +447,23 @@ dishes across the room, the return over two FPV omnis on the desk (the TFP-1s' p
 * **Open:** the beam's margin (board B's setup with its attenuation forced up under A's stream locked falsely: the
   method, not the beam); the T0 calibration (B4); the TFP-1s on the return; the scopes' views judged by eye (Jason, 11-10:
   the XY view now 10 s, the measurements off).
+
+## 12. The lecture hall (11-12 / 13, BRINGUP_LOG 4.96)
+
+Rain moved the demo indoors, into a large lecture hall.  Both directions now go over parabolic dishes across the front
+of the hall: the beam A -> B horizontal, the return B -> A vertical, each station's two dishes stacked.  The PYNQs run
+on 12 V wall warts; each board has its own E3632A at 5.30 V, 1.5 A, OVP 5.5 V (laptop A's FTER3DQU, laptop B's
+FTEP2CPY).
+
+* **The carriers are now 5000 (the beam) and 4400 (the return)**, below every WiFi channel in the hall (all of
+  5150-5850 is in use there, 5400's band has channels 64 and 100 at its edges) and below the laptops' background scans.
+  Both PYNQs' link.json say so since 11-13 01:26; to go back: `cp link.json.4800_5400_20261113 link.json` in
+  `~/costaslink_current` on each PYNQ, then `sudo systemctl restart costaslink-netbus`.
+* **Starting it:** the PYNQs (their servers come up with the overlay), the boards' 5 V, then the stations, which adopt
+  the PYNQs' locks in a second: `demo.py A --tx 5000 --rx 4400` on laptop A, `demo.py B --tx 4400 --rx 5000` on laptop B
+  (without `--fresh`: 2 of 15 fresh setups in the hall put the attenuator 14-20 dB off).
+* **The scopes:** `demoscope.py preset A|B`, then `demoscope.py cycle A --xy_scale 0.0035` and
+  `demoscope.py cycle B --xy_scale 0.003`: the constellation fills about +-2.5 divisions and shrinks visibly when the
+  beam is blocked; the time views stay at 10 mV/div.
+* **Levels:** the beam reaches board B with 15.75 dB of attenuation in use, the return board A with 11.75 dB: both
+  directions have more than 10 dB to spare, so a hand or an arm in the beam is the demo, not a fault.
