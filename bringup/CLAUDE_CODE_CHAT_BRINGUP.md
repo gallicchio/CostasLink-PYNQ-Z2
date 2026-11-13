@@ -4989,3 +4989,13 @@ Let me know when your sequence is going and the beeper should be off. I still he
 ## Response 229 (2026-11-13 03:18 - 03:30 PST)
 
 Both beepers read OFF, and scope B (firmware 8.1.6.1.35R2) went quiet, but scope A (8.1.6.1.26) kept beeping at its view switches. Not its error queue (empty across a switch), not its persistence change (removed, same beeping). One change at a time on scope A, 10 s apart, with Jason listening: ch1 offset moved and back, XY on and off, all silent; ch1 to 3.5 mV/div and back to 10 mV/div, both beeped. **Scope A's firmware beeps at every volts-a-division change, beeper or not.** So scope A now runs one scale in both views, 5 mV/div (the constellation at about +-1.9 divisions; the time view re-laid: I steps up from a baseline shared with Q, Q goes up or down, the ping and pong at the bottom), its persistence set once to 1 s; its cycle only moves offsets and toggles XY. Silent since 03:26:30. Scope B keeps its separate XY scale (3.0 mV/div), quietly. demoscope.py committed (eef6bdc), DEMO_COURTYARD 12's commands updated.
+
+
+## Prompt 230 (2026-11-13 ~03:35 PST)
+
+Great. Keep going. Then find the visually most interesting set of settings at 8am and keep monitoring. People might move stuff or have loud WiFi.
+
+
+## Response 230 (2026-11-13 03:35 - 04:15 PST)
+
+The overnight monitor kept running (30-minute summaries: 03:30-04:00 no errors at all). With the hall quiet, four demo variants were tried that change the scopes' pictures without touching the scopes' settings (so scope A does not beep), each with both stations restarted by adopting the PYNQs' locks, 60 s measured and both scopes screenshotted in both views: the current settings; station B's echo held 16 clocks instead of 8; that plus station A's symbols held 30 clocks instead of 20; and the 30-clock symbols alone. All four error-free, re-armed in 10-11 s. The longer echo only crowded scope A's time view; the 30-clock symbols space scope B's time view more evenly and brighten its constellation's points a little, scope A unchanged. Kept: station A `--width 30`. The screenshots are in `data/twoboard/hall_20261113/vis/`. Plan: at 8:00 fresh screenshots and a WiFi and level check under the day's conditions; until 13:00 watch for moved dishes and interference, and say so in bold (and a push) if something needs Jason.

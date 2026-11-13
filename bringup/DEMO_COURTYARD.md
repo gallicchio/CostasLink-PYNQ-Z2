@@ -460,8 +460,11 @@ FTEP2CPY).
   Both PYNQs' link.json say so since 11-13 01:26; to go back: `cp link.json.4800_5400_20261113 link.json` in
   `~/costaslink_current` on each PYNQ, then `sudo systemctl restart costaslink-netbus`.
 * **Starting it:** the PYNQs (their servers come up with the overlay), the boards' 5 V, then the stations, which adopt
-  the PYNQs' locks in a second: `demo.py A --tx 5000 --rx 4400` on laptop A, `demo.py B --tx 4400 --rx 5000` on laptop B
-  (without `--fresh`: 2 of 15 fresh setups in the hall put the attenuator 14-20 dB off).
+  the PYNQs' locks in a second: `demo.py A --tx 5000 --rx 4400 --width 30` on laptop A, `demo.py B --tx 4400 --rx 5000`
+  on laptop B (without `--fresh`: 2 of 15 fresh setups in the hall put the attenuator 14-20 dB off).  `--width 30` (each
+  symbol held 300 of its 500 ns, 200 before 11-13 04:10) spaces scope B's time view more evenly and brightens its
+  constellation's points a little; a longer echo (B's `--fp_clocks 16`) only crowded scope A's time view (4 variants
+  tried with screenshots, all error-free: `data/twoboard/hall_20261113/vis/`).
 * **The scopes:** scope A `demoscope.py preset A --scale 0.005`, then `demoscope.py cycle A --scale 0.005` (one
   scale in both views: scope A's firmware beeps at every volts-a-division change even with its beeper off, Jason
   11-13 03:25); scope B `demoscope.py preset B`, then `demoscope.py cycle B --xy_scale 0.003` (its own XY scale,
