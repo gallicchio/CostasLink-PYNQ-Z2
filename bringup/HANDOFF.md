@@ -180,7 +180,22 @@ What the laptop needs that the bench PC has:
 
 ### 3a. The lab laptop as found (`zmash`, 2026-11-03, BRINGUP_LOG 4.35)
 
-**Since 2026-11-10 (read this first; the rest of 3a is the 11-03 snapshot):** two laptops, each wired only to its own
+**Since 2026-11-12, the lecture hall (read this first, then the 11-10 paragraph):** the demo ran indoors, both
+directions over parabolic dishes (the beam A -> B horizontal, the return B -> A vertical, each station's two dishes
+stacked).  **The carriers are now beam 5000 / return 4400 MHz**: both PYNQs' link.json say so since 11-13 01:26 (each
+PYNQ keeps the 4800 / 5400 file as `~/costaslink_current/link.json.4800_5400_20261113`; to go back, copy it over and
+`sudo systemctl restart costaslink-netbus`).  The PYNQs ran on 12 V wall warts (not switchable); each board on its own
+E3632A at 5.30 V, 1.5 A, OVP 5.5 V: board A's through FTDI `FTER3DQU` on zmash, board B's through `FTEP2CPY` on kate.
+**The FTDI serials name the USB adapters, not the supplies, and they moved:** `bench_config_laptop.json`'s
+`psu.pynq_serial` (FTEP2CPY, once the PYNQ's 12 V supply) is cleared since 11-13, so that `bench.py psu pynq-on` cannot
+put 12 V on a board's supply (an E3632A's OVP comes back at 32 V after a power cycle); check which supply an adapter is on
+before naming it again.  The stations: `demo.py A --tx 5000 --rx 4400 --width 30`, `demo.py B --tx 4400 --rx 5000`, both
+adopting the PYNQs' locks (not `--fresh`); scope A `demoscope.py cycle A --scale 0.005` (its firmware beeps at every
+volts-a-division change), scope B `demoscope.py cycle B --xy_scale 0.003`; both scopes' beepers off.  With people in
+the room, re-arm a station when a steady trickle of errors appears (its windows go stale as the levels drift).
+DEMO_COURTYARD 12, BRINGUP_LOG 4.96-4.97.  Shut down 11-13 13:32: the stations, both boards' 5 V, both PYNQs halted.
+
+**Since 2026-11-10 (the rest of 3a is the 11-03 snapshot):** two laptops, each wired only to its own
 PYNQ: zmash (station A) at 192.168.2.10 on `enp0s31f6` to PYNQ A (.99), kate (station B, user labuser, `ssh kate`
 from zmash) at .11 on a USB dongle to PYNQ B (.98); both on Claremont-ETC at 2.4 GHz for the internet; the lab router
 (the Netgear R7800, OpenWrt, 192.168.2.1) is no longer on the PYNQs' wires, so PYNQ B is reached through kate

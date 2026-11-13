@@ -5019,3 +5019,16 @@ If there is anything to commit on OpticsPCBs or lab-instrument-control, do that 
 ## Response 232 (2026-11-13 08:40 - 08:45 PST)
 
 Both working trees were clean (OpticsPCBs 9 ahead, lab-instrument-control 1 ahead). The night's three standalone tools that BRINGUP_LOG 4.96 cites were only in the scratchpad, so they went into bringup/ and 4.96 now points at them: `survey_board.py` (each board's own receiver surveys the band through its dish, both at once with both TXs off, with the adaptive threshold ladder), `survey_fig.py` (its figure), `shot_view.py` (a scope's screen taken inside one view of the demo's cycle). Committed (c003187); nothing pushed. The demo kept running: since 08:01 the only errors were three short episodes of people in the beam (08:01, 08:03, 08:27); every other minute 0 missed, 0 wrong, about 0.6 false a second.
+
+
+## Prompt 233 (2026-11-13 ~13:31 PST)
+
+Time to clean up and shut down. Take all of the notes and save them. Power off everything you can. Commit what needs to be committed and I'll push
+
+
+## Response 233 (2026-11-13 13:31 - 13:40 PST)
+
+- **Shut down, in order:** both stations and both scope cycles stopped (13:31); both E3632A outputs off and reading 0 V (zmash's FTER3DQU for board A, kate's FTEP2CPY for board B, 13:32); both PYNQs' `costaslink-netbus` stopped and `sudo poweroff` sent (13:32:15 / 13:32:20); neither answered ping at 13:33:40, so their wall warts can be unplugged. The scopes and the E3632As have no remote power switch (their outputs are off); zmash stays on (this session runs on it); kate last (below).
+- **Notes saved:** the day's station logs from both laptops, the scans, the monitor's log and every screenshot in `data/twoboard/hall_20261113/` (gitignored, 20 MB); HANDOFF 3a starts with the lecture hall's state (the carriers now 5000 / 4400 on both PYNQs and how to go back, the per-board supplies, the stations' and scopes' commands, re-arming on a steady trickle).
+- **A hazard found and closed:** the FTDI serials name the USB adapters, not the supplies, and FTEP2CPY (the PYNQ's 12 V supply in the lab config) now drives board B's 5 V supply; `bench_config_laptop.json`'s `psu.pynq_serial` is cleared so `bench.py psu pynq-on` cannot put 12 V on a board (an E3632A's OVP comes back at 32 V after a power cycle); lab-instrument-control's AGENTS.md and the memory say the same.
+- **Committed, not pushed:** OpticsPCBs and lab-instrument-control (Jason pushes).
