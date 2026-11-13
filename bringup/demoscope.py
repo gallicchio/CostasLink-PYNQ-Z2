@@ -45,7 +45,8 @@ def arm_dc(scale):
 # each scope's two views (Jason 11-08: 5 s of time traces, 5 s of the constellation; scope A too since 11-10).  Only
 # ch1 / ch2's offsets differ: in the time view I and Q sit apart (I high, Q under it); in XY both at the middle, so the
 # idle's dot is near the centre.  Scope A's time view keeps its lower half for the ping and the pong.
-VIEW_TIME = {"A": {1: 3.0, 2: 1.0}, "B": {1: 2.5, 2: 0.5}}     # divisions from the middle: I, Q
+VIEW_TIME = {"A": {1: 1.6, 2: -0.6}, "B": {1: 2.5, 2: 0.5}}    # divisions from the middle: I, Q (A since 11-13 for 5 mV/div:
+                                                              # its scale is never changed by the cycle, below)
 VIEW_XY = {1: 0.0, 2: 0.0}
 
 
@@ -132,8 +133,8 @@ def preset_A(s, bench=False, scale=0.010, measure=False):
         i_ch, q_ch, ping, pong, trig = 1, 2, 3, 4, 3
     s.channel(i_ch, on=True, scale=scale, offset=place(scale, VIEW_TIME["A"][1], dc), coupling="DC", probe=1)   # I
     s.channel(q_ch, on=True, scale=scale, offset=place(scale, VIEW_TIME["A"][2], dc), coupling="DC", probe=1)   # Q
-    s.channel(ping, on=True, scale=1.0, offset=place(1.0, -2.5, 0.0), coupling="DC", probe=1)         # TRIG A, the ping
-    s.channel(pong, on=True, scale=1.0, offset=place(1.0, -2.5, 0.0), coupling="DC", probe=1)         # TRIG B, the pong
+    s.channel(ping, on=True, scale=1.0, offset=place(1.0, -3.9, 0.0), coupling="DC", probe=1)         # TRIG A, the ping
+    s.channel(pong, on=True, scale=1.0, offset=place(1.0, -3.9, 0.0), coupling="DC", probe=1)         # TRIG B, the pong
     s.trigger(source=trig, level=0.85, slope="rising", mode="auto")
     s.xy(False)
     s.persistence("OFF")
@@ -147,8 +148,8 @@ def preset_A(s, bench=False, scale=0.010, measure=False):
 
 def cycle(s, which="B", t_time=5.0, t_xy=10.0, bench=False, scale=0.010, xy_scale=None):
     """the time view and the constellation in turn, for ever (t_time 0: the constellation only); the view's name is
-    printed at each change.  Scope A's time view has persistence off (the ping and the pong crisp), its XY 1 s (the
-    constellation builds up), as scope B's both.  A SIGTERM (or Ctrl-C) leaves the time view: without the handler
+    printed at each change.  Persistence 1 s in both views on both scopes (since 11-13 scope A's too: the cycle changes
+    nothing on scope A but offsets and XY, which its firmware does silently).  A SIGTERM (or Ctrl-C) leaves the time view: without the handler
     `timeout` left the scope in XY (11-08 11:21)"""
     import signal
 
@@ -157,6 +158,11 @@ def cycle(s, which="B", t_time=5.0, t_xy=10.0, bench=False, scale=0.010, xy_scal
     signal.signal(signal.SIGTERM, leave)
     t_view = VIEW_TIME[which]
     quiet(s)
+    if which == "A":
+        s.persistence(1)       # once, so the cycle changes nothing on scope A but offsets and XY: its firmware
+                               # (8.1.6.1.26) beeps at every volts-a-division change even with the beeper off (Jason,
+                               # 11-13 03:25, one change at a time: offsets and XY on / off silent, VDIV beeps); scope B's
+                               # (8.1.6.1.35R2) is quiet.  So scope A runs one scale in both views (--scale 0.005, no --xy_scale)
 
     two = xy_scale is not None and xy_scale != scale
 
@@ -164,14 +170,10 @@ def cycle(s, which="B", t_time=5.0, t_xy=10.0, bench=False, scale=0.010, xy_scal
         s.xy(False)
         if not bench:
             b_offsets(s, scale, t_view, set_scale=two)
-        if which == "A":
-            s.persistence("OFF")
 
     def xy_view():
         if not bench:
             b_offsets(s, xy_scale if two else scale, VIEW_XY, set_scale=two)
-        if which == "A":
-            s.persistence(1)
         s.xy(True)
     try:
         if t_time <= 0:
