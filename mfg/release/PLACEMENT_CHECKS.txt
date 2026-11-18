@@ -1,0 +1,147 @@
+CostasLink-PYNQ-Z2 rev A: PLACEMENT CHECKS for JLCPCB's preview (2026-10-18)
+
+The board is assembled on the top only (J302, on the back, is soldered at home: hand_solder_bom.csv).
+
+MOVED in CostasLink-PYNQ-Z2_cpl_jlcpcb_upload.csv to where JLCPCB's library puts the part's origin (their drawing's
+zero is not KiCad's; FOOTPRINT_CHECK.txt's 'datum').  In the preview each should sit squarely
+on its pads.  If one sits off them by about the same distance the other way, their library has
+changed: say so, and it goes into the code.
+
+  J301   C165948    top    USB_C_Receptacle_HRO_TYPE-C-31-M-12          moved (-1.572, -0.000) mm (x right, y up)
+  J390   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (-0.763, -0.000) mm (x right, y up)
+  J391   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (-0.763, -0.000) mm (x right, y up)
+  J392   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (-0.763, -0.000) mm (x right, y up)
+  J393   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (-0.763, -0.000) mm (x right, y up)
+  J394   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (-0.763, -0.000) mm (x right, y up)
+  J395   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (-0.763, -0.000) mm (x right, y up)
+  J396   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (-0.763, -0.000) mm (x right, y up)
+  JP301  C492401    top    PinHeader_1x02_P2.54mm_Vertical              moved (+1.270, -0.000) mm (x right, y up)
+  JP302  C492401    top    PinHeader_1x02_P2.54mm_Vertical              moved (+0.000, -1.270) mm (x right, y up)
+  JP303  C492401    top    PinHeader_1x02_P2.54mm_Vertical              moved (+0.000, -1.270) mm (x right, y up)
+  J102   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (-0.763, -0.000) mm (x right, y up)
+  J103   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (-0.763, -0.000) mm (x right, y up)
+  J104   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (-0.763, -0.000) mm (x right, y up)
+  J105   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (-0.763, -0.000) mm (x right, y up)
+  J109   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (+0.000, -0.763) mm (x right, y up)
+  J190   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (-0.763, -0.000) mm (x right, y up)
+  JP101  C2937625   top    PinHeader_1x03_P2.54mm_Vertical              moved (+2.540, -0.000) mm (x right, y up)
+  JP102  C2937625   top    PinHeader_1x03_P2.54mm_Vertical              moved (+2.540, -0.000) mm (x right, y up)
+  JP103  C2937625   top    PinHeader_1x03_P2.54mm_Vertical              moved (+2.540, -0.000) mm (x right, y up)
+  U103   C208262    top    SOT-89-3                                     moved (-0.704, +0.000) mm (x right, y up)
+  U117   C208262    top    SOT-89-3                                     moved (-0.704, +0.000) mm (x right, y up)
+  J201   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (+0.763, +0.000) mm (x right, y up)
+  J204   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (+0.763, +0.000) mm (x right, y up)
+  J290   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (-0.763, -0.000) mm (x right, y up)
+  JP201  C2937625   top    PinHeader_1x03_P2.54mm_Vertical              moved (+2.540, -0.000) mm (x right, y up)
+  JP202  C492401    top    PinHeader_1x02_P2.54mm_Vertical              moved (-1.270, -0.000) mm (x right, y up)
+  JP203  C492401    top    PinHeader_1x02_P2.54mm_Vertical              moved (+1.270, -0.000) mm (x right, y up)
+  U202   C208262    top    SOT-89-3                                     moved (+0.704, -0.000) mm (x right, y up)
+  J303   C2937625   top    PinHeader_1x03_P2.54mm_Vertical              moved (+2.540, -0.000) mm (x right, y up)
+  J502   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (+0.000, -0.763) mm (x right, y up)
+  J590   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (-0.763, -0.000) mm (x right, y up)
+  J601   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (+0.000, -0.763) mm (x right, y up)
+  J602   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (+0.000, -0.763) mm (x right, y up)
+  J603   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (+0.000, -0.763) mm (x right, y up)
+  J604   C88374     top    U.FL_Hirose_U.FL-R-SMT-1_Vertical            moved (+0.000, -0.763) mm (x right, y up)
+
+ROTATIONS.  CostasLink-PYNQ-Z2_cpl_jlcpcb_upload.csv's rotation is KiCad's angle, mirrored for the bottom side
+(180 - angle: JLCPCB looks at the bottom from below, the board turned over left-to-right;
+jlc_rotation.BOTTOM_FLIP, read on ten bottom-side parts of the Icepi Zero), plus each part's
+correction: read in an earlier preview where somebody has looked, else PREDICTED from JLCPCB's
+own drawing of the part turned until its pads lie on ours by pin number.  Every part below that
+nobody has yet seen right is listed with its prediction: check its pin 1 or polarity mark
+(JLCPCB's dot) against the board, write down any that is wrong and by how much, and it goes
+into mfg/jlc_rotation.py.  Never turn or nudge a part in JLCPCB's viewer: the next upload loses it.
+
+Placed as the CPL says, JLCPCB's own drawing lands pin for pin on our pads for 54 parts
+(make_release.py's simulation of their placement, both sides).
+
+NOT YET SEEN RIGHT in a preview (0 part numbers, 0 placements):
+
+READ RIGHT in an earlier preview (the same part number, this footprint or its twin):
+  C10425     SOT-353_SC-70-5                          correction 180 (read); JLCPCB's drawing agrees: U116 U205
+  C113952    D_SMA                                    correction   0 (read): D303
+  C14461     SOT-363_SC-70-6                          correction 180 (read); JLCPCB's drawing agrees: U204
+  C15127     SOT-23                                   correction 180 (read); JLCPCB's drawing agrees: Q301 Q302
+  C165948    USB_C_Receptacle_HRO_TYPE-C-31-M-12      correction   0 (built); JLCPCB's drawing agrees: J301
+  C17271830  MSOP-8-1EP_3x3mm_P0.65mm_EP1.73x1.85mm   correction 270 (read); JLCPCB's drawing agrees: U401
+  C19270534  CP_Elec_5x5.9                            correction   0 (read): C320
+  C2058382   VQFN-16-1EP_3x3mm_P0.5mm_EP1.68x1.68mm   correction 270 (read); JLCPCB's drawing agrees: U105 U106 U501 U502
+  C2059281   VSSOP-8_3x3mm_P0.65mm                    correction 270 (read); JLCPCB's drawing agrees: U112 U508
+  C208262    SOT-89-3                                 correction 180 (read); JLCPCB's drawing agrees: U103 U117 U202
+  C210262    SKY65404-31_QFN-6_1.5x1.5mm              correction   0 (read); JLCPCB's drawing agrees: U101
+  C2286      LED_0603_1608Metric                      correction   0 (read): D301 D302
+  C23380874  SOT-23-5                                 correction 180 (sure); JLCPCB's drawing agrees: U305
+  C2862740   SOT-23-5                                 correction 180 (sure); JLCPCB's drawing agrees: U301 U302 U303 U304
+  C2937625   PinHeader_1x03_P2.54mm_Vertical          correction 270 (read); JLCPCB's drawing agrees: J303 JP101 JP102 JP103 JP201
+  C2974371   SOT-353_SC-70-5                          correction 180 (read); JLCPCB's drawing agrees: U107 U503 U504 U505
+  C37593     TSSOP-10_3x3mm_P0.5mm                    correction 270 (read); JLCPCB's drawing agrees: U114 U510
+  C38663     SOT-363_SC-70-6                          correction 180 (read); JLCPCB's drawing agrees: U110
+  C42711     MSOP-8_3x3mm_P0.65mm                     correction 270 (read); JLCPCB's drawing agrees: U507
+  C46388     SOT-363_SC-70-6                          correction 270 (read); JLCPCB's drawing agrees: U111
+  C470929    QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm      correction 270 (read); JLCPCB's drawing agrees: U102
+  C478093    MSOP-10_3x3mm_P0.5mm                     correction 270 (read); JLCPCB's drawing agrees: U113
+  C492401    PinHeader_1x02_P2.54mm_Vertical          correction 270 (read): JP202 JP203 JP301 JP302 JP303
+  C496551    SMA_BWSMA-KWE-Z001                       correction   0 (read): J101 J202 J203 J205 J206 J207 J401 J402 J403
+  C5119013   Crystal_SMD_3225-4Pin_3.2x2.5mm          correction   0 (read); JLCPCB's drawing agrees: Y201
+  C5137198   MMCX_BWMMCX-KE_Vertical                  correction   0 (read): J106 J107 J108 J208 J490 J501
+  C5179998   Crystal_SMD_3225-4Pin_3.2x2.5mm          correction   0 (read); JLCPCB's drawing agrees: Y101
+  C5213955   SOT-363_SC-70-6                          correction 180 (read); JLCPCB's drawing agrees: U601 U602 U603 U604
+  C531388    Balun_TDK_HHM1907B1                      correction   0 (read); JLCPCB's drawing agrees: T101
+  C579150    QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm      correction 270 (read); JLCPCB's drawing agrees: U201
+  C579152    QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm      correction 270 (read); JLCPCB's drawing agrees: U104
+  C627342    MSOP-10_3x3mm_P0.5mm                     correction 270 (read); JLCPCB's drawing agrees: U506
+  C650158    TSSOP-16_4.4x5mm_P0.65mm                 correction 270 (read); JLCPCB's drawing agrees: U605
+  C7458627   QFN-32-1EP_5x5mm_P0.5mm_EP3.1x3.1mm      correction   0 (read); JLCPCB's drawing agrees: U115 U203
+  C81598     D_SOD-123                                correction   0 (read): D501
+  C8207      SOT-353_SC-70-5                          correction 180 (read); JLCPCB's drawing agrees: U206 U402
+  C8545      SOT-23                                   correction 180 (read); JLCPCB's drawing agrees: Q303
+  C88374     U.FL_Hirose_U.FL-R-SMT-1_Vertical        correction 270 (read): J102 J103 J104 J105 J109 J190 J201 J204 J290 J390 J391 J392 J393 J394 J395 J396 J502 J590 J601 J602 J603 J604
+
+No orientation to get wrong (two pads, no polarity): C_0402_1005Metric, C_0603_1608Metric, C_0805_2012Metric, C_1206_3216Metric, Fuse_1812_4532Metric, L_0402_1005Metric, L_0603_1608Metric, L_0805_2012Metric, R_0402_1005Metric, R_0603_1608Metric, R_1206_3216Metric
+
+THROUGH-HOLE parts JLCPCB fits by hand (they go in one way by their pins, but look):
+  J101   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
+  J106   top    MMCX_BWMMCX-KE_Vertical                        5 joints
+  J107   top    MMCX_BWMMCX-KE_Vertical                        5 joints
+  J108   top    MMCX_BWMMCX-KE_Vertical                        5 joints
+  J202   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
+  J203   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
+  J205   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
+  J206   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
+  J207   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
+  J208   top    MMCX_BWMMCX-KE_Vertical                        5 joints
+  J301   top    USB_C_Receptacle_HRO_TYPE-C-31-M-12            4 joints; the receptacle's mouth flush with the right edge, on its pads
+  J303   top    PinHeader_1x03_P2.54mm_Vertical                3 joints; pin 1 at the square pad; the three in a line along the board's edge
+  J401   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
+  J402   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
+  J403   top    SMA_BWSMA-KWE-Z001                             5 joints; the barrel points OFF the edge (read in rev A's preview, 2026-10-17: +0 is right; the predicted +90 lay them along the edge)
+  J490   top    MMCX_BWMMCX-KE_Vertical                        5 joints
+  J501   top    MMCX_BWMMCX-KE_Vertical                        5 joints
+  JP101  top    PinHeader_1x03_P2.54mm_Vertical                3 joints; pin 1 at the square pad; the three in a line along the board's edge
+  JP102  top    PinHeader_1x03_P2.54mm_Vertical                3 joints; pin 1 at the square pad; the three in a line along the board's edge
+  JP103  top    PinHeader_1x03_P2.54mm_Vertical                3 joints; pin 1 at the square pad; the three in a line along the board's edge
+  JP201  top    PinHeader_1x03_P2.54mm_Vertical                3 joints; pin 1 at the square pad; the three in a line along the board's edge
+  JP202  top    PinHeader_1x02_P2.54mm_Vertical                2 joints; pin 1 at the square pad; a header is the same turned half round, not a quarter
+  JP203  top    PinHeader_1x02_P2.54mm_Vertical                2 joints; pin 1 at the square pad; a header is the same turned half round, not a quarter
+  JP301  top    PinHeader_1x02_P2.54mm_Vertical                2 joints; pin 1 at the square pad; a header is the same turned half round, not a quarter
+  JP302  top    PinHeader_1x02_P2.54mm_Vertical                2 joints; pin 1 at the square pad; a header is the same turned half round, not a quarter
+  JP303  top    PinHeader_1x02_P2.54mm_Vertical                2 joints; pin 1 at the square pad; a header is the same turned half round, not a quarter
+
+OVER THE EDGE (JLCPCB's rails must leave room; said in the order's Assembly remark):
+  J101   4.6 mm past the top edge
+  J202   4.6 mm past the top edge
+  J203   4.6 mm past the right edge
+  J205   4.6 mm past the left edge
+  J206   4.6 mm past the left edge
+  J207   4.6 mm past the left edge
+  J301   1.7 mm past the right edge
+  J401   4.6 mm past the top edge
+  J402   4.6 mm past the top edge
+  J403   4.6 mm past the top edge
+
+FRAME: Mid X and Mid Y are millimetres from the drill/place origin (25.000, 125.000) on KiCad's page: the board's bottom-left corner, y up, the same frame as
+the gerbers and the drill file.  Bottom-side X is NOT negated (JLCPCB reads both sides from the
+top).  KiCad's own position export agrees with every row of CostasLink-PYNQ-Z2_cpl_kicad_native.csv.
+
+LAST: THE BACK.  Before confirming, look at the bottom side's part(s): none.

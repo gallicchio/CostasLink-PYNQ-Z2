@@ -1,0 +1,21 @@
+(version 1)
+# Written by gen/project.py.  Edit that, not this.
+# (no silk_clearance rule: KiCad 10 then reports every designator against Fab text and
+#  courtyards as a silkscreen overlap; its built-in silk checks stay on)
+# The 50 ohm lines' CPWG gap: the ground pour keeps 0.25 mm from every RF and LO track and pad.
+# (The LO legs' equal length is gen/board.lo_skew's gate: each leg is three nets through two DC
+#  blocks, which KiCad's skew constraint cannot add up.)
+(rule "CPWG gap"
+    (constraint clearance (min 0.25mm))
+    (condition "(A.NetClass == 'RF' || A.NetClass == 'LO') && B.Type == 'Zone'"))
+# The SMA launches (review B, Prompt 31): the centre pin keeps no copper ring on the inner and back layers
+# (gen/footprints.sma), and the planes there stay 1.35 mm from its 1.3 mm hole, a 4 mm antipad, so the
+# pin's capacitance to ground through the board is a small fraction of what a 2.5 mm antipad allowed.
+(rule "SMA launch antipad, inner"
+    (constraint hole_clearance (min 1.35mm))
+    (condition "A.Pad_Type == 'Through-hole' && A.NetClass == 'RF' && B.Type == 'Zone'")
+    (layer inner))
+(rule "SMA launch antipad, back"
+    (constraint hole_clearance (min 1.35mm))
+    (condition "A.Pad_Type == 'Through-hole' && A.NetClass == 'RF' && B.Type == 'Zone'")
+    (layer "B.Cu"))

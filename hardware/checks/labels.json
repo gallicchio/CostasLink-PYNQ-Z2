@@ -1,0 +1,562 @@
+{
+ "connectors": 45,
+ "rows": [
+  {
+   "row": [
+    "J101",
+    "J202",
+    "J402",
+    "J401",
+    "J403"
+   ],
+   "axis": "x",
+   "relations": {
+    "J101": [
+     "W",
+     0.2500010000000046,
+     0.0,
+     0,
+     1.5
+    ],
+    "J202": [
+     "W",
+     0.25,
+     0.0,
+     0,
+     1.5
+    ],
+    "J402": [
+     "W",
+     0.2500009999999975,
+     0.0,
+     0,
+     1.5
+    ],
+    "J401": [
+     "W",
+     0.2500009999999975,
+     0.0,
+     0,
+     1.5
+    ],
+    "J403": [
+     "W",
+     0.2500009999999975,
+     0.0,
+     0,
+     1.5
+    ]
+   }
+  },
+  {
+   "row": [
+    "J102"
+   ],
+   "axis": null,
+   "relations": {
+    "J102": [
+     "W",
+     0.7000000000000028,
+     0.0,
+     90,
+     1.2
+    ]
+   }
+  },
+  {
+   "row": [
+    "J103"
+   ],
+   "axis": null,
+   "relations": {
+    "J103": [
+     "E",
+     1.0,
+     -0.0,
+     90,
+     1.0
+    ]
+   }
+  },
+  {
+   "row": [
+    "J104"
+   ],
+   "axis": null,
+   "relations": {
+    "J104": [
+     "W",
+     0.2500009999999975,
+     -0.0,
+     90,
+     1.0
+    ]
+   }
+  },
+  {
+   "row": [
+    "J105"
+   ],
+   "axis": null,
+   "relations": {
+    "J105": [
+     "NW",
+     [
+      1.0,
+      1.0
+     ],
+     0.0,
+     90,
+     1.2
+    ]
+   }
+  },
+  {
+   "row": [
+    "J106"
+   ],
+   "axis": null,
+   "relations": {
+    "J106": [
+     "N",
+     0.25,
+     0.0,
+     0,
+     1.2
+    ]
+   }
+  },
+  {
+   "row": [
+    "J107"
+   ],
+   "axis": null,
+   "relations": {
+    "J107": [
+     "N",
+     0.25,
+     0.0,
+     0,
+     1.2
+    ]
+   }
+  },
+  {
+   "row": [
+    "J108"
+   ],
+   "axis": null,
+   "relations": {
+    "J108": [
+     "SE",
+     [
+      1.0,
+      1.0
+     ],
+     0.0,
+     0,
+     1.2
+    ]
+   }
+  },
+  {
+   "row": [
+    "J109"
+   ],
+   "axis": null,
+   "relations": {
+    "J109": [
+     "N",
+     0.2500009999999975,
+     -0.0,
+     0,
+     1.0
+    ]
+   }
+  },
+  {
+   "row": [
+    "J290",
+    "J190"
+   ],
+   "axis": "x",
+   "relations": {
+    "J290": [
+     "N",
+     0.25,
+     0.0,
+     90,
+     1.2
+    ],
+    "J190": [
+     "N",
+     0.25,
+     0.0,
+     90,
+     1.2
+    ]
+   }
+  },
+  {
+   "row": [
+    "J201"
+   ],
+   "axis": null,
+   "relations": {
+    "J201": [
+     "N",
+     0.25,
+     0.0,
+     0,
+     1.2
+    ]
+   }
+  },
+  {
+   "row": [
+    "J203"
+   ],
+   "axis": null,
+   "relations": {
+    "J203": [
+     "S",
+     0.25,
+     -0.0,
+     0,
+     1.5
+    ]
+   }
+  },
+  {
+   "row": [
+    "J204"
+   ],
+   "axis": null,
+   "relations": {
+    "J204": [
+     "NW",
+     [
+      0.25,
+      0.25
+     ],
+     0.0,
+     90,
+     1.2
+    ]
+   }
+  },
+  {
+   "row": [
+    "J205",
+    "J206",
+    "J207"
+   ],
+   "axis": "y",
+   "relations": {
+    "J205": [
+     "E",
+     0.25,
+     0.0,
+     0,
+     1.5
+    ],
+    "J206": [
+     "E",
+     0.24999900000000252,
+     0.0,
+     0,
+     1.5
+    ],
+    "J207": [
+     "E",
+     0.24999900000000252,
+     0.0,
+     0,
+     1.5
+    ]
+   }
+  },
+  {
+   "row": [
+    "J208"
+   ],
+   "axis": null,
+   "relations": {
+    "J208": [
+     "S",
+     0.25,
+     -0.0,
+     0,
+     1.0
+    ]
+   }
+  },
+  {
+   "row": [
+    "J390",
+    "J391",
+    "J392",
+    "J393"
+   ],
+   "axis": "x",
+   "relations": {
+    "J390": [
+     "S",
+     0.25,
+     0.0,
+     90,
+     1.2
+    ],
+    "J391": [
+     "S",
+     0.25,
+     0.0,
+     90,
+     1.2
+    ],
+    "J392": [
+     "S",
+     0.25,
+     0.0,
+     90,
+     1.2
+    ],
+    "J393": [
+     "S",
+     0.25,
+     0.0,
+     90,
+     1.2
+    ]
+   }
+  },
+  {
+   "row": [
+    "J394"
+   ],
+   "axis": null,
+   "relations": {
+    "J394": [
+     "S",
+     0.24999900000000252,
+     -0.0,
+     90,
+     1.2
+    ]
+   }
+  },
+  {
+   "row": [
+    "J395"
+   ],
+   "axis": null,
+   "relations": {
+    "J395": [
+     "S",
+     0.25,
+     -0.0,
+     90,
+     1.2
+    ]
+   }
+  },
+  {
+   "row": [
+    "J396"
+   ],
+   "axis": null,
+   "relations": {
+    "J396": [
+     "W",
+     0.25,
+     0.0,
+     90,
+     1.2
+    ]
+   }
+  },
+  {
+   "row": [
+    "J490"
+   ],
+   "axis": null,
+   "relations": {
+    "J490": [
+     "NE",
+     [
+      0.25,
+      0.25
+     ],
+     0.0,
+     90,
+     1.2
+    ]
+   }
+  },
+  {
+   "row": [
+    "J501"
+   ],
+   "axis": null,
+   "relations": {
+    "J501": [
+     "S",
+     0.25,
+     0.0,
+     90,
+     1.2
+    ]
+   }
+  },
+  {
+   "row": [
+    "J502"
+   ],
+   "axis": null,
+   "relations": {
+    "J502": [
+     "W",
+     0.25,
+     0.0,
+     90,
+     1.0
+    ]
+   }
+  },
+  {
+   "row": [
+    "J590"
+   ],
+   "axis": null,
+   "relations": {
+    "J590": [
+     "N",
+     0.25,
+     -0.0,
+     0,
+     1.2
+    ]
+   }
+  },
+  {
+   "row": [
+    "J603",
+    "J604",
+    "J601",
+    "J602"
+   ],
+   "axis": "x",
+   "relations": {
+    "J603": [
+     "S",
+     0.25,
+     -0.0,
+     0,
+     1.0
+    ],
+    "J604": [
+     "S",
+     0.25,
+     0.0,
+     0,
+     1.0
+    ],
+    "J601": [
+     "S",
+     0.25,
+     0.0,
+     0,
+     1.0
+    ],
+    "J602": [
+     "S",
+     0.25,
+     -0.0,
+     0,
+     1.0
+    ]
+   }
+  },
+  {
+   "row": [
+    "TP301",
+    "TP302",
+    "TP303",
+    "TP304",
+    "TP305",
+    "TP306",
+    "TP307",
+    "TP308"
+   ],
+   "axis": "x",
+   "relations": {
+    "TP301": [
+     "N",
+     0.25,
+     0.0,
+     90,
+     1.0
+    ],
+    "TP302": [
+     "N",
+     0.25,
+     0.0,
+     90,
+     1.0
+    ],
+    "TP303": [
+     "N",
+     0.2500009999999975,
+     0.0,
+     90,
+     1.0
+    ],
+    "TP304": [
+     "N",
+     0.25,
+     0.0,
+     90,
+     1.0
+    ],
+    "TP305": [
+     "N",
+     0.2500009999999975,
+     0.0,
+     90,
+     1.0
+    ],
+    "TP306": [
+     "N",
+     0.25,
+     0.0,
+     90,
+     1.0
+    ],
+    "TP307": [
+     "N",
+     0.2500009999999975,
+     0.0,
+     90,
+     1.0
+    ],
+    "TP308": [
+     "N",
+     0.25,
+     -0.0,
+     90,
+     1.0
+    ]
+   }
+  }
+ ],
+ "violations": [],
+ "exempt": [
+  "J109: its limit left off: LO RX MON sits inside the RX synthesizer's loop filter with room for its name only (Prompt 35: the LD RX jack took the last of it); its level is LO TX MON's, 0 dBm, 50R, printed beside J204",
+  "row J290 J190: its limit left off: LD TX sits between the lower rail row's name columns with room for its name only; its level is every /10 tap's, 0-0.3 V/50R, printed under the window monitors",
+  "J208: its limit left off: TRIG IN MON sits between TRIG B's and TRIG IN's names with room for its own name only; its level is every /10 tap's, 0-0.3 V/50R, printed under the window monitors and CMP I MON",
+  "J394: its limit left off: 3V3_PLL_TX (U.FL) stands alone beside its regulator with room for its name's column only; its level, DC through 1k, is printed under the rail row (J390-J393)",
+  "J395: its limit left off: 3V3_PLL_RX likewise",
+  "J396: its limit left off: 3V3_OSC likewise",
+  "J502: its limit left off: Q SLOW MON sits between U502 and JP102 with room for its name's column only; its level is I SLOW MON's, 0-3.3 V through 1k, printed beside J501"
+ ]
+}

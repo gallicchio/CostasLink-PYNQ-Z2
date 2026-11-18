@@ -1,0 +1,2 @@
+{"mhz": 5200, "vr": {"VR_I": 0.2343, "VR_Q": 0.2609}, "leg_target": 0.15, "window_frac": 0.5, "v_t2": 2.9, "dsa_min": 6.0,
+ "note": "board B (PYNQ B, 192.168.2.98): VR the TX output's own null at 5200 MHz on the DSA875 at TX ANT (BRINGUP_LOG 4.58: -60 to -62.5 dBm, -69 dBc, against the printed 0.2127 / 0.2457's -24 dBc); leg_target, window_frac, v_t2, dsa_min are board A's, not yet measured on B's receiver; not deployed: copy to link.json beside PYNQ B's server to set the link up at boot (Jason's call)"}

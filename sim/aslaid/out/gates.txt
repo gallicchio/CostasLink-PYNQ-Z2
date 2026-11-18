@@ -1,0 +1,150 @@
+RF / LO nets checked: 51
+
+gate 26: shunt and bias parts' track to the pin or jack they serve (fail: shunt > 0.5 mm, bias > 1 mm)
+  FAIL L202  shunt         Net-(CP201-OUT)                 5.20 mm to J202.1   (  62 deg at 5.8 GHz)
+  FAIL L101  shunt         Net-(J101-In)                   6.94 mm to J101.1   (  83 deg at 5.8 GHz)
+  FAIL L401  shunt         Net-(J401-In)                   5.37 mm to J401.1   (  64 deg at 5.8 GHz)
+  FAIL C102  shunt         Net-(U101-RF_IN)                4.00 mm to U101.3   (  48 deg at 5.8 GHz)
+  FAIL L103  bias/pull-up  Net-(U103-RFOUT)                1.30 mm to U103.3   (  16 deg at 5.8 GHz)
+  FAIL L106  bias/pull-up  Net-(U115-RFOUTA_N)             3.57 mm to U115.13  (  43 deg at 5.8 GHz)
+  FAIL L105  bias/pull-up  Net-(U115-RFOUTA_P)             3.57 mm to U115.12  (  43 deg at 5.8 GHz)
+  FAIL L108  bias/pull-up  Net-(U115-RFOUTB_N)             9.94 mm to U115.15  ( 118 deg at 5.8 GHz)
+  FAIL L107  bias/pull-up  Net-(U115-RFOUTB_P)             8.95 mm to U115.14  ( 107 deg at 5.8 GHz)
+  FAIL L104  bias/pull-up  Net-(U117-RFOUT)                1.30 mm to U117.3   (  16 deg at 5.8 GHz)
+  FAIL L204  bias/pull-up  Net-(U203-RFOUTA_N)             3.57 mm to U203.13  (  43 deg at 5.8 GHz)
+  FAIL L203  bias/pull-up  Net-(U203-RFOUTA_P)             3.57 mm to U203.12  (  43 deg at 5.8 GHz)
+  FAIL L206  bias/pull-up  Net-(U203-RFOUTB_N)            18.69 mm to U203.15  ( 223 deg at 5.8 GHz)
+  FAIL L205  bias/pull-up  Net-(U203-RFOUTB_P)            11.58 mm to U203.14  ( 138 deg at 5.8 GHz)
+  junctions with a leg longer than 0.5 mm to a pad (stubs):
+   Net-(CP201-OUT)                at [np.float64(81.1), np.float64(36.2)]: CP201.2 0.7 mm, L202.1 1.0 mm, J202.1 4.2 mm
+   Net-(J101-In)                  at [np.float64(47.9), np.float64(36.4)]: C101.1 1.8 mm, L101.1 2.4 mm, J101.1 4.5 mm
+   Net-(U115-RFOUTB_N)            at [48.45, 98.08]: U115.15 1.8 mm, C152.1 5.7 mm, L108.2 8.1 mm
+   Net-(U115-RFOUTB_N)            at [48.4, 97.9]: U115.15 1.8 mm, C152.1 5.7 mm, L108.2 8.1 mm
+   Net-(U115-RFOUTB_N)            at [48.45, 98.08]: U115.15 1.8 mm, C152.1 5.7 mm, L108.2 8.1 mm
+   Net-(U115-RFOUTB_N)            at [48.6, 98.0]: U115.15 1.8 mm, C152.1 5.7 mm, L108.2 8.1 mm
+   Net-(U115-RFOUTB_P)            at [49.0, 98.62]: U115.14 1.2 mm, L107.2 7.7 mm, C151.1 9.3 mm
+   Net-(U115-RFOUTB_P)            at [48.8, 98.7]: U115.14 1.2 mm, L107.2 7.7 mm, C151.1 9.3 mm
+   Net-(U115-RFOUTB_P)            at [49.0, 98.62]: U115.14 1.2 mm, L107.2 7.7 mm, C151.1 9.3 mm
+   Net-(U115-RFOUTB_P)            at [49.2, 98.6]: U115.14 1.2 mm, L107.2 7.7 mm, C151.1 9.3 mm
+   Net-(U203-RFOUTB_N)            at [np.float64(76.8), np.float64(74.6)]: C232.1 0.5 mm, U203.15 5.1 mm, L206.2 13.6 mm
+   Net-(U203-RFOUTB_P)            at [75.4, 71.8]: L205.2 2.5 mm, U203.14 9.1 mm, C231.1 10.2 mm
+   Net-(U203-RFOUTB_P)            at [80.15, 76.33]: U203.14 1.2 mm, L205.2 10.3 mm, C231.1 18.1 mm
+   Net-(U203-RFOUTB_P)            at [80.0, 76.4]: U203.14 1.2 mm, L205.2 10.3 mm, C231.1 18.1 mm
+   Net-(U203-RFOUTB_P)            at [75.6, 71.8]: L205.2 2.5 mm, U203.14 9.1 mm, C231.1 10.2 mm
+
+gate 27: RF shunt parts' ground (fail: nearest ground via > 0.3 mm from the pad's edge)
+  FAIL R140  on Net-(C152-Pad2)              via 0.49 mm off the pad edge, 0.19 nH
+  FAIL R210  on Net-(C213-Pad2)              via 0.49 mm off the pad edge, 0.13 nH
+  FAIL R220  on Net-(C232-Pad2)              via 0.50 mm off the pad edge, 0.25 nH
+  FAIL R103  on Net-(CP101-ISO)              via 0.49 mm off the pad edge, 0.23 nH
+  FAIL R211  on Net-(CP201-IN)               via 0.49 mm off the pad edge, 0.23 nH
+  FAIL R213  on Net-(CP201-ISO)              via 0.49 mm off the pad edge, 0.24 nH
+  FAIL L202  on Net-(CP201-OUT)              via 0.47 mm off the pad edge, 0.18 nH
+  FAIL L101  on Net-(J101-In)                via 0.51 mm off the pad edge, 0.17 nH
+  FAIL L401  on Net-(J401-In)                via 0.50 mm off the pad edge, 0.18 nH
+  FAIL C102  on Net-(U101-RF_IN)             via 0.51 mm off the pad edge, 0.14 nH
+
+gate 28: chokes and pull-ups (fail: no capacitor within 1 mm of the cold pad, or a plane via before it)
+  FAIL L103  Net-(U103-RFOUT)         -> +5V_RF       nearest capacitor 13.6 mm, plane via  0.8 mm
+  FAIL L106  Net-(U115-RFOUTA_N)      -> +3V3_PLL_RX  nearest capacitor  1.9 mm, plane via  0.8 mm
+  FAIL L105  Net-(U115-RFOUTA_P)      -> +3V3_PLL_RX  nearest capacitor  1.9 mm, plane via  0.8 mm
+  FAIL L108  Net-(U115-RFOUTB_N)      -> +3V3_PLL_RX  nearest capacitor  5.1 mm, plane via  1.2 mm
+  FAIL L107  Net-(U115-RFOUTB_P)      -> +3V3_PLL_RX  nearest capacitor  5.0 mm, plane via  0.8 mm
+  FAIL L104  Net-(U117-RFOUT)         -> +5V_RF       nearest capacitor  9.8 mm, plane via  0.8 mm
+  FAIL L201  Net-(U202-RFOUT)         -> +5V_RF       nearest capacitor  5.4 mm, plane via  0.8 mm
+  FAIL L204  Net-(U203-RFOUTA_N)      -> +3V3_PLL_TX  nearest capacitor  3.8 mm, plane via  0.8 mm
+  FAIL L203  Net-(U203-RFOUTA_P)      -> +3V3_PLL_TX  nearest capacitor  1.9 mm, plane via  0.8 mm
+  FAIL L206  Net-(U203-RFOUTB_N)      -> +3V3_PLL_TX  nearest capacitor  6.8 mm, plane via  0.8 mm
+  FAIL L205  Net-(U203-RFOUTB_P)      -> +3V3_PLL_TX  nearest capacitor  3.8 mm, plane via  1.6 mm
+
+gate 29: the RF parts on each supply island
+  ok   +3V3_ANA     RX DSA
+  ok   +3V3_DIG     
+  ok   +3V3_PLL_RX  L105, L106, L107, L108, RX synth
+  ok   +3V3_PLL_TX  L203, L204, L205, L206, TX synth
+  ok   +5V_IN       
+  FAIL +5V_RF       L103, L104, L201, RX demod, TX modulator
+
+gate 32: RF / LO segments not over In1 ground for at least 90 %, or with no fence on a run over 2 mm
+  /Receiver and Costas loop/LO_R F.Cu w0.29   4.6 mm under {'GND': 4.6} fence 0.00/mm
+  Net-(C152-Pad2)                F.Cu w0.15   0.4 mm under {'None': 0.42} fence 0.00/mm
+  Net-(C152-Pad2)                F.Cu w0.15   0.7 mm under {'None': 0.24, 'GND': 0.47} fence 0.00/mm
+  Net-(C152-Pad2)                B.Cu w0.15   3.0 mm under {'+3V3_PLL_RX': 2.6, 'None': 0.4} fence 0.00/mm
+  Net-(C152-Pad2)                B.Cu w0.15   1.6 mm under {'None': 0.22, '+3V3_PLL_RX': 1.33} fence 0.64/mm
+  Net-(CP101-CPL)                F.Cu w0.29   5.8 mm under {'GND': 5.04, '+5V_RF': 0.81} fence 0.00/mm
+  Net-(CP201-CPL)                F.Cu w0.29   4.5 mm under {'GND': 3.68, '+5V_RF': 0.82} fence 0.00/mm
+  Net-(CP201-OUT)                F.Cu w0.29   4.2 mm under {'GND': 2.02, 'None': 2.23} fence 0.47/mm
+  Net-(J101-In)                  F.Cu w0.29   6.3 mm under {'None': 2.24, 'GND': 4.07} fence 0.95/mm
+  Net-(J109-In)                  F.Cu w0.20   0.8 mm under {'None': 0.42, 'GND': 0.42} fence 0.00/mm
+  Net-(J109-In)                  F.Cu w0.20   1.4 mm under {'GND': 1.01, 'None': 0.4} fence 0.00/mm
+  Net-(J109-In)                  B.Cu w0.20   2.3 mm under {'None': 0.84, '+3V3_PLL_RX': 1.46} fence 0.00/mm
+  Net-(J204-In)                  F.Cu w0.20   2.2 mm under {'GND': 1.98, '+3V3_PLL_TX': 0.22} fence 0.45/mm
+  Net-(J204-In)                  F.Cu w0.20   7.3 mm under {'GND': 7.35} fence 0.00/mm
+  Net-(J204-In)                  F.Cu w0.20   7.1 mm under {'GND': 7.1} fence 0.00/mm
+  Net-(J204-In)                  F.Cu w0.20   4.9 mm under {'GND': 4.9} fence 0.00/mm
+  Net-(J204-In)                  F.Cu w0.20   5.0 mm under {'GND': 4.95} fence 0.00/mm
+  Net-(J401-In)                  F.Cu w0.29   4.3 mm under {'None': 2.24, 'GND': 2.03} fence 0.70/mm
+  Net-(J402-In)                  F.Cu w0.29   5.0 mm under {'GND': 2.81, 'None': 2.21} fence 1.20/mm
+  Net-(J403-In)                  F.Cu w0.29   5.0 mm under {'GND': 2.81, 'None': 2.21} fence 1.20/mm
+  Net-(U103-RFIN)                F.Cu w0.29   2.3 mm under {'GND': 1.67, '+5V_RF': 0.63} fence 0.87/mm
+  Net-(U103-RFOUT)               F.Cu w0.29   2.0 mm under {'+5V_RF': 0.61, 'GND': 1.41} fence 0.99/mm
+  Net-(U103-RFOUT)               F.Cu w0.15   1.3 mm under {'+5V_RF': 0.43, 'GND': 0.87} fence 0.00/mm
+  Net-(U115-RFOUTB_N)            F.Cu w0.15   0.6 mm under {'GND': 0.2, 'None': 0.4} fence 0.00/mm
+  Net-(U115-RFOUTB_N)            F.Cu w0.15   1.1 mm under {'GND': 0.89, 'None': 0.22} fence 0.00/mm
+  Net-(U115-RFOUTB_N)            F.Cu w0.15   0.6 mm under {'GND': 0.28, 'None': 0.28} fence 0.00/mm
+  Net-(U115-RFOUTB_N)            B.Cu w0.15   6.3 mm under {'None': 0.41, '+3V3_PLL_RX': 5.89} fence 0.16/mm
+  Net-(U115-RFOUTB_N)            B.Cu w0.15   1.3 mm under {'+3V3_PLL_RX': 1.06, 'None': 0.21} fence 0.00/mm
+  Net-(U115-RFOUTB_N)            B.Cu w0.15   2.0 mm under {'+3V3_PLL_RX': 1.76, 'None': 0.22} fence 0.00/mm
+  Net-(U115-RFOUTB_N)            B.Cu w0.15   3.1 mm under {'None': 0.41, '+3V3_PLL_RX': 2.69} fence 0.00/mm
+  Net-(U115-RFOUTB_P)            F.Cu w0.15   1.3 mm under {'GND': 0.85, 'None': 0.42} fence 0.00/mm
+  Net-(U115-RFOUTB_P)            F.Cu w0.15   1.3 mm under {'GND': 0.85, 'None': 0.42} fence 0.00/mm
+  Net-(U115-RFOUTB_P)            F.Cu w0.15   0.6 mm under {'GND': 0.28, 'None': 0.28} fence 0.00/mm
+  Net-(U115-RFOUTB_P)            B.Cu w0.15   0.8 mm under {'+3V3_PLL_RX': 0.8} fence 0.00/mm
+  Net-(U115-RFOUTB_P)            B.Cu w0.15   2.3 mm under {'+3V3_PLL_RX': 2.26} fence 0.00/mm
+  Net-(U115-RFOUTB_P)            B.Cu w0.15   0.6 mm under {'+3V3_PLL_RX': 0.57} fence 0.00/mm
+  Net-(U115-RFOUTB_P)            B.Cu w0.15   2.7 mm under {'+3V3_PLL_RX': 2.7} fence 0.00/mm
+  Net-(U115-RFOUTB_P)            B.Cu w0.15   2.8 mm under {'None': 0.43, '+3V3_PLL_RX': 2.37} fence 0.00/mm
+  Net-(U115-RFOUTB_P)            B.Cu w0.15   2.8 mm under {'None': 0.43, '+3V3_PLL_RX': 2.37} fence 0.00/mm
+  Net-(U115-RFOUTB_P)            B.Cu w0.15   1.0 mm under {'+3V3_PLL_RX': 0.99} fence 0.00/mm
+  Net-(U115-RFOUTB_P)            B.Cu w0.15   1.6 mm under {'+3V3_PLL_RX': 1.33, 'None': 0.22} fence 0.00/mm
+  Net-(U117-RFIN)                F.Cu w0.29   2.0 mm under {'GND': 1.41, '+5V_RF': 0.61} fence 0.99/mm
+  Net-(U117-RFOUT)               F.Cu w0.15   1.3 mm under {'+5V_RF': 0.43, 'GND': 0.87} fence 0.00/mm
+  Net-(U117-RFOUT)               F.Cu w0.29   2.0 mm under {'+5V_RF': 0.67, 'GND': 1.33} fence 1.00/mm
+  Net-(U202-RFIN)                F.Cu w0.29   2.3 mm under {'GND': 1.68, '+5V_RF': 0.63} fence 1.30/mm
+  Net-(U202-RFOUT)               F.Cu w0.29   4.8 mm under {'+5V_RF': 0.83, 'GND': 3.95} fence 0.84/mm
+  Net-(U203-RFOUTB_N)            F.Cu w0.15   1.5 mm under {'GND': 1.07, 'None': 0.43} fence 0.67/mm
+  Net-(U203-RFOUTB_N)            F.Cu w0.15   2.1 mm under {'GND': 2.1} fence 0.00/mm
+  Net-(U203-RFOUTB_N)            F.Cu w0.15   1.1 mm under {'None': 0.22, 'GND': 0.88} fence 0.91/mm
+  Net-(U203-RFOUTB_N)            B.Cu w0.15   0.5 mm under {'+3V3_PLL_TX': 0.25, 'None': 0.25} fence 0.00/mm
+  Net-(U203-RFOUTB_N)            B.Cu w0.15   2.7 mm under {'None': 0.41, '+3V3_PLL_TX': 2.27} fence 0.00/mm
+  Net-(U203-RFOUTB_P)            F.Cu w0.15   0.6 mm under {'GND': 0.28, 'None': 0.28} fence 0.00/mm
+  Net-(U203-RFOUTB_P)            F.Cu w0.15   3.7 mm under {'GND': 2.88, 'None': 0.82} fence 0.27/mm
+  Net-(U203-RFOUTB_P)            F.Cu w0.15   0.5 mm under {'GND': 0.25, 'None': 0.25} fence 0.00/mm
+  Net-(U203-RFOUTB_P)            B.Cu w0.15   0.6 mm under {'+3V3_PLL_TX': 0.28, 'None': 0.28} fence 0.00/mm
+  Net-(U203-RFOUTB_P)            B.Cu w0.15   4.4 mm under {'None': 0.42, '+3V3_PLL_TX': 3.97} fence 0.00/mm
+  Net-(U203-RFOUTB_P)            B.Cu w0.15   0.5 mm under {'+3V3_PLL_TX': 0.5} fence 0.00/mm
+  Net-(U203-RFOUTB_P)            B.Cu w0.15   0.9 mm under {'+3V3_PLL_TX': 0.9} fence 0.00/mm
+  Net-(U203-RFOUTB_P)            B.Cu w0.15   3.8 mm under {'None': 0.42, '+3V3_PLL_TX': 3.38} fence 0.00/mm
+  Net-(U203-RFOUTB_P)            B.Cu w0.15   3.5 mm under {'+3V3_PLL_TX': 3.54} fence 0.28/mm
+  Net-(U203-RFOUTB_P)            B.Cu w0.15   2.4 mm under {'+3V3_PLL_TX': 2.0, 'None': 0.4} fence 0.00/mm
+
+RF ICs' supply pins: the nearest capacitor along the track (fail: none within 1 mm, or no <= 1 nF within 2 mm)
+  FAIL U101.6   Net-(U101-VCC)   nearest none; nearest <= 1 nF none
+  FAIL U102.2   +3V3_ANA         nearest C103 100nF 6.6 mm, C105 100nF 6.9 mm; nearest <= 1 nF none
+  FAIL U104.6   +5V_RF           nearest C118 1uF 2.2 mm, C108 1nF 11.5 mm; nearest <= 1 nF C108 1nF 11.5 mm
+  FAIL U104.13  +5V_RF           nearest C108 1nF 15.5 mm, C118 1uF 16.5 mm; nearest <= 1 nF C108 1nF 15.5 mm
+  FAIL U104.24  +5V_RF           nearest C108 1nF 7.4 mm, C118 1uF 8.4 mm; nearest <= 1 nF C108 1nF 7.4 mm
+  FAIL U115.6   +3V3_PLL_RX      nearest none; nearest <= 1 nF none
+  FAIL U115.10  +3V3_PLL_RX      nearest none; nearest <= 1 nF none
+  FAIL U115.16  +3V3_PLL_RX      nearest none; nearest <= 1 nF none
+  FAIL U115.17  +3V3_PLL_RX      nearest none; nearest <= 1 nF none
+  FAIL U115.28  +3V3_PLL_RX      nearest none; nearest <= 1 nF none
+  FAIL U115.32  +3V3_PLL_RX      nearest none; nearest <= 1 nF none
+  FAIL U201.18  +5V_RF           nearest none; nearest <= 1 nF none
+  FAIL U201.24  +5V_RF           nearest none; nearest <= 1 nF none
+  FAIL U203.6   +3V3_PLL_TX      nearest none; nearest <= 1 nF none
+  FAIL U203.10  +3V3_PLL_TX      nearest none; nearest <= 1 nF none
+  FAIL U203.16  +3V3_PLL_TX      nearest none; nearest <= 1 nF none
+  FAIL U203.17  +3V3_PLL_TX      nearest none; nearest <= 1 nF none
+  FAIL U203.28  +3V3_PLL_TX      nearest none; nearest <= 1 nF none
+  FAIL U203.32  +3V3_PLL_TX      nearest none; nearest <= 1 nF none

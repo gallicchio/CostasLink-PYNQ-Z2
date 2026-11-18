@@ -1,0 +1,118 @@
+Agent is idle (waiting for messages). agent_id: cdd8347b-28bd-4784-9347-12d02930fd23, agent_type: explore, status: idle, description: Verify datasheet claims, elapsed: 532s, total_turns: 1
+
+[Turn 0]
+1. **ADL5380 — `build/txt/ADL5380.txt`**
+   - **(a) Conversion gain:** datasheet states “**Conversion Gain … 5.8 … 5.8 dB**” (line 207), while the summary says “Voltage conversion gain: **~7 dB**” (line 18). **Number: 5.8 dB at 5.8 GHz**, equivalent voltage gain \(10^{5.8/20}=1.95\). **AGREE.**
+   - **(b) I/Q DC bias/common mode:** the extracted datasheet specifies approximately **3.8 V typical** for the I/Q output common-mode/bias under the relevant 5 V supply condition; the output description gives fully buffered outputs (lines 304–305). The design’s “~3.2 V typical” is not the same condition/value. **AGREE with 3.8 V; DISAGREE with 3.2 V unless the design uses a different supply/bias condition.**
+   - **(c) Output stage/source impedance/current:** “**outputs are fully buffered**” and “**output impedance (25 Ω per pin)**”; “Each output pair can swing **2 V p-p differential into a load of 200 Ω**” (lines 304–305). The datasheet’s output-current specification must be used for sourcing/sinking; the 1.9 mA design load current is below the specified output capability. **Number: 25 Ω per pin; 2 Vpp differential into 200 Ω. AGREE conditionally; do not treat 1.9 mA as an absolute output-current limit.**
+   - **(d) DC offset:** “**Differential dc offsets at the I and Q outputs are <−50 dBm**” (line 43). This is an RF-equivalent offset specification, not a directly stated voltage offset. **Number: <−50 dBm equivalent. Design voltage-offset claim: UNCLEAR.**
+   - **(e) Input compression:** “**IP1dB = 11.6 dBm**” (line 43). **AGREE.**
+   - **(f) Baseband/demodulation bandwidth:** “**Demodulation Bandwidth … 390 MHz**” (line 131); summary: “Demodulation bandwidth: **~390 MHz**” (line 23). **AGREE.**
+   - **(g) LO drive:** the datasheet requires the specified differential LO drive; the extracted summary/operating tables should be used rather than assuming arbitrary logic-level drive. **The exact LO-drive number was not recoverable from the targeted text hit: UNCLEAR.**
+
+2. **THS4541 — `build/txt/THS4541.txt`**
+   - **(a) Input common-mode:** the device is explicitly “**Negative Rail Input (NRI), Rail-to-Rail Output (RRO)**” (lines 16–22), and the title states “Negative Rail Input.” It is not a device whose input must simply remain below 2.1 V on a 3.3 V supply. **Design claim: DISAGREE/overly restrictive.**
+   - **(b) Offset:** datasheet summary gives “**Low offset drift: ±0.5 µV/°C typical**” (line 15), but the targeted extract did not expose the maximum input-offset-voltage table value. **Maximum offset: UNCLEAR from extracted passage.**
+   - **(c) Bandwidth:** “**Gain bandwidth product: 850 MHz**” (line 10). Closed-loop bandwidth depends on noise gain, feedback network, loading, and compensation; 850 MHz is not a guaranteed 100 MHz closed-loop bandwidth at every gain. **850 MHz GBW: AGREE; ~100 MHz at noise gain ~9: PLAUSIBLE/UNCLEAR, not directly established by the quoted line.**
+   - **(d) Output swing:** “**Rail-to-rail output**” (lines 19–22). **AGREE qualitatively; exact 3.3 V load-dependent swing requires the electrical table.**
+   - **(e) PD:** pin 12 is labeled “**PD**” (line 150). **Function/polarity number: not exposed in the targeted passage; UNCLEAR.**
+
+3. **TLV3601/TLV3603 — `build/txt/TLV3601.txt`**
+   - No separate `TLV3603.txt` exists in the supplied text directory; TLV3603 material is included in `TLV3601.txt`.
+   - **(a) Offset:** “**Low input offset voltage: ±5 mV**” (line 16). **AGREE with 5 mV maximum magnitude.**
+   - **(b) Hysteresis:** TLV3601 has the adjustable/external-hysteresis arrangement; the extract identifies the TLV3603 LE/HYS function. The supplied targeted passage does not expose the complete option table for 0/3/30/60 mV. **Claimed values: UNCLEAR from the quoted extract.**
+   - **(c) Delay:** “**Fast propagation delay: 2.5 ns**” (line 7); device description also says propagation delay is 2.5 ns (line 9). **AGREE.**
+   - **(d) Input range/absolute maximum:** “**rail-to-rail inputs**” (line 8) does not mean inputs may exceed the supply rails. The design’s 0–3.3 V signal range is compatible with 3.3 V operation, but absolute maximum remains supply-referenced. **Rail-to-rail operating range: AGREE; interpreting it as beyond-rail absolute maximum: DISAGREE.**
+   - **(e) Output/frequency:** “**High toggle frequency: 325 MHz**” and “**push-pull … outputs**” (lines 9, 15). **AGREE.**
+   - **(f) VEE:** “**VEE is connected to the ground plane and VCC is connected to the intended power supply**” (line 1589). LE/HYS is referenced to VEE, and the hysteresis resistor must connect to VEE, “**not to ground**” when those are different (lines 1591–1594). With single supply, VEE = GND, so tying LE/HYS to VEE/GND is valid. **AGREE.**
+
+4. **ADL5375-05 — `build/txt/ADL5375.txt`**
+   - **(a) Bias:** “**All DACs listed have nominal bias levels of 0.5 V**” (line 2670). **AGREE with 0.5 V nominal baseband bias.**
+   - **(b) Bias current:** the targeted extract did not expose a numerical 41 µA/pin specification. **UNCLEAR; do not cite 41 µA as verified from this extract.**
+   - **(c) Input impedance:** the supplied passage confirms differential I/Q operation and DC bias but does not expose the complete impedance specification. **UNCLEAR.**
+   - **(d) Output power:** datasheet table gives “**POUT … VIQ = 1 V p-p differential … 0.53 dBm**” (line 161), not −4.5 dBm for 0.7 Vpp. **Design value at 0.7 Vpp: UNCLEAR; direct 1 Vpp reference is +0.53 dBm.**
+   - **(e) Carrier feedthrough:** no directly relevant 5.8 GHz numerical carrier-feedthrough passage was recovered. **UNCLEAR.**
+   - **(f) DSOP:** application text says “**Position A = output enabled; Position B = output disabled**” (lines 2895–2896). This does not establish VIH/VIL or that floating/ground enables it. **Design DSOP polarity/threshold claim: UNCLEAR.**
+   - **(g) Full-scale drive:** table uses **1 Vpp differential** for output-power characterization (line 161). **Number: 1 Vpp differential is the quoted characterization drive; design’s full-scale interpretation: UNCLEAR.**
+
+5. **MAX2871 — `build/txt/MAX2871.txt`**
+   - **(a) Register sequence:** the targeted extract confirms the MAX2871 is a PLL/VCO covering **23.5–6000 MHz** (lines 12–16), but did not expose the power-up write-order passage. **The 5,4,3,2,1,0,5,4 sequence: UNCLEAR from this extract.**
+   - **(b) MUX lock detect/polarity:** MUX is shown as a device function (line 43), but the exact lock-detect setting/polarity was not recovered. **UNCLEAR.**
+   - **(c) RSET:** numerical 5.1 kΩ → 2.56 mA passage not recovered. **UNCLEAR.**
+   - **(d) RFOUT:** datasheet says “**Dual Differential Programmable Outputs**” (line 36), and unused differential RFOUT pins should be connected directly to VCC_RF (lines 1116–1118). The extract does not verify the claimed −4 to +5 dBm range or external 3.3 V pull-up-inductor implementation. **Differential output: AGREE; exact power/pull-up claim: UNCLEAR.**
+   - **(e) Reference input:** exact minimum slew/amplitude was not exposed. **UNCLEAR.**
+   - **(f) Kvco:** exact Kvco range was not exposed. **UNCLEAR.**
+   - **(g) SPI speed:** exact maximum SPI clock was not exposed. **UNCLEAR.**
+
+6. **PE43711 — `build/txt/PE43711.txt`**
+   - **(a) Attenuation:** “**31.75-dB attenuation range in 0.25-dB, 0.5-dB, and 1-dB steps**” (line 43); summary states “up to **31.75 dB**” (line 7). **AGREE with 0–31.75 dB and 0.25 dB minimum step.**
+   - **(b) Interface/glitch:** “**glitch-less attenuation state transitions**” (line 37). **AGREE.**
+   - **(c) Maximum input power:** table contains separate “**RF input power, CW**” and “**RF input power, pulsed**” entries (lines 78, 116, 120), but the numerical values were not included in the targeted output. **UNCLEAR.**
+   - **(d) Insertion loss at 5.8 GHz:** not exposed in the targeted passage. **UNCLEAR.**
+
+7. **ADL5611 — `build/txt/ADL5611.txt`**
+   - Datasheet states “**Fixed gain of 22.2 dB**” (line 6), “**P1dB of 21.0 dBm at 900 MHz**” (line 20), and “**low quiescent current of 94 mA**” (line 23). It also says gain is 22.2 dB (line 35), internally matched to 50 Ω (line 38), and “**L1 = 43 nH**” bias inductor (line 1159).
+   - **(a) 14.3 dB at 5.8 GHz: DISAGREE/unsupported.** The datasheet’s nominal gain is 22.2 dB; the design number is not established.
+   - **(b) 12.8 dBm P1dB at 5.8 GHz: DISAGREE/unsupported.** Quoted datasheet P1dB is 21.0 dBm at 900 MHz; table also gives 16.0 dBm (line 99) under another condition.
+   - **(c) 124 mA each: DISAGREE with the quoted nominal 94 mA.**
+   - **(d) 43 nH choke: AGREE.**
+   - **(e) Absolute maximum input: UNCLEAR from targeted extract.**
+
+8. **SKY65404-31 — `build/txt/SKY65404-31.txt`**
+   - **(a) Gain/NF:** “**High gain: 13 dB**” and “**Ultra-low noise figure: 1.0 dB**” (lines 17–24); electrical table gives gain 11/13/16 dB and NF 0.8/1.0/1.5 dB (lines 131–133). **AGREE.**
+   - **(b) Input maximum:** operating condition lists RF input power “**+1 dBm**” (lines 87–89). **AGREE with +1 dBm operating input limit; distinguish from absolute maximum if the design labels it that way.**
+   - **(c) Current:** “**consumes only 10 mA**” (lines 27–29). **AGREE.**
+   - **(d) External parts:** “**requiring only four external components**” (lines 30–32); RF output is matched, RF input requires a shunt capacitor, VCC requires bypass, and VENABLE uses an external resistor (lines 76–80). **AGREE.**
+
+9. **AD5696R**
+   - No `AD5696R.txt` file exists in the supplied datasheet-text directory. **All AD5696R claims are UNCLEAR/unverified from the provided evidence:** power-on mid-scale versus zero-scale, 2.5 V reference/gain-2/full-scale range, and I²C address options.
+
+10. **MCP4728 — `build/txt/MCP4728.txt`**
+   - **(a) Power-on:** datasheet says I²C address bits are programmable into **nonvolatile memory/EEPROM** (lines 8–12), but the targeted extract did not expose the exact output power-on state. **Power-on EEPROM state: UNCLEAR.**
+   - **(b) Drive:** datasheet describes a rail-to-rail output amplifier (lines 8–12), but the numerical source-current capability was not exposed. **~1 mA/channel: UNCLEAR.**
+   - **(c) Addresses:** the extract confirms programmable I²C address bits in EEPROM (lines 8–12), not specifically only 0x60/0x61. **Claim of only 0x60/0x61: DISAGREE/unsupported; address range depends on programmed address options.**
+
+11. **TS5A3159 — `build/txt/TS5A3159.txt`**
+   - **(a) Leakage:** the electrical table contains off-leakage entries (lines 364–399), but the targeted output did not expose the 0.2 nA/2 nA/20 nA numerical rows. **UNCLEAR.**
+   - **(b) On resistance:** the targeted table shows ON-state resistance values around **1.45–2 Ω** under one condition (line 450), not simply 1 Ω. **Design “~1 Ω”: UNCLEAR/optimistic.**
+   - **(c) Logic:** pin diagram identifies **NC, NO, COM, IN** (lines 46–49, 136–139); the exact truth-table text was not recovered. Standard behavior is control low = NC–COM, high = NO–COM, but this should be verified against the device truth table. **UNCLEAR from quoted extract.**
+
+12. **SN74LVC1G3157 — `build/txt/SN74LVC1G3157.txt`**
+   - Pinout identifies B1, B2, A, and S (lines 37–45, 96–113), but the targeted extract did not expose the truth-table or electrical-characteristic rows.
+   - **(a) S low = B1 / high = B2: UNCLEAR from extracted passage.**
+   - **(b) ~6 Ω on resistance: UNCLEAR.**
+   - **(c) 300 MHz bandwidth: product/order data includes 3000, not a usable bandwidth specification (lines 1294 onward). **UNCLEAR.**
+   - **(d) 0–3.3 V analog input on 3.3 V supply: UNCLEAR from extract; verify signal range against absolute maximum and recommended operating conditions.**
+
+13. **TPS7A2033**
+   - No `TPS7A2033.txt` file exists. The directory contains `TPS7A20.txt`, but the requested exact variant is not separately identifiable.
+   - **300 mA, dropout at 200 mA, SOT-23-5 thermal resistance, and PSRR: UNCLEAR/unverified for TPS7A2033.**
+
+14. **HMC536 — `build/txt/HMC536.txt`**
+   - The targeted extraction did not expose the truth table, timing, isolation, P0.1dB, or supply/control-port table.
+   - **(a) A/B truth table and receive-rest pull-up claim: UNCLEAR.**
+   - **(b) 15 ns rise / 30 ns on-off: UNCLEAR.**
+   - **(c) 27 dB isolation at 5.8 GHz: UNCLEAR.**
+   - **(d) +29 dBm P0.1dB: UNCLEAR.**
+   - **(e) 0/3.3 V controls, negative supply, and RF DC-block requirements: UNCLEAR.** Do not approve the design claim without the HMC536 control and application tables.
+
+15. **OPA2388 — `build/txt/OPA2388.txt`**
+   - The file exists, but the targeted evidence extraction did not expose the required electrical-characteristic rows.
+   - **(a) 1 µV offset: UNCLEAR.**
+   - **(b) 3.3 V operation/minimum supply: UNCLEAR.**
+   - **(c) Rail-inclusive input common-mode: UNCLEAR.**
+   - **(d) Output swing: UNCLEAR.** Verify against the load-dependent output-swing table; “rail-to-rail” cannot be assumed without that table.
+
+16. **VCXO/TCXO**
+   - **VCXO:** `build/txt/SX3V25.000B20100F30TNN_C5179998.txt`; **TCXO:** `build/txt/TC32H4-25.000-33GNDTNL_C5119013.txt`.
+   - The targeted extraction did not expose the relevant specification tables.
+   - **(a) ±100 ppm over 0.3–3.0 V: UNCLEAR.**
+   - **(b) CMOS output: UNCLEAR.**
+   - **(c) TCXO LVCMOS versus clipped sine: UNCLEAR.**
+   - **(d) TCXO pin 1 NC versus control: UNCLEAR.**
+   - **(e) VCXO 15 kHz modulation bandwidth: UNCLEAR.** These claims require the oscillator-specific electrical tables.
+
+17. **ADS1115 — `build/txt/ADS1115.txt`**
+   - The targeted extraction did not expose the address table or PGA-range table.
+   - **(a) Address:** the design claim **0x48 with ADDR tied to GND is the standard ADS1115 address assignment**, but it is **not directly verified by the quoted extract here.**
+   - **(b) 0–3.3 V single-ended:** this requires a PGA setting whose full-scale range includes the entire input while respecting the absolute maximum \(AIN \le VDD\). **Design concept: AGREE conditionally; do not use a ±2.048 V PGA range for a 3.3 V input.**

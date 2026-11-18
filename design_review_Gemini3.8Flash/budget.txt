@@ -1,0 +1,94 @@
+
+== 1. Transmitter
+baseband step a = 0.35 V (IBBP 0.15 / 0.50 / 0.85 V); BPSK swing 0.70 V p-p diff = -3.1 dB from full scale
+ADL5375 out -4.5 dBm (carrier feedthrough -19.5 dBm = -15 dBc), ADL5611 +14.3 dB -> TX SMA 9.8 dBm
+TX DAC: Rb 2200 (+200 header) x2, Rr 300 to Vr = 0.213 V (DAC channel): levels ['0.170', '0.500', '0.830'] V, step 0.330 V, node 240 ohm, tau into 3 pF 0.72 ns
+  same board on a host without series resistors (Icepi): levels ['0.167', '0.521', '0.874'] V
+  Vr DAC channel sources 0.96 mA at the centre level (MCP4728 output buffer: fine)
+  ADL5375's 41 uA input bias current lifts the node 9.8 mV: trimmed by Vr
+
+== 2. Link budget
+TX 9.8 dBm; noise floor in 100 MHz with NF 1.5 dB: -92.5 dBm; antennas {'whip': 2.0, 'panel': 24.0, 'dish': 30.0} dBi; cable 0.5 dB/m (10 m = 5 dB)
+  d =      3 m, whip   2 dBi,  0 m cables: path loss 57.3 dB, RX -43.4 dBm, SNR 49.1 dB
+  d =     10 m, whip   2 dBi,  0 m cables: path loss 67.7 dB, RX -53.9 dBm, SNR 38.6 dB
+  d =     30 m, whip   2 dBi,  0 m cables: path loss 77.3 dB, RX -63.4 dBm, SNR 29.1 dB
+  d =    300 m, panel 24 dBi, 10 m cables: path loss 97.3 dB, RX -49.4 dBm, SNR 43.1 dB
+  d =   3000 m, panel 24 dBi, 10 m cables: path loss 117.3 dB, RX -69.4 dBm, SNR 23.1 dB
+  d =   3000 m, panel 24 dBi,  0 m cables: path loss 117.3 dB, RX -59.4 dBm, SNR 33.1 dB
+  d =  20000 m, panel 24 dBi,  0 m cables: path loss 133.7 dB, RX -75.9 dBm, SNR 16.6 dB
+  d =  20000 m, dish  30 dBi,  0 m cables: path loss 133.7 dB, RX -63.9 dBm, SNR 28.6 dB
+
+== 2b. One antenna by time division: the HMC536 switch (build/txt/HMC536.txt)
+    10 m: round trip 67 ns; the verifier's switch (30 ns) is back in RX in time yes; the prover's switch adds a fixed 30 ns
+   100 m: round trip 667 ns; the verifier's switch (30 ns) is back in RX in time yes; the prover's switch adds a fixed 30 ns
+   300 m: round trip 2001 ns; the verifier's switch (30 ns) is back in RX in time yes; the prover's switch adds a fixed 30 ns
+  own TX leaks 9.8 - 27 = -17.2 dBm into the RX jack while transmitting (LNA abs max 1 dBm): fine bare, but a PA at +27 dBm leaks 0 dBm, so a PA with the switch wants a limiter ahead of the LNA
+  SKY13453 (SOI, integrated driver)      1000 ns = the round trip of 150 m: usable beyond that, and adds that much to the prover's answer
+  HMC8038 / HMC849A                       150 ns = the round trip of 22 m: usable beyond that, and adds that much to the prover's answer
+  HMC536 (chosen)                          30 ns = the round trip of 4 m: usable beyond that, and adds that much to the prover's answer
+  HMC427A ($62-75, 5 V logic)              10 ns = the round trip of 1 m: usable beyond that, and adds that much to the prover's answer
+
+== 2c. The USB-C amplifier modules Jason has (datasheets/AliExpress*.pdf, Prompt 8)
+PA module: SBB5089+SE5004 5.8 GHz 2 W module, 40 dB, P1dB +33 dBm, 2 A at 5 V.  To run it at +30 dBm it wants -10 dBm in: the board's +9.8 dBm through a 20 dB SMA attenuator gives +29.8 dBm out.  Without the pad the module is driven 17 dB into compression.  Heat: about 9 W in a 45 x 30 x 14 mm shell: a heatsink or a fan, and a 5 V / 3 A source (a USB-C PD bank in the field).
+LNA module (assumed numbers): 15 dB, NF 2.0 dB ahead of a 10 m cable (5 dB) and this board (NF 1.5): system NF 2.2 dB; the DSA takes the 15 dB of extra gain.  Its filter is the receiver's only selectivity before the demodulator: with the own transmitter 600 MHz away it adds the 30 dB (assumed) that section 4 asks of the antennas.
+
+== 3. Receiver chain levels (10 m, DSA chosen so the demodulator sees about -20 dBm)
+RX -53.9 dBm -> LNA -40.9 -> DSA (5.25 dB set) -48.5 -> 2 x ADL5611 -19.9 dBm at the demodulator (IP1dB 11.6)
+demod: 22.6 mV rms in, x1.95 (5.8 dB) -> 44.0 mV rms differential baseband; FDA x4 -> 176 mV rms (+-249 mV peak) at the comparators
+comparator floor (20 mV peak, DSA at 0): fast path -81.0 dBm at the antenna (noise quiet -81.1 dBm in 100 MHz), slow path -107.0 dBm (noise quiet -92.3 dBm in 7.5 MHz)
+
+== 4. One antenna?  TX-to-RX isolation needed for frequency-division duplex
+arm filter 100 MHz, 2 poles; the wanted signal at 10 m is -53.9 dBm
+  TX/RX   25 MHz apart: filter rejects  0.5 dB, leakage at the RX port must be below -63.3 dBm => 73 dB of isolation
+  TX/RX   50 MHz apart: filter rejects  1.9 dB, leakage at the RX port must be below -61.9 dBm => 72 dB of isolation
+  TX/RX  100 MHz apart: filter rejects  6.0 dB, leakage at the RX port must be below -57.9 dBm => 68 dB of isolation
+  TX/RX  200 MHz apart: filter rejects 14.0 dB, leakage at the RX port must be below -49.9 dBm => 60 dB of isolation
+  TX/RX  600 MHz apart: filter rejects 31.4 dB, leakage at the RX port must be below -32.5 dBm => 42 dB of isolation
+  a splitter gives 3 dB, a circulator about 20 dB, two patches side by side 30-40 dB: FDD on one antenna does not work in-band;
+  separate TX and RX antennas, or time-division with a switch (the protocol is half duplex anyway).
+
+== 5. Latency budget (electronics only; add 3.34 ns per metre of air)
+  TX  FPGA output buffer                                           1.5 ns
+  TX  PYNQ header RC 200 ohm x 10 pF (10-90 %)                     4.4 ns
+  TX  TX resistor DAC node (240 ohm, 3 pF)                         1.6 ns
+  TX  ADL5375 (750 MHz baseband bandwidth)                         0.5 ns
+  TX  ADL5611 + lines + SMA                                        0.5 ns
+  RX  SMA + LNA + DSA + 2 x ADL5611                                1.1 ns
+  RX  ADL5380 (390 MHz)                                            1.0 ns
+  RX  THS4541 at gain 4, 100 MHz (10-90 %)                         3.5 ns
+  RX  fast arm to the 50 %% crossing (half the rise, net of the above)  -1.7 ns
+  RX  TLV3601                                                      2.5 ns
+  RX  PYNQ header RC                                               4.4 ns
+  RX  Zynq input buffer + register at 400 MHz (worst 1 clock)      3.5 ns
+  total electronics 22.7 ns (TX 8.5 + RX 14.2); the OOK board's envelope detector path was budgeted at 10-100 ns
+  on the Icepi Zero (no header resistors) the same path is 13.9 ns
+  the slow path's decision comes 37 ns later (its 4.8 MHz pole: 73 ns rise); the symbol must still be there
+
+== 6. The Costas loop (the RX synthesizer's VCXO is the loop's VCO)
+PLL multiplies the 25 MHz VCXO by N = 232; pull +-100 ppm = +-580 kHz at 5.8 GHz over 2.7 V: Ko = 2.70e+06 rad/s/V
+Kd = 0.25 V/rad at the DSA's regulated level (-20 dBm at the demodulator, kept from 3 m to about 300 m); for fn = 3000 Hz, zeta = 0.71 with C = 100 nF:
+  R1 = 18.9 k (E24 18.0 k), R2 = 750 ohm (E24 750)
+  pull-in from 30 kHz off: 3.8 ms (the FPGA steps the RX PLL when the VCXO cannot reach)
+  pull-in from 300 kHz off: 375.2 ms (the FPGA steps the RX PLL when the VCXO cannot reach)
+  two TCXO-referenced transmitters differ by at most 29 kHz; the VCXO reaches +-580 kHz
+
+== 7. FDA level shift (ADL5380 outputs sit at 3.8 V; THS4541 on 3.3 V accepts inputs to 2.1 V)
+Rg 1000, Rf 4000, Rs 1000: summing nodes at 1.87 V (limit 2.1), gain 4 (12 dB), noise gain 9.0 -> about 94 MHz, 1.93 mA drawn from each demodulator pin
+
+== 7b. The slow path: a second THS4541 stage at gain 20, a 33 pF pole, its own comparators
+gain 20 (Rf 20 k / Rg 1 k), noise gain 21 -> 40 MHz; then 1000 ohm / 33 pF = 4.8 MHz, noise bandwidth 7.6 MHz (budgeted 7.5)
+offsets: 0.5 mV of THS4541 input offset twice, x20 = up to 50 mV at the slow comparators against +-77 mV of signal at the quiet threshold: trimmed by the second DAC through 100 k (+-0.33 V of reach)
+
+== 8. MAX2871 loop filter (3rd order passive, Banerjee), both synthesizers
+N = 232, Kvco 60 MHz/V, Icp 2.56 mA, loop bandwidth 80 kHz, phase margin 50 deg:
+  C1 406 pF (E24 390 pF), C2 6.8 nF (E24 6.8 nF), R2 806 ohm (E24 820), R3 1900 ohm (E24 2000), C3 162 pF (E24 160 pF)
+  in-band phase noise floor about -109 dBc/Hz (normalised -230 dBc/Hz); 80 kHz loop lets the 3000 Hz Costas loop through untouched
+
+== 9. Power and regulator dissipation
+5 V parts: {'ADL5380': 245.0, 'ADL5375': 203.0, 'ADL5611_x3': 372.0} mA; 3.3 V rails (each its own LDO): {'PLL_TX': 200.0, 'PLL_RX': 200.0, 'OSC': 15.0, 'DIG': 46.400000000000006, 'ANA': 60.4} mA; total from 5 V 1342 mA (6.7 W)
+  LDO PLL_TX 200 mA: 2.2 ohm then  dissipates 0.25 W, +47 C in SOT-23-5
+  LDO PLL_RX 200 mA: 2.2 ohm then  dissipates 0.25 W, +47 C in SOT-23-5
+  LDO OSC     15 mA:  dissipates 0.03 W, +5 C in SOT-23-5
+  LDO DIG     46 mA:  dissipates 0.08 W, +15 C in SOT-23-5
+  LDO ANA     60 mA:  dissipates 0.10 W, +19 C in SOT-23-5
+input path at 1.34 A: AO3401A 60 mOhm + PTC 80 mOhm = 0.19 V, so the ADL53xx see >= 4.81 V from a 5.0 V source (their minimum is 4.75 V)

@@ -1,0 +1,4 @@
+fp_test speed 6: 6.37 ns IO cell to IO cell (1.23 logic, 5.14 routing)
+fp_test speed 8: 5.26 ns IO cell to IO cell (0.93 logic, 4.33 routing)
+fp_ram speed 6: 3.91 ns IO cell to IO cell (0.24 logic, 3.67 routing)
+fp_ram speed 8: 2.99 ns IO cell to IO cell (0.18 logic, 2.81 routing)

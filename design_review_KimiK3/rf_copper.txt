@@ -1,0 +1,46 @@
+/Receiver and Costas loop/LO_RX_N            segs   1 len     1.55 mm widths {0.2: 1}
+/Receiver and Costas loop/LO_RX_P            segs   2 len     8.07 mm widths {0.2: 2}
+/Transmitter and triggers/LO_TX_N            segs   1 len     2.27 mm widths {0.2: 1}
+/Transmitter and triggers/LO_TX_P            segs   2 len     8.81 mm widths {0.2: 2}
+Net-(CP101-CPL)                              segs   4 len    12.89 mm widths {0.2: 4}
+Net-(CP101-IN)                               segs   2 len     1.50 mm widths {0.25: 1, 0.29: 1}
+Net-(CP101-ISO)                              segs   2 len     1.10 mm widths {0.15: 2}
+Net-(CP101-OUT)                              segs   3 len     1.70 mm widths {0.25: 2, 0.29: 1}
+Net-(CP201-CPL)                              segs   4 len    10.20 mm widths {0.2: 4}
+Net-(CP201-IN)                               segs   3 len     4.55 mm widths {0.15: 1, 0.29: 1, 0.25: 1}
+Net-(CP201-ISO)                              segs   3 len     4.82 mm widths {0.2: 3}
+Net-(CP201-OUT)                              segs   2 len     4.85 mm widths {0.29: 1, 0.25: 1}
+Net-(J101-In)                                segs   1 len     3.92 mm widths {0.29: 1}
+Net-(J401-In)                                segs   1 len     4.27 mm widths {0.29: 1}
+Net-(J402-In)                                segs   1 len     5.02 mm widths {0.29: 1}
+Net-(J403-In)                                segs   1 len     5.02 mm widths {0.29: 1}
+Net-(T101-BAL+)                              segs   3 len     1.92 mm widths {0.2: 3}
+Net-(T101-BAL-)                              segs   2 len     1.70 mm widths {0.2: 2}
+Net-(U101-RF_IN)                             segs   3 len     3.62 mm widths {0.29: 1, 0.2: 1, 0.25: 1}
+Net-(U101-RF_OUT)                            segs   2 len     2.20 mm widths {0.25: 1, 0.29: 1}
+Net-(U101-VCC)                               segs   8 len    27.88 mm widths {0.2: 8}
+Net-(U101-V_ENABLE)                          segs   2 len     1.32 mm widths {0.2: 2}
+Net-(U102-P{slash}S)                         segs  10 len     5.72 mm widths {0.15: 2, 0.2: 8}
+Net-(U102-RF1)                               segs   2 len     2.20 mm widths {0.29: 1, 0.25: 1}
+Net-(U102-RF2)                               segs   2 len     2.30 mm widths {0.29: 1, 0.25: 1}
+Net-(U103-RFIN)                              segs   1 len     2.30 mm widths {0.29: 1}
+Net-(U103-RFOUT)                             segs   2 len     3.32 mm widths {0.29: 1, 0.15: 1}
+Net-(U104-ADJ)                               segs   5 len     3.50 mm widths {0.2: 3, 0.15: 2}
+Net-(U104-IHI)                               segs   4 len     3.03 mm widths {0.2: 2, 0.15: 2}
+Net-(U104-ILO)                               segs   5 len     3.20 mm widths {0.2: 3, 0.15: 2}
+Net-(U104-LOIN)                              segs  16 len    41.95 mm widths {0.2: 16}
+Net-(U104-LOIP)                              segs   2 len     2.06 mm widths {0.2: 2}
+Net-(U104-QHI)                               segs   2 len     3.02 mm widths {0.2: 2}
+Net-(U104-QLO)                               segs   2 len     3.17 mm widths {0.2: 2}
+Net-(U117-RFIN)                              segs   1 len     2.02 mm widths {0.29: 1}
+Net-(U117-RFOUT)                             segs   2 len     3.30 mm widths {0.29: 1, 0.15: 1}
+Net-(U201-LOIN)                              segs  15 len    43.53 mm widths {0.2: 15}
+Net-(U201-LOIP)                              segs   2 len     2.19 mm widths {0.2: 2}
+Net-(U201-RFOUT)                             segs   2 len     2.31 mm widths {0.25: 1, 0.29: 1}
+Net-(U202-RFIN)                              segs   1 len     2.30 mm widths {0.29: 1}
+Net-(U202-RFOUT)                             segs   2 len     4.98 mm widths {0.29: 1, 0.15: 1}
+Net-(U401-A)                                 segs   2 len     3.97 mm widths {0.2: 2}
+Net-(U401-B)                                 segs   7 len     8.50 mm widths {0.15: 7}
+Net-(U401-RF1)                               segs   2 len    17.52 mm widths {0.29: 1, 0.25: 1}
+Net-(U401-RF2)                               segs   2 len    17.52 mm widths {0.29: 1, 0.25: 1}
+Net-(U401-RFC)                               segs   2 len     3.63 mm widths {0.29: 1, 0.25: 1}

@@ -1,0 +1,7 @@
+JLC04161H-7628: h = 0.2104 mm, er = 4.4, t = 0.035 mm
+microstrip 50 ohm: w = 0.364 mm (JLCPCB publishes 0.345)
+CPWG 50 ohm with gap 0.25 mm: w = 0.29 mm (Z0 49.8 ohm, eeff 3.13); quarter wave at 5.8 GHz 7.30 mm
+   w = 0.25: CPWG 53.3 ohm, microstrip 60.5 ohm
+   w = 0.30: CPWG 49.0 ohm, microstrip 55.3 ohm
+   w = 0.35: CPWG 45.4 ohm, microstrip 51.1 ohm
+   w = 0.40: CPWG 42.3 ohm, microstrip 47.5 ohm

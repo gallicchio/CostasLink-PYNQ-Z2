@@ -1,0 +1,5 @@
+nominal CPWG: width 0.29 mm, gap 0.25 mm: 49.75 ohm
+narrow line / wide gap: width 0.23 mm, gap 0.30 mm: 56.75 ohm
+wide line / narrow gap: width 0.35 mm, gap 0.20 mm: 43.58 ohm
+nominal width / narrow gap: width 0.29 mm, gap 0.20 mm: 47.71 ohm
+nominal width / wide gap: width 0.29 mm, gap 0.30 mm: 51.04 ohm

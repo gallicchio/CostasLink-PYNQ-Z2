@@ -1,0 +1,2 @@
+{"tx_mhz": 5200, "rx_mhz": 5900, "vr": {"VR_I": 0.2343, "VR_Q": 0.2609}, "leg_target": 0.15, "window_frac": 0.5, "v_t2": 2.9, "dsa_min": 6.0,
+ "note": "board B as the sender over the dishes: its TX at 5200 with its output null (4.58), its RX synthesizer parked at 5900 (REVB 57). linkd's setup on a board whose receiver hears no carrier backs off and tries again; the sender's carrier is on from setup's first release. For the cold-start test (qpvtests.py coldstart): copy to link.json on PYNQ B. Not deployed (Jason's call)."}

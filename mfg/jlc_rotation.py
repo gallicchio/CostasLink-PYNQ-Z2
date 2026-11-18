@@ -1,0 +1,396 @@
+#!/usr/bin/env python3
+"""How a KiCad placement becomes a JLCPCB CPL rotation.  THE SOURCE OF TRUTH.
+
+Import this; do not re-derive it.  It is the accumulated result of reading
+JLCPCB's "Confirm parts placement" preview on real uploads, and every number
+in it cost somebody a look at a screenshot.
+
+    from jlc_rotation import cpl_rotation
+    rot = cpl_rotation(native_degrees, side, footprint_name, lcsc_code)
+
+TWO INDEPENDENT THINGS, APPLIED IN THIS ORDER:
+
+  1. the bottom-side mirror, a property of how JLCPCB reads the BOARD;
+  2. a correction, a property of JLCPCB's PARTS LIBRARY: per part
+     (JLC_ROTATION_BY_PART, by LCSC code) where there is one, else per
+     footprint (JLC_ROTATION).
+
+Order matters and is not arbitrary -- see BOTTOM_FLIP.  Getting it backwards
+moves parts that are known good.
+
+(Copied into GPiBridge from the ECP5-2ADC-2DAC and Icepi Zero boards, where
+every reading in JLC_ROTATION was made.  GPiBridge's corrections are in
+JLC_ROTATION_BY_PART: predicted from JLCPCB's own drawings, then read in the
+preview of GPiBridge rev A on 2026-10-06, all eleven right.)
+
+ROTATION IS NOT THE WHOLE STORY: POSITION TOO.  JLCPCB puts THEIR library
+part's origin where the CPL says.  Where their origin is not KiCad's, the
+part lands off its pads by the difference, whatever the rotation.  Every
+USB-C so far has: 1.3-1.6 mm towards its pad row, so the preview showed it
+hanging off the board until Jason moved it by hand.  mfg/footprint_check.py
+measures that offset for every part from their land pattern (its "datum"),
+and mfg/make_release.py moves the JLCPCB CPL by it.
+"""
+
+import sys
+
+
+# ---------------------------------------------------------------------------
+# JLCPCB placement rotation.  KiCad's zero for a footprint and JLCPCB's zero
+# for the same part in their feeder are different things, and the offset is a
+# property of THEIR library: it cannot be derived from anything here.  The
+# only authority is their "Confirm parts placement" preview.
+#
+# So this table is SHORT on purpose.  It holds corrections that were read off
+# a real preview, and nothing else.  The GPSDO board took its numbers from a
+# third-party table instead and got two wrong, one of them on 59 placements.
+# Everything not listed goes into PLACEMENT_CHECKS.txt to be looked at.
+# Positive is counter-clockwise, which is both KiCad's sign and JLCPCB's.
+# "90 clockwise" therefore lands here as 270.
+#
+#   footprint: (correction, confidence, who said so and what they saw)
+JLC_ROTATION = {
+    "SOT-23-5":
+        (180, "sure", "GPSDO board's preview, where this footprint appears 59 "
+              "times.  Not contradicted on this board: it was already "
+              "corrected in the CPL Jason uploaded and he did not flag it"),
+    # Zero, and checked.  All eight of these are on the bottom and all eight
+    # were read in the preview: the vertical ones were right and the
+    # horizontal ones were wrong, which is what identified BOTTOM_FLIP.  The
+    # footprint itself needs no correction -- the error was the placement
+    # frame, not JLCPCB's part.
+    "D_SOD-523":
+        (0, "read-twice", "Jason, bottom preview: \"The ones oriented "
+            "vertically are correct: D10 D11 D13.  The horizontal ones are "
+            "incorrect: D6 D7 D8 D9 D12\".  Fixed by BOTTOM_FLIP, not by a "
+            "correction here"),
+    "VSSOP-8_2.3x2mm_P0.5mm":
+        (180, "sure", "Jason, JLCPCB placement preview: \"U6 needs an "
+              "additional 180 degree rotation\""),
+    "Texas_DRT-3":
+        (270, "sure-on-top", "Jason: \"U7,U8 need 90 clockwise\".  U7 and U8 "
+              "are the TOP-side pair.  U5 and U10 are the same footprint on "
+              "the BOTTOM and were not in view -- see PLACEMENT_CHECKS"),
+    "TSOP-II-54_22.2x10.16mm_P0.8mm":
+        (270, "sure", "Jason: \"U11 needs 90 clockwise\""),
+    "QFN-20-1EP_4x4mm_P0.5mm_EP2.5x2.5mm":
+        # 180 on the first reading, then +90 CCW more on the second.  The
+        # board wants U9's pin 1 at the SOUTH-WEST corner -- pad 1 is 1.00 mm
+        # west and 1.94 mm south of centre, and the library's own triangle is
+        # 2.28 west and 2.11 south, so both agree.  With 180 applied JLCPCB's
+        # preview still showed their pin 1 at the north-west.  Adding to the
+        # rotation walks pin 1 counter-clockwise, SE -> NE -> NW -> SW, so
+        # NW needs one more quarter turn to reach SW.
+        (270, "read-twice", "Jason, second preview: \"rotate U9 an additional "
+              "90 degrees CCW so that the purple dot will line up with the "
+              "silkscreen triangle in the SW\".  First reading was 180"),
+    "SOIC-8_5.3x5.3mm_P1.27mm":
+        (270, "sure", "Jason, first preview: \"U12 probably needs 90 "
+              "clockwise if its pin 1 is supposed to be NE\".  Confirmed on "
+              "the second: \"U12, the SOIC8, now looks right\""),
+    # ZERO, and listed rather than left out.  Absent from this table means
+    # nobody has looked; a zero here means somebody looked twice and it needs
+    # nothing.  First reading was "seems to need 90 counter clockwise, but
+    # it's hard to tell with all of the dots" -- there were thirteen dots
+    # then and there is one now.  Second reading, with the correction
+    # applied: "should still be rotated 90 CW more", and 90 CCW then 90 CW is
+    # where it started.  It agrees with the geometry: pin 1 is Y1's
+    # south-west corner, the preview showed their dot at the south-east, and
+    # south-east turned a quarter clockwise is south-west.
+    "Oscillator_SMD_SiT_PQFN-4Pin_2.5x2.0mm":
+        (0, "read-twice", "Jason, second preview: \"Y1 seems wrong like it "
+            "should still be rotated 90 CW more than it is in the corrected "
+            "CPL\".  First reading was 90 CCW; the two cancel"),
+}
+# The HRO USB-C's ROTATION needs nothing: right on Jason's Lorenz attractor board,
+# built by JLCPCB, and in GPiBridge's preview.  Its
+# POSITION did: in both previews it hung off the board edge and its pads
+# missed ours ("they put the USB low and I have to tell them to move it up",
+# Lorenz; "sticking too far off the board ... This has been true for every
+# USB-C connector", GPiBridge, 2026-10-06).  The Lorenz board's answer, that
+# nothing in a CPL can address their model's origin, was wrong: their origin
+# for C165948 is 1.572 mm from KiCad's, towards the pad row, and the JLCPCB
+# CPL now puts the part there (make_release.py, from footprint_check.py's datum).
+JLC_ROTATION["USB_C_Receptacle_HRO_TYPE-C-31-M-12"] = (
+    0, "built", "Lorenz board and GPiBridge's preview: the rotation right; the position needs the "
+       "datum shift, 1.572 mm, which the JLCPCB CPL now carries")
+
+# PER PART, by LCSC code.  JLCPCB's library is drawn part by part, so two
+# parts on one KiCad footprint can need different corrections, and on this
+# board they do: JLCPCB draws the SN75161B upright, as KiCad does, and the
+# SN75160B lying down.
+#
+# These were PREDICTED, then read: Jason checked GPiBridge rev A's preview on
+# 2026-10-06, "For the standard release, all of the rotations were correct":
+# 12 placements of these 11 part numbers.  The prediction: JLCPCB's own
+# drawing of each part (its EasyEDA land pattern, which
+# mfg/footprint_check.py fetches) is turned until it lies on our footprint;
+# the correction is minus that turn.  Turned
+# by PIN NUMBER where the numbers mean the same thing (chips, transistors,
+# connectors), and by the POLARITY MARK drawn on it where JLCPCB numbers the
+# pads its own way: their yellow and green LEDs call the cathode pad 2, and
+# their inductor has its dot at pad 2 where Raspberry Pi's has it at pad 1.
+#
+# The method was tested (2026-10-06) against the top-side corrections in
+# JLC_ROTATION, which Jason read off the Icepi Zero and GPSDO previews:
+# Texas_DRT-3 270, SOT-23-5 180, VSSOP-8 180, QFN-20 270, TSOP-II-54 270,
+# SOIC-8 270, the SiT oscillator 0.  It reproduced every one, for each of the
+# 14 part numbers that use those 7 footprints on the Icepi Zero, GPSDO and
+# ECP5-2ADC-2DAC boards.  It is untested on the bottom side, where GPiBridge
+# places nothing.  The preview is still the authority: when somebody has looked,
+# change "predicted" to what they saw.
+#
+#   LCSC code: (correction, confidence, the part and why)
+# What Jason saw in CostasLink rev A's preview (2026-10-17), reported in Prompt 40 (2026-10-18): every part
+# the CPL carried as predicted sat right, the SMAs apart (their entry below).
+REVA_READ = ("Jason, CostasLink rev A's preview (2026-10-17): 'Everything look correct except the SMAs': "
+             "sat right as predicted")
+
+JLC_ROTATION_BY_PART = {
+    "C41378174": (0, "read", "RP2354A, U1: all 61 pads line up by number; their pin-1 dot is at pin 1"),
+    "C2671348": (0, "read", "SN75161B, U3: JLCPCB draws it upright, pin 1 top left, as KiCad does"),
+    "C882412": (270, "read", "SN75160B, U2: JLCPCB draws it lying down (pin 1 bottom left), a quarter "
+                                  "turn from KiCad's; the same footprint as U3 and NOT the same correction"),
+    "C15127": (180, "read", "AO3401A, Q1: JLCPCB's pin 1 is bottom right where KiCad's is top left; "
+                                 "their dot is at pin 1"),
+    "C8545": (180, "read", "2N7002, Q2: as Q1"),
+    "C5446": (180, "read", "XC6206, U4: as Q1"),
+    "C160389": (180, "read", "BM03B, J3 and J4: JLCPCB's pin 1 is at the right where KiCad's is at the "
+                                  "left; their dot is at pin 1"),
+    "C42411119": (180, "read", "AOTA inductor, L1, by its polarity dot: JLCPCB draws the dot at their "
+                                    "pad 2, Raspberry Pi's footprint at pad 1.  By pad number it would be 0, "
+                                    "with the dot at the wrong end"),
+    "C2296": (0, "read", "yellow LED, D1, by the cathode mark: on the left in both drawings.  JLCPCB "
+                              "numbers the cathode pad 2, so a fit by pad number says 180, which would "
+                              "reverse it"),
+    "C2297": (0, "read", "green LED, D2: as D1"),
+    "C84256": (0, "read", "red LED, D3: cathode mark and pad 1 on the left in both drawings"),
+
+    # OWLternating Current (2026-10-07): PREDICTED by the polarity mark in JLCPCB's own
+    # drawing (the EasyEDA footprint record's png, read by eye), for the two-pad parts a
+    # fit by pin number cannot judge, and for the through-hole headers, whose hole
+    # pattern is the same turned round.  JLCPCB marks a diode's cathode "-" (C2296 above,
+    # read right in GPiBridge's preview, is the calibration: "-" on the left, correction
+    # 0).  KiCad's LED and diode footprints put the cathode at pad 1, on the left at 0;
+    # its polarized capacitors put "+" at pad 1, on the left.
+    "C965800": (0, "predicted", "XL-1608UOC-06 orange 0603 LED: JLCPCB's '-' (their pad 2) on the left at 0, "
+                                "where our pad 1, the cathode, is"),
+    "C51933300": (0, "predicted", "GL0603PU01 purple 0603 LED: '-' on the left, as C965800"),
+    "C516136": (0, "predicted", "HL-A-3528S7VC violet 3528 LED: '-' (their pad 1), the cathode bar and the "
+                                "corner mark on the left at 0, where our pad 1 is"),
+    "C160472": (0, "predicted", "LTST-S270KFKT side-view LED: '-' (their pad 1) on the left and the lens "
+                                "toward -y at 0, as our footprint (pad 1 cathode, light toward -y) and the "
+                                "datasheet's top view (cathode left when the lens faces up)"),
+    "C173431": (0, "predicted", "BZT52C10 SOD-123: '-' and the cathode bar on the left"),
+    "C8598": (0, "predicted", "B5819W SOD-123: '-' and the cathode bar on the left (ECP5 read the same mark)"),
+    "C19077569": (0, "predicted", "SMBJ15A SMB: '-' and the cathode bar on the left"),
+    "C46550472": (0, "predicted", "470 uF polymer capacitor: '+' and the bevelled corners on the left, where our "
+                                  "pad 1 (+) is"),
+    "C530531": (0, "predicted", "GSPK2307P speaker: '+' at their pad 1 on the left, as ours (either way sounds "
+                                "the same)"),
+    "C2894988": (90, "predicted", "PZ254-2-08-W right-angle 2x8 header: JLCPCB draws the body and the bent pins "
+                                  "toward +y at 0; our footprint's go toward +x, a quarter turn counter-clockwise. "
+                                  "The hole pattern is the same turned half round, so only the drawing says which "
+                                  "way the pins point: in the preview they must point off the board's edge"),
+    "C2897409": (90, "predicted", "PM254-2-08-Z vertical 2x8 socket: JLCPCB draws its rows along x, ours along y; "
+                                  "either quarter turn fits the holes and the part is the same turned half round"),
+
+    # CostasLink-PYNQ-Z2 (2026-10-09): PREDICTED from JLCPCB's drawings as the ECP5-2ADC-2DAC board read them
+    # (its mfg/jlc_rotation.py, build 34; CLAUDE_PCB.md section 8's table), for the parts a fit by pin number
+    # cannot judge: the SMA's five holes are a square and the 1x2 header's two holes say nothing.  Both were then
+    # read in rev A's preview (2026-10-17): the SMA's prediction was wrong, the header's right.
+    "C496551": (0, "read", "edge SMA BWSMA-KWE-Z001: READ in JLCPCB's viewer (CostasLink rev A, 2026-10-17): at +90 "
+                           "every one of the nine SMAs needed a quarter turn clockwise, so +0 is right.  The footprint "
+                           "agrees: its body (F.Fab) runs from x 3.78 to 11.6, the barrel along +x at 0, the same as "
+                           "JLCPCB's drawing; the +90 was predicted from a misreading of KiCad's barrel as along -y"),
+    "C492401": (270, "read", "1x2 header PZ254V-11-02P: JLCPCB's drawing lies along +x with pin 1 left, KiCad's "
+                             "stands along +y with pin 1 at the top (the 1x3 and 1x6 headers predict 270 by pin "
+                             "number; two pads predict nothing).  READ: Jason, CostasLink rev A's preview (2026-10-17): 'Everything look correct except the SMAs': sat right as predicted (JP202, JP203, "
+                             "JP301-JP303, with their 1.27 mm datum move)"),
+    # and PREDICTED from mfg/footprint_check.py's fit of JLCPCB's drawing on this board's footprints (2026-10-09),
+    # where the fit by pin number alone could not say (make_release.py's rule wants three pads matched by name):
+    "C2977589": (0, "predicted", "2x20 socket 2.54-2*20, J302 on the BACK: JLCPCB's drawing lies on our 40 holes "
+                                 "exactly at 0 by position (and at 180: the pattern is symmetric and the socket has no "
+                                 "key), so 0.  Their pins are numbered the other way round (1 at their left end, 2 above "
+                                 "it, rising to the right; ours 1 at the right end, 2 below it, rising to the left), so "
+                                 "a fit by name cannot see it; the PYNQ-Z2's pins come up through the right holes "
+                                 "whichever way their label points.  Their origin is the socket's centre: the CPL "
+                                 "point moves there (datum)"),
+    "C5137198": (0, "read", "BWMMCX-KE vertical MMCX on our MMCX_BWMMCX-KE_Vertical: JLCPCB's land pattern (their "
+                 "SMA-TH_BWMMCX-KE) fits ours to 0.000 mm at 0 deg; they number the centre pin 5 and the four corner "
+                 "legs 1-4, we number the centre 1 and every leg 2 (ground), so the fit by number fails while the "
+                 "signal lands on the signal and ground on ground.  The jack is round and its legs square: any quarter "
+                 "turn is the same part (Response 15).  READ: Jason, CostasLink rev A's preview (2026-10-17): 'Everything look correct except the SMAs': sat right as predicted (six jacks)"),
+    "C88374": (270, "read", "U.FL-R-SMT-1(80) on KiCad's U.FL_Hirose_U.FL-R-SMT-1_Vertical: JLCPCB's drawing "
+                                 "(signal pad 1 toward +y, grounds 2 and 3 toward -y) turned 90 lies on ours (signal "
+                                 "pad toward -x, grounds at +-y) to 0.001 mm by pins 1 and 2 and by position on all "
+                                 "three, so 360 - 90.  The ECP5 board's copy of JLCPCB's own drawing needed 0; this "
+                                 "is KiCad's footprint, a quarter turn from theirs.  Their origin sits 0.76 mm from "
+                                 "ours (datum): the CPL point moves there.  READ: Jason, CostasLink rev A's preview (2026-10-17): 'Everything look correct except the SMAs': sat right as predicted (22 jacks, "
+                                 "with the 0.763 mm datum move)"),
+    "C208262": (180, "read", "ADL5611 in SOT-89-3: JLCPCB draws the three leads toward +x with pin 1 at +y, "
+                                  "KiCad's SOT-89-3 toward -x with pin 1 at -y: a half turn.  footprint_check's fit "
+                                  "fits it by the three leads at 180 (JLCPCB draws the TAB as a second pad 2, which "
+                                  "KiCad folds into pad 2's custom polygon; footprint_check keeps the lead) and finds "
+                                  "their origin 0.7 mm from ours, so the CPL point moves there (datum).  The Lorenz "
+                                  "board read +180 for its SOT-89 regulators (C8615, C8626; CLAUDE_PCB.md section 8), "
+                                  "which agrees.  READ: Jason, CostasLink rev A's preview (2026-10-17): 'Everything look correct except the SMAs': sat right as predicted (three, with the 0.7 mm datum move)"),
+
+    # CostasLink-PYNQ-Z2 rev A (2026-10-17): the 28 part numbers below were PREDICTED by make_release.py from
+    # mfg/footprint_check.py's fit of JLCPCB's drawing on KiCad's footprint (by pin number; the two-pad parts by
+    # nothing, correction 0), listed in PLACEMENT_CHECKS.txt, and then READ: Jason went through the preview and
+    # reported "Everything look correct except the SMAs" (Prompt 40, 2026-10-18).  The correction is relative to
+    # the KiCad footprint named; a board with a different footprint for the same code must fit it again.
+    "C10425": (180, "read", "74LVC1G17 SOT-353 SC-70-5 (U116, U205): " + REVA_READ),
+    "C113952": (0, "read", "SMAJ5.0A D_SMA (D303): the cathode bar; " + REVA_READ),
+    "C14461": (180, "read", "74LVC2G34 SOT-363 SC-70-6 (U204): " + REVA_READ),
+    "C17271830": (270, "read", "HMC536 MSOP-8-1EP (U401): " + REVA_READ),
+    "C19270534": (0, "read", "100 uF polymer CP_Elec_5x5.9 (C320): the stripe; " + REVA_READ),
+    "C2058382": (270, "read", "THS4541 VQFN-16-1EP 3x3 (U105, U106, U501, U502): " + REVA_READ),
+    "C2059281": (270, "read", "OPA2187 VSSOP-8 3x3 (U112, U508): " + REVA_READ),
+    "C210262": (0, "read", "SKY65404-31 QFN-6 1.5x1.5 (U101): " + REVA_READ),
+    "C2286": (0, "read", "0603 LED (D301, D302): the cathode at pad 1; " + REVA_READ),
+    "C2937625": (270, "read", "1x3 header PZ254V-11-03P (J303, JP101-JP103, JP201), with the 2.54 mm datum move: " + REVA_READ),
+    "C2974371": (180, "read", "TLV3601 SOT-353 SC-70-5 (U107, U503-U505): " + REVA_READ),
+    "C37593": (270, "read", "ADS1115 TSSOP-10 3x3 (U114, U510): " + REVA_READ),
+    "C38663": (180, "read", "74LVC1G3157 SOT-363 SC-70-6 (U110): " + REVA_READ),
+    "C42711": (270, "read", "AD8310 MSOP-8 3x3 (U507): " + REVA_READ),
+    "C46388": (270, "read", "TS5A3159 SOT-363 SC-70-6 (U111): " + REVA_READ),
+    "C470929": (270, "read", "PE43711 QFN-24-1EP 4x4 (U102): " + REVA_READ),
+    "C478093": (270, "read", "MCP4728 MSOP-10 3x3 (U113): " + REVA_READ),
+    "C5119013": (0, "read", "TCXO 3225 4-pin (Y201; pin 1 VC/NC, 2 GND, 3 OUT, 4 VDD): " + REVA_READ),
+    "C5179998": (0, "read", "VCXO 3225 4-pin (Y101): " + REVA_READ),
+    "C5213955": (180, "read", "TLV3603 SOT-363 SC-70-6 (U601-U604): " + REVA_READ),
+    # 2026-10-18, before production: JLCPCB's engineer asked whether T101's and L102's polarities in their
+    # placement snapshot were right (mfg/jlcpcb_order/).  Their red pin-1 mark sat on the balun's top end,
+    # beside our silkscreen dot, where pad 1 (the unbalanced port) is; L102 (C95042, an 0402 chip inductor)
+    # has no polarity.  Answered yes (Prompt 41).
+    "C531388": (0, "read", "HHM1907B1 balun (T101): " + REVA_READ + "; JLCPCB asked before production, confirmed"),
+    "C579150": (270, "read", "ADL5375-05 QFN-24-1EP 4x4 (U201): " + REVA_READ),
+    "C579152": (270, "read", "ADL5380 QFN-24-1EP 4x4 (U104): " + REVA_READ),
+    "C627342": (270, "read", "MCP4728A1 MSOP-10 3x3 (U506): " + REVA_READ),
+    "C650158": (270, "read", "AD5696R TSSOP-16 (U605): " + REVA_READ),
+    "C7458627": (0, "read", "MAX2871 QFN-32-1EP 5x5 (U115, U203): " + REVA_READ),
+    "C81598": (0, "read", "1N4148W SOD-123 (D501): the cathode bar; " + REVA_READ),
+    "C8207": (180, "read", "74LVC1G04 SOT-353 SC-70-5 (U206, U402): " + REVA_READ),
+}
+
+# BOTTOM-SIDE PLACEMENTS ARE MIRRORED: rot -> 180 - rot, and it is CONFIRMED.
+#
+# KiCad reports a bottom footprint's angle in the board's top-view frame.
+# JLCPCB wants it the other way up.  The transform is not a negation, which
+# is what I guessed first and what the diodes refuted: it is 180 - rot, whose
+# fixed points are 90 and 270 rather than 0 and 180.
+#
+# It is the unique transform consistent with every bottom-side observation
+# anybody has made on this board, and there are ten of them:
+#
+#   must change by 180   D6 180, D7 0, D8 0, D9 180, D12 0   Jason: the
+#                        horizontal diodes are the wrong ones
+#   must NOT change      D10 90, D11 90, D13 270             the vertical
+#                        ones are right
+#   must NOT change      U5 270, U10 90                      confirmed good
+#                        earlier, and they carry a +270 footprint correction
+#
+# Negation fits none of it.  Adding 180 fits none of it.  180 - rot fits all
+# ten, and only when it is applied to the NATIVE angle BEFORE the per-
+# footprint correction -- applied afterwards it moves U5 and U10, which are
+# known good.  That ordering is also the one that makes sense: the mirror is
+# a property of how bottom-side geometry maps into their frame, and the
+# footprint correction is a property of their parts library.  Coordinate
+# first, library offset on top.
+#
+# My prediction was the exact opposite of what Jason saw, which is worth more
+# than a confirmation would have been: a negation and a flip are
+# indistinguishable on 0 and 180, and every bottom part checked before the
+# diodes happened to sit there.
+BOTTOM_FLIP = True
+
+# Two-terminal and unpolarised: which way round is not a question.
+ROTATION_NA = ("R_0402_1005Metric", "R_0201_0603Metric", "C_0402_1005Metric",
+               "C_0603_1608Metric", "L_0805_2012Metric",
+               # the ECP5-2ADC-2DAC board's two-terminal and electrically symmetric parts (a 3225 crystal's pads 1/3
+               # are the crystal and 2/4 the case either way round; the 4030 inductor and the 1812 fuse have two)
+               "R_0603_1608Metric", "C_0402_1005Metric_BGA", "C_0805_2012Metric", "C_1206_3216Metric",
+               "L_0603_1608Metric", "Fuse_1812_4532Metric", "IND-SMD_L4.0-W4.0",
+               # NOT "Crystal_SMD_3225-4Pin_3.2x2.5mm" (the ECP5 board's crystals): on CostasLink-PYNQ-Z2 that footprint
+               # carries a VCXO and a TCXO, four distinct pins (1 VC/NC, 2 GND, 3 OUT, 4 VDD), so the way round matters
+               "SW-SMD_L3.9-W3.0-P4.45",
+               # GPiBridge's: two-terminal parts, Raspberry Pi's 0402 footprints, and the BOOT button
+               # (two pads, the same either way round)
+               "R_0402_RPi", "C_0402_RPi", "C_0402_RPi_wide", "SW_SPST_TS-1088-xR020",
+               # OWLternating Current's: the shunts, the PTC fuse and the buck's molded inductor
+               # have two pads and no polarity
+               "R_1206_3216Metric", "Fuse_2920_7451Metric", "L_Changjiang_FXL0630",
+               # CostasLink-PYNQ-Z2's: the 0402 RF inductors
+               "L_0402_1005Metric")
+
+def correction(footprint, code=None):
+    """(degrees, confidence, why) for one part: per part first, then per footprint."""
+    if code in JLC_ROTATION_BY_PART:
+        return JLC_ROTATION_BY_PART[code]
+    return JLC_ROTATION.get(footprint, (0, "none", ""))
+
+
+def cpl_rotation(native_deg, side, footprint, code=None, predicted=None):
+    """The number that goes in JLCPCB's CPL for one placement.
+
+    `native_deg` is KiCad's own footprint orientation (as KiCad's own flip
+    stores it for the bottom side: pads mirrored top-to-bottom), `side` is
+    "top" or "bottom", `footprint` is the footprint's short name, `code` its
+    LCSC code.  `predicted` is the correction read off JLCPCB's own drawing of
+    the part (mfg/make_release.py, from footprint_check.py's fit); it is used
+    only where nobody has read the part in a preview.
+    """
+    rot = float(native_deg) % 360.0
+    if BOTTOM_FLIP and side == "bottom":
+        rot = (180.0 - rot) % 360.0
+    corr, conf, _ = correction(footprint, code)
+    if conf == "none" and predicted is not None:
+        corr = predicted
+    rot = (rot + corr) % 360.0
+    return round(rot, 4)
+
+
+def checked(footprint, code=None):
+    """Has anybody looked at this part in a placement preview?"""
+    if code in JLC_ROTATION_BY_PART:
+        return JLC_ROTATION_BY_PART[code][1] not in ("predicted", "none")
+    return footprint in JLC_ROTATION or footprint in ROTATION_NA
+
+
+# The ten bottom-side readings BOTTOM_FLIP was derived from, kept so the rule
+# can be re-checked rather than re-believed.  (ref, native, side, must_move)
+EVIDENCE = [
+    ("D6", 180, "bottom", True), ("D7", 0, "bottom", True),
+    ("D8", 0, "bottom", True), ("D9", 180, "bottom", True),
+    ("D12", 0, "bottom", True), ("D10", 90, "bottom", False),
+    ("D11", 90, "bottom", False), ("D13", 270, "bottom", False),
+    ("U5", 270, "bottom", False), ("U10", 90, "bottom", False),
+]
+EVIDENCE_FP = {"D6": "D_SOD-523", "D7": "D_SOD-523", "D8": "D_SOD-523",
+               "D9": "D_SOD-523", "D12": "D_SOD-523", "D10": "D_SOD-523",
+               "D11": "D_SOD-523", "D13": "D_SOD-523",
+               "U5": "Texas_DRT-3", "U10": "Texas_DRT-3"}
+
+
+def self_test():
+    """Re-check the rule against every reading it was derived from."""
+    bad = 0
+    for ref, native, side, must_move in EVIDENCE:
+        fp = EVIDENCE_FP[ref]
+        before = (float(native) + (JLC_ROTATION.get(fp, (0,))[0])) % 360.0
+        after = cpl_rotation(native, side, fp)
+        moved = round((after - before) % 360.0) == 180
+        if moved != must_move:
+            print("  %-5s expected %s, got %s" %
+                  (ref, "a 180 flip" if must_move else "no change",
+                   "a 180 flip" if moved else "no change"))
+            bad += 1
+    print("%d of %d bottom-side readings still satisfied"
+          % (len(EVIDENCE) - bad, len(EVIDENCE)))
+    return bad
+
+
+if __name__ == "__main__":
+    sys.exit(1 if self_test() else 0)

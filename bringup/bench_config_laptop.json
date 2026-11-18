@@ -1,0 +1,33 @@
+{
+ "note": "the lab laptop zmash (2026-11-03): COSTAS_BENCH_CONFIG=bringup/bench_config_laptop.json. The board on the 'top' E3632A (FTER3DQU, cal count 29), the PYNQ on the 'bottom' E3632A (FTEP2CPY, cal count 20), each by RS-232; the PYNQ on a direct cable at its static 192.168.2.99 (the laptop 192.168.2.119 on enp0s31f6); the 8720ES at GPIB 16 through the Prologix PXAESUX9; the scope here is an SDS1104X-E on USB, not bench.py's SDS2104X; no Fluke, DSA875 or SDG on this bench; from 2026-11-04 14:20 each E3632A feeds two (units_per_supply 2: the top one boards A and B, the bottom one both PYNQs); PYNQ B (board B's, MAC 00:00:05:6b:04:30, a fresh PYNQ 3.0 card) DHCP 192.168.2.178 and the fixed 192.168.2.98 (its eth0:1; PYNQ A keeps the image's 192.168.2.99; Jason 2026-11-04: DHCP, and a fixed address of its own each); for board B: COSTAS_PYNQ_HOST=192.168.2.98 ... --board B | 2026-11-13 (the lecture hall): the PYNQs on 12 V wall warts, not switchable, and each board on its own E3632A at 5.30 V, 1.5 A, OVP 5.5 V: board A's through FTER3DQU on zmash, board B's through FTEP2CPY on kate. The FTDI serials name the USB adapters, not the supplies, and FTEP2CPY now drives a board's 5 V: psu.pynq_serial is cleared so that `psu pynq-on` cannot put 12 V on it (the supply's OVP comes back at 32 V after a power cycle); set it again only after checking which supply that adapter is on.",
+ "board": "A",
+ "pynq_host": "192.168.2.99",
+ "pynq_port": 5800,
+ "psu": {
+  "serial": "/dev/serial/by-id/usb-FTDI_USB_Serial_Converter_FTER3DQU-if00-port0",
+  "gpib": null,
+  "out": 1,
+  "pynq_out": null,
+  "pynq_serial": null,
+  "other_pynqs": [
+   [
+    "192.168.2.98",
+    5800
+   ]
+  ]
+ },
+ "units_per_supply": 1,
+ "dmm": {
+  "serial": null
+ },
+ "sa": {
+  "host": null,
+  "usb": true
+ },
+ "scope": {
+  "host": null
+ },
+ "gen": {
+  "host": null
+ }
+}

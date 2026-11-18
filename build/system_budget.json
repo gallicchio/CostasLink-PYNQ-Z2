@@ -1,0 +1,291 @@
+{
+ "terms": [
+  {
+   "name": "RF receive: RX SMA to the challenge's bit in the FPGA",
+   "where": "on the board",
+   "ns": {
+    "A": [
+     60,
+     70
+    ],
+    "B": [
+     20,
+     35
+    ],
+    "C": [
+     5,
+     8
+    ]
+   },
+   "source": "model: A, rev A's registered A3 decoder (PLAN.md 19, row 0 less its TX); B, B2's first edge into one or two fabric clocks at 100 MHz, the slow path a veto, not a wait; C, rev B's LVDS comparators into a LUT (row 3)"
+  },
+  {
+   "name": "combine the verifiers' bits: f = XOR or a small hash",
+   "where": "on the board",
+   "ns": {
+    "A": [
+     10,
+     10
+    ],
+    "B": [
+     10,
+     10
+    ],
+    "C": [
+     1,
+     2
+    ]
+   },
+   "source": "model: one clock at 100 MHz, or a LUT level"
+  },
+  {
+   "name": "the basis out to the BME driver: a 5 V buffer and 1 m of cable",
+   "where": "off the board",
+   "ns": {
+    "A": [
+     8,
+     13
+    ],
+    "B": [
+     8,
+     13
+    ],
+    "C": [
+     8,
+     13
+    ]
+   },
+   "source": "SyzygyRadioBoard review 1: the Pockels path 1.4-9.5 ns on its board (SN74ACT04 x6, 15 ohm); 1 m of coax 3.9 ns"
+  },
+  {
+   "name": "BME PCD-dpp: trigger to the cell settled in its basis",
+   "where": "off the board",
+   "ns": {
+    "A": [
+     25,
+     55
+    ],
+    "B": [
+     25,
+     55
+    ],
+    "C": [
+     25,
+     55
+    ]
+   },
+   "source": "manual: 4-7 ns edges, >= 3 V (4 V) into 50 ohm, 50 ns minimum On-to-Off; the trigger-to-output delay is not in it (est 15-40 ns); a Leysop RTP cell is a few pF (6 pF for the RTP-4-20) with little piezo ringing (est 3-10 ns to settle)"
+  },
+  {
+   "name": "the photon after the cell: PBS and fibre to the detector",
+   "where": "off the board",
+   "ns": {
+    "A": [
+     2.5,
+     10
+    ],
+    "B": [
+     2.5,
+     10
+    ],
+    "C": [
+     2.5,
+     10
+    ]
+   },
+   "source": "est: 0.5-2 m at 4.9 ns/m"
+  },
+  {
+   "name": "detector: photon to its output pulse",
+   "where": "off the board",
+   "ns": {
+    "A": [
+     20,
+     60
+    ],
+    "B": [
+     20,
+     60
+    ],
+    "C": [
+     10,
+     20
+    ]
+   },
+   "source": "est: InGaAs SPAD modules (ID Qube, ID120) do not publish it (A, B); an SNSPD's own latency is ps, its amplifiers and ~2 m of coax out of the cryostat about 10-20 ns (C)"
+  },
+  {
+   "name": "the detector's cable to the prover's box",
+   "where": "off the board",
+   "ns": {
+    "A": [
+     4,
+     8
+    ],
+    "B": [
+     4,
+     8
+    ],
+    "C": [
+     4,
+     8
+    ]
+   },
+   "source": "1-2 m of coax"
+  },
+  {
+   "name": "detector pulse in to the answer on the TX ladder pins",
+   "where": "on the board",
+   "ns": {
+    "A": [
+     15,
+     27
+    ],
+    "B": [
+     12,
+     20
+    ],
+    "C": [
+     5,
+     8
+    ]
+   },
+   "source": "model: rev A's TRIG IN (1 k into a Schmitt buffer) on clock-capable pin 26, then one or two clocks; rev B a buffer and a LUT"
+  },
+  {
+   "name": "constant-time release: the detection window's width",
+   "where": "on the board",
+   "ns": {
+    "A": [
+     1,
+     3
+    ],
+    "B": [
+     1,
+     3
+    ],
+    "C": [
+     1,
+     3
+    ]
+   },
+   "source": "a click and a no-click leave at the same time after the window (the detector's jitter and the photon's timing)"
+  },
+  {
+   "name": "RF transmit: ladder, modulator, to the TX SMA (50 %)",
+   "where": "on the board",
+   "ns": {
+    "A": [
+     3,
+     3.5
+    ],
+    "B": [
+     3,
+     3.5
+    ],
+    "C": [
+     1.2,
+     1.8
+    ]
+   },
+   "source": "model: sim/latency_roadmap.py (PYNQ's 200 ohm; a bare or LVDS pin)"
+  },
+  {
+   "name": "antenna cables at the prover, receive and transmit, 1 m each",
+   "where": "off the board",
+   "ns": {
+    "A": [
+     7.8,
+     7.8
+    ],
+    "B": [
+     7.8,
+     7.8
+    ],
+    "C": [
+     7.8,
+     7.8
+    ]
+   },
+   "source": "3.9 ns/m each way; a box behind the antenna.  10 m each way would be 78 ns"
+  }
+ ],
+ "configs": {
+  "A": {
+   "label": "rev A, the gateware as planned (the registered A3 decoder), InGaAs SPADs",
+   "total": [
+    156.3,
+    267.3
+   ],
+   "on_board": [
+    89,
+    113.5
+   ],
+   "rf_link": [
+    63,
+    73.5
+   ],
+   "rf_share": [
+    0.2749719416386083,
+    0.40307101727447214
+   ],
+   "radius_m": [
+    23.429370000000002,
+    40.068270000000005
+   ]
+  },
+  "B": {
+   "label": "rev A, a robust fast gateware path (first edge, slow-path veto), InGaAs SPADs",
+   "total": [
+    113.3,
+    225.3
+   ],
+   "on_board": [
+    46,
+    71.5
+   ],
+   "rf_link": [
+    23,
+    38.5
+   ],
+   "rf_share": [
+    0.1708832667554372,
+    0.2030008826125331
+   ],
+   "radius_m": [
+    16.98367,
+    33.772470000000006
+   ]
+  },
+  "C": {
+   "label": "rev B on a Brain-1 (LVDS, combinational paths), SNSPDs",
+   "total": [
+    70.5,
+    136.60000000000002
+   ],
+   "on_board": [
+    13.2,
+    22.8
+   ],
+   "rf_link": [
+    6.2,
+    9.8
+   ],
+   "rf_share": [
+    0.07174231332357246,
+    0.08794326241134752
+   ],
+   "radius_m": [
+    10.56795,
+    20.476340000000004
+   ]
+  }
+ },
+ "air_ns": {
+  "30": 100.08,
+  "100": 333.59999999999997,
+  "300": 1000.8,
+  "1000": 3336.0
+ },
+ "coax_ns_per_m": 3.924283472919436
+}

@@ -1,0 +1,51 @@
+==== abuse (5200,) 11:26:04
+5200 bursts     #0: after the disturbance -        | supervisor acted 0 times, after: locked
+5200 bursts     #1: after the disturbance -        | supervisor acted 0 times, after: locked
+5200 bursts     #2: after the disturbance -        | supervisor acted 0 times, after: locked
+5200 bursts_short #0: after the disturbance -        | supervisor acted 0 times, after: locked
+5200 bursts_short #1: after the disturbance -        | supervisor acted 0 times, after: locked
+U5200 bursts_short #2: after the disturbance -        | supervisor acted 0 times, after: locked
+5200 falselock  #0: after the disturbance beating  | back in 1.8 s, 1 start(s)
+5200 falselock  #1: after the disturbance beating  | back in 1.8 s, 1 start(s)
+5200 falselock  #2: after the disturbance beating  | back in 1.8 s, 1 start(s)
+5200 rail       #0: after the disturbance beating  | back in 2.3 s, 1 start(s)
+5200 rail       #1: after the disturbance beating  | back in 2.3 s, 1 start(s)
+5200 rail       #2: after the disturbance beating  | back in 2.3 s, 1 start(s)
+interpolation = dsp_rate/samp_rate -> 3 = (32 MHz)/(10 MHz)
+5200 cwdrag     #0: after the disturbance beating  | back in 2.9 s, 1 start(s)
+5200 cwdrag     #1: after the disturbance beating  | back in 2.9 s, 1 start(s)
+5200 cwdrag     #2: after the disturbance beating  | back in 2.9 s, 1 start(s)
+==== abuse (5000,) 11:29:02
+5000 bursts     #0: after the disturbance -        | supervisor acted 0 times, after: locked
+5000 bursts     #1: after the disturbance -        | supervisor acted 0 times, after: locked
+5000 bursts     #2: after the disturbance -        | supervisor acted 0 times, after: locked
+5000 bursts_short #0: after the disturbance -        | supervisor acted 0 times, after: locked
+5000 bursts_short #1: after the disturbance -        | supervisor acted 0 times, after: locked
+5000 bursts_short #2: after the disturbance -        | supervisor acted 0 times, after: locked
+5000 falselock  #0: after the disturbance beating  | back in 1.7 s, 1 start(s)
+5000 falselock  #1: after the disturbance beating  | back in 1.8 s, 1 start(s)
+5000 falselock  #2: after the disturbance beating  | back in 1.8 s, 1 start(s)
+5000 rail       #0: after the disturbance beating  | back in 2.3 s, 1 start(s)
+5000 rail       #1: after the disturbance beating  | back in 2.3 s, 1 start(s)
+5000 rail       #2: after the disturbance beating  | back in 2.3 s, 1 start(s)
+interpolation = dsp_rate/samp_rate -> 3 = (32 MHz)/(10 MHz)
+5000 cwdrag     #0: after the disturbance beating  | back in 2.3 s, 1 start(s)
+5000 cwdrag     #1: after the disturbance beating  | back in 2.3 s, 1 start(s)
+5000 cwdrag     #2: after the disturbance beating  | back in 2.4 s, 1 start(s)
+==== abuse (5500,) 11:31:51
+5500 bursts     #0: after the disturbance -        | supervisor acted 0 times, after: locked
+5500 bursts     #1: after the disturbance -        | supervisor acted 0 times, after: locked
+5500 bursts     #2: after the disturbance -        | supervisor acted 0 times, after: locked
+5500 bursts_short #0: after the disturbance -        | supervisor acted 0 times, after: locked
+5500 bursts_short #1: after the disturbance -        | supervisor acted 0 times, after: locked
+5500 bursts_short #2: after the disturbance -        | supervisor acted 0 times, after: locked
+5500 falselock  #0: after the disturbance beating  | back in 1.7 s, 1 start(s)
+5500 falselock  #1: after the disturbance beating  | back in 1.7 s, 1 start(s)
+5500 falselock  #2: after the disturbance beating  | back in 1.8 s, 1 start(s)
+5500 rail       #0: after the disturbance beating  | back in 2.9 s, 1 start(s)
+5500 rail       #1: after the disturbance beating  | back in 2.9 s, 1 start(s)
+5500 rail       #2: after the disturbance beating  | back in 2.9 s, 1 start(s)
+interpolation = dsp_rate/samp_rate -> 3 = (32 MHz)/(10 MHz)
+5500 cwdrag     #0: after the disturbance beating  | back in 2.9 s, 1 start(s)
+5500 cwdrag     #1: after the disturbance beating  | back in 2.9 s, 1 start(s)
+5500 cwdrag     #2: after the disturbance beating  | back in 2.9 s, 1 start(s)

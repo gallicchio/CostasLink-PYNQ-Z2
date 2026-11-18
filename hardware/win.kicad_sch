@@ -1,0 +1,2124 @@
+(kicad_sch (version 20250114) (generator "eeschema") (generator_version "9.0")
+	(uuid "8d584035-5424-ddf8-cb02-70229e43a215")
+	(paper "A3")
+	(title_block
+		(title "CostasLink-PYNQ-Z2: window comparators: i and q")
+		(date "2026-10-09")
+		(rev "A")
+		(company "Jason Gallicchio and Claude")
+		(comment 1 "Made by gen/sch_win.py")
+		(comment 2 "Hardware CERN-OHL-P-2.0, software MIT")
+		(comment 3 "https://github.com/QuantumQuasars/OpticsPCBs/CostasLink-PYNQ-Z2")
+	)
+	(lib_symbols
+		(symbol "CostasLink:AD5696R"
+			(pin_names
+				(offset 0.762)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "U"
+				(at 0 15.24 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "AD5696R"
+				(at 0 -15.24 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "ADI AD5696R 16-bit quad voltage-output DAC, I2C, 2.5 V internal reference, TSSOP-16"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "AD5696R_0_1"
+				(rectangle
+					(start -8.89 8.89)
+					(end 8.89 -8.89)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "AD5696R_1_1"
+				(pin bidirectional line
+					(at -13.97 6.35 0)
+					(length 5.08)
+					(name "SDA"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "8"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -13.97 3.81 0)
+					(length 5.08)
+					(name "SCL"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "13"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin output line
+					(at 13.97 6.35 180)
+					(length 5.08)
+					(name "VOUTA"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin output line
+					(at 13.97 3.81 180)
+					(length 5.08)
+					(name "VOUTB"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin output line
+					(at 13.97 1.27 180)
+					(length 5.08)
+					(name "VOUTC"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "6"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin output line
+					(at 13.97 -1.27 180)
+					(length 5.08)
+					(name "VOUTD"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "7"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin power_out line
+					(at 13.97 -6.35 180)
+					(length 5.08)
+					(name "VREF"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -3.81 13.97 270)
+					(length 5.08)
+					(name "VDD"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -1.27 13.97 270)
+					(length 5.08)
+					(name "VLOGIC"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "11"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at 1.27 13.97 270)
+					(length 5.08)
+					(name "~{RESET}"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "15"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at 3.81 13.97 270)
+					(length 5.08)
+					(name "RSTSEL"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "16"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -5.08 -13.97 90)
+					(length 5.08)
+					(name "GND"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -2.54 -13.97 90)
+					(length 5.08)
+					(name "~{LDAC}"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "9"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at 0.00 -13.97 90)
+					(length 5.08)
+					(name "GAIN"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "10"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at 2.54 -13.97 90)
+					(length 5.08)
+					(name "A0"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "12"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at 5.08 -13.97 90)
+					(length 5.08)
+					(name "A1"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "14"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "CostasLink:C"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0.254)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "C"
+				(at 0.635 2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Value" "C"
+				(at 0.635 -2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Footprint" ""
+				(at 0.9652 -3.81 0)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Unpolarized capacitor"
+				(at 0 0 0)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "cap capacitor"
+				(at 0 0 0)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "C_*"
+				(at 0 0 0)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "C_0_1"
+				(polyline
+					(pts
+						(xy -2.032 0.762)
+						(xy 2.032 0.762)
+					)
+					(stroke
+						(width 0.508)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.032 -0.762)
+						(xy 2.032 -0.762)
+					)
+					(stroke
+						(width 0.508)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "C_1_1"
+				(pin passive line
+					(at 0 3.81 270)
+					(length 2.794)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -3.81 90)
+					(length 2.794)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "CostasLink:Conn_Coaxial"
+			(pin_names
+				(offset 1.016)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "J"
+				(at 0.254 3.048 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "Conn_Coaxial"
+				(at 2.921 0 90)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "coaxial connector (BNC, SMA, SMB, SMC, Cinch/RCA, LEMO, ...)"
+				(at 0 0 0)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "BNC SMA SMB SMC LEMO coaxial connector CINCH RCA MCX MMCX U.FL UMRF"
+				(at 0 0 0)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "*BNC* *SMA* *SMB* *SMC* *Cinch* *LEMO* *UMRF* *MCX* *U.FL*"
+				(at 0 0 0)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "Conn_Coaxial_0_1"
+				(polyline
+					(pts
+						(xy -2.54 0)
+						(xy -0.508 0)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(arc
+					(start 1.778 0)
+					(mid 0.222 -1.8079)
+					(end -1.778 -0.508)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(arc
+					(start -1.778 0.508)
+					(mid 0.2221 1.8084)
+					(end 1.778 0)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(circle
+					(center 0 0)
+					(radius 0.508)
+					(stroke
+						(width 0.2032)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 -2.54)
+						(xy 0 -1.778)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "Conn_Coaxial_1_1"
+				(pin passive line
+					(at -5.08 0 0)
+					(length 2.54)
+					(name "In"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -5.08 90)
+					(length 2.54)
+					(name "Ext"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "CostasLink:PWR_+3V3_DIG"
+			(power)
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "#PWR"
+				(at 0 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Value" "+3V3_DIG"
+				(at 0 3.556 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "PWR_+3V3_DIG_0_1"
+				(polyline
+					(pts
+						(xy -0.7620 1.2700)
+						(xy 0.0000 2.5400)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0.0000 0.0000)
+						(xy 0.0000 2.5400)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0.0000 2.5400)
+						(xy 0.7620 1.2700)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "PWR_+3V3_DIG_1_1"
+				(pin power_in line
+					(at 0.00 0.00 90)
+					(length 0.00)
+					(name "+3V3_DIG"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "CostasLink:PWR_GND"
+			(power)
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "#PWR"
+				(at 0 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Value" "GND"
+				(at 0 -3.810 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "PWR_GND_0_1"
+				(polyline
+					(pts
+						(xy 0.0000 0.0000)
+						(xy 0.0000 -1.2700)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.2700 -1.2700)
+						(xy 1.2700 -1.2700)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -0.7620 -1.9050)
+						(xy 0.7620 -1.9050)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -0.2540 -2.5400)
+						(xy 0.2540 -2.5400)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "PWR_GND_1_1"
+				(pin power_in line
+					(at 0.00 0.00 90)
+					(length 0.00)
+					(name "GND"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "CostasLink:R"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "R"
+				(at 2.032 0 90)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "R"
+				(at 0 0 90)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at -1.778 0 90)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Resistor"
+				(at 0 0 0)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "R res resistor"
+				(at 0 0 0)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "R_*"
+				(at 0 0 0)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "R_0_1"
+				(rectangle
+					(start -1.016 -2.54)
+					(end 1.016 2.54)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "R_1_1"
+				(pin passive line
+					(at 0 3.81 270)
+					(length 1.27)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -3.81 90)
+					(length 1.27)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "CostasLink:TLV3603"
+			(pin_names
+				(offset 0.762)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "U"
+				(at 0 10.16 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "TLV3603"
+				(at 0 -10.16 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "TI TLV3603 2.5 ns comparator, push-pull output, adjustable hysteresis and latch, SC-70-6"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "TLV3603_0_1"
+				(polyline
+					(pts
+						(xy -5.0800 5.0800)
+						(xy 5.0800 0.0000)
+						(xy -5.0800 -5.0800)
+						(xy -5.0800 5.0800)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(polyline
+					(pts
+						(xy -3.8000 1.9400)
+						(xy -3.8000 3.1400)
+					)
+					(stroke
+						(width 0.200)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -4.4000 2.5400)
+						(xy -3.2000 2.5400)
+					)
+					(stroke
+						(width 0.200)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -4.4000 -2.5400)
+						(xy -3.2000 -2.5400)
+					)
+					(stroke
+						(width 0.200)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "TLV3603_1_1"
+				(pin input line
+					(at -8.89 2.54 0)
+					(length 3.81)
+					(name "IN+"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -8.89 -2.54 0)
+					(length 3.81)
+					(name "IN-"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin output line
+					(at 8.89 0.00 180)
+					(length 3.81)
+					(name "OUT"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 0.00 6.35 270)
+					(length 3.81)
+					(name "VCC"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "6"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 0.00 -6.35 90)
+					(length 3.81)
+					(name "VEE"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at 2.54 -6.35 90)
+					(length 3.81)
+					(name "LE/HYS"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.02 1.02)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+	)
+	(text "Window comparators: I and Q, each side against its own 16-bit threshold" (exclude_from_sim no) (at 20.3200 17.7800 0) (effects (font (size 2.00 2.00) (bold yes)) (justify left bottom)) (uuid "e91e5704-03cc-7454-e3c2-ac43cd40fbe7"))
+	(symbol (lib_id "CostasLink:TLV3603") (at 160.0200 78.7400 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "c110aad1-76bf-53b8-ae29-c2655c3dfec9")
+		(property "Reference" "U603" (at 154.9400 73.6600 0) (effects (font (size 1.27 1.27)) (justify left bottom)))
+		(property "Value" "TLV3603" (at 154.9400 83.8200 0) (effects (font (size 1.27 1.27)) (justify left top)))
+		(property "Footprint" "CostasLink:SOT-363_SC-70-6" (at 160.0200 78.7400 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 160.0200 78.7400 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Description" "" (at 160.0200 78.7400 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "LCSC" "C5213955" (at 160.0200 78.7400 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "MPN" "TLV3603DCKR" (at 160.0200 78.7400 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(pin "3" (uuid "da264c2b-2545-49d7-966f-a9cc61489250"))
+		(pin "4" (uuid "530c26db-7aa7-f115-b804-b011d9580abe"))
+		(pin "1" (uuid "2fea64cf-025e-2f9c-c6e6-8e318d95c8cf"))
+		(pin "6" (uuid "7e55f1e7-fa40-84e7-f541-153665fe7cd6"))
+		(pin "2" (uuid "3d44f9ff-c371-00bf-1cbe-ade17938c118"))
+		(pin "5" (uuid "a2f8df95-3d0d-6670-5ca1-6a2ea167b430"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "U603") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_+3V3_DIG") (at 160.0200 64.7700 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "cd46ad71-9f94-74f3-ea32-0b9565782336")
+		(property "Reference" "#PWR" (at 160.0200 64.7700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "+3V3_DIG" (at 160.0200 60.9600 0) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 160.0200 64.7700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 160.0200 64.7700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 160.0200 64.7700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "0f0f3c3b-c349-25f3-8dbf-54c5fee121a5"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:C") (at 167.6400 76.2000 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "b400625a-6690-e2b1-7d42-f5b92a0d40c7")
+		(property "Reference" "C601" (at 170.1800 76.2000 0) (effects (font (size 1.00 1.00)) (justify left bottom)))
+		(property "Value" "100nF" (at 170.1800 76.2000 0) (effects (font (size 1.00 1.00)) (justify left top)))
+		(property "Footprint" "CostasLink:C_0402_1005Metric" (at 167.6400 76.2000 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 167.6400 76.2000 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 167.6400 76.2000 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C1525" (at 167.6400 76.2000 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "CL05B104KO5NNNC" (at 167.6400 76.2000 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "9319ca02-0eae-38e3-0f02-b43aeab3cf24"))
+		(pin "2" (uuid "87baf583-23c8-3db8-c5a2-df53b0e400f1"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "C601") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 167.6400 80.0100 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "b04dea26-1ae5-53d4-f510-41fcf37d3b66")
+		(property "Reference" "#PWR" (at 167.6400 80.0100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 167.6400 83.8200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 167.6400 80.0100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 167.6400 80.0100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 167.6400 80.0100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "b34bec5e-a533-fee0-c7a4-da7d51d5c302"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 160.0200 87.6300 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "f78be7d1-f9d3-d404-af88-c404ab979cf4")
+		(property "Reference" "#PWR" (at 160.0200 87.6300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 160.0200 91.4400 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 160.0200 87.6300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 160.0200 87.6300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 160.0200 87.6300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "bdf1dc76-34f3-af7f-4cdd-4e4c1a8e9bbb"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:R") (at 162.5600 96.5200 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp yes)
+		(uuid "2aa61f05-3db5-4ab3-1c4d-27ec604ab888")
+		(property "Reference" "R601" (at 163.8300 96.5200 0) (effects (font (size 1.00 1.00)) (justify left bottom)))
+		(property "Value" "DNP 150k" (at 163.8300 96.5200 0) (effects (font (size 1.00 1.00)) (justify left top)))
+		(property "Footprint" "CostasLink:R_0402_1005Metric" (at 162.5600 96.5200 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 162.5600 96.5200 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 162.5600 96.5200 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C25755" (at 162.5600 96.5200 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "0402WGF1503TCE" (at 162.5600 96.5200 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "be370c04-9d28-4307-745b-1b43e0898e96"))
+		(pin "2" (uuid "8a17de33-6cec-69b8-7fdc-073b1521b17c"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "R601") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 162.5600 100.3300 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "d4ee1889-1099-c3c1-63dd-24d7fe6a363c")
+		(property "Reference" "#PWR" (at 162.5600 100.3300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 162.5600 104.1400 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 162.5600 100.3300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 162.5600 100.3300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 162.5600 100.3300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "91c474e1-e9d8-e408-14df-a494d9c45e0f"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:R") (at 168.9100 90.1700 90) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp yes)
+		(uuid "25bc1365-23d4-22f9-612b-aeca06ed02eb")
+		(property "Reference" "R602" (at 168.9100 86.3600 90) (effects (font (size 1.00 1.00)) (justify top)))
+		(property "Value" "DNP 0R" (at 168.9100 87.6300 90) (effects (font (size 1.00 1.00)) (justify bottom)))
+		(property "Footprint" "CostasLink:R_0402_1005Metric" (at 168.9100 90.1700 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 168.9100 90.1700 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 168.9100 90.1700 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C17168" (at 168.9100 90.1700 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "0402WGF0000TCE" (at 168.9100 90.1700 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "7d4b0c7e-091b-51a8-35ee-0ca6da465d77"))
+		(pin "2" (uuid "df3d6fe4-861d-c213-7a16-fa621740c0f5"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "R602") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_+3V3_DIG") (at 175.2600 90.1700 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "d637ea06-a794-fd34-d85f-53da2bc1fee9")
+		(property "Reference" "#PWR" (at 175.2600 90.1700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "+3V3_DIG" (at 175.2600 86.3600 0) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 175.2600 90.1700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 175.2600 90.1700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 175.2600 90.1700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "f7f758a5-90ed-0f1e-edd8-87c5bf4860ab"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(hierarchical_label "I_P" (shape input) (at 38.1000 76.2000 180) (effects (font (size 1.27 1.27)) (justify right)) (uuid "f434393f-dd32-fa0d-5066-862f949aedff"))
+	(label "V_TIP" (at 133.3500 81.2800 0) (effects (font (size 1.00 1.00)) (justify left bottom)) (uuid "f159cad2-2e6c-cf62-bc62-3999f936e9f0"))
+	(symbol (lib_id "CostasLink:R") (at 191.7700 78.7400 90) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "f08e3bc2-834e-8982-ca09-bfadbd64332c")
+		(property "Reference" "R603" (at 191.7700 74.9300 90) (effects (font (size 1.00 1.00)) (justify top)))
+		(property "Value" "33R" (at 191.7700 74.9300 90) (effects (font (size 1.00 1.00)) (justify bottom)))
+		(property "Footprint" "CostasLink:R_0402_1005Metric" (at 191.7700 78.7400 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 191.7700 78.7400 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 191.7700 78.7400 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C25105" (at 191.7700 78.7400 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "0402WGF330JTCE" (at 191.7700 78.7400 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "3e004055-89a3-cad8-e55a-bf85fb2fea49"))
+		(pin "2" (uuid "9843eebb-d680-164e-c345-6c205a82dd5d"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "R603") (unit 1)))))
+	(hierarchical_label "CMP_IP" (shape output) (at 204.4700 78.7400 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "3ffda91e-2e53-0e19-65b4-240bf64ce2d5"))
+	(symbol (lib_id "CostasLink:R") (at 190.5000 91.4400 90) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "f5012678-bd4c-f71c-936c-18aa53b0ed72")
+		(property "Reference" "R604" (at 190.5000 87.6300 90) (effects (font (size 1.00 1.00)) (justify top)))
+		(property "Value" "453R" (at 190.5000 87.6300 90) (effects (font (size 1.00 1.00)) (justify bottom)))
+		(property "Footprint" "CostasLink:R_0402_1005Metric" (at 190.5000 91.4400 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 190.5000 91.4400 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 190.5000 91.4400 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C5126227" (at 190.5000 91.4400 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "FRC0402F4530TS" (at 190.5000 91.4400 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "39131d37-4cc9-1660-429e-69d6333128b8"))
+		(pin "2" (uuid "04b57098-8df3-beee-8061-157ee48b4bdb"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "R604") (unit 1)))))
+	(symbol (lib_id "CostasLink:Conn_Coaxial") (at 201.9300 91.4400 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "7ba0be05-f91c-551f-3d6d-933416fb2286")
+		(property "Reference" "J601" (at 199.3900 88.9000 0) (effects (font (size 1.27 1.27)) (justify left bottom) (hide yes)))
+		(property "Value" "IP MON" (at 199.3900 93.9800 0) (effects (font (size 1.27 1.27)) (justify left top) (hide yes)))
+		(property "Footprint" "CostasLink:U.FL_Hirose_U.FL-R-SMT-1_Vertical" (at 201.9300 91.4400 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 201.9300 91.4400 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Description" "" (at 201.9300 91.4400 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "LCSC" "C88374" (at 201.9300 91.4400 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "MPN" "U.FL-R-SMT-1(80)" (at 201.9300 91.4400 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(pin "1" (uuid "172ba727-1609-011b-fdb8-b7c3d054b05e"))
+		(pin "2" (uuid "d12dacc6-5e36-550e-7de9-36f5155bf2de"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "J601") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 201.9300 99.0600 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "789fa662-61d8-22d6-9a02-9d2cf7bb6643")
+		(property "Reference" "#PWR" (at 201.9300 99.0600 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 201.9300 102.8700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 201.9300 99.0600 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 201.9300 99.0600 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 201.9300 99.0600 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "6ae2edce-ae45-3e74-9352-782ca375f835"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:TLV3603") (at 160.0200 121.9200 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "f99eafb1-8d95-a6b3-c08c-7a8995aea122")
+		(property "Reference" "U604" (at 154.9400 116.8400 0) (effects (font (size 1.27 1.27)) (justify left bottom)))
+		(property "Value" "TLV3603" (at 154.9400 127.0000 0) (effects (font (size 1.27 1.27)) (justify left top)))
+		(property "Footprint" "CostasLink:SOT-363_SC-70-6" (at 160.0200 121.9200 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 160.0200 121.9200 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Description" "" (at 160.0200 121.9200 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "LCSC" "C5213955" (at 160.0200 121.9200 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "MPN" "TLV3603DCKR" (at 160.0200 121.9200 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(pin "3" (uuid "07b1115a-0b0f-b094-ce10-e003644c98b5"))
+		(pin "4" (uuid "68dd2315-93e7-14d3-1f2e-0738dfca163d"))
+		(pin "1" (uuid "dbff06c2-addd-345d-3925-ae857f8d7ba6"))
+		(pin "6" (uuid "6f24cb8e-ab0f-cbc6-dc42-a86b5a71c671"))
+		(pin "2" (uuid "b8de942b-e750-f9f6-420e-0c10ce7175e4"))
+		(pin "5" (uuid "f4248219-68ac-78b4-e953-0062b35103f6"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "U604") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_+3V3_DIG") (at 160.0200 107.9500 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "5fccdf2d-7614-f7a4-95bd-637ffb6debe2")
+		(property "Reference" "#PWR" (at 160.0200 107.9500 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "+3V3_DIG" (at 160.0200 104.1400 0) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 160.0200 107.9500 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 160.0200 107.9500 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 160.0200 107.9500 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "b8249d15-4fa0-4ff2-2fca-f37c5c878b21"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:C") (at 167.6400 119.3800 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "8b7b97a7-0c15-88a9-a926-6d5222fcb9bc")
+		(property "Reference" "C602" (at 170.1800 119.3800 0) (effects (font (size 1.00 1.00)) (justify left bottom)))
+		(property "Value" "100nF" (at 170.1800 119.3800 0) (effects (font (size 1.00 1.00)) (justify left top)))
+		(property "Footprint" "CostasLink:C_0402_1005Metric" (at 167.6400 119.3800 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 167.6400 119.3800 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 167.6400 119.3800 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C1525" (at 167.6400 119.3800 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "CL05B104KO5NNNC" (at 167.6400 119.3800 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "47f7949d-220b-066a-5ba3-68581122e842"))
+		(pin "2" (uuid "dfc86062-a15d-7b80-1d31-48e6b057db8a"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "C602") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 167.6400 123.1900 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "9e8edbb7-bb58-a0e6-fb95-adc07a2f833b")
+		(property "Reference" "#PWR" (at 167.6400 123.1900 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 167.6400 127.0000 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 167.6400 123.1900 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 167.6400 123.1900 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 167.6400 123.1900 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "8b0a7ab2-b323-302e-ae52-90ef5a86c0d9"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 160.0200 130.8100 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "279e2990-39d0-bfee-bc24-3d9708946887")
+		(property "Reference" "#PWR" (at 160.0200 130.8100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 160.0200 134.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 160.0200 130.8100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 160.0200 130.8100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 160.0200 130.8100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "723c4a9b-d5e7-f22f-8008-8ff1b734b84c"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:R") (at 162.5600 139.7000 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp yes)
+		(uuid "35a49cb1-c826-b0e0-3854-3bc1c88a7825")
+		(property "Reference" "R605" (at 163.8300 139.7000 0) (effects (font (size 1.00 1.00)) (justify left bottom)))
+		(property "Value" "DNP 150k" (at 163.8300 139.7000 0) (effects (font (size 1.00 1.00)) (justify left top)))
+		(property "Footprint" "CostasLink:R_0402_1005Metric" (at 162.5600 139.7000 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 162.5600 139.7000 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 162.5600 139.7000 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C25755" (at 162.5600 139.7000 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "0402WGF1503TCE" (at 162.5600 139.7000 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "499b33f4-5278-d302-52b5-1d7bad1fb07f"))
+		(pin "2" (uuid "c9f39404-d8d5-efff-81dd-ce40226db95a"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "R605") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 162.5600 143.5100 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "cb08d6c4-0a48-428a-c953-fecb35fa4432")
+		(property "Reference" "#PWR" (at 162.5600 143.5100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 162.5600 147.3200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 162.5600 143.5100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 162.5600 143.5100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 162.5600 143.5100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "492f8be7-5368-db41-cd79-9aa8b643c78c"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:R") (at 168.9100 133.3500 90) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp yes)
+		(uuid "ec7643af-15ea-b2d1-bc8b-8e8411b331ae")
+		(property "Reference" "R606" (at 168.9100 129.5400 90) (effects (font (size 1.00 1.00)) (justify top)))
+		(property "Value" "DNP 0R" (at 168.9100 130.8100 90) (effects (font (size 1.00 1.00)) (justify bottom)))
+		(property "Footprint" "CostasLink:R_0402_1005Metric" (at 168.9100 133.3500 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 168.9100 133.3500 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 168.9100 133.3500 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C17168" (at 168.9100 133.3500 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "0402WGF0000TCE" (at 168.9100 133.3500 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "a6344bd1-b925-38f8-82f0-8533757c1b34"))
+		(pin "2" (uuid "d49c43a3-82ea-668c-9729-c62cc2b90f8c"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "R606") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_+3V3_DIG") (at 175.2600 133.3500 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "1d5a7229-f54c-5e46-0240-86bedf08aabf")
+		(property "Reference" "#PWR" (at 175.2600 133.3500 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "+3V3_DIG" (at 175.2600 129.5400 0) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 175.2600 133.3500 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 175.2600 133.3500 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 175.2600 133.3500 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "547d9859-e616-b44a-e589-bf6e6128df3e"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(hierarchical_label "I_N" (shape input) (at 38.1000 119.3800 180) (effects (font (size 1.27 1.27)) (justify right)) (uuid "ab5272c1-ac97-7aad-d511-0258bd9deb9b"))
+	(label "V_TIN" (at 138.4300 124.4600 0) (effects (font (size 1.00 1.00)) (justify left bottom)) (uuid "693ae452-8662-eb90-aca5-af043983d0f3"))
+	(symbol (lib_id "CostasLink:R") (at 191.7700 121.9200 90) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "0f21fe3c-2665-af27-a247-babb63b968e2")
+		(property "Reference" "R607" (at 191.7700 118.1100 90) (effects (font (size 1.00 1.00)) (justify top)))
+		(property "Value" "33R" (at 191.7700 118.1100 90) (effects (font (size 1.00 1.00)) (justify bottom)))
+		(property "Footprint" "CostasLink:R_0402_1005Metric" (at 191.7700 121.9200 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 191.7700 121.9200 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 191.7700 121.9200 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C25105" (at 191.7700 121.9200 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "0402WGF330JTCE" (at 191.7700 121.9200 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "ecbd47ad-18f5-b8fb-fe59-979a584be928"))
+		(pin "2" (uuid "171469bf-23d1-8b17-6db5-98564d086a41"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "R607") (unit 1)))))
+	(hierarchical_label "CMP_IN" (shape output) (at 204.4700 121.9200 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "bef8bd18-1e85-d1c8-96dc-2e925e5e3302"))
+	(symbol (lib_id "CostasLink:R") (at 190.5000 134.6200 90) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "d6cd31dd-2982-a770-b3e7-0084f508b96c")
+		(property "Reference" "R608" (at 190.5000 130.8100 90) (effects (font (size 1.00 1.00)) (justify top)))
+		(property "Value" "453R" (at 190.5000 130.8100 90) (effects (font (size 1.00 1.00)) (justify bottom)))
+		(property "Footprint" "CostasLink:R_0402_1005Metric" (at 190.5000 134.6200 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 190.5000 134.6200 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 190.5000 134.6200 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C5126227" (at 190.5000 134.6200 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "FRC0402F4530TS" (at 190.5000 134.6200 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "c263cd12-6f6b-2816-3f3c-1066e8877aa2"))
+		(pin "2" (uuid "2bb4f306-1f5a-be77-4926-146e90bef29c"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "R608") (unit 1)))))
+	(symbol (lib_id "CostasLink:Conn_Coaxial") (at 201.9300 134.6200 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "485041f0-016e-8b06-5916-63ffee96689d")
+		(property "Reference" "J602" (at 199.3900 132.0800 0) (effects (font (size 1.27 1.27)) (justify left bottom) (hide yes)))
+		(property "Value" "IN MON" (at 199.3900 137.1600 0) (effects (font (size 1.27 1.27)) (justify left top) (hide yes)))
+		(property "Footprint" "CostasLink:U.FL_Hirose_U.FL-R-SMT-1_Vertical" (at 201.9300 134.6200 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 201.9300 134.6200 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Description" "" (at 201.9300 134.6200 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "LCSC" "C88374" (at 201.9300 134.6200 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "MPN" "U.FL-R-SMT-1(80)" (at 201.9300 134.6200 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(pin "1" (uuid "a9164f3f-44d2-5d9d-bf87-6a875f495b45"))
+		(pin "2" (uuid "b7396b9b-0d5c-6439-6f3c-b372f37c878d"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "J602") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 201.9300 142.2400 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "2daf437a-f9cc-e5b1-abc3-b1a8ff399992")
+		(property "Reference" "#PWR" (at 201.9300 142.2400 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 201.9300 146.0500 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 201.9300 142.2400 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 201.9300 142.2400 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 201.9300 142.2400 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "d1649ddb-b7de-fcfb-f76b-de142a084c84"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:TLV3603") (at 160.0200 165.1000 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "4934588e-d4d0-35cd-f5d0-2fcb7c55287b")
+		(property "Reference" "U601" (at 154.9400 160.0200 0) (effects (font (size 1.27 1.27)) (justify left bottom)))
+		(property "Value" "TLV3603" (at 154.9400 170.1800 0) (effects (font (size 1.27 1.27)) (justify left top)))
+		(property "Footprint" "CostasLink:SOT-363_SC-70-6" (at 160.0200 165.1000 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 160.0200 165.1000 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Description" "" (at 160.0200 165.1000 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "LCSC" "C5213955" (at 160.0200 165.1000 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "MPN" "TLV3603DCKR" (at 160.0200 165.1000 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(pin "3" (uuid "768e2a47-3a0e-577f-148b-bfbf5c17ef6f"))
+		(pin "4" (uuid "2a828400-698a-a329-f683-77ccfa08a158"))
+		(pin "1" (uuid "daa4039f-2ab8-a3ab-042d-4a49e3109fd1"))
+		(pin "6" (uuid "076aa673-c086-efc2-8f8c-abeb5d9cfc7c"))
+		(pin "2" (uuid "4929f718-e36d-fb43-6fff-e59ddec9fc60"))
+		(pin "5" (uuid "8af6cc84-2372-1c75-2926-6a8ebce3a458"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "U601") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_+3V3_DIG") (at 160.0200 151.1300 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "52ce15c0-1c8b-fbaf-9215-afbd9662fbcf")
+		(property "Reference" "#PWR" (at 160.0200 151.1300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "+3V3_DIG" (at 160.0200 147.3200 0) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 160.0200 151.1300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 160.0200 151.1300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 160.0200 151.1300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "8282fb61-5b98-1152-d8c2-f110be93b8a6"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:C") (at 167.6400 162.5600 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "a9cb5535-5c64-b827-8518-f45942a070e6")
+		(property "Reference" "C603" (at 170.1800 162.5600 0) (effects (font (size 1.00 1.00)) (justify left bottom)))
+		(property "Value" "100nF" (at 170.1800 162.5600 0) (effects (font (size 1.00 1.00)) (justify left top)))
+		(property "Footprint" "CostasLink:C_0402_1005Metric" (at 167.6400 162.5600 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 167.6400 162.5600 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 167.6400 162.5600 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C1525" (at 167.6400 162.5600 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "CL05B104KO5NNNC" (at 167.6400 162.5600 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "1aa408e3-5d9a-4581-1719-b6fec1a663d3"))
+		(pin "2" (uuid "e8251fb6-e4b9-c686-90fd-c7f5ad693523"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "C603") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 167.6400 166.3700 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "b3a2c9df-14bd-e7e8-451a-ba484764483d")
+		(property "Reference" "#PWR" (at 167.6400 166.3700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 167.6400 170.1800 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 167.6400 166.3700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 167.6400 166.3700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 167.6400 166.3700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "73420ed8-f935-bb2e-4369-cf4ac3d5ac32"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 160.0200 173.9900 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "b247cbec-bf56-eb07-19a6-cbf4418948e8")
+		(property "Reference" "#PWR" (at 160.0200 173.9900 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 160.0200 177.8000 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 160.0200 173.9900 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 160.0200 173.9900 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 160.0200 173.9900 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "110fbbbf-5fac-4260-dbbd-cb9364333f6a"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:R") (at 162.5600 182.8800 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp yes)
+		(uuid "cd63c239-eb0c-1783-e6db-02fb2b20ea69")
+		(property "Reference" "R609" (at 163.8300 182.8800 0) (effects (font (size 1.00 1.00)) (justify left bottom)))
+		(property "Value" "DNP 150k" (at 163.8300 182.8800 0) (effects (font (size 1.00 1.00)) (justify left top)))
+		(property "Footprint" "CostasLink:R_0402_1005Metric" (at 162.5600 182.8800 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 162.5600 182.8800 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 162.5600 182.8800 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C25755" (at 162.5600 182.8800 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "0402WGF1503TCE" (at 162.5600 182.8800 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "60848b71-6876-c48e-c4b0-2b0c3f815a61"))
+		(pin "2" (uuid "fbd13512-3a69-9ca0-f9cb-5e5e52d1925b"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "R609") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 162.5600 186.6900 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "3acf159d-efba-0895-b295-61b3d1e6bdff")
+		(property "Reference" "#PWR" (at 162.5600 186.6900 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 162.5600 190.5000 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 162.5600 186.6900 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 162.5600 186.6900 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 162.5600 186.6900 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "35bd3166-49c9-343d-9576-f9b035e39239"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:R") (at 168.9100 176.5300 90) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp yes)
+		(uuid "73180908-abb1-622e-531d-c3dce8e4af6f")
+		(property "Reference" "R610" (at 168.9100 172.7200 90) (effects (font (size 1.00 1.00)) (justify top)))
+		(property "Value" "DNP 0R" (at 168.9100 173.9900 90) (effects (font (size 1.00 1.00)) (justify bottom)))
+		(property "Footprint" "CostasLink:R_0402_1005Metric" (at 168.9100 176.5300 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 168.9100 176.5300 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 168.9100 176.5300 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C17168" (at 168.9100 176.5300 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "0402WGF0000TCE" (at 168.9100 176.5300 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "4119a080-d799-583d-d01c-6ed98f39adb6"))
+		(pin "2" (uuid "cf09dad7-51d2-67cd-c98b-6f95ac1591c7"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "R610") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_+3V3_DIG") (at 175.2600 176.5300 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "787f71e7-d83b-1c5f-045a-33c7226c7da4")
+		(property "Reference" "#PWR" (at 175.2600 176.5300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "+3V3_DIG" (at 175.2600 172.7200 0) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 175.2600 176.5300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 175.2600 176.5300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 175.2600 176.5300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "59d798fd-c120-1c5b-4061-24b7ed27c7ed"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(hierarchical_label "Q_P" (shape input) (at 38.1000 162.5600 180) (effects (font (size 1.27 1.27)) (justify right)) (uuid "b7784f84-b0fb-e697-0cdb-ae6121250793"))
+	(label "V_TQP" (at 123.1900 167.6400 0) (effects (font (size 1.00 1.00)) (justify left bottom)) (uuid "39039cb5-ec41-6bc0-f454-548c337369bd"))
+	(symbol (lib_id "CostasLink:R") (at 191.7700 165.1000 90) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "40fa06f6-d67d-bb1d-9388-b1a70a9a2fc4")
+		(property "Reference" "R611" (at 191.7700 161.2900 90) (effects (font (size 1.00 1.00)) (justify top)))
+		(property "Value" "33R" (at 191.7700 161.2900 90) (effects (font (size 1.00 1.00)) (justify bottom)))
+		(property "Footprint" "CostasLink:R_0402_1005Metric" (at 191.7700 165.1000 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 191.7700 165.1000 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 191.7700 165.1000 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C25105" (at 191.7700 165.1000 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "0402WGF330JTCE" (at 191.7700 165.1000 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "d7e3eee3-a0f9-e065-4aeb-5a2a77b0b709"))
+		(pin "2" (uuid "61daa41d-81bb-9c11-dbd3-efd2e197ed95"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "R611") (unit 1)))))
+	(hierarchical_label "CMP_QP" (shape output) (at 204.4700 165.1000 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "9b3ee7df-41b6-cc92-9eef-cd5d8d71aca0"))
+	(symbol (lib_id "CostasLink:R") (at 190.5000 177.8000 90) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "0cf100c3-e939-856f-5a7c-dd6d1529c3f0")
+		(property "Reference" "R612" (at 190.5000 173.9900 90) (effects (font (size 1.00 1.00)) (justify top)))
+		(property "Value" "453R" (at 190.5000 173.9900 90) (effects (font (size 1.00 1.00)) (justify bottom)))
+		(property "Footprint" "CostasLink:R_0402_1005Metric" (at 190.5000 177.8000 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 190.5000 177.8000 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 190.5000 177.8000 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C5126227" (at 190.5000 177.8000 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "FRC0402F4530TS" (at 190.5000 177.8000 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "afed2415-d953-c566-4846-a7888bd8ecc1"))
+		(pin "2" (uuid "771abc49-ee9b-6443-bae0-ccf85ad0ae35"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "R612") (unit 1)))))
+	(symbol (lib_id "CostasLink:Conn_Coaxial") (at 201.9300 177.8000 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "74f86571-83cb-69e8-ebf7-3bd11b5a6c58")
+		(property "Reference" "J603" (at 199.3900 175.2600 0) (effects (font (size 1.27 1.27)) (justify left bottom) (hide yes)))
+		(property "Value" "QP MON" (at 199.3900 180.3400 0) (effects (font (size 1.27 1.27)) (justify left top) (hide yes)))
+		(property "Footprint" "CostasLink:U.FL_Hirose_U.FL-R-SMT-1_Vertical" (at 201.9300 177.8000 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 201.9300 177.8000 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Description" "" (at 201.9300 177.8000 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "LCSC" "C88374" (at 201.9300 177.8000 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "MPN" "U.FL-R-SMT-1(80)" (at 201.9300 177.8000 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(pin "1" (uuid "2ef98cd7-848f-e241-2eb9-69d0e0cc1f3a"))
+		(pin "2" (uuid "00a61ca2-bf8a-8908-1995-7e420f181daa"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "J603") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 201.9300 185.4200 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "0b9bddbe-b137-5f2f-1c86-36234f92675c")
+		(property "Reference" "#PWR" (at 201.9300 185.4200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 201.9300 189.2300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 201.9300 185.4200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 201.9300 185.4200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 201.9300 185.4200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "f4da3731-878b-6172-8ef8-d2613a5d8945"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:TLV3603") (at 160.0200 208.2800 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "687629ea-10f1-ad46-05ef-808164576551")
+		(property "Reference" "U602" (at 154.9400 203.2000 0) (effects (font (size 1.27 1.27)) (justify left bottom)))
+		(property "Value" "TLV3603" (at 154.9400 213.3600 0) (effects (font (size 1.27 1.27)) (justify left top)))
+		(property "Footprint" "CostasLink:SOT-363_SC-70-6" (at 160.0200 208.2800 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 160.0200 208.2800 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Description" "" (at 160.0200 208.2800 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "LCSC" "C5213955" (at 160.0200 208.2800 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "MPN" "TLV3603DCKR" (at 160.0200 208.2800 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(pin "3" (uuid "94c6a224-17d2-260d-0c7c-656c146042e6"))
+		(pin "4" (uuid "8465b866-9c57-70f4-bae2-f7702c8a65c7"))
+		(pin "1" (uuid "d2dba6df-e896-5d7e-a873-8f72b22572c8"))
+		(pin "6" (uuid "62379793-7632-0075-249c-0b0fafc641b3"))
+		(pin "2" (uuid "024ceaa1-cb15-72ce-bac7-89271a4eaafe"))
+		(pin "5" (uuid "05b0ba20-2872-b9f1-7d03-5ac4f3d9173c"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "U602") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_+3V3_DIG") (at 160.0200 194.3100 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "b38a0ec6-ca64-b023-2c16-9343f6c61244")
+		(property "Reference" "#PWR" (at 160.0200 194.3100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "+3V3_DIG" (at 160.0200 190.5000 0) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 160.0200 194.3100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 160.0200 194.3100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 160.0200 194.3100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "59988726-41b8-0e99-d55a-49bba482594c"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:C") (at 167.6400 205.7400 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "87f7661c-aa5a-1c87-d5ad-1190afa55332")
+		(property "Reference" "C604" (at 170.1800 205.7400 0) (effects (font (size 1.00 1.00)) (justify left bottom)))
+		(property "Value" "100nF" (at 170.1800 205.7400 0) (effects (font (size 1.00 1.00)) (justify left top)))
+		(property "Footprint" "CostasLink:C_0402_1005Metric" (at 167.6400 205.7400 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 167.6400 205.7400 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 167.6400 205.7400 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C1525" (at 167.6400 205.7400 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "CL05B104KO5NNNC" (at 167.6400 205.7400 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "b66728ef-3d06-2895-3c2d-e82e4879a7a2"))
+		(pin "2" (uuid "92d762f1-3274-1c0c-84c0-6b665976f089"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "C604") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 167.6400 209.5500 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "3fab9e74-70d5-4e4b-0380-35317f270272")
+		(property "Reference" "#PWR" (at 167.6400 209.5500 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 167.6400 213.3600 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 167.6400 209.5500 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 167.6400 209.5500 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 167.6400 209.5500 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "ce3fd84e-3df3-6eb9-022a-63303e84196f"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 160.0200 217.1700 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "2afd3dcc-16f9-e61c-f343-2e1ff9af4d71")
+		(property "Reference" "#PWR" (at 160.0200 217.1700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 160.0200 220.9800 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 160.0200 217.1700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 160.0200 217.1700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 160.0200 217.1700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "5f207b4a-f212-b0bf-84a3-1f2c15bdc6a5"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:R") (at 162.5600 226.0600 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp yes)
+		(uuid "69a765e7-3cca-306a-ae2e-0adf18f5e735")
+		(property "Reference" "R613" (at 163.8300 226.0600 0) (effects (font (size 1.00 1.00)) (justify left bottom)))
+		(property "Value" "DNP 150k" (at 163.8300 226.0600 0) (effects (font (size 1.00 1.00)) (justify left top)))
+		(property "Footprint" "CostasLink:R_0402_1005Metric" (at 162.5600 226.0600 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 162.5600 226.0600 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 162.5600 226.0600 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C25755" (at 162.5600 226.0600 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "0402WGF1503TCE" (at 162.5600 226.0600 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "60d9917e-61a0-83a4-922c-f26bfabfb97c"))
+		(pin "2" (uuid "86f1e69b-0b1a-29e7-0ce4-36a41e2d0744"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "R613") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 162.5600 229.8700 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "e91b924c-8ff5-0f12-e03f-059c4d552e99")
+		(property "Reference" "#PWR" (at 162.5600 229.8700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 162.5600 233.6800 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 162.5600 229.8700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 162.5600 229.8700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 162.5600 229.8700 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "7b82f1f2-e10d-b82f-5ee0-b78b06dbc866"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:R") (at 168.9100 219.7100 90) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp yes)
+		(uuid "b1fb094e-3f53-328a-fbb5-54ef8963c404")
+		(property "Reference" "R614" (at 168.9100 215.9000 90) (effects (font (size 1.00 1.00)) (justify top)))
+		(property "Value" "DNP 0R" (at 168.9100 217.1700 90) (effects (font (size 1.00 1.00)) (justify bottom)))
+		(property "Footprint" "CostasLink:R_0402_1005Metric" (at 168.9100 219.7100 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 168.9100 219.7100 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 168.9100 219.7100 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C17168" (at 168.9100 219.7100 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "0402WGF0000TCE" (at 168.9100 219.7100 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "f2070263-5e3a-1f10-d10c-2541ef0d83f7"))
+		(pin "2" (uuid "d7db8af9-3b1a-fb73-2fba-d24a95f0024c"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "R614") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_+3V3_DIG") (at 175.2600 219.7100 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "8b8f2808-68ce-ef5b-8bb1-a953fb242c5f")
+		(property "Reference" "#PWR" (at 175.2600 219.7100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "+3V3_DIG" (at 175.2600 215.9000 0) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 175.2600 219.7100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 175.2600 219.7100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 175.2600 219.7100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "ad832618-a915-7d5e-00d0-de7d693fcfa3"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(hierarchical_label "Q_N" (shape input) (at 38.1000 205.7400 180) (effects (font (size 1.27 1.27)) (justify right)) (uuid "4ae73e18-df0d-5018-0003-a94a86c4bf58"))
+	(label "V_TQN" (at 128.2700 210.8200 0) (effects (font (size 1.00 1.00)) (justify left bottom)) (uuid "d420690c-a225-f9f6-562f-334f6172a56f"))
+	(symbol (lib_id "CostasLink:R") (at 191.7700 208.2800 90) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "35eca6ee-2d22-2359-f2b3-00730b83e6c1")
+		(property "Reference" "R615" (at 191.7700 204.4700 90) (effects (font (size 1.00 1.00)) (justify top)))
+		(property "Value" "33R" (at 191.7700 204.4700 90) (effects (font (size 1.00 1.00)) (justify bottom)))
+		(property "Footprint" "CostasLink:R_0402_1005Metric" (at 191.7700 208.2800 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 191.7700 208.2800 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 191.7700 208.2800 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C25105" (at 191.7700 208.2800 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "0402WGF330JTCE" (at 191.7700 208.2800 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "bd592157-8a93-2f0e-be3e-23255a314604"))
+		(pin "2" (uuid "38c3e58d-8044-cf4c-7b22-ba7f4ac2b0a8"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "R615") (unit 1)))))
+	(hierarchical_label "CMP_QN" (shape output) (at 204.4700 208.2800 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "5ed73eee-f4d7-0e2f-f1e8-acfd521819af"))
+	(symbol (lib_id "CostasLink:R") (at 190.5000 220.9800 90) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "8540c683-b6a5-73e6-bd2f-8ff9517093b8")
+		(property "Reference" "R616" (at 190.5000 217.1700 90) (effects (font (size 1.00 1.00)) (justify top)))
+		(property "Value" "453R" (at 190.5000 217.1700 90) (effects (font (size 1.00 1.00)) (justify bottom)))
+		(property "Footprint" "CostasLink:R_0402_1005Metric" (at 190.5000 220.9800 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 190.5000 220.9800 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 190.5000 220.9800 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C5126227" (at 190.5000 220.9800 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "FRC0402F4530TS" (at 190.5000 220.9800 90) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "15b727d0-846e-ee6b-3a12-3e5dbf1cc57b"))
+		(pin "2" (uuid "7f82111f-a107-7207-f6c1-99b491739878"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "R616") (unit 1)))))
+	(symbol (lib_id "CostasLink:Conn_Coaxial") (at 201.9300 220.9800 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "7d974bcf-815e-e4e9-465f-4aea6b84ecbc")
+		(property "Reference" "J604" (at 199.3900 218.4400 0) (effects (font (size 1.27 1.27)) (justify left bottom) (hide yes)))
+		(property "Value" "QN MON" (at 199.3900 223.5200 0) (effects (font (size 1.27 1.27)) (justify left top) (hide yes)))
+		(property "Footprint" "CostasLink:U.FL_Hirose_U.FL-R-SMT-1_Vertical" (at 201.9300 220.9800 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 201.9300 220.9800 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Description" "" (at 201.9300 220.9800 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "LCSC" "C88374" (at 201.9300 220.9800 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "MPN" "U.FL-R-SMT-1(80)" (at 201.9300 220.9800 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(pin "1" (uuid "ef151f8f-c900-09d0-00e3-afe548578a0c"))
+		(pin "2" (uuid "aae880d7-a8c1-53f1-7190-d850a703cef8"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "J604") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 201.9300 228.6000 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "7594398f-79b4-e99c-6544-3d7ba67b3ddd")
+		(property "Reference" "#PWR" (at 201.9300 228.6000 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 201.9300 232.4100 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 201.9300 228.6000 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 201.9300 228.6000 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 201.9300 228.6000 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "f1aefd0c-e039-aa6c-9001-251188986659"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:AD5696R") (at 76.2000 245.1100 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "f6c793c9-52af-8d1a-d5cc-864fe0ad1c85")
+		(property "Reference" "U605" (at 67.3100 236.2200 0) (effects (font (size 1.27 1.27)) (justify left bottom)))
+		(property "Value" "AD5696R" (at 67.3100 254.0000 0) (effects (font (size 1.27 1.27)) (justify left top)))
+		(property "Footprint" "CostasLink:TSSOP-16_4.4x5mm_P0.65mm" (at 76.2000 245.1100 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 76.2000 245.1100 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "Description" "" (at 76.2000 245.1100 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "LCSC" "C650158" (at 76.2000 245.1100 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(property "MPN" "AD5696RARUZ" (at 76.2000 245.1100 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+		(pin "8" (uuid "10135876-fb7a-dfa3-bfb8-b6465717cc1a"))
+		(pin "13" (uuid "d96621d0-09c9-9d5e-d979-aef82ed76050"))
+		(pin "3" (uuid "5fde912c-ed45-63da-1cb0-2d95c9e2e26c"))
+		(pin "2" (uuid "0137f7ed-8a9e-1e02-5ee5-58baa6eaece9"))
+		(pin "6" (uuid "6c9355c2-b24d-6982-29fe-0cf32c169208"))
+		(pin "7" (uuid "a78b2554-9ec0-e9ec-7363-5a493e9300bd"))
+		(pin "1" (uuid "f05baa09-9184-6684-254e-309af7cbf020"))
+		(pin "5" (uuid "587ed94c-1251-7274-ba3e-e2c2a1ff6201"))
+		(pin "11" (uuid "044d7a19-0cf4-b838-a31f-a01df101877e"))
+		(pin "15" (uuid "024c8325-582e-150c-4477-f2dd8ca57baf"))
+		(pin "16" (uuid "de40f23c-7f51-cf95-c603-4e5528035e33"))
+		(pin "4" (uuid "8d92b491-d4e0-ab8e-cfa0-c1218094cd00"))
+		(pin "9" (uuid "cbacb74d-df73-ebcf-99f2-1c8824a0c7d8"))
+		(pin "10" (uuid "35c507ae-b411-0d0b-3560-8c4ac97a5577"))
+		(pin "12" (uuid "eeac8bce-9cba-fec6-f210-56ed6917263a"))
+		(pin "14" (uuid "3c795b37-afbd-2edc-9ed6-5f5dcf6e6346"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "U605") (unit 1)))))
+	(hierarchical_label "I2C_SDA" (shape bidirectional) (at 49.5300 238.7600 180) (effects (font (size 1.27 1.27)) (justify right)) (uuid "e7e5da85-3d62-7873-b34f-efb9b5e66a93"))
+	(hierarchical_label "I2C_SCL" (shape bidirectional) (at 49.5300 241.3000 180) (effects (font (size 1.27 1.27)) (justify right)) (uuid "6f7c4261-3260-2e86-e829-d0d9f4be76c7"))
+	(label "V_TIP" (at 91.4400 243.8400 0) (effects (font (size 1.00 1.00)) (justify left bottom)) (uuid "64df2a14-3a62-57a6-ff03-7bfc5d82b9b9"))
+	(label "V_TIN" (at 91.4400 246.3800 0) (effects (font (size 1.00 1.00)) (justify left bottom)) (uuid "c5abe5ca-0b49-af85-6f57-70226874e0f1"))
+	(label "V_TQP" (at 91.4400 238.7600 0) (effects (font (size 1.00 1.00)) (justify left bottom)) (uuid "f7569f44-2df3-a3c8-dd80-90e7a6a9e151"))
+	(label "V_TQN" (at 91.4400 241.3000 0) (effects (font (size 1.00 1.00)) (justify left bottom)) (uuid "bb77d83c-9b64-2954-5500-b7366d4ed2d6"))
+	(no_connect (at 90.1700 251.4600) (uuid "e1268d1c-0a16-43e3-7be9-44cf3c8db98a"))
+	(symbol (lib_id "CostasLink:PWR_+3V3_DIG") (at 67.3100 220.9800 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "4f957807-ebb3-cb60-942f-c36e693ccfcb")
+		(property "Reference" "#PWR" (at 67.3100 220.9800 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "+3V3_DIG" (at 67.3100 217.1700 0) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 67.3100 220.9800 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 67.3100 220.9800 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 67.3100 220.9800 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "9aad8c33-85aa-3566-be28-71998ff6a190"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:C") (at 90.1700 227.3300 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "bf883fdd-067b-d0a2-1f52-705f4f25d683")
+		(property "Reference" "C605" (at 92.7100 227.3300 0) (effects (font (size 1.00 1.00)) (justify left bottom)))
+		(property "Value" "100nF" (at 92.7100 227.3300 0) (effects (font (size 1.00 1.00)) (justify left top)))
+		(property "Footprint" "CostasLink:C_0402_1005Metric" (at 90.1700 227.3300 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 90.1700 227.3300 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 90.1700 227.3300 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C1525" (at 90.1700 227.3300 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "CL05B104KO5NNNC" (at 90.1700 227.3300 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "7c19e3c7-66b3-05db-ce2c-44a7b77916fa"))
+		(pin "2" (uuid "d672bbe1-8988-3b6b-5390-e9732a8525b1"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "C605") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 90.1700 231.1400 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "2b04d9c9-27b0-b5fc-493a-291896e39e5a")
+		(property "Reference" "#PWR" (at 90.1700 231.1400 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 90.1700 234.9500 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 90.1700 231.1400 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 90.1700 231.1400 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 90.1700 231.1400 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "05253ae3-248e-1d9a-b440-b14f4c573959"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:C") (at 100.3300 227.3300 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "93496cd7-c0a2-a48c-5b06-4e54e74c8802")
+		(property "Reference" "C606" (at 102.8700 227.3300 0) (effects (font (size 1.00 1.00)) (justify left bottom)))
+		(property "Value" "100nF" (at 102.8700 227.3300 0) (effects (font (size 1.00 1.00)) (justify left top)))
+		(property "Footprint" "CostasLink:C_0402_1005Metric" (at 100.3300 227.3300 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Datasheet" "~" (at 100.3300 227.3300 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "Description" "" (at 100.3300 227.3300 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "LCSC" "C1525" (at 100.3300 227.3300 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(property "MPN" "CL05B104KO5NNNC" (at 100.3300 227.3300 0) (effects (font (size 1.00 1.00)) (justify left) (hide yes)))
+		(pin "1" (uuid "13c268cd-fff4-d9f6-bd83-0f26e501318c"))
+		(pin "2" (uuid "bd47023c-6038-f5bd-dc47-246ea578c1ee"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "C606") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 100.3300 231.1400 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "32621133-6d2e-0b4b-917a-2166b37ba7b8")
+		(property "Reference" "#PWR" (at 100.3300 231.1400 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 100.3300 234.9500 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 100.3300 231.1400 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 100.3300 231.1400 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 100.3300 231.1400 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "b0da9fa3-7865-2602-60fd-9d913c19a301"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 71.1200 261.6200 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "a472ce8a-74cf-0233-0d79-a27a7dac872e")
+		(property "Reference" "#PWR" (at 71.1200 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 71.1200 265.4300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 71.1200 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 71.1200 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 71.1200 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "5c9caea9-653f-43e1-5409-3aabe2d3631a"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 73.6600 261.6200 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "65c519e1-8fb1-b339-04a7-86f9d48545fd")
+		(property "Reference" "#PWR" (at 73.6600 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 73.6600 265.4300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 73.6600 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 73.6600 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 73.6600 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "c58f7200-00c1-2421-fa5e-6815dc281c2e"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 76.2000 261.6200 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "89cb255e-7546-f103-0a67-e4c860acd109")
+		(property "Reference" "#PWR" (at 76.2000 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 76.2000 265.4300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 76.2000 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 76.2000 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 76.2000 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "bdecc5ce-e353-12cd-cab1-33272afbf565"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 78.7400 261.6200 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "d734c145-da2e-50c2-1967-3c5955f41916")
+		(property "Reference" "#PWR" (at 78.7400 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 78.7400 265.4300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 78.7400 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 78.7400 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 78.7400 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "0ff841ec-e9c4-18df-44e7-eddf8dbb9a77"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(symbol (lib_id "CostasLink:PWR_GND") (at 81.2800 261.6200 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
+		(uuid "e0b0305f-8360-dc57-0067-8d6c45a94c7c")
+		(property "Reference" "#PWR" (at 81.2800 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Value" "GND" (at 81.2800 265.4300 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Footprint" "" (at 81.2800 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Datasheet" "" (at 81.2800 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(property "Description" "" (at 81.2800 261.6200 0) (effects (font (size 1.27 1.27)) (hide yes)))
+		(pin "1" (uuid "1909ce9d-ed53-d605-d969-502b1a69dabd"))
+		(instances (project "CostasLink-PYNQ-Z2" (path "/24723b42-5fe3-4667-eb46-0acbb937e3f8/b7e18de1-8b2b-300d-2f71-ee4c9a89ed10" (reference "#PWR") (unit 1)))))
+	(text_box "PLAN.md section 18 scores the ways an idle plus N messages can be decided by comparators.  These four do the window\nschemes: an event is the arm leaving a window round the idle, and which side it leaves by is the message.  Thresholds\nare set from the idle, 7.3 sigma out for one false event an hour, by the FPGA counting each comparator's false events\nand servoing its threshold (the AD5696R's 0.038 mV steps change that rate by 10 % a step in the lab; the old 12-bit\nDAC's by x7.6).  With the transmitter's pilot at 45 degrees the four corners land on +I, -I, +Q and -Q, one comparator\neach: the event and both bits on one edge.  With the plan's full idle on +I, QP and QN give the event and the Q bit and\nCMP_I (sheet 3) the I bit.  Each output: 33 ohm to the FPGA (header 22, 16, 10, 8) and 453 ohm to a U.FL (/10 into 50\nohm) for the scope, which sees 50-300 ps of jitter the FPGA's 1-2 ns sampling cannot." (exclude_from_sim no) (at 20.3200 24.1300 0) (size 105.4100 16.5100)
+		(margins 0.9525 0.9525 0.9525 0.9525) (stroke (width 0) (type default))
+		(fill (type color) (color 255 255 194 1)) (effects (font (size 1.00 1.00)) (justify left top)) (uuid "76ad6e9b-c8d6-8768-e774-378b69b4d764"))
+	(text_box "Blue boxes: what is on the wire beside them (frequency | level | bandwidth | DC), computed by sim/budget.py for the 10 m\nbench link with 2 dBi whips (the DSA then at 5.25 dB, holding the demodulator at -20 dBm); the same numbers as\ndocs/images/block_*.svg." (exclude_from_sim no) (at 20.3200 45.7200 0) (size 107.9500 7.6200)
+		(margins 0.9525 0.9525 0.9525 0.9525) (stroke (width 0) (type default))
+		(fill (type color) (color 255 255 194 1)) (effects (font (size 1.00 1.00)) (justify left top)) (uuid "d018c236-2c6c-573e-15df-40645929ef7b"))
+	(text_box "IP MON: the I window's +\ncomparator through 453\nohm, /10 into 50 ohm (0\n/ 0.33 V): for the\nscope, beside its line\nto the FPGA." (exclude_from_sim no) (at 204.4700 90.1700 0) (size 24.1300 12.7000)
+		(margins 0.9525 0.9525 0.9525 0.9525) (stroke (width 0) (type default))
+		(fill (type color) (color 255 255 194 1)) (effects (font (size 1.00 1.00)) (justify left top)) (uuid "7d7891d5-9dac-5ca3-a0a2-d8db8e4dc197"))
+	(text_box "IN MON: the I window's -\ncomparator through 453\nohm, /10 into 50 ohm (0\n/ 0.33 V): for the\nscope, beside its line\nto the FPGA." (exclude_from_sim no) (at 204.4700 133.3500 0) (size 24.1300 12.7000)
+		(margins 0.9525 0.9525 0.9525 0.9525) (stroke (width 0) (type default))
+		(fill (type color) (color 255 255 194 1)) (effects (font (size 1.00 1.00)) (justify left top)) (uuid "b0a0e487-2689-e4d3-e299-6686425f2eb3"))
+	(text_box "QP MON: the Q window's +\ncomparator through 453\nohm, /10 into 50 ohm (0\n/ 0.33 V): for the\nscope, beside its line\nto the FPGA." (exclude_from_sim no) (at 204.4700 176.5300 0) (size 25.4000 12.7000)
+		(margins 0.9525 0.9525 0.9525 0.9525) (stroke (width 0) (type default))
+		(fill (type color) (color 255 255 194 1)) (effects (font (size 1.00 1.00)) (justify left top)) (uuid "f9c5bb22-d42b-0e74-90bb-3e7f6cde1754"))
+	(text_box "QN MON: the Q window's -\ncomparator through 453\nohm, /10 into 50 ohm (0\n/ 0.33 V): for the\nscope, beside its line\nto the FPGA." (exclude_from_sim no) (at 204.4700 219.7100 0) (size 25.4000 12.7000)
+		(margins 0.9525 0.9525 0.9525 0.9525) (stroke (width 0) (type default))
+		(fill (type color) (color 255 255 194 1)) (effects (font (size 1.00 1.00)) (justify left top)) (uuid "2ff6f95b-6d8d-690c-7749-a9c7a44cff6e"))
+	(text_box "I_P / I_N, the FAST arm: gain 4, 100 MHz\n(3.5 ns rise) | +-249 mV peak at the\nregulated level | centred 1.65 V | reads\ndown to -81 dBm at the antenna (the\ncomparator floor; noise-quiet would be\n-84) | the data: sign(I)" (exclude_from_sim no) (at 41.9100 62.2300 0) (size 38.1000 12.7000)
+		(margins 0.9525 0.9525 0.9525 0.9525) (stroke (width 0) (type default))
+		(fill (type color) (color 214 236 255 1)) (effects (font (size 1.00 1.00)) (justify left top)) (uuid "ac98fd80-3fc5-8da0-e20a-97b117a8a379"))
+	(text_box "Q_P / Q_N, the FAST arm: the phase\nerror, 0 at lock, +-249 mV peak off lock\n| DC-100 MHz | centred 1.65 V | a QPSK\nsymbol puts +-176 mV on it" (exclude_from_sim no) (at 41.9100 151.1300 0) (size 39.3700 10.1600)
+		(margins 0.9525 0.9525 0.9525 0.9525) (stroke (width 0) (type default))
+		(fill (type color) (color 214 236 255 1)) (effects (font (size 1.00 1.00)) (justify left top)) (uuid "77796520-be87-671b-a3ce-ba77aead7810"))
+	(text_box "TLV3603, comparators (2.5 ns) with a latch / hysteresis pin.\nLE/HYS (each comparator): both DNP = 3 mV of hysteresis (the\nTLV3601's); fit the 0 ohm = 0 mV, the sharpest edge; fit the\n150 k = 30 mV (56 k = 60 mV), for slow or noisy edges.\nDriving the pin low latches the output." (exclude_from_sim no) (at 204.4700 237.4900 0) (size 55.8800 11.4300)
+		(margins 0.9525 0.9525 0.9525 0.9525) (stroke (width 0) (type default))
+		(fill (type color) (color 255 255 194 1)) (effects (font (size 1.00 1.00)) (justify left top)) (uuid "0a3c824d-cd69-8987-a6d4-a5e73b7f1824"))
+	(text_box "AD5696R, 16-bit quad DAC (I2C 0x0C): A =\nV_TQP, B = V_TQN, C = V_TIP, D = V_TIN.  16\nbits on its own 2.5 V reference (0.038 mV a\nstep); GAIN low: 0-2.5 V, round the arms'\n1.65 V centre.  It powers up at midscale\n(1.25 V), where all four comparators read\nhigh until the FPGA writes them.  VREF is\nthe internal reference's output, unused.\nThe A grade: the threshold servo absorbs its\nINL and its reference's drift." (exclude_from_sim no) (at 138.4300 238.7600 0) (size 41.9100 20.3200)
+		(margins 0.9525 0.9525 0.9525 0.9525) (stroke (width 0) (type default))
+		(fill (type color) (color 255 255 194 1)) (effects (font (size 1.00 1.00)) (justify left top)) (uuid "d528abcf-ab25-e376-73d7-d72a3865a387"))
+	(wire (pts (xy 160.0200 72.3900) (xy 160.0200 69.8500)) (stroke (width 0) (type default)) (uuid "d38c797f-c815-83a9-fbd1-c34bbecf1329"))
+	(wire (pts (xy 160.0200 69.8500) (xy 160.0200 64.7700)) (stroke (width 0) (type default)) (uuid "74263b8b-5e23-5427-645b-6f8033332ba8"))
+	(wire (pts (xy 160.0200 69.8500) (xy 167.6400 69.8500)) (stroke (width 0) (type default)) (uuid "8762adfe-6171-267c-ea12-df6f92f4993b"))
+	(wire (pts (xy 167.6400 69.8500) (xy 167.6400 72.3900)) (stroke (width 0) (type default)) (uuid "1f382f32-4ea6-1033-19f9-5f14e8b2ba8b"))
+	(wire (pts (xy 160.0200 85.0900) (xy 160.0200 87.6300)) (stroke (width 0) (type default)) (uuid "59abd32e-2929-a8ee-36c3-41ae8a2fdbf1"))
+	(wire (pts (xy 162.5600 85.0900) (xy 162.5600 90.1700)) (stroke (width 0) (type default)) (uuid "5297bca1-18e1-042c-e278-4e3cc3e49c66"))
+	(wire (pts (xy 162.5600 90.1700) (xy 162.5600 92.7100)) (stroke (width 0) (type default)) (uuid "bfb396be-c548-9a42-e509-46976f2cc718"))
+	(wire (pts (xy 162.5600 90.1700) (xy 165.1000 90.1700)) (stroke (width 0) (type default)) (uuid "2d0406f7-b52c-f94c-ca92-297a666d489c"))
+	(wire (pts (xy 172.7200 90.1700) (xy 175.2600 90.1700)) (stroke (width 0) (type default)) (uuid "ac509dba-402e-be8f-2246-9a2304622fd3"))
+	(wire (pts (xy 38.1000 76.2000) (xy 151.1300 76.2000)) (stroke (width 0) (type default)) (uuid "21a6d9c6-d7db-32cb-9614-f57f2f1b1561"))
+	(wire (pts (xy 151.1300 81.2800) (xy 140.9700 81.2800)) (stroke (width 0) (type default)) (uuid "1aee3add-65bc-2b7e-b3c0-8832b68de4e0"))
+	(wire (pts (xy 140.9700 81.2800) (xy 132.0800 81.2800)) (stroke (width 0) (type default)) (uuid "edec181c-9117-89d7-a316-bfe6134b7471"))
+	(wire (pts (xy 168.9100 78.7400) (xy 184.1500 78.7400)) (stroke (width 0) (type default)) (uuid "04feb51f-241a-4d59-e1ed-dd8ed67a3598"))
+	(wire (pts (xy 184.1500 78.7400) (xy 187.9600 78.7400)) (stroke (width 0) (type default)) (uuid "df4f53a7-ebf0-bd3e-a472-15268e8cf034"))
+	(wire (pts (xy 195.5800 78.7400) (xy 204.4700 78.7400)) (stroke (width 0) (type default)) (uuid "066608af-b9b5-a17f-4049-657d8e29ab34"))
+	(wire (pts (xy 184.1500 78.7400) (xy 184.1500 91.4400)) (stroke (width 0) (type default)) (uuid "20bc5d8c-e58d-188b-383a-8c5a2744233e"))
+	(wire (pts (xy 184.1500 91.4400) (xy 186.6900 91.4400)) (stroke (width 0) (type default)) (uuid "1311cef4-e078-0fdc-f688-965df97d7fd6"))
+	(wire (pts (xy 194.3100 91.4400) (xy 196.8500 91.4400)) (stroke (width 0) (type default)) (uuid "d81ed27e-8778-1908-0e35-366b64f7b17f"))
+	(wire (pts (xy 201.9300 96.5200) (xy 201.9300 99.0600)) (stroke (width 0) (type default)) (uuid "b2ebc314-f5d4-eb83-ba30-661355c8ccf0"))
+	(wire (pts (xy 160.0200 115.5700) (xy 160.0200 113.0300)) (stroke (width 0) (type default)) (uuid "92c0d648-13f5-762a-53ec-b90afa128f6d"))
+	(wire (pts (xy 160.0200 113.0300) (xy 160.0200 107.9500)) (stroke (width 0) (type default)) (uuid "aaff4a4a-8777-ab56-9c77-8be537509d55"))
+	(wire (pts (xy 160.0200 113.0300) (xy 167.6400 113.0300)) (stroke (width 0) (type default)) (uuid "9e745036-2a45-4260-fb0e-150fbca25471"))
+	(wire (pts (xy 167.6400 113.0300) (xy 167.6400 115.5700)) (stroke (width 0) (type default)) (uuid "a09137fd-472f-d2e0-feeb-8a08bd6f7fca"))
+	(wire (pts (xy 160.0200 128.2700) (xy 160.0200 130.8100)) (stroke (width 0) (type default)) (uuid "29a367dc-facd-89e0-12a3-85da3ba2b5b9"))
+	(wire (pts (xy 162.5600 128.2700) (xy 162.5600 133.3500)) (stroke (width 0) (type default)) (uuid "426b00ec-ca20-7db2-8d59-4e5d9e4ae8fa"))
+	(wire (pts (xy 162.5600 133.3500) (xy 162.5600 135.8900)) (stroke (width 0) (type default)) (uuid "a6c79a10-6cbb-7297-157b-79d72bfabca3"))
+	(wire (pts (xy 162.5600 133.3500) (xy 165.1000 133.3500)) (stroke (width 0) (type default)) (uuid "5305f013-36b8-02a8-9268-d77afd1c8bb8"))
+	(wire (pts (xy 172.7200 133.3500) (xy 175.2600 133.3500)) (stroke (width 0) (type default)) (uuid "58caec12-de95-edeb-d0ed-f220d9c7fba3"))
+	(wire (pts (xy 38.1000 119.3800) (xy 151.1300 119.3800)) (stroke (width 0) (type default)) (uuid "5453e7c2-1ea5-3d9b-fa8b-92e3c687e0eb"))
+	(wire (pts (xy 151.1300 124.4600) (xy 140.9700 124.4600)) (stroke (width 0) (type default)) (uuid "43b4740d-9d5c-ebe7-5837-883062f1bc15"))
+	(wire (pts (xy 140.9700 124.4600) (xy 137.1600 124.4600)) (stroke (width 0) (type default)) (uuid "d18c2adf-0c0f-cf61-1044-9c29f952664e"))
+	(wire (pts (xy 168.9100 121.9200) (xy 184.1500 121.9200)) (stroke (width 0) (type default)) (uuid "6479953d-0bda-078c-c340-924ee86ba0d4"))
+	(wire (pts (xy 184.1500 121.9200) (xy 187.9600 121.9200)) (stroke (width 0) (type default)) (uuid "0711819f-cf90-91f7-300f-258fe37933ed"))
+	(wire (pts (xy 195.5800 121.9200) (xy 204.4700 121.9200)) (stroke (width 0) (type default)) (uuid "63832839-c767-cb23-8385-7842ac440b89"))
+	(wire (pts (xy 184.1500 121.9200) (xy 184.1500 134.6200)) (stroke (width 0) (type default)) (uuid "919b4cdc-cc3b-6294-af41-620e82b480ff"))
+	(wire (pts (xy 184.1500 134.6200) (xy 186.6900 134.6200)) (stroke (width 0) (type default)) (uuid "29927fe4-cbf8-1f43-dd25-044fd0d5ad17"))
+	(wire (pts (xy 194.3100 134.6200) (xy 196.8500 134.6200)) (stroke (width 0) (type default)) (uuid "e3e0fbd1-d6d9-548e-dbbb-54a338b5c4fa"))
+	(wire (pts (xy 201.9300 139.7000) (xy 201.9300 142.2400)) (stroke (width 0) (type default)) (uuid "f5ef4b46-d74a-d869-7242-8fbf34ea01cb"))
+	(wire (pts (xy 160.0200 158.7500) (xy 160.0200 156.2100)) (stroke (width 0) (type default)) (uuid "26b2d9a3-b16f-881d-d0dd-e88e7a658499"))
+	(wire (pts (xy 160.0200 156.2100) (xy 160.0200 151.1300)) (stroke (width 0) (type default)) (uuid "2731a2fe-2c7a-ce64-1055-1161ff516920"))
+	(wire (pts (xy 160.0200 156.2100) (xy 167.6400 156.2100)) (stroke (width 0) (type default)) (uuid "75ef74a3-4d33-ca67-fbcd-229e699a7916"))
+	(wire (pts (xy 167.6400 156.2100) (xy 167.6400 158.7500)) (stroke (width 0) (type default)) (uuid "733d7aff-e49d-3674-6b2b-fa885503e71d"))
+	(wire (pts (xy 160.0200 171.4500) (xy 160.0200 173.9900)) (stroke (width 0) (type default)) (uuid "67f81c9a-b42c-afa2-64d6-1645a278ac30"))
+	(wire (pts (xy 162.5600 171.4500) (xy 162.5600 176.5300)) (stroke (width 0) (type default)) (uuid "d32c23ec-545c-98bf-0a10-fbb65628d8e1"))
+	(wire (pts (xy 162.5600 176.5300) (xy 162.5600 179.0700)) (stroke (width 0) (type default)) (uuid "f0c71141-a750-008b-be05-86fff06f575a"))
+	(wire (pts (xy 162.5600 176.5300) (xy 165.1000 176.5300)) (stroke (width 0) (type default)) (uuid "08732721-b4be-71fe-54a0-16d6d96c899d"))
+	(wire (pts (xy 172.7200 176.5300) (xy 175.2600 176.5300)) (stroke (width 0) (type default)) (uuid "9aea61dc-0df7-6bae-7dc9-bfdde42e35de"))
+	(wire (pts (xy 38.1000 162.5600) (xy 151.1300 162.5600)) (stroke (width 0) (type default)) (uuid "e5eb4ea3-81d0-a6da-271e-d77c7805531d"))
+	(wire (pts (xy 151.1300 167.6400) (xy 140.9700 167.6400)) (stroke (width 0) (type default)) (uuid "372791cb-b962-6c74-f074-bc8898abe63b"))
+	(wire (pts (xy 140.9700 167.6400) (xy 121.9200 167.6400)) (stroke (width 0) (type default)) (uuid "b2aa777a-70c2-95c0-e7eb-a2a16131bb5c"))
+	(wire (pts (xy 168.9100 165.1000) (xy 184.1500 165.1000)) (stroke (width 0) (type default)) (uuid "77d5ae9f-34bd-7373-8258-453387ac0176"))
+	(wire (pts (xy 184.1500 165.1000) (xy 187.9600 165.1000)) (stroke (width 0) (type default)) (uuid "a8202064-8ba3-639a-9481-85cf508f22d4"))
+	(wire (pts (xy 195.5800 165.1000) (xy 204.4700 165.1000)) (stroke (width 0) (type default)) (uuid "f0e45cd0-b5f4-a62d-b119-e96746bef184"))
+	(wire (pts (xy 184.1500 165.1000) (xy 184.1500 177.8000)) (stroke (width 0) (type default)) (uuid "57da1746-7fb3-22a8-75ae-0ca7ebc22d15"))
+	(wire (pts (xy 184.1500 177.8000) (xy 186.6900 177.8000)) (stroke (width 0) (type default)) (uuid "7fadb7a6-af48-7a4c-0c99-59061f3f3d4e"))
+	(wire (pts (xy 194.3100 177.8000) (xy 196.8500 177.8000)) (stroke (width 0) (type default)) (uuid "0260d3af-c2a2-6bbf-6507-b01265d322ad"))
+	(wire (pts (xy 201.9300 182.8800) (xy 201.9300 185.4200)) (stroke (width 0) (type default)) (uuid "a4f82745-a9ec-2f6e-927c-bc4ae48e5ec4"))
+	(wire (pts (xy 160.0200 201.9300) (xy 160.0200 199.3900)) (stroke (width 0) (type default)) (uuid "9060f6fe-82af-72e2-2455-c5d466270efe"))
+	(wire (pts (xy 160.0200 199.3900) (xy 160.0200 194.3100)) (stroke (width 0) (type default)) (uuid "5347d029-5cd8-14f7-cc8c-a8614c05cc89"))
+	(wire (pts (xy 160.0200 199.3900) (xy 167.6400 199.3900)) (stroke (width 0) (type default)) (uuid "fd33e126-123b-9e72-253b-7243149b9d1d"))
+	(wire (pts (xy 167.6400 199.3900) (xy 167.6400 201.9300)) (stroke (width 0) (type default)) (uuid "3b4bbde4-8697-9534-7a82-3dbe4060ff33"))
+	(wire (pts (xy 160.0200 214.6300) (xy 160.0200 217.1700)) (stroke (width 0) (type default)) (uuid "be2bebbc-62c5-05bc-274d-616d5920c19d"))
+	(wire (pts (xy 162.5600 214.6300) (xy 162.5600 219.7100)) (stroke (width 0) (type default)) (uuid "5b544daf-2746-7975-da7a-5078ecacc8d3"))
+	(wire (pts (xy 162.5600 219.7100) (xy 162.5600 222.2500)) (stroke (width 0) (type default)) (uuid "5623d803-a655-0cd6-4d55-6e5810d49f96"))
+	(wire (pts (xy 162.5600 219.7100) (xy 165.1000 219.7100)) (stroke (width 0) (type default)) (uuid "ba6a5e53-c0a0-1137-0b16-dcb0d061ab03"))
+	(wire (pts (xy 172.7200 219.7100) (xy 175.2600 219.7100)) (stroke (width 0) (type default)) (uuid "aee6250b-806a-f1c0-b08c-a1b3fbc4a31f"))
+	(wire (pts (xy 38.1000 205.7400) (xy 151.1300 205.7400)) (stroke (width 0) (type default)) (uuid "13a064a0-f215-0b35-8785-38a8a5ab0337"))
+	(wire (pts (xy 151.1300 210.8200) (xy 140.9700 210.8200)) (stroke (width 0) (type default)) (uuid "6e45ab97-4643-0846-78d7-ad9ec2c6bb66"))
+	(wire (pts (xy 140.9700 210.8200) (xy 127.0000 210.8200)) (stroke (width 0) (type default)) (uuid "f7e3c632-e33f-f6cd-d01a-5dc1896dd254"))
+	(wire (pts (xy 168.9100 208.2800) (xy 184.1500 208.2800)) (stroke (width 0) (type default)) (uuid "c347ee1d-8121-8154-718c-d6010a865603"))
+	(wire (pts (xy 184.1500 208.2800) (xy 187.9600 208.2800)) (stroke (width 0) (type default)) (uuid "7f788036-c48e-5a1e-3ea5-003af3867d08"))
+	(wire (pts (xy 195.5800 208.2800) (xy 204.4700 208.2800)) (stroke (width 0) (type default)) (uuid "b826e403-56b9-1d26-e781-a4fac2c1fd1d"))
+	(wire (pts (xy 184.1500 208.2800) (xy 184.1500 220.9800)) (stroke (width 0) (type default)) (uuid "7c766d86-944a-dd15-1f5e-d3fe5b0cd1ab"))
+	(wire (pts (xy 184.1500 220.9800) (xy 186.6900 220.9800)) (stroke (width 0) (type default)) (uuid "daff5afc-ad87-cf41-e68c-1887803c90d7"))
+	(wire (pts (xy 194.3100 220.9800) (xy 196.8500 220.9800)) (stroke (width 0) (type default)) (uuid "17ce0062-92ee-5c15-67b6-d0dc374965e1"))
+	(wire (pts (xy 201.9300 226.0600) (xy 201.9300 228.6000)) (stroke (width 0) (type default)) (uuid "1dc6d70a-d63f-90ee-2eff-2d7229f8048f"))
+	(wire (pts (xy 62.2300 238.7600) (xy 49.5300 238.7600)) (stroke (width 0) (type default)) (uuid "913b9834-c9be-7214-5fca-93dc6d9506ff"))
+	(wire (pts (xy 62.2300 241.3000) (xy 49.5300 241.3000)) (stroke (width 0) (type default)) (uuid "da774cde-6f14-04bf-feb4-0cfa4ef65f30"))
+	(wire (pts (xy 90.1700 243.8400) (xy 97.7900 243.8400)) (stroke (width 0) (type default)) (uuid "ccb1a58d-16e6-cc63-f94f-94f7a2e54e23"))
+	(wire (pts (xy 97.7900 243.8400) (xy 132.0800 243.8400)) (stroke (width 0) (type default)) (uuid "1729e962-7cc6-c0c8-2747-a08d302a1818"))
+	(wire (pts (xy 132.0800 243.8400) (xy 132.0800 81.2800)) (stroke (width 0) (type default)) (uuid "8989ce4b-c700-cada-1e54-166be9f063e6"))
+	(wire (pts (xy 90.1700 246.3800) (xy 97.7900 246.3800)) (stroke (width 0) (type default)) (uuid "00d2ecc5-a2eb-f91b-bd81-31cd645c4f16"))
+	(wire (pts (xy 97.7900 246.3800) (xy 137.1600 246.3800)) (stroke (width 0) (type default)) (uuid "f0bab2a9-8a6c-ea8c-a71a-3b9bd259241c"))
+	(wire (pts (xy 137.1600 246.3800) (xy 137.1600 124.4600)) (stroke (width 0) (type default)) (uuid "86e476a4-14fd-8d17-7551-d657d36114a9"))
+	(wire (pts (xy 90.1700 238.7600) (xy 97.7900 238.7600)) (stroke (width 0) (type default)) (uuid "27b9ee86-157b-b698-5eb8-3d074bb2ba4b"))
+	(wire (pts (xy 97.7900 238.7600) (xy 121.9200 238.7600)) (stroke (width 0) (type default)) (uuid "4e13cee3-8bc6-c9bf-e193-bd6d8c3f8250"))
+	(wire (pts (xy 121.9200 238.7600) (xy 121.9200 167.6400)) (stroke (width 0) (type default)) (uuid "6bca18a4-da03-5ee2-ac14-68c119b58710"))
+	(wire (pts (xy 90.1700 241.3000) (xy 97.7900 241.3000)) (stroke (width 0) (type default)) (uuid "8590186c-9bec-c966-aef7-398271677b2a"))
+	(wire (pts (xy 97.7900 241.3000) (xy 127.0000 241.3000)) (stroke (width 0) (type default)) (uuid "deeed373-584f-0abc-2643-c90ecde50b0e"))
+	(wire (pts (xy 127.0000 241.3000) (xy 127.0000 210.8200)) (stroke (width 0) (type default)) (uuid "e86bdfde-f7e8-99ab-6e0b-ce5e45aa68a6"))
+	(wire (pts (xy 72.3900 231.1400) (xy 72.3900 220.9800)) (stroke (width 0) (type default)) (uuid "de49e3f8-41bb-ba07-36ee-545265f31404"))
+	(wire (pts (xy 74.9300 231.1400) (xy 74.9300 220.9800)) (stroke (width 0) (type default)) (uuid "a11e565a-fc74-049e-df4d-e586221b5524"))
+	(wire (pts (xy 77.4700 231.1400) (xy 77.4700 220.9800)) (stroke (width 0) (type default)) (uuid "767a0ffd-599b-cbac-0ae6-252ba75d3261"))
+	(wire (pts (xy 80.0100 231.1400) (xy 80.0100 220.9800)) (stroke (width 0) (type default)) (uuid "fc8b31d6-22c0-651b-26dd-4bdecb878302"))
+	(wire (pts (xy 67.3100 220.9800) (xy 72.3900 220.9800)) (stroke (width 0) (type default)) (uuid "7b391a53-2f12-d5da-67f4-576cbbefd068"))
+	(wire (pts (xy 72.3900 220.9800) (xy 74.9300 220.9800)) (stroke (width 0) (type default)) (uuid "07ef4790-5161-4b60-8eeb-26de77d23397"))
+	(wire (pts (xy 74.9300 220.9800) (xy 77.4700 220.9800)) (stroke (width 0) (type default)) (uuid "38138e4a-c13d-f458-e185-8494a7bdc7e5"))
+	(wire (pts (xy 77.4700 220.9800) (xy 80.0100 220.9800)) (stroke (width 0) (type default)) (uuid "711ac5dd-1ddb-a8db-78f0-f08ae6dc48a6"))
+	(wire (pts (xy 80.0100 220.9800) (xy 90.1700 220.9800)) (stroke (width 0) (type default)) (uuid "5d1dc2fa-ea52-99bc-9f2d-3ef33dbd22f8"))
+	(wire (pts (xy 90.1700 220.9800) (xy 100.3300 220.9800)) (stroke (width 0) (type default)) (uuid "965cfdf3-3bc2-911a-ca52-5943da4f24b1"))
+	(wire (pts (xy 90.1700 220.9800) (xy 90.1700 223.5200)) (stroke (width 0) (type default)) (uuid "fd91a6e8-efb2-d0a7-29c1-81cac79647c4"))
+	(wire (pts (xy 100.3300 220.9800) (xy 100.3300 223.5200)) (stroke (width 0) (type default)) (uuid "5200f1d3-6d9d-3c22-3196-f2dd24f394e7"))
+	(wire (pts (xy 71.1200 259.0800) (xy 71.1200 261.6200)) (stroke (width 0) (type default)) (uuid "fd501d7c-e273-3a42-41fb-ecc380f99421"))
+	(wire (pts (xy 73.6600 259.0800) (xy 73.6600 261.6200)) (stroke (width 0) (type default)) (uuid "2bb9db6a-56d5-f64c-0cc5-fa276cfbd5fa"))
+	(wire (pts (xy 76.2000 259.0800) (xy 76.2000 261.6200)) (stroke (width 0) (type default)) (uuid "8d30cd1a-d537-0c7a-795c-be45f3517fd8"))
+	(wire (pts (xy 78.7400 259.0800) (xy 78.7400 261.6200)) (stroke (width 0) (type default)) (uuid "a5727d18-0212-2e78-2e4b-262b459d885f"))
+	(wire (pts (xy 81.2800 259.0800) (xy 81.2800 261.6200)) (stroke (width 0) (type default)) (uuid "0cc84e54-efd3-72c6-96c2-e9ce55df6a71"))
+	(junction (at 72.3900 220.9800) (diameter 0) (color 0 0 0 0) (uuid "3fa96774-e813-bf20-37d3-4616acdb7788"))
+	(junction (at 74.9300 220.9800) (diameter 0) (color 0 0 0 0) (uuid "a43b1bb6-4d05-32c2-4d43-dbb40bd91828"))
+	(junction (at 77.4700 220.9800) (diameter 0) (color 0 0 0 0) (uuid "7a392d4a-e58e-2053-ae77-536cc180ca58"))
+	(junction (at 80.0100 220.9800) (diameter 0) (color 0 0 0 0) (uuid "36dbb361-2308-3f35-191e-91833f86b566"))
+	(junction (at 90.1700 220.9800) (diameter 0) (color 0 0 0 0) (uuid "d1ce6444-ef42-144e-af70-cc5ba32904b2"))
+	(junction (at 100.3300 220.9800) (diameter 0) (color 0 0 0 0) (uuid "039d1935-7bac-1b1e-8e51-bcb0a9bc77dd"))
+	(junction (at 160.0200 69.8500) (diameter 0) (color 0 0 0 0) (uuid "9160a52f-0c7b-508b-7bc6-52a68707b08b"))
+	(junction (at 160.0200 113.0300) (diameter 0) (color 0 0 0 0) (uuid "44272f4d-d657-6c98-9b6e-0cf6e7f8e5d8"))
+	(junction (at 160.0200 156.2100) (diameter 0) (color 0 0 0 0) (uuid "3f7433ae-4d7c-978f-9d55-f21bc1ff37e5"))
+	(junction (at 160.0200 199.3900) (diameter 0) (color 0 0 0 0) (uuid "b0ef0c03-19be-cf88-e790-97fbb5e6a03d"))
+	(junction (at 162.5600 90.1700) (diameter 0) (color 0 0 0 0) (uuid "835a05ed-fdb7-39ff-4bbe-b84124f4eadd"))
+	(junction (at 162.5600 133.3500) (diameter 0) (color 0 0 0 0) (uuid "92b1955c-c807-7827-691f-137ea885804a"))
+	(junction (at 162.5600 176.5300) (diameter 0) (color 0 0 0 0) (uuid "bca74d4b-be72-f75e-08f2-09c72d566cc9"))
+	(junction (at 162.5600 219.7100) (diameter 0) (color 0 0 0 0) (uuid "42ccc699-667d-6242-ec08-582ef1109118"))
+	(junction (at 184.1500 78.7400) (diameter 0) (color 0 0 0 0) (uuid "2552d2ce-96dd-11e3-c331-2f19c634b25a"))
+	(junction (at 184.1500 121.9200) (diameter 0) (color 0 0 0 0) (uuid "87440dd2-a901-3905-fa39-65a871fae332"))
+	(junction (at 184.1500 165.1000) (diameter 0) (color 0 0 0 0) (uuid "4e45f650-39ca-3bd1-49a2-bce4b3d5c5a7"))
+	(junction (at 184.1500 208.2800) (diameter 0) (color 0 0 0 0) (uuid "87886062-ba22-4cb8-69cb-3cde066feada"))
+	(embedded_fonts no)
+)

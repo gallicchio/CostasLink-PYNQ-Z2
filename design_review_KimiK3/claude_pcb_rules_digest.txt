@@ -1,0 +1,219 @@
+Agent is idle (waiting for messages). agent_id: df36d69a-f254-4d38-bac4-0f345e144ae7, agent_type: explore, status: idle, description: Extract CLAUDE_PCB.md rules, elapsed: 647s, total_turns: 1
+
+[Turn 0]
+## 1. How Jason works with you
+
+- **§1 — Log every prompt and response verbatim** (minor typo fixes allowed), with the actual work time range; include decision tables in the response. **Artifact:** board-local `CLAUDE_CODE_CHAT.md`, not repository root. `../CLAUDE_PCB.md:35-47`
+- **§1 — Questions go in chat and temporary `QUESTIONS.md`; answers go in `ANSWERS.md`.** **Artifact:** project documentation. `:48-49`
+- **§1 — Continue unattended work and log decisions/progress before power/session loss; do not stop merely to ask what can be decided.** **Artifact:** chat log and project files. `:50-51`
+- **§1 — Make a recommendation and state the trade-off; do not present unused alternatives.** **Artifact:** design decisions/review responses. `:52`
+- **§1 — End reviews with likely dead-on-arrival causes and mitigations.** **Artifact:** design review/report. `:53-54`
+- **§1 — Before each block, explicitly consider:** failure rescue (DNP alternative, 0 Ω, π network, spare pad), JLCPCB assembly/serviceability, worst-case life/thermal/current/voltage, eliminating parts, simpler implementation, and reducing unique resistor/capacitor values. **Artifact:** schematic/design plan. `:55-64`
+- **§1 — Keep Rev A until the first fab is paid. Then lock it with a git tag, `<board>-revA.zip`, `mfg/release/`, and SHA-256 checksums; maintain `REVB_CHANGES.md` for later changes.** **Artifact:** release repository. `:65-68`
+- **§1 — Perform outside reviews in separate `design_review_<Name>/` directories; reconcile from datasheet evidence, not majority vote.** **Artifact:** review prompt/reports. `:69-73`
+- **§1 — Perform a second review round after fixes, in parallel “2” directories; state changed items, board dimensions/numbers, “nothing blocks the order,” tools/commands/output paths, and the applicable rule checks.** **Artifact:** second-round review package. `:73-77`
+- **§1 — Review the design yourself before reading external reviews; then rebuild after incorporating accepted findings. A fix is not accepted until generators and the complete build are rerun.** **Artifact:** review/build log. `:78-91`
+- **§1 — Put review findings in files, not only chat windows.** **Artifact:** review directories/reports. `:91-94`
+- **§1 — Do not hand-edit generated output. Fix the generator/source of truth and rebuild.** **Artifact:** generated schematic, PCB, documents, manufacturing files. `:95-101`
+- **§1 — On every change, run the complete build and review the rendered schematic, PCB, 3D board, and release outputs.** **Artifact:** build output and rendered review images. `:101-110`
+
+## 2. Build system and sources of truth
+
+- **§2 — One command must generate schematic, PCB, checks, manufacturing files, renders, documents, and cost estimate. `--clean` removes exactly generated files.** **Artifact:** build system. `:133-135`
+- **§2 — A fresh clone on another machine must build reproducibly. Vendor every symbol, footprint, and 3D model used by the board.** **Artifact:** project libraries. `:136-139`
+- **§2 — Use relative paths only; never commit `/home/...`, `/Users/...`, `/tmp/...`, `/mnt/...`, or other machine-specific paths.** **Artifact:** scripts, KiCad files, documents, generated files. `:140-154`
+- **§2 — Use `os.path.dirname(__file__)`, `${KIPRJMOD}`, `${workspaceFolder}`, or an environment-variable tool path as appropriate.** **Artifact:** scripts/KiCad project/editor configuration. `:142-147`
+- **§2 — Scratch files belong in a gitignored project build directory or `tempfile`; never use a fixed `/tmp` path.** **Artifact:** scripts/build outputs. `:147-148`
+- **§2 — Rewrite generated absolute paths in netlists and KiCad output-directory fields to relative paths. Keep build directories, compiled host tests, and `fp-info-cache` out of git.** **Artifact:** generated KiCad/build files. `:148-153`
+- **§2 — Before committing, grep both text and binary files for absolute paths.** **Artifact:** repository commit. `:153-154`
+- **§2 — Maintain one source of truth per fact:** pin assignments drive schematic, firmware constraints, and pinout; part numbers live in one parts table; revision/date live in one place; placement drives part-associated silk. **Artifact:** design source files. `:155-160`
+- **§2 — Generate pinout, bring-up handbook, end-user guide, sheet PDFs/PNGs, board-layer plots cropped to the outline, and multiple-side 3D renders.** **Artifact:** generated documentation. `:161-163`
+- **§2 — Inspect schematic exports and board renders visually. Use KiCad’s own rendering; for silk corner inspection, plot F.SilkS, F.Mask, and Edge.Cuts separately and crop to board millimetres.** **Artifact:** review renders. `:164-171`
+- **§2 — Put datasheets in `datasheets/` (gitignored); fetch one for every IC, connector, and mechanical part. Read pin figures, not only pin tables.** **Artifact:** design evidence/library. `:172-177`
+- **§2 — Check pad positions with KiCad’s own `pcbnew`/pad checker because rotation conventions are unreliable.** **Artifact:** PCB footprint validation. `:178`
+- **§2 — For multiple boards from one pipeline, select the board with one environment variable/module; verify the first board is byte-for-byte unchanged after refactoring.** **Artifact:** shared build system. `:179-183`
+- **§2 — Bound scripted edits of hand-written documents by the exact section/table being replaced; preserve and diff a scratch copy.** **Artifact:** plans and documentation. `:184-186`
+- **§2 — Board variants need an electrical identifier using an existing resistor/strap location and different value/rail.** **Artifact:** schematic, BOM, firmware identification. `:187-189`
+
+## 3. Parts and sourcing — JLCPCB
+
+- **§3 — Every machine-placed part must be in JLCPCB stock with enough stock for at least a week and be active at Digi-Key and Mouser.** **Artifact:** BOM/parts table. `:230-233`
+- **§3 — Use consigned parts only with Jason’s agreement and only when they save real cost or complexity.** **Artifact:** sourcing plan. `:234`
+- **§3 — Prefer Basic parts; each distinct Extended part adds approximately a $3 setup fee.** **Artifact:** BOM/cost estimate. `:235`
+- **§3 — Query current JLCPCB stock and price through the parts API; cache each answer with its timestamp; do not rely on memory or the search webpage.** **Artifact:** sourcing database/release. `:236-237`
+- **§3 — Re-query stock on order day (`build_release.py N --refresh`).** **Artifact:** final release BOM. `:259`
+- **§3 — Check every LCSC code against JLCPCB’s description. The description must contain the schematic value and package; release fails if any SMD part has no code.** **Artifact:** BOM validation. `:238-242`
+- **§3 — Compare each ordered code’s EasyEDA land pattern with the board: hole, pad, land pattern, and datum.** **Artifact:** footprint/part compatibility check. `:243-245`
+- **§3 — Verify stock column when searching MPNs; family variants can differ mechanically.** **Artifact:** part selection. `:245-246`
+- **§3 — Do not confuse 1.25 mm GH connectors with PicoBlade clones; verify connector family, signal-pad geometry, mounting-pad geometry, and any required footprint stretch.** **Artifact:** connector footprint/BOM. `:247-252`
+- **§3 — Resolve conflicting vendor interface tables against the vendor schematic and firmware; do not trust a table alone.** **Artifact:** schematic/pinout/firmware. `:253-257`
+- **§3 — Read voltage, current, and power ratings from the selected part’s own description/datasheet. A chip inductor is not a power inductor; calculate resistor worst-case power.** **Artifact:** BOM/design calculations. `:257-258`
+- **§3 — Check protection/power-part attributes—not merely the value field—including hold/trip current, voltage, and power. Compare actual code attributes with the schematic value.** **Artifact:** BOM validation. `:260-265`
+- **§3 — Prefer 0805 or 0603 for hand rework/probing unless density or datasheet requirements dictate otherwise.** **Artifact:** footprint selection. `:266-267`
+- **§3 — Inspect fetched footprints for accidental Edge.Cuts; intentionally choose vertical versus edge-mount connectors.** **Artifact:** vendored footprints/PCB outline. `:268-270`
+- **§3 — Annotated BOM must include price per item and per board quantity, stock timestamp, Basic/Extended/consigned status, and notes for review items.** **Artifact:** BOM/cost estimate. `:271-272`
+- **§3 — Include shipping and US import duty in landed cost; JLCPCB DDP duty may be 35–90% of goods value.** **Artifact:** cost estimate. `:273-274`
+- **§3 — BOM has exactly one line per LCSC code; normalize values so variants such as `51R1%` and `51R` cannot produce duplicate matched lines.** **Artifact:** JLCPCB BOM upload. `:275`
+- **§3 — The part’s LCSC code, value, package, footprint, and mechanical land pattern must all agree.** **Artifact:** BOM/PCB release. `:238-246`
+
+## 4. Schematics
+
+- **§4 — Draw signals left-to-right and power from the top.** **Artifact:** schematic. `:289-292`
+- **§4 — Series parts are horizontal in the signal path; shunts are vertical from the node.** **Artifact:** schematic. `:291-293`
+- **§4 — Draw the circuit as understood, not merely as the netlist connects.** **Artifact:** schematic readability. `:293`
+- **§4 — Do not make signal labels disappear and reappear; wire connections where practical. Label-only continuation is reserved for power and ground.** **Artifact:** schematic connectivity. `:294-296`
+- **§4 — Prefer a large sheet that keeps long paths and parallel copies together; avoid unexplained cross-sheet labels. Keep all drawing inside the page border and out of the title block.** **Artifact:** schematic sheets. `:297-300`
+- **§4 — Put voltage range, frequency, rise time, impedance, clipping limit, and probe information at the node they describe, using short-arrow note boxes.** **Artifact:** schematic annotations. `:301-305`
+- **§4 — Notes are short columns, approximately 50–70 characters wide, broken at logical sentence/formula boundaries; size boxes to their longest line.** **Artifact:** schematic notes. `:305-308`
+- **§4 — Put explanations beside the applicable block (“just in time”), not as a detached essay at the top. Center block titles over their blocks.** **Artifact:** schematic documentation. `:308-311`
+- **§4 — Put comments identifying which chip a series resistor belongs to next to that resistor.** **Artifact:** schematic. `:311-312`
+- **§4 — Explain why selected parts were chosen and when jumpers should be fitted.** **Artifact:** schematic notes/design documentation. `:313-314`
+- **§4 — State maximum DC, Vpp before clipping, Vpp before damage, and output ranges at every external connector.** **Artifact:** schematic and board documentation. `:315`
+- **§4 — Labels in a row must have the same side, offset, orientation, and relation to their own connector/tap/test point; never place one between two items.** **Artifact:** schematic labels and PCB silk. `:316-323`
+- **§4 — Every schematic text, reference, value, symbol, wire, and box must avoid overlap and remain inside the page. Check both code and exported PDF.** **Artifact:** schematic and PDF release. `:324-330`
+- **§4 — Model actual KiCad text extents rather than anchor points in overlap checks.** **Artifact:** schematic generator/checker. `:330-333`
+- **§4 — Use hierarchical sheets/labels only when the signal path remains unambiguous; a reader must be able to determine where every signal goes.** **Artifact:** schematic connectivity. `:297-300`
+
+## 5. Placement and routing
+
+- **§5 — Floorplan connectors and functional blocks first; route signal paths through chips in schematic order; place passives directly at the pins they serve; reserve silk room before placement.** **Artifact:** PCB placement. `:490-496`
+- **§5 — Preserve schematic orientation: series resistors horizontal along the trace; shunts vertical.** **Artifact:** PCB placement. `:497-499`
+- **§5 — Verify actual pad orientation for every footprint at 0/90/180/270°; never assume “0 = horizontal.”** **Artifact:** footprint/placement validation. `:499-500`
+- **§5 — Put decouplers at the IC pins and connect directly to a ground via; place the via on the back if that is closer.** **Artifact:** PCB routing. `:501-502`
+- **§5 — Put every functional block in a silk box. Every part and label belonging to the block must be inside; nothing unrelated may be inside. Check programmatically.** **Artifact:** PCB/silkscreen checker. `:503-506`
+- **§5 — Lay identical channels identically and in semantic order (ADC A above ADC B, DAC 1 above DAC 2), even if that requires swapping physical strips.** **Artifact:** PCB placement/silk. `:507-510`
+- **§5 — Distribute power with pours or wide, short traces; verify actual rail voltage drop from source to every supply pin using a copper-resistance model.** **Artifact:** PCB/power analysis. `:511-521`
+- **§5 — Check regulator dropout at worst input voltage, including USB’s possible 4.75 V minus fuse/diode drops.** **Artifact:** power design calculation. `:514-515`
+- **§5 — Analog rails use planes rather than long narrow traces; place a via at each supply pin as required.** **Artifact:** PCB power routing. `:518-521`
+- **§5 — Measure every rail’s actual shipped width by net. Widen rail traces toward their class width after pad exits without moving the original route; do not let the router narrow the entire rail to a fine IC pad.** **Artifact:** final PCB/copper-width check. `:522-527`
+- **§5 — Maintain an unbroken ground reference under fast signals; place a ground via within approximately 1.5 mm of every layer change.** **Artifact:** high-speed PCB routing. `:528-529`
+- **§5 — Physically separate analog and digital circuitry and minimize switch-node copper.** **Artifact:** PCB floorplan/routing. `:529`
+- **§5 — Select the stack-up before routing from the fab’s actual stack-up table.** **Artifact:** PCB stack-up/manufacturing notes. `:530-532`
+- **§5 — Four-layer, top-side assembly: L1 parts/signals; L2 solid ground with no traces; L3 supplies/remaining routing plus ground fill; L4 same as L3.** **Artifact:** PCB layer assignment. `:535-537`
+- **§5 — Four-layer, both-side assembly: L1/L4 parts, signals, supplies; L2 ground; L3 supplies.** **Artifact:** PCB layer assignment. `:538`
+- **§5 — Route in this order:** ground/power pours; critical analog/RF/crystal/reset lines; high-current supplies; intra-block routing; inter-block connections; leftovers. **Artifact:** routing process. `:543-549`
+- **§5 — Give every ground pad its own via at the pad and every power-plane connection its own nearby via; avoid shared-via inductance.** **Artifact:** PCB vias/routing. `:550-553`
+- **§5 — On two-layer boards, make the ground via the pad’s only ground path; do not add a parallel top-copper loop.** **Artifact:** two-layer PCB routing. `:553`
+- **§5 — Space unshielded inductors or rotate adjacent inductors 90° so their axes are not aligned.** **Artifact:** PCB placement. `:554`
+- **§5 — Keep aggressors (switchers, motor/coil drivers, fast logic) away from victims (receivers, ADCs, sensors, high-gain analog); use distance before shielding.** **Artifact:** PCB floorplan. `:555-557`
+- **§5 — Remove floating copper islands or stitch them to ground.** **Artifact:** copper zones. `:558`
+- **§5 — Balance copper approximately across all layers and fill unused area with grounded copper stitched between layers to reduce warp and spread heat.** **Artifact:** PCB copper/zones. `:559`
+- **§5 — Use the largest reliable via drills allowed by available room; reserve very small drills for fine-pitch fanout.** **Artifact:** PCB via rules. `:560`
+- **§5 — Leave JLCPCB assembly spacing for placement, inspection, and rework.** **Artifact:** PCB placement. `:561`
+- **§5 — Every solderable pad needs paste; test pads, fiducials, and edge contacts normally do not. Use window-pane paste on large exposed pads at approximately 50–70% coverage.** **Artifact:** paste layer. `:562-563`
+- **§5 — Provide three board fiducials at three widely separated corners and three more around each fine-pitch part.** **Artifact:** PCB assembly alignment. `:564-565`
+- **§5 — In generated boards, fiducials/layer markers are netless graphics, not footprints: filled copper `gr_circle`, larger mask circle, and copper `gr_text` layer markers. They must be obstacles to placement, routing, and silk occupancy checks.** **Artifact:** generated PCB. `:566-571`
+- **§5 — Put layer numbers in copper on every copper layer at one common location.** **Artifact:** PCB fabrication aid. `:566-567`
+- **§5 — Check the placed board at 1:1 by printing it and laying real connectors/mechanical parts on it.** **Artifact:** mechanical/PCB validation. `:572-573`
+- **§5 — Calculate DC resistance and voltage drop of every high-current path, including the return path.** **Artifact:** power analysis. `:574`
+- **§5 — Plan critical copper explicitly where automatic routing is insufficient; include short decoupler stubs and all ground vias in the plan.** **Artifact:** routing plan. `:575-576`
+
+## 6. Silkscreen
+
+- **§6 — Print board name, “by Jason Gallicchio and Claude,” URL, build date, and “rev A”; make revision least prominent. Generate the date from the build. Add a URL QR code with printed URL beneath it when applicable.** **Artifact:** F.SilkS. `:917-923`
+- **§6 — Connector names are large, immediately beside their own connector, never between connectors. Include purpose and limits such as “±1 V MAX” or “15 V DC, 1 A MIN.”** **Artifact:** F.SilkS. `:924-928`
+- **§6 — Do not print U.FL designators as the user-facing name; print the signal name beside the tap.** **Artifact:** F.SilkS. `:928`
+- **§6 — Connector/test-point rows must use one relation per row: same side, gap, centering, angle, size, and limit placement. Reserve label strips before small-part placement.** **Artifact:** F.SilkS and placement generator. `:929-953`
+- **§6 — Use approximately 1.5 mm text for SMA labels and 1.0–1.2 mm for taps/pads; constrained long labels may be rotated into one column per connector.** **Artifact:** F.SilkS. `:941`
+- **§6 — Release checker must confirm every required connector label exists, is at least 1.0 mm tall for an SMA or 0.9 mm for a tap/pad, belongs to its own connector, and does not sit nearer another row member.** **Artifact:** written PCB/silk checker. `:951-956`
+- **§6 — Header pins must each be labelled next to their own pin: top-row labels above, bottom-row labels below; rotate labels with the header.** **Artifact:** F.SilkS. `:957-959`
+- **§6 — Label screw-terminal wire colors/signals at the screw, centered under each pin and outside the outline; reserve the strip and keep the designator out.** **Artifact:** F.SilkS. `:959-964`
+- **§6 — Label every jumper choice beside its own pins on every copy; for 3-pin selectors put the two choices beside the outer pins and mark the common center pin. Derive choices from the actual pin nets, not drawing left/right.** **Artifact:** F.SilkS/schematic/netlist. `:965-974`
+- **§6 — Distinguish otherwise identical selectors by name.** **Artifact:** F.SilkS. `:973-974`
+- **§6 — Label test points at the pad with rail or expected reading, e.g. `3V3` or `In 10 MHz 0.7–8 Vpp`; ensure letters cannot be misread.** **Artifact:** F.SilkS. `:975-976`
+- **§6 — Label ICs by function and part number and print component values where useful.** **Artifact:** F.SilkS. `:977-978`
+- **§6 — Put region/block labels inside their box under the top edge, never on a shared boundary line.** **Artifact:** F.SilkS/block boxes. `:979-981`
+- **§6 — No silk may overlap silk, pads, board edge, or unrelated objects. Labels that do not fit go to F.Fab. Check labels as well as components and report both out-of-box lists. Exclude `MountingHole` and its reference.** **Artifact:** PCB/silk checker. `:982-987`
+- **§6 — JLCPCB-printable text must be at least 0.8 mm high with at least 0.15 mm line width. Stock footprint lines below 0.15 mm must be corrected or accepted only after checking.** **Artifact:** F.SilkS. `:988-989`
+- **§6 — Preserve library silk using pad-outline-plus-clearance clipping, not a crude square pad test; count each footprint’s silk lines before and after generation.** **Artifact:** silk generator. `:990-994`
+- **§6 — Add a pin-1 mark only when the pattern is half-turn symmetric and the library has no mark. Do not duplicate a library triangle. Add a large dot for oscillators/crystals with only an “L” cue.** **Artifact:** F.SilkS. `:995-998`
+- **§6 — Prose is left-justified, broken at sentence boundaries, and grammar-checked.** **Artifact:** F.SilkS. `:999`
+- **§6 — Put each legend paragraph beside the thing it explains; wrap to the available room.** **Artifact:** F.SilkS. `:1000-1002`
+- **§6 — For rear microSD, state “contacts toward the board” and “card slides in here.”** **Artifact:** F.SilkS. `:1003`
+- **§6 — Name ports for the user/owner, e.g. “USB USER,” not ambiguous labels such as “USB FPGA.”** **Artifact:** F.SilkS. `:1004`
+- **§6 — Label every connector pin, including 1.25 mm pitch: front labels approximately 0.9 mm centered beside each pad; repeat pin numbers and longer names on the back. Put URL on front even at 0.8 mm and on back with QR code.** **Artifact:** F.SilkS. `:1005-1010`
+- **§6 — Name UART signals by whose viewpoint they use; print “FC TX” and “FC RX,” and map by pin number, never words alone.** **Artifact:** F.SilkS/pinout. `:1011-1013`
+- **§6 — No label may be in another unit’s box. Assign cross-sheet/tile parts a home tile and check written-board text ownership from actual KiCad text boxes.** **Artifact:** PCB/silk checker. `:1014-1021`
+- **§6 — A designator may print only where its own part is nearest; otherwise move it to F.Fab.** **Artifact:** F.SilkS. `:1022-1024`
+- **§6 — A tap’s name states what it carries and is tight against the jack, on the side away from jumpers.** **Artifact:** F.SilkS. `:1025`
+
+## 7. Mechanical
+
+- **§7 — Connectors must point outward; verify with the 3D render, not footprint rotation.** **Artifact:** PCB/3D mechanical review. `:1072-1073`
+- **§7 — USB-C must be flush/appropriately beyond the edge so a moulded plug seats.** **Artifact:** PCB outline/connector placement. `:1074-1077`
+- **§7 — For HRO TYPE-C-31-M-12 (C165948), board edge is 5.79 mm past the upper shell tab and mating face 0.99 mm past laminate. Do not move the connector to satisfy silk-to-edge DRC; trim silk instead.** **Artifact:** USB-C mechanical placement. `:1075-1078`
+- **§7 — Behind an end plate, connector faces must extend past the board by the plate thickness.** **Artifact:** enclosure/connector assembly. `:1079`
+- **§7 — Leave room for adjacent thick plugs; space SMAs for fingers/wrenches and distribute them along an edge.** **Artifact:** mechanical floorplan. `:1080-1081`
+- **§7 — Put M3 mounting holes in corners, clear of headers; reserve/check card and plug insertion keep-outs in code.** **Artifact:** PCB mechanical constraints. `:1082-1083`
+- **§7 — Select a real enclosure and verify against its drawing, including board length, connector reach, part heights, floor clearance, and slot positions.** **Artifact:** enclosure model/check. `:1084-1087`
+- **§7 — Obtain vendor 3D models and slice/intersect them; use exact distance checks for curved surfaces. Include the vendor model in the housing check.** **Artifact:** mechanical CAD/check script. `:1088-1095`
+- **§7 — Follow screw forces through the entire stack. Do not intentionally make a plate thinner than a connector flange in a way that lifts/bends the PCB; use nominally exact stack-up with tolerances either direction.** **Artifact:** enclosure mechanical design. `:1096-1099`
+- **§7 — Check every screw length from head seat through all parts to the pilot hole; tip must stop inside with adequate thread. Compute it and fail on bad lengths. Size counterbores for the widest purchased head (M2 pan head up to 4.0 mm).** **Artifact:** enclosure CAD/check. `:1100-1105`
+- **§7 — Measure engraved text stroke width, not just height; DejaVu Sans Bold at 2.6 mm has 0.42 mm bars, below the 0.5 mm MJF guideline.** **Artifact:** enclosure engraving. `:1106-1107`
+- **§7 — Every part must have a 3D model.** **Artifact:** PCB/3D render. `:1108`
+
+## 8. Manufacturing package — JLCPCB
+
+- **§8 — `FABRICATION_NOTES.txt` must reproduce JLCPCB’s order form field-by-field in web-form order, with selected value and reason for non-defaults. Board-derived fields must be computed, not typed.** **Artifact:** manufacturing notes. `:1120-1128`
+- **§8 — Include PCB fields:** material, layers, dimensions, PCB quantity, product type; specifications including delivery format, thickness, color, silk, material type, finish, and ENIG gold thickness. **Artifact:** JLCPCB order notes. `:1124-1127`
+- **§8 — Include high-spec fields:** outer/inner copper, layer sequence, stack-up, impedance control, via covering, minimum via hole/diameter, outline tolerance, production-file confirmation, PCB marking, electrical test, gold fingers, castellated/press-fit holes, edge plating, slots, UL, backdrill, humidity card. **Artifact:** JLCPCB order notes. `:1127-1129`
+- **§8 — Include assembly fields:** PCBA type, assembly side, quantity, edge rails/fiducials, placement confirmation, stencil/fixture storage, parts selection, bake/photo/cleaning/conformal coating/special stencil/packaging/depaneling/paste/flying-probe/nitrogen/function-test/remarks, then stencil.** **Artifact:** JLCPCB order notes. `:1129-1131`
+- **§8 — Give every order-form dialog its own line with answer and reason.** **Artifact:** fabrication notes. `:1132-1135`
+- **§8 — An actual stack-up thickness must be checked against enclosure/edge-clamp connectors; for JLC06161H-7628 the actual thickness is 1.5544 mm ±10%, not nominal 1.6 mm.** **Artifact:** stack-up/order/mechanical check. `:1133-1137`
+- **§8 — Treat Impedance Control as separate from Specify Stackup. If selecting ±10%, include an impedance table/diagram listing net, layer, width, and target; otherwise choose No requirement.** **Artifact:** order package. `:1138-1143`
+- **§8 — Use small 0.15 mm holes only where required by fine-pitch/BGA fanout; avoid unnecessary cost.** **Artifact:** via rules/order selection. `:1144-1147`
+- **§8 — For JLC06161H-7628, copy the exact stack-up: 1 oz outer, 0.5 oz inner; dielectric/copper sequence totaling 1.5544 mm. Ensure the PCB stack-up matches the selected dialog.** **Artifact:** PCB stack-up and fabrication notes. `:1148-1153`
+- **§8 — Mark every value different from JLCPCB default with `>>` and explicitly name the default being avoided; in Markdown tables bold the selected value and leave default plain.** **Artifact:** fabrication notes/checklist. `:1154-1157`
+- **§8 — Do not inherit defaults blindly: OSP and 0.3 mm minimum via were specifically wrong for the referenced design. Update notes when JLCPCB’s form changes.** **Artifact:** manufacturing release. `:1158-1159`
+- **§8 — Use ENIG, 1 µin gold, for BGA/fine pitch, both-side assembly, or through-hole parts; use 2 µin for gold fingers/wearing contacts.** **Artifact:** surface-finish order field. `:1160-1162`
+- **§8 — Release must contain Gerber ZIP, one-line-per-LCSC BOM, native CPL, JLC-corrected CPL, assembly notes, and cost estimate in exactly `release/`.** **Artifact:** manufacturing release. `:1163-1165`
+- **§8 — Upload CPL must be named `<board>_cpl_jlcpcb_upload.csv`; native reference must be `<board>_cpl_kicad_native.csv`.** **Artifact:** CPL files. `:1166-1169`
+- **§8 — JLCPCB assembles all parts, including through-hole, unless a host socket costs more than a few dollars to assemble. A manually fitted rear 2×20 socket belongs in `hand_solder_bom.csv`; list loose jumper shunts and positions there too.** **Artifact:** BOM/order package. `:1170-1177`
+- **§8 — DRC must be at least as strict as JLCPCB’s chosen-stackup rules, at every severity, with zero errors and schematic parity. Fill and save zones before checking; independently count unconnected items.** **Artifact:** PCB/release checks. `:1178-1181`
+- **§8 — Correct bottom-side CPL rotation first with `rot -> 180 - rot`; then add per-footprint corrections only from a real JLCPCB “Confirm parts placement” preview. Missing correction means unverified; zero means verified.** **Artifact:** JLC upload CPL. `:1182-1187`
+- **§8 — Known correction examples are footprint-specific, not universal:** SOT-23-5 +180°, VSSOP-8 +180°, Texas DRT-3 +270°, TSOP-II-54 +270°, SOIC-8 +270°. Reconfirm against the actual preview. **Artifact:** CPL conversion table. `:1188-1226`
+
+## 9. Bring-up and debuggability
+
+- **§9 — Provide many labelled test points, nearby ground clips, U.FL monitor taps for signals worth watching, and probe-compatible headers; do not require soldering or holding probes.** **Artifact:** PCB/bring-up documentation. `:1448-1453`
+- **§9 — Use 450 Ω series resistance for approximately a 10× probe into a 50 Ω scope, loading the node by 500 Ω; 1 kΩ gives approximately ÷21 and loads by 1 kΩ.** **Artifact:** monitor-tap schematic. `:1454-1457`
+- **§9 — Use a coupling capacitor when the tap must preserve a biased node or prevent a 50 Ω scope from pulling rail current.** **Artifact:** monitor-tap circuit. `:1457-1459`
+- **§9 — Never tap a timing-critical node through a resistor if plugging in the instrument changes its amplitude; tap the low-impedance side.** **Artifact:** test-point/tap design. `:1459-1461`
+- **§9 — Trace the tap’s DC path into the instrument. A high-resistance bias node requires a coupling capacitor between node and scope/tap.** **Artifact:** test circuit. `:1461-1469`
+- **§9 — U.FL is rated for approximately 30 mating cycles; MMCX approximately 500.** **Artifact:** connector selection/bring-up procedure. `:1469-1470`
+- **§9 — Each bring-up handbook location must have a generated 3D-render thumbnail: whole-board red box plus nearby zoom, circled component/pad, and boxed printed words. Generate from `(designator, pad, printed words)` and fail unless words are adjacent and nearest the intended object of that kind.** **Artifact:** `HANDBOOK.md`/render generator. `:1471-1480`
+- **§9 — Use pads for brief one-off measurements; use U.FL for observations lasting more than a few seconds, including jitter, duty cycle, ripple, or side-by-side channel comparisons.** **Artifact:** PCB test access. `:1481-1483`
+- **§9 — Tap what is not already accessible; do not duplicate an existing jack when the internal edge/squared output is the useful measurement.** **Artifact:** test-point plan. `:1484-1488`
+- **§9 — Read DNP/excluded-from-assembly flags before describing what is fitted or writing tests that assume a component exists.** **Artifact:** schematic/BOM/bring-up tests. `:1489-1494`
+- **§9 — Test new bench sources as possible aggressors before trusting them; USB-powered instruments can inject ground/common-mode noise and spurs.** **Artifact:** bring-up procedure. `:1495-1497`
+- **§9 — Provide an LED per rail and an in-range indication where useful, without loading quiet rails materially.** **Artifact:** PCB/bring-up indicators. `:1498-1499`
+- **§9 — Document bring-up order: current-limited bench supply, each rail, programmer, first firmware, then interfaces.** **Artifact:** `HANDBOOK.md`. `:1500-1501`
+- **§9 — Design tests for scriptable instruments where possible.** **Artifact:** bring-up scripts. `:1502-1503`
+- **§9 — Have first MCU/FPGA firmware building before ordering; this validates pin and clock choices.** **Artifact:** firmware repository/release gate. `:1504-1506`
+- **§9 — Write experiment gateware before ordering and compare its reset/safe state with the board; for CostasLink safe state is TX muted, loop held, receive. Track findings in `REVA_CHANGES`.** **Artifact:** gateware/bring-up plan. `:1507-1513`
+- **§9 — Vivado block-design module references require a Verilog top; do not modify sources during Vivado builds; avoid variable part-select synthesis crash patterns; preserve per-block registers with hierarchy; try nextpnr seeds; use reduction comparisons where appropriate; register ECP5 BRAM outputs because clock-to-out is 5.6 ns.** **Artifact:** FPGA RTL/build flow. `:1514-1531`
+- **§9 — Run the host driver against RTL simulation using separate command/response pipes and terminate commands on falling edges to avoid race conditions.** **Artifact:** RTL simulation. `:1532-1538`
+- **§9 — Test the pin layer on a PC with stubbed GPIO and modeled peripherals; reject multiple drivers and driving unpowered devices; prove tests fail by planting bugs.** **Artifact:** host-side pin tests. `:1539-1543`
+- **§9 — For symmetric connectors, perform a meter orientation check after two pins are tacked; one specified contact must read 0 Ω to ground.** **Artifact:** assembly/bring-up procedure. `:1544-1546`
+- **§9 — Bring-up documentation must say exactly what to buy, what cables/probes to use, every connection, action, and pass condition; begin with a scriptable instrument partner.** **Artifact:** `BRINGUP.md`. `:1547-1553`
+- **§9 — Make the bring-up plan a risk-retirement table: ordered stages, connections, measurement, pass condition, and dead-on-arrival risk retired.** **Artifact:** `BRINGUP.md`. `:1554-1557`
+
+## 12. Choosing real components
+
+- **§12 — Use C0G/NP0 for filters, RF matching, oscillators/crystal loads, PLL loop filters, timing, and low-distortion coupling; typical tolerance 5% or 1% when justified. Up to approximately 220 nF/25 V in 1210.** **Artifact:** capacitor selection/BOM. `:1870-1874`
+- **§12 — For X7R/X5R/Y5V, design using capacitance at actual DC bias and temperature, not nameplate value. An X5R may lose approximately 84% at rated voltage; temperature loss can reach approximately 70% from 25–75 °C. Use larger case or higher voltage rating where needed.** **Artifact:** capacitor derating calculation. `:1875-1881`
+- **§12 — Do not use Class 2/3 ceramics in RC timers, frequency-setting filters, or audio coupling where value drift distorts operation.** **Artifact:** schematic/component choice. `:1881-1882`
+- **§12 — Avoid piezoelectric MLCC noise beside sensitive sensors or in 1–20 kHz LED PWM/coil/burst-regulator applications; use C0G/film or switch above 20 kHz.** **Artifact:** placement and capacitor selection. `:1882-1885`
+- **§12 — Select capacitor values/packages whose self-resonant frequency is above the served band; include pad/via inductance.** **Artifact:** RF/power capacitor selection. `:1886-1887`
+- **§12 — Aluminium electrolytics are polarized, approximately ±20%, leaky, and aging; check ripple current at its actual frequency. Life approximately doubles for every 10 °C cooler than the 105 °C rating.** **Artifact:** power-supply BOM/thermal calculation. `:1888-1890`
+- **§12 — Polymer capacitors provide low ESR, better bias stability, and long life; verify datasheet limits.** **Artifact:** capacitor selection. `:1891-1892`
+- **§12 — Derate MnO₂ tantalums to half their voltage rating because they fail short and can burn.** **Artifact:** capacitor BOM/safety review. `:1893`
+- **§12 — Use film for stable, accurate, low-loss/high-voltage functions; polypropylene has lowest loss; use silver mica only for unusually demanding specifications.** **Artifact:** capacitor technology selection. `:1894-1895`
+- **§12 — Check resistor worst-case dissipation and voltage rating: typically 50–75 V for 0603 and 150 V for 0805. Use thin/metal film for precision low-noise/low-distortion work, low tempco, adequate power, and pulse-rated parts for surges.** **Artifact:** resistor BOM/calculation. `:1896-1900`
+- **§12 — Provide copper for hot resistors, while considering the added parasitic capacitance.** **Artifact:** PCB footprint/layout. `:1900`
+- **§12 — For DC-DC inductors, follow the regulator datasheet, select saturation current above peak—not average—current, and use shielded types near sensitive circuitry.** **Artifact:** power-inductor BOM/layout. `:1901-1903`
+- **§12 — For RF inductors, simulate with the manufacturer’s Q/model, keep SRF well above operating frequency, and do not use an inductor above SRF where it behaves capacitively.** **Artifact:** RF matching/filter design. `:1903-1905`
+- **§12 — Linear-regulator dissipation is `(Vin_max − Vout) × Imax`; calculate junction temperature at highest enclosure ambient.** **Artifact:** regulator thermal calculation. `:1906-1908`
+- **§12 — If needed, use a series resistor ahead of an LDO to share dissipation/filter input, but verify lowest-input headroom remains above dropout. Example: 2.2 Ω 1206 dissipating 0.1 W.** **Artifact:** power schematic/thermal analysis. `:1908-1910`
+- **§12 — For semiconductors, calculate dissipation and junction temperature at maximum ambient. MOSFET RDS(on) at 100 °C is approximately 1.5× the 25 °C value; include switching loss.** **Artifact:** semiconductor thermal/power analysis. `:1911-1913`
+- **§12 — Determine θJA from the actual copper area/thermal layout, not blindly from the datasheet test board.** **Artifact:** PCB thermal design. `:1913-1914`

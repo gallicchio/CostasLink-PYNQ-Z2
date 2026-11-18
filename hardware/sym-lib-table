@@ -1,0 +1,4 @@
+(sym_lib_table
+	(version 7)
+	(lib (name "CostasLink") (type "KiCad") (uri "${KIPRJMOD}/lib/CostasLink.kicad_sym") (options "") (descr "Every symbol CostasLink uses"))
+)

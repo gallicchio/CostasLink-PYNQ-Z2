@@ -1,0 +1,136 @@
+# CostasLink-PYNQ-Z2 on the Icepi Zero's Raspberry Pi header (ECP5 LFE5U-25F-6BG256C).
+# Made by gateware/gen_xdc.py from gen/pins.py: header pin -> ball from cheyao/icepi-zero
+# gateware/icepi-zero.lpf, functions from Lattice FPGA-SC-02033 (ECP5U-25 pinout).
+# Clock-capable header pins here: [16, 18, 19, 21, 22, 26, 32] (18 and 26 are also clock-capable on the PYNQ-Z2).
+# No series resistors on the Icepi: the balls meet the header directly.
+
+# the configuration options of cheyao/icepi-zero gateware/icepi-zero.lpf (3.3 V I/O, compressed bitstream, master SPI boot)
+SYSCONFIG CONFIG_IOVOLTAGE=3.3 COMPRESS_CONFIG=ON MCCLK_FREQ=62 MASTER_SPI_PORT=ENABLE SLAVE_SPI_PORT=DISABLE SLAVE_PARALLEL_PORT=DISABLE;
+
+BLOCK RESETPATHS;
+BLOCK ASYNCPATHS;
+
+# the Icepi's 50 MHz oscillator
+LOCATE COMP "sysclk" SITE "M1";
+IOBUF PORT "sysclk" IO_TYPE=LVCMOS33;
+FREQUENCY PORT "sysclk" 50 MHZ;
+
+# header  3  T2   PL38D              I2C to the DAC and ADC; 2k2 pull-up on the PYNQ
+LOCATE COMP "i2c_sda" SITE "T2";
+IOBUF PORT "i2c_sda" IO_TYPE=LVCMOS33 PULLMODE=UP;
+
+# header  5  R2   PL38C              I2C clock; 2k2 pull-up on the PYNQ
+LOCATE COMP "i2c_scl" SITE "R2";
+IOBUF PORT "i2c_scl" IO_TYPE=LVCMOS33 PULLMODE=UP;
+
+# header  7  R1   PL35B  VREF1_6     TX I ladder, bit 1
+LOCATE COMP "tx_i1" SITE "R1";
+IOBUF PORT "tx_i1" IO_TYPE=LVCMOS33 DRIVE=8 SLEWRATE=FAST;
+
+# header  8  P1   PL35A              comparator: Q < -Vth
+LOCATE COMP "cmp_qn" SITE "P1";
+IOBUF PORT "cmp_qn" IO_TYPE=LVCMOS33 PULLMODE=NONE;
+
+# header 10  N1   PL32A              comparator: Q > +Vth (MRCC N of the pair with pin 18)
+LOCATE COMP "cmp_qp" SITE "N1";
+IOBUF PORT "cmp_qp" IO_TYPE=LVCMOS33 PULLMODE=NONE;
+
+# header 11  R3   PL41B              TX I ladder, bit 0
+LOCATE COMP "tx_i0" SITE "R3";
+IOBUF PORT "tx_i0" IO_TYPE=LVCMOS33 DRIVE=8 SLEWRATE=FAST;
+
+# header 12  N4   PL38A              the Costas switch's select when JP1 is set to FPGA
+LOCATE COMP "loop_sel" SITE "N4";
+IOBUF PORT "loop_sel" IO_TYPE=LVCMOS33 DRIVE=4 SLEWRATE=SLOW;
+
+# header 13  P3   PL38B              TX Q ladder, bit 1 (rpio_27: absent from the stock XDC)
+LOCATE COMP "tx_q1" SITE "P3";
+IOBUF PORT "tx_q1" IO_TYPE=LVCMOS33 DRIVE=8 SLEWRATE=FAST;
+
+# header 15  P2   PL32B              TX Q ladder, bit 0
+LOCATE COMP "tx_q0" SITE "P2";
+IOBUF PORT "tx_q0" IO_TYPE=LVCMOS33 DRIVE=8 SLEWRATE=FAST;
+
+# header 16  M2   PL26D  PCLKC6_0    I window, - side: I_N above V_TIN (fast; the PYNQ's 2k2 pull-up here is a harmless load)
+LOCATE COMP "cmp_in" SITE "M2";
+IOBUF PORT "cmp_in" IO_TYPE=LVCMOS33 PULLMODE=NONE;
+
+# header 18  L1   PL26A  PCLKT6_1    comparator: sign(I) = the data (clock-capable on both boards)
+LOCATE COMP "cmp_i" SITE "L1";
+IOBUF PORT "cmp_i" IO_TYPE=LVCMOS33 PULLMODE=NONE;
+
+# header 19  L2   PL26B  PCLKC6_1    high opens the Costas integrator's input (VC frozen)
+LOCATE COMP "loop_hold" SITE "L2";
+IOBUF PORT "loop_hold" IO_TYPE=LVCMOS33 DRIVE=4 SLEWRATE=SLOW;
+
+# header 21  J1   PL23A  PCLKT7_1    MAX2871 (TX) latch enable
+LOCATE COMP "le_pll_tx" SITE "J1";
+IOBUF PORT "le_pll_tx" IO_TYPE=LVCMOS33 DRIVE=4 SLEWRATE=SLOW;
+
+# header 22  J2   PL23B  PCLKC7_1    I window, + side: I_P above V_TIP (fast; sheet 7, Response 14)
+LOCATE COMP "cmp_ip" SITE "J2";
+IOBUF PORT "cmp_ip" IO_TYPE=LVCMOS33 PULLMODE=NONE;
+
+# header 23  G2   PL14B              MAX2871 (TX) MUX: lock detect or register readback
+LOCATE COMP "mux_tx" SITE "G2";
+IOBUF PORT "mux_tx" IO_TYPE=LVCMOS33 PULLMODE=NONE;
+
+# header 24  H2   PL20B              TX enable, high = transmit: U206 inverts it onto the ADL5375's DSOP; 1 k to ground here, so a host that is off, unconfigured or not driving it leaves the modulator off
+LOCATE COMP "tx_en" SITE "H2";
+IOBUF PORT "tx_en" IO_TYPE=LVCMOS33 DRIVE=4 SLEWRATE=SLOW;
+
+# header 26  G1   PL20A  GR_PCLK7_1  external trigger (a detector pulse) through the Schmitt buffer (clock-capable on both)
+LOCATE COMP "trig_in" SITE "G1";
+IOBUF PORT "trig_in" IO_TYPE=LVCMOS33 PULLMODE=NONE;
+
+# header 27  G3   PL14C  VREF1_7     antenna switch control A; B = not A is made on the board (also on J303; 2k2 pull-up on the PYNQ)
+LOCATE COMP "tr_a" SITE "G3";
+IOBUF PORT "tr_a" IO_TYPE=LVCMOS33 DRIVE=8 SLEWRATE=FAST;
+
+# header 28  K3   PL20D              slow path: Q < -Vth2
+LOCATE COMP "cmp_qn_s" SITE "K3";
+IOBUF PORT "cmp_qn_s" IO_TYPE=LVCMOS33 PULLMODE=NONE;
+
+# header 29  E1   PL11D              SPI data to the MAX2871s and the PE43711
+LOCATE COMP "spi_sdata" SITE "E1";
+IOBUF PORT "spi_sdata" IO_TYPE=LVCMOS33 DRIVE=4 SLEWRATE=SLOW;
+
+# header 31  F3   PL5D               SPI clock: both MAX2871s and the PE43711
+LOCATE COMP "spi_sclk" SITE "F3";
+IOBUF PORT "spi_sclk" IO_TYPE=LVCMOS33 DRIVE=4 SLEWRATE=SLOW;
+
+# header 32  J3   PL20C  GR_PCLK7_0  slow path: Q > +Vth2
+LOCATE COMP "cmp_qp_s" SITE "J3";
+IOBUF PORT "cmp_qp_s" IO_TYPE=LVCMOS33 PULLMODE=NONE;
+
+# header 33  E3   PL5C               MAX2871 (RX) latch enable
+LOCATE COMP "le_pll_rx" SITE "E3";
+IOBUF PORT "le_pll_rx" IO_TYPE=LVCMOS33 DRIVE=4 SLEWRATE=SLOW;
+
+# header 35  E4   PT9A               MAX2871 (RX) MUX (Icepi bank 0: no GDDRX2)
+LOCATE COMP "mux_rx" SITE "E4";
+IOBUF PORT "mux_rx" IO_TYPE=LVCMOS33 PULLMODE=NONE;
+
+# header 36  H3   PL14D              PE43711 latch enable
+LOCATE COMP "le_dsa" SITE "H3";
+IOBUF PORT "le_dsa" IO_TYPE=LVCMOS33 DRIVE=4 SLEWRATE=SLOW;
+
+# header 37  D4   PT9B               trigger out A (buffered to its SMA) (Icepi bank 0: no GDDRX2)
+LOCATE COMP "trig_a" SITE "D4";
+IOBUF PORT "trig_a" IO_TYPE=LVCMOS33 DRIVE=8 SLEWRATE=FAST;
+
+# header 38  F1   PL14A              trigger out B (buffered to its SMA)
+LOCATE COMP "trig_b" SITE "F1";
+IOBUF PORT "trig_b" IO_TYPE=LVCMOS33 DRIVE=8 SLEWRATE=FAST;
+
+# header 40  F2   PL11C              slow path: sign(I) through the 5 MHz stage (confirms or vetoes CMP_I)
+LOCATE COMP "cmp_i_s" SITE "F2";
+IOBUF PORT "cmp_i_s" IO_TYPE=LVCMOS33 PULLMODE=NONE;
+
+# the command UART of the first firmware (gateware/uart_cmd.v) on the Icepi's FTDI: cheyao/icepi-zero
+# gateware/icepi-zero.lpf has usb_rx on K16 (the FTDI transmits, the FPGA receives) and usb_tx on K15.
+LOCATE COMP "uart_rx" SITE "K16";
+IOBUF PORT "uart_rx" IO_TYPE=LVCMOS33 PULLMODE=UP;
+LOCATE COMP "uart_tx" SITE "K15";
+IOBUF PORT "uart_tx" IO_TYPE=LVCMOS33 PULLMODE=UP DRIVE=4;
+
