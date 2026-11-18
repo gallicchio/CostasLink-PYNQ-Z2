@@ -8,7 +8,7 @@ here (probit, the duties between 0.05 and 0.95), its sigma turned into dBm at RX
 the duty past v0 + 4 sigma kept as the bursts' share ('tail': ~3e-5 for noise alone).  Passes at DSA 0 and DSA 20.
 After the passes this board's TX stays disabled until HOLD_UNTIL, then TX and loop are released (the stations set up again)."""
 import json, os, statistics, sys, time
-sys.path.insert(0, os.path.expanduser(os.environ.get("CL_DRIVER", "~/OpticsPCBs/CostasLink-PYNQ-Z2/gateware/driver")))
+sys.path.insert(0, os.path.expanduser(os.environ.get("CL_DRIVER", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "gateware", "driver"))))
 from netbus import RemoteCostasLink  # noqa: E402
 
 host, out, start, hold = sys.argv[1], sys.argv[2], float(sys.argv[3]), float(sys.argv[4])

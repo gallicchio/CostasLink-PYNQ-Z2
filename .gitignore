@@ -1,3 +1,44 @@
+# ---- Other people's copyrighted material: on the bench PC, never committed -------------------------------------
+# Vendor datasheets (PDF) and their text.  tools/jlc_datasheet.py (by LCSC code) and tools/adi_datasheet.py fetch
+# them again; the documents cite them as datasheets/<file>.pdf, build/txt/<part>.txt and docs/datasheets/txt/.
+/datasheets/
+/docs/datasheets/
+/build/txt/
+# ... and the copies the design reviewers made of them: PDFs, text, renders of their pages
+/design_review/Claude/txt/
+/design_review/Grok4.7/ds/
+/design_review/Grok4.7/img/
+/design_review/Gemini3.8Flash/*.png
+/design_review/GPT-5.6Terra/ADL5375.txt
+/design_review/GPT-5.6Terra/ADL5380.txt
+/design_review/GPT-5.6Terra/HMC536.txt
+/design_review/GPT-5.6Terra/LP5907.txt
+/design_review/GPT-5.6Terra/MAX2871.txt
+/design_review/GPT-5.6Terra/SN74LVC1G3157.txt
+/design_review/GPT-5.6Terra/THS4541.txt
+/design_review/GPT-5.6Terra/TLV3601.txt
+/design_review/GPT-5.6Terra/TPS7A20.txt
+/design_review/GPT-5.6Terra/TS5A3159.txt
+/design_review/KimiK3/ad5696r.txt
+/design_review/KimiK3/balun_crop.png
+/design_review/KimiK3/balun_ds-1.png
+/design_review/KimiK3/sky-5.png
+/design_review/KimiK3/sky-6.png
+# TUL's board files for the PYNQ-Z2 and its product photo (gateware/README.md says where they come from)
+/gateware/pynq/board_files/
+# The SMA and MMCX jacks' 3D models, converted from EasyEDA's.  gen/library.py copies them into hardware/lib/
+# when they are here, and reports them missing when they are not; nothing but the 3D view uses them.
+/gen/vendored/MMCX-TH_BWMMCX-KE.wrl
+/gen/vendored/SMA-TH_5P-L14.5-W6.0-H9.6_BWSMA-KWE-Z001.wrl
+/hardware/lib/CostasLink.3dshapes/MMCX-TH_BWMMCX-KE.wrl
+/hardware/lib/CostasLink.3dshapes/SMA-TH_5P-L14.5-W6.0-H9.6_BWSMA-KWE-Z001.wrl
+# JLCPCB's parts data and EasyEDA's land patterns, cached by tools/jlc_api.py and mfg/footprint_check.py:
+# theirs, and fetched again when stale.  JLCPCB's production-file confirmation zips (their CAM output, 17 MB each).
+/tools/jlc_cache.json
+/mfg/jlc_footprint_cache.json
+*_gerbers_Y*.zip
+
+# ---- The bench's record -----------------------------------------------------------------------------------------
 # The bench's full record stays on the bench PC: only code, docs and a few examples go to git (Jason, 2026-10-31)
 bringup/data/*
 !bringup/data/examples/
@@ -8,3 +49,55 @@ bringup/data/board_A/*
 !bringup/data/board_A/vna/
 bringup/data/board_A/vna/*.png
 bringup/data/board_A/vna/*_INVALID*
+# (bringup/data/board_A/photos/ holds the phone's originals of photos/, with their metadata)
+bringup/.locks/
+
+# ---- Working notes exchanged with Claude (the chat logs are the record) ------------------------------------------
+/QUESTIONS.md
+/ANSWERS.md
+
+# ---- Build intermediates ----------------------------------------------------------------------------------------
+# Ignored, except what the documents cite or a reviewer needs (DESIGN_REVIEW_PROMPT.md section 6): the numbers,
+# the placement, the routing, the cost, the link rates, the pin audit.  The rest of build/ is remade by build.py,
+# the gateware Makefile and pynq/build.tcl (whose reports name the machine's paths); the board renders the
+# documents show are copied to docs/images/.
+/build/*
+!/build/COST_ESTIMATE.md
+!/build/link_rates.md
+!/build/constellations.txt
+!/build/scratch/
+/build/scratch/*
+!/build/scratch/pin_audit.md
+!/build/budget.json
+!/build/link_rates.json
+!/build/constellations.json
+!/build/cost.json
+!/build/placement.json
+!/build/route_report.json
+!/build/trajectories.json
+!/build/hosts.json
+!/build/hosts_knobs.json
+!/build/latency_roadmap.json
+!/build/optics_roadmap.json
+!/build/wifi_channels.json
+!/build/system_budget.json
+# A reviewer's private copy of the tree (DESIGN_REVIEW_PROMPT.md section 0.3)
+/design_review/*/repo/
+# Vivado's strays beside wherever it was launched (pynq/build.tcl removes NA/ itself)
+/gateware/NA/
+/gateware/.Xil/
+/gateware/*.jou
+/gateware/vivado*.log
+
+# ---- Tools' droppings -------------------------------------------------------------------------------------------
+# KiCad: per-session locks, stray DRC/ERC temporaries, its autosave history (a git repo of its own)
+fp-info-cache
+*-backups
+*.lck
+tmp*.rpt
+.history/
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store

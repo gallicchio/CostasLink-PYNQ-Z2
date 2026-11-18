@@ -20,10 +20,10 @@ from matplotlib.backends.backend_pdf import PdfPages            # noqa: E402
 import numpy as np                                              # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, "/home/jason/OpticsPCBs/CostasLink-PYNQ-Z2/gateware/driver")
+sys.path.insert(0, os.path.join(os.environ.get("CL_BRINGUP", HERE), "..", "gateware", "driver"))
 import costaslink as C                                          # noqa: E402
 
-DATA = "/home/jason/OpticsPCBs/CostasLink-PYNQ-Z2/bringup/data/twoboard"
+DATA = os.path.join(os.environ.get("CL_BRINGUP", HERE), "data", "twoboard")     # the project's bringup/, or another copy's
 BLUE, ORANGE, AQUA, RED, GREEN, VIOLET = "#2a78d6", "#eb6834", "#1baf7a", "#e34948", "#008300", "#6250d6"
 INK, INK2, MUTED, GRID = "#0b0b0b", "#52514e", "#8a8984", "#e6e5e1"
 PCOL = [BLUE, ORANGE, AQUA, VIOLET, "#b5651d", "#2f8f9d", "#c23b8a", "#6b6b6b"]

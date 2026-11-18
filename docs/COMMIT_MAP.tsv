@@ -1,0 +1,471 @@
+# The commits of this repository that came from the private repository the board was developed in.
+# The documents and the chat logs quote the old hashes (first column, usually its first 7 characters);
+# the same commit is here under the hash in the second column.  Newest first.
+old_hash	new_hash	date	subject
+712a7b6b41	efb1e41962	2026-11-16	Pin audit of every board (2026-11-16): power pins and pairs against the data sheets, connectors against their 
+c75ee6dc4f	92284fce31	2026-11-13	Shut down after the lecture-hall demo (11-13 13:32): HANDOFF 3a starts with the hall's state (carriers 5000 / 
+be04acf74a	68b8bc5959	2026-11-13	BRINGUP_LOG 4.97: the lecture hall's night and the demo's morning on 5000 / 4400 (the night 0-195 errors in ea
+e7a6364142	d64e0e2e10	2026-11-13	CLAUDE_CODE_CHAT_BRINGUP: Prompt 232
+c00318705d	72ffefd7b0	2026-11-13	bringup: survey_board.py (each board's own receiver surveys the band through its dish, both boards at once wit
+83d332d479	9fe3497150	2026-11-13	CLAUDE_CODE_CHAT_BRINGUP: Prompt 231 (showtime: the night's monitoring and the 08:00 check)
+0373009806	5602684af0	2026-11-13	DEMO_COURTYARD 12: station A at --width 30 (4 look variants tried with screenshots, all error-free; the longer
+751829ce05	f07a79a907	2026-11-13	DEMO_COURTYARD 12: the scopes' commands (scope A at one 5 mV/div scale, its firmware beeps at VDIV changes; sc
+eef6bdc959	6c827df22b	2026-11-13	demoscope.py: scope A never changes its volts a division in the cycle: its firmware (8.1.6.1.26) beeps at ever
+ac89fde0bb	92226b859e	2026-11-13	CLAUDE_CODE_CHAT_BRINGUP: Prompt 228 (the scopes' beepers off)
+ec3ca04222	cfeac1ffbf	2026-11-13	demoscope.py: the presets and the cycle turn the scope's beeper off (the lab driver's buzzer(), lab-instrument
+e0692dd7a9	1e335e1d26	2026-11-13	The lecture hall (BRINGUP_LOG 4.96, DEMO_COURTYARD 12): both directions over stacked dishes; the levels (beam 
+a71e18309f	b51a9de78c	2026-11-12	CLAUDE_CODE_CHAT_BRINGUP: Prompts 223-226 (2026-11-12 evening, the lecture hall): both laptops' links checked,
+1050172a4d	0f6eabd2fe	2026-11-12	CLAUDE_CODE_CHAT_BRINGUP.md: the bring-up's chat, Prompts 44-222 (2026-11-03 15:59 to 11-12 21:45 PST), rebuil
+392c0cd3b4	36cd0dbb87	2026-11-11	DEMO_COURTYARD 4, 6, 8: O1 settled (Jason, 11-11): the beam stays at 4800 outdoors; the courtyard is a basemen
+b03149de61	e73cd4db76	2026-11-11	BRINGUP_LOG 4.94's soak (3 h 35 min untouched: station A 1.5e-6 over 25.6 billion challenges, locked every sec
+a2fe12abc7	feb0ea4af5	2026-11-11	HANDOFF 3a: the state since 2026-11-10 first (two laptops each wired to its own PYNQ, PYNQ B through kate, bot
+5da34cc151	896923ce5d	2026-11-11	DEMO_COURTYARD 11: what the night of 11-10 / 11 settled (the cold start unattended in about a minute after the
+e80568243f	0ffea4ef32	2026-11-11	The link comes back by itself after the boards' 5 V goes off and on under running PYNQs (it never did: 11-11 0
+c3d962d483	7638d91839	2026-11-10	demoscope.py: the XY view 10 s by default, the time view 5 s (Jason, 11-10: the constellation twice as long; t
+1d32dc9c75	53e663f484	2026-11-10	demo.py --fresh: the keeper's own setup (the attenuator and the centres for today's level) instead of adopting
+7e5dfa6f63	d801195fc8	2026-11-10	demoscope.py: no on-screen measurements by default (Jason, 11-10: they were in the way of the XY view, and the
+1dc27e8b96	0e8e400eb2	2026-11-10	demoscope.py: scope A's I and Q on ch1 / ch2 (the only pair this firmware's XY plots) and the ping / pong on c
+5b20065ea0	51c39354ba	2026-11-10	demo.py / demo.html: both stations' pages show the four addresses that matter (laptop A, PYNQ A, laptop B, PYN
+77f15dbdc6	8de1e2f3f2	2026-11-10	DEMO_COURTYARD 10: names on Claremont-ETC, measured: no DNS record of either laptop, and no multicast or broad
+a8b15dabd6	ce0a84ce97	2026-11-10	demoscope.py: the usage on --help or a wrong command line, instead of an IndexError (found running the station
+db9ac5f631	71fc9ef4d6	2026-11-10	DEMO_COURTYARD 10 / STATION.txt: the laptops' fixed addresses 192.168.2.10 (zmash) and .11 (laptop B), under O
+2430f49107	96ed1015ec	2026-11-10	wifi_check.py: which WiFi is inside the return's band, on site and without root (each access point's channel s
+e47e101d0d	dfa1c1ac1b	2026-11-10	scope_e.open_scope: any of the labs' SDS1104X-E, not only the bench's two: SCOPE_A / SCOPE_B name one (a seria
+48d1bc55ee	b585e251c7	2026-11-10	plots/twoscope_20261106_*: the two-scope pages of 11-06 (BRINGUP_LOG 4.75 at 12:06 / 12:16, 4.80 at 15:50, 4.8
+44c9d68c5e	5f8f222c00	2026-11-09	The scopes, the analyzer, the VNA and the supplies through lab-instrument-control's methods only (its 57a4fcf)
+00a07de193	bfbd4ce03c	2026-11-09	demoscope.py: scope B's view offsets through the lab driver's channel() instead of a raw OFST (tried on scope 
+124786e06b	6d390286bd	2026-11-09	Ready for the lab rehearsal: demo.py's defaults are the bench's tuning (A delay 24 and I windows at 0.4, B 16 
+f071e1d24d	4b1a8a1fad	2026-11-08	demo.py: B's quick counter is the decided symbols, not the events (the engine counts noise events while the be
+fe41124da4	012967d54f	2026-11-08	The pages live: each station reads its I arm and event counter ten times a second and the page polls at 5 Hz (
+c54898edea	47c216b742	2026-11-08	demo.py: adopts the PYNQ linkd's lock at start (its middles, centres, VC and leg from /api/now; the proxy's sy
+4486d07ae4	91068b475c	2026-11-08	linkd.state(): the window centres and the duplex flag, for a laptop keeper that adopts the PYNQ's lock instead
+ce9832e057	41bf908e70	2026-11-08	demo.html: B's echo tile reads the fast path's built and arm-on-RX bits (the armed bit blinks as it fires), B'
+1d3859ba53	ee986a80c1	2026-11-08	BRINGUP_LOG 4.91: the duplex keeper and the demo's software on the bench (what broke first and in what order; 
+80377bceca	6e0be1975c	2026-11-08	demo.py / demo.html: the courtyard demo's driver, one process a station, nothing alternating: A sends A3's cor
+72b3314555	b2d0f68d2b	2026-11-08	linkd duplex mode (link.json "duplex": true): the board's TX on at its idle from setup and never muted, parked
+f764a4af4e	18e0ce1f64	2026-11-08	BRINGUP_LOG 4.90: the night over the cables, 109 cycles: the settled decision (delay 16, settle 2/4/6) right i
+5a24a51aca	e0924dc155	2026-11-08	DEMO_COURTYARD.md: the lollipops were every board-to-board FPV measurement; the first days' single-board tests
+a50ddc1bb3	cb03023813	2026-11-07	DEMO_COURTYARD.md: the FPV antennas identified (Triple Feed Patch TFP-1 9.4 dBi and TFPA-1 array 14 dBi, LHCP 
+9a0b9e1fbc	f413f85da8	2026-11-07	DEMO_COURTYARD.md: full duplex settled; the return on the FPV patches, RHCP to RHCP with the LHCP ports loaded
+14f73aa61a	0c39acfce9	2026-11-07	DEMO_COURTYARD.md 5a: the two scopes' fixed views for the demo (the receiver: I, Q, the recovered bit, the loc
+e0d12efe82	984dd32cf8	2026-11-07	DEMO_COURTYARD.md: the plan for Thursday's courtyard demo: full duplex with the beam's direction fixed (the di
+3771624339	1fed718b46	2026-11-07	BRINGUP_LOG 4.89: the level series (A8 at delay 10-16 100 % down to 58 mV on B, 79-112 mV on A; A2 and the PRB
+0887da5dfb	94e1b316b7	2026-11-07	BRINGUP_LOG 4.88: the decision on TRIG B and the mark into TRIG IN checked; the one-way latency to the decisio
+efb2415810	313fc15bd8	2026-11-07	a8delay.py and BRINGUP_LOG 4.87: A8 (3 bits an event) decodes 100 % on both receivers down to a 6-sample decis
+9a87b10513	788bdd906b	2026-11-06	soak_fig.py: the overnight soak's page (the boards' temperature and arm centres, each link's lock, A3 / B1, th
+751b832e8b	6ccff11898	2026-11-06	BRINGUP_LOG 4.86: the three parameter series over the cables at 4800 (A3 100 % from 55-65 mV legs to 540-620 m
+0e0319a11d	f14b14b9cd	2026-11-06	n8_fig.py: the N = 8 page (A8 / B3 on both receivers' scopes, the gap trials in the header); the 11-06 21:46 p
+1e0bac6bdd	d595541724	2026-11-06	BRINGUP_LOG 4.84: A8 (the full idle and the other eight ladder points) decodes 3 bits an event 100 % on both r
+e5bd4499f3	e04c4c36c2	2026-11-06	n8test.py (the A8 / B3 schemes by the decoder with the scope on every point, the carrier gap's effect on the l
+c420d5b5a2	f30864cc06	2026-11-06	BRINGUP_LOG 4.85: one page per centre frequency over the cables (the A family 100 % on both receivers at 4800-
+b37dd5e502	10b672d15d	2026-11-06	costaslink.hold_point writes TX_IDLE as the held point, and twoboard's events_on / events_point / prbs_point s
+ee190f5eb6	44946265b1	2026-11-06	drivennull.py and drivennull_fig.py: the driven null measured on the receiving board's scope per sender and fr
+6828a79fd6	db6338236e	2026-11-06	BRINGUP_LOG 4.83: the driven null measured on both boards at 4800-5400 over the cables (VR_Q 32-49 mV above th
+fcadccc32a	26fc33f636	2026-11-06	BRINGUP_LOG 4.82: the boards over SMA cables through 40 dB pads (every frequency 4800-5400 clean both ways: th
+e4a2754791	88e28b8606	2026-11-06	BRINGUP_LOG 4.81: the second from-nothing pair run (16 min): A -> B 4800 with B -> A 5000 chosen, the duplex u
+5690de905d	b4317399a2	2026-11-06	pairup.py: the arms' centres read with both boards quiet before any lock (the first run broke A -> B's lock tw
+396dcfec06	c6837c255b	2026-11-06	pairup.py: a pair of boards up from nothing (the servers, each receiver's Q arm trimmed onto its loop's refere
+9c3567d9bc	0d28936c4f	2026-11-06	deploy_pynq.sh: the copy of the running directory as root (the service's state and byte-code are root's); BRIN
+98c7446075	15d61c48ca	2026-11-06	costaslink.BOARD_DAC_V: a board's DAC power-up values beyond the defaults by the PYNQ's hostname (pynq-b: Q_OF
+a7ba48e48d	f04e421cdc	2026-11-06	twoboard.pilot_cal: a 0-degree pilot tries both signs of the VR_I offset and keeps the one whose full point st
+ec63ca707e	9fe7ce9abe	2026-11-06	BRINGUP_LOG 4.78: the two scopes at 4800 with B's trim in place (B decodes A4 and B2 100 %, B1 on three messag
+b1a0842c24	4462ac5533	2026-11-06	B's Q arm trim applied: twoboard.Q_OFF_F_V (B 2.79 V) at Node() and after every setup and recover, the windows
+05593fe371	40c3bd8675	2026-11-06	BRINGUP_LOG 4.76: B's Q offset trimmed: the loop's null fixed at 1.632 V while Q_OFF_F moves the arm's centre 
+7905bfd378	9336e42430	2026-11-06	twoscope: the two scopes checked against the boards and every scheme's constellation on both receivers (bringu
+0de1bff192	2f27bf6677	2026-11-06	scope_e: two SDS1104X-E on USB, each opened by its serial number (A ...R1353 on board A's monitors, B ...R6919
+a8cb71c749	e7eb9d9f7a	2026-11-06	BRINGUP_LOG 4.73: A's own transmitter in loopback on A, the flip's Q plateau about twice B's (17 degrees), the
+6418cfd340	4c7ea83c82	2026-11-06	twoboard.scheme_windows: a window no point fires sits at the rail, not 50 mV past the quiet points (the flip's
+4db754e455	20a865e9b4	2026-11-06	BRINGUP_LOG 4.72: the full events plan with the sweep fixed (11-05 23:30 - 11-06 00:58, three links, 518 point
+d8c9fd783c	f4b133378d	2026-11-05	BRINGUP_LOG 4.71: the quick events plan's base points on both links at 5400 and 4800 with the fixed sweep (the
+c90d97a527	d48bd7b5dd	2026-11-05	BRINGUP_LOG 4.71: the round trip's relaunches ping-pong on the duplex's recovery (each board's recover mutes i
+fb42d8b4f6	7ce29e30df	2026-11-05	twoboard.point_levels: take the larger departure from the idle, not the upward one over 3 mV (the idle's own n
+c488e67f25	38a4fcd75c	2026-11-05	plots/schemes_20261105.png: the seven idle-plus-N schemes on one page (the idea, each receiver's measured wind
+b31e4a3c11	8f490f3338	2026-11-05	BRINGUP_LOG 4.70: the first round trip over the air (A2 20 000 of 20 000 replies at 217.5 ns, A3 99.4 %; the c
+410b33449a	2669400294	2026-11-05	qpvtests.py roundtrip: the duplex prover's fast path keeps its re-arm-on-RX bit (twoboard._fast_arm: the drive
+b742735e9a	80e695f592	2026-11-05	BRINGUP_LOG 4.69: the one-way latency on the scope's clock, 143.0 / 139.6 ns mark to comparator (falling / ris
+ac375344a1	bf637ae5e2	2026-11-05	scopelat.py: the one-way latency on the scope's clock (B's TRIG A on ch1, A's CMP I MON on ch4, both 50 ohm): 
+411bfaa145	c692c44409	2026-11-05	aimtone.py: the Off button mutes (the volume was re-applied every 150 ms over it)
+a51a8c83a2	1e316d361b	2026-11-05	BRINGUP_LOG 4.67: the campaign ended at 12:53 after 24 random sessions, both boards quiet
+69c02b4c3d	707beeaaa4	2026-11-05	BRINGUP_LOG 4.67: the random phase and the morning's soaks: the error rate rose six times by 11:45 with a WiFi
+c22323794e	0bfae75c95	2026-11-05	REVB 58-64: the night's lessons: the window comparators not following the arms at the dish level; a weak pilot
+90cc44517a	96fd33fc3c	2026-11-05	BRINGUP_LOG 4.66: the random phase's first soak: the analyzer's sweeps do not raise the steady error rate (294
+5d03a7d1aa	f0c7831000	2026-11-05	BRINGUP_LOG 4.65: the quick sweeps at 5400 / 4800 / 5800 (BPSK error-free both ways at 5400 and 4800; A2 / A1 
+4e107a8e3c	0f6f9cd592	2026-11-05	twoboard.py: a window whose on and off points overlap is taken both ways in the table too (B's IP not monotoni
+40fe4db04e	4615603aa6	2026-11-05	twoboard.py: a window whose level barely moves across a scheme's points is taken both ways in the decoder's ta
+52ce9e21b4	7566b35a8c	2026-11-05	BRINGUP_LOG 4.64: the band over the dishes: the level 6-14 dB stronger below 5200, lost above 5700; BPSK 0 err
+b4b62d8f29	af44f3a6db	2026-11-05	twoboard.py: a link whose recovery and setup fail inside a point abandons its remaining points (LinkDown) inst
+21aced7b1f	d33fc09a6e	2026-11-05	QPV_TIMING_REVIEW: section 0 with the cross-board sweeps' numbers
+3499597fc3	929ca09c66	2026-11-05	BRINGUP_LOG 4.63: the cross-board sweeps at 5200 MHz: events both ways (A2 / A1 / A3 / B1 / B2 at 99-100 % acr
+0623fb1dbd	7c4ec4ddb7	2026-11-05	twoboard.py: the pilot search converges on its size and the side is measured on the pilot afterwards (board A'
+26f889a657	466f46fcd3	2026-11-04	twoboard.py: the lock's side checked again after a level change (the loop re-locks on a random side when the D
+777ffde13f	498043975d	2026-11-04	twoboard.py: the lock's side updated by the sign of the mapped idle (a flip from -1 to +1 left it stuck: A3's 
+1e9569d298	c5b3e30668	2026-11-04	HANDOFF: a campaign started from a background script ignores SIGINT; verify a stop before the next start; the 
+3b7be98e97	22b2b62cb9	2026-11-04	twoboard.py: the analyzer opened with a USBTMC device clear and another try when its first read times out (an 
+00a6bd256f	2df667cb00	2026-11-04	twoboard.py: the campaign without the analyzer (--no-wifi) when the DSA875 is not to be had
+9966160693	6fa5140c08	2026-11-04	twoboard.py: the decoder's table from the measured constellation (each message's vector from its levels agains
+ef9bd8549d	e2b85c3bc6	2026-11-04	QPV_TIMING_REVIEW: section 0 filled in with the timing step's numbers
+914763ea37	a6e80dc8d0	2026-11-04	BRINGUP_LOG 4.62: board A's timing step: B2 100 % right on all nine maps and at every decision setting, 23.75-
+b12273eb74	1a5312d208	2026-11-04	twoboard.py: a lock on either side is a lock (ensure tested di > 0, so on side -1 every point ran a needless r
+b55889b0da	527118465a	2026-11-04	twoboard.py: the loop's lock side in every record's state
+1a33469167	d8e257028d	2026-11-04	twoboard.py: the campaign's timing step on chosen boards (--timing-boards)
+7e1a4286f3	b44d199702	2026-11-04	BRINGUP_LOG 4.62: board B's timing step: the turnaround as captures (A2 25.0 ns p50, max 26.25; A3's (-1, +1) 
+ae856452a8	e53a4af7af	2026-11-04	QPV_TIMING_REVIEW 6a: rows 3 and 14 have their switches; twoboard_report.py: the newest records by time; HANDO
+f524390ec0	a9094e45a6	2026-11-04	twoboard.py: events with the receiver's reference from TRIG IN (the sender's TRIG OUT A on a lead: the one-way
+9831329692	acf7022b7a	2026-11-04	qpvtests.py: the tests for the cupboard: the round trip over the air (a duplex pair, V's challenge at one freq
+0b5b5c3c92	a474518d01	2026-11-04	aimtone.py: aim the dishes by ear: a page with a tone per receiver (1 dB a semitone, a click at a new maximum)
+169187e37e	ce42ff1ad9	2026-11-04	twoboard.py: frequencies off the 25 MHz grid (the WiFi centres 5180, 5240, 5320, 5540, 5745) through the 5 MHz
+587e98113d	8faa3ce1d9	2026-11-04	QPV_TIMING_REVIEW.md: the review of rev A, the tests and the rev B list for the prover's turnaround, the verif
+bc10e2cef0	3a06141b15	2026-11-04	BRINGUP_LOG 4.61: the prover swept on both boards (fast path 24-28 ns RX ANT to TX ANT by scheme and reply fun
+8621e7b8ec	65cd5e38c4	2026-11-04	twoboard.py: nulls (each board's TX output null by frequency on the FPV antenna; B within 1.5 mV of its TX ANT
+ba2d7cc509	f34d1a67c2	2026-11-04	twoboard.py: each scheme's windows from its received constellation (every point's level on each comparator as 
+f1fcc22b0f	5c9249f653	2026-11-04	twoboard_report.py: the night's records as tables (the prover by scheme, path, reply function and factor; even
+551b0e490b	8580d71a48	2026-11-04	twoboard.py: the prover's captures armed once a point, one a challenge (a capture moves the whole 32k-sample b
+97179530f3	738338af46	2026-11-04	BRINGUP_LOG 4.60, IMPROVEMENTS: the two-board infrastructure; the prover in loopback through the switch block 
+89527df529	16beb9b431	2026-11-04	twoboard.py: the two-board test infrastructure over the dishes: links set up and kept by linkd's own code run 
+5aa8892c8f	fefdc0fad1	2026-11-04	BRINGUP_LOG 4.59: the two-board link over the dishes through both T/R switches: locked both ways (-54.4 to -55
+aa75652f24	bdac2f729e	2026-11-04	BRINGUP_LOG 4.58, REVB 57: PYNQ A ran without its microSD (re-seated, clean); hostnames pynq-a / pynq-b; board
+3b9e969bb0	9a705fe88c	2026-11-04	HANDOFF: the October VNA files (~/DroneSDR/vna/vna_measurements/) and the vendors' manuals (~/lab-instrument-c
+99c3112de5	05d49a9d93	2026-11-04	HANDOFF: power off in order: the boards, then sudo poweroff on each PYNQ, then their supply (Jason)
+2140961f1d	988ee41a3f	2026-11-04	tx_spectrum.py: --board and COSTAS_PYNQ_HOST, so board B's TX can go on the DSA875 too (its records under data
+3a8d6a4004	90da7b7c8f	2026-11-04	BRINGUP_LOG 4.57: PYNQ B's fixed address is 192.168.2.98 beside its DHCP 192.168.2.178 (PYNQ A keeps the image
+ff015771d4	2e12a62327	2026-11-04	BRINGUP_LOG 4.57 (6)-(7), REVB 56: the watchdog's supply silenced by another process's close (SYSTem:LOCal), t
+26ed0855df	9aa0b8a181	2026-11-04	bench.py: SYSTem:REMote before every call to an E36xxA on RS-232: its driver sends SYSTem:LOCal on close and a
+8d5b38814b	58321a327e	2026-11-04	BRINGUP_LOG 4.57 and board B's column: PYNQ B set up (ID 13 overlay and driver by wget, the service installed,
+6d5a9cc5ed	a7bd2e496d	2026-11-04	bench.py: units_per_supply (2 on the lab laptop from today: boards A and B on one E3632A, both PYNQs on the ot
+c08a463a9b	ac8ea11d47	2026-11-04	BRINGUP_LOG 4.56, REVB 56: the receiver's view of the null was the method: the held loop's frame does not hold
+47c997dc6f	adbdec47ea	2026-11-04	BRINGUP_LOG 4.55: the TX on the DSA875, on ANT through the switch and on TX ANT: the null's "broadband power" 
+26c25751a5	e7a264fe8b	2026-11-04	BRINGUP_LOG 4.54, REVB 55: the null's noise is the same for every (0, 0) code, part of it needs the TX LO (RFO
+d042e9c15b	687eadcae9	2026-11-04	BRINGUP_LOG 4.54: the T/R switch on one board: the switch does not protect the receiver (SW TX to SW RX 25 dB 
+4dc17b2352	d6217acd4b	2026-11-04	REVB 54: the board's own leaks get a requirement checked over the whole band, and an architecture that keeps e
+cbc20bcf1d	7d23cca996	2026-11-04	switch_recovery.py: how fast board A's receiver comes back after its own transmission through the antenna swit
+709d89ecd8	ae79e89ae9	2026-11-04	BRINGUP_LOG 4.53: an hour of the AGC with no correction needed; the band at 07:25 as at 23:26 (WiFi on ch64/10
+459301c732	d8d5b18056	2026-11-04	CLAUDE_PCB.md: never find your own background processes by a pattern your command contains (the Bash tool's sh
+983828ce7d	0a627cf617	2026-11-04	BRINGUP_LOG 4.52: the windows' calibration fails when the I leg is under about 170 mV (0 of 38 failed at 160 m
+54da0fb510	7ddc0b9810	2026-11-04	BRINGUP_LOG 4.50: the holdover, as set, slips the loop under OOK (12 of 36 OOK rounds followed by a half-cycle
+259c0cf46b	86281ba3ad	2026-11-04	BRINGUP_LOG 4.50-4.51: over the dishes every carrier gap loses the lock without the holdover and 19 of 20 ride
+02172c20e7	487c8077cc	2026-11-04	BRINGUP_LOG 4.49: setup's floor at 0 rescues 5.5-5.6 GHz, not 5.7-5.8 (the board's own leak); a slow AGC on th
+d30bca3d89	67df52f519	2026-11-04	BRINGUP_LOG 4.48: the carrier swept 4.4-6.0 GHz over the dishes: BPSK clean 4.4-5.4 GHz to 50 Mbaud, above 5.4
+78e735a943	ae5a153d19	2026-11-04	BRINGUP_LOG 4.47: over the dishes the link is clean only within about 6 dB of its setup level; the band is qui
+7a95f1dc57	5a9dda2773	2026-11-03	BRINGUP_LOG 4.46: the page's scope views from the laptop's SDS1104X-E: scopewatch.py speaks its command set (x
+5e5f044871	df06dc60cb	2026-11-03	BRINGUP_LOG 4.45: board A locked over the dishes (DSA 12.5 dB, clean data) after the server's setup ran again 
+039ce0df23	e36cc7a524	2026-11-03	BRINGUP_LOG 4.44: when C102 came off, as the log knows it
+b3df2da4f5	dae36e1289	2026-11-03	BRINGUP_LOG 4.44: C102 lifted on board A: +15.5 dB of receive gain at 5.8 GHz (+24-25 predicted), +2.5 at 5.2,
+2a19ebe1be	9073ff3c0e	2026-11-03	BRINGUP.md: the room link's caveat 1 settled (139.75 ns, -50.0 dB at 5.15-5.25 GHz, BRINGUP_LOG 4.43)
+804a5de5fe	e682fa0d35	2026-11-03	BRINGUP_LOG 4.42-4.43 corrected: the room link is -50.3 dB at 5.2 GHz (not -53.7: vna_tests.py interpolated co
+892e797421	c01d3b38cd	2026-11-03	BRINGUP_LOG 4.43: the dishes across the room: -53.7 dB at 5.2 GHz with both cables, 16.35 m of electrical path
+3a8571c2e4	c7ce459009	2026-11-03	BRINGUP_LOG 4.42: the dishes' 10 m cables: 9.0-9.4 dB each at 5.2-5.8 GHz once cable A's SMA joint was tighten
+1d415641f7	25848ebb18	2026-11-03	BRINGUP_LOG 4.41: the receive chain against drive: 0.5 dB compressed at -37 dBm in at 5.2 GHz; at 3-4.4 GHz th
+772339e437	05af5af312	2026-11-03	BRINGUP_LOG 4.40: TX ANT into the board's own receiver: -59 / -62 dB at 5.2 / 5.8 GHz to RX MON, mostly after 
+90c184e896	9d9a71c653	2026-11-03	BRINGUP_LOG 4.39: the antenna switch block: 2.2 / 2.6 dB per arm at 5.2 / 5.8 GHz, 37-38 dB to the off port, S
+36041609b1	65be3b8eb8	2026-11-03	BRINGUP_LOG 4.38: TX_DIS was set around the TX ANT sweep
+ec470a1e2e	fa20a37334	2026-11-03	BRINGUP_LOG 4.37-4.38: the couplers' -20 dB is the design's value (the netlist's CP101 / CP201, unmeasured; as
+162a8a97ba	c5b083bec1	2026-11-03	BRINGUP_LOG 4.37-4.38 corrected: RX MON and TX MON are CP101 / CP201's -20 dB coupled ports, not 1 k taps: the
+e574302d32	11bd08dcc6	2026-11-03	BRINGUP_LOG 4.37-4.38: wording (the bench map's difference unexplained; TX ANT's mismatch loss 2.2 dB at 5.8 G
+2672562f1c	2c0c683a7d	2026-11-03	BRINGUP_LOG 4.38: TX ANT to TX MON: the tap reads 26.4 dB down at 5.8 GHz, 31.5 dB at 5.2; TX ANT's S11 -4.0 d
+1c1f4b9861	7a69874d6f	2026-11-03	BRINGUP_LOG 4.37: tests A and F on the receive side: RX ANT's S11 -0.82 dB at 5.8 GHz as modelled; the chain 6
+4c5599ffff	6f7b1cf446	2026-11-03	BRINGUP_LOG 4.36: the 8720ES calibrated for tests A and F (register 29: full 2-port, 3-6.5 GHz, 1601 points, -
+63cc3ff9d8	e8114c5aee	2026-11-03	BRINGUP_LOG 4.35: the lab laptop (zmash) drives both E3632As, the PYNQ and the 8720ES; board A as the bench PC
+5da7131515	1e4c708ee0	2026-11-03	the self-test calibrates the windows again when the level moves 2 % from the calibration's, not 15 % (a restor
+315c9c9df0	8c010742e9	2026-11-02	CLAUDE_CODE_CHAT: response 43's second half (the night's questions, Jason's decisions, the REVB 38 campaigns)
+a27a439932	43d4046e36	2026-11-02	REVB_DESIGN_SPACE: the pin table made plain (1 of 8 leaves 2 + 2, the slow instrumentation on I2C), P2 for the
+a977064efd	cbb0b47aa0	2026-11-02	linkd's setup fine-tune lands on the nearest 0.25 dB step (the first step inside 3 % sat a whole step off: 164
+1f4486ea59	dd73e75a28	2026-11-02	bringup/revb38: the campaign scripts' contents (the copy had failed)
+f0882c249e	36c5f00052	2026-11-02	BRINGUP_LOG 4.34: the receiver's corner error (REVB 38) is dynamic and bilinear (I x Q over microseconds), not
+23857454a9	ad25a4b357	2026-11-02	REVB_DESIGN_SPACE: Jason's decisions (SYZYGY pods on the Brain-1 first, FEM on the pod, switched filters, no v
+6363e4548c	774c81066e	2026-11-02	b210link rxscope: the clusters' seeds follow the pattern's width (the 0.5 written in was wrong at any other wi
+ba5576a40b	d36d31becf	2026-11-02	REVB_DESIGN_SPACE: the general fast I/O requirement (12 out + 12 in per node), the 1-of-4 against 1-of-8 pin a
+96d42f940b	af7a202102	2026-11-02	REVB_DESIGN_SPACE 3.5: the field pod on the Brain-1's transceiver port stated plainly (Jason's question), the 
+e52f4a29ba	a68e1cae70	2026-11-02	REVB_DESIGN_SPACE: sub-band filter parts with stock (BFCN-5750+, 5235CR45, the BAW ones), the diagonal windows
+aa6da58a43	f2169810f4	2026-11-02	REVB_DESIGN_SPACE 3.6: linear against saturated transmitter for this link (the PA's class, the geometry, the m
+c26e976b11	0718421005	2026-11-02	REVB_DESIGN_SPACE: the TXR4 port's ten single-ended signals (the SYZYGY TXR template) take the field pod, so a
+827a16b7b6	a4fd2a26ae	2026-11-02	REVB_DESIGN_SPACE: what Kria is (the K26 SOM, KV260/KR260, our own carrier, 'wider sockets'), the SOM's I/O co
+050f50cfd2	8c1ed341fe	2026-11-02	REVB_DESIGN_SPACE: the K26 carrier terminal's part number as DS987 gives it
+4970d6d4e1	08efaa4e74	2026-11-02	REVB_DESIGN_SPACE: the SYZYGY Standard port's real pin structure (8 pairs + 2 clock pairs + 12 single-ended) a
+e957277940	e013d34c5e	2026-11-02	The hand-off for a laptop in the lab (bringup/HANDOFF.md), the bring-up's findings (bringup/FINDINGS.md), REVB
+a70998b51d	e1e4f365db	2026-11-02	BRINGUP_LOG 4.33: soak15's final counts (328 trials, 92 losses all recovered, 4 050 checks passed, the 10 fail
+bcc33727dd	75fe4b1444	2026-11-02	BRINGUP_LOG 4.33 (soak15: 320 trials, 88 losses all recovered, the nine fixes it led to, the two findings left
+70f563b23d	71e429a154	2026-11-02	linkd's setup brings the level back to where the kept calibrations were taken (the attenuator in 0.25 dB steps
+4a7545b80a	64f59d8230	2026-11-02	each self-test run records the other interventions announced during it ('during': a carrier cut, the attenuato
+1e3ef9589a	fdc9924211	2026-11-02	IMPROVEMENTS 19: QPSK's wrong decisions at 5.75 dB stronger (2.7e-3, soak15 #201)
+e3333f9072	329d54d0ce	2026-11-02	IMPROVEMENTS 19: an AGC on the DSA to hold the level where the windows and the profile were learned (a stronge
+df2a21adf8	2f5bbc2dea	2026-11-01	IMPROVEMENTS 18: QPSK's latency tail on one lock point (2-3e-7 late but right, every table), and a learning st
+af12312c83	24ca6a8d90	2026-11-01	the self-test's plan 'qpsktail': QPSK with each decision table at settle 6 within 24 and 32 samples (the laten
+f7d0c0b1d2	3981761ac9	2026-11-01	the page: a change of the self-test's plan noted as a moment (left open, every plot was tinted for an hour)
+00e828959f	32fcc03005	2026-11-01	the self-test keeps each lock point's last window sweep (levels.json) and the page shows the loop's point's: a
+30858f6e44	65065b19ef	2026-11-01	the self-test reads the carrier's level at the start of each symbol step, the page uses it while the step runs
+5967176180	8f474ea31f	2026-11-01	scopewatch: OOK triggered half the leg out on the carrier's side (through the middle it waited out its timeout
+b759d9bc24	76b972dda8	2026-11-01	linkd keeps each lock point's calibrated windows across a restart (windows.json, put back at setup); the page'
+66b8a64bb1	ceaffeb65a	2026-11-01	IMPROVEMENTS: the learning step's page panel done
+6839fe158d	9092f9d76d	2026-11-01	IMPROVEMENTS: linkd's per-lock-point calibrations kept across a restart (a deploy left QPSK 2.2 % lost for a m
+a8d1fe1760	70cb2cf254	2026-11-01	the page: a window move after a change of lock point said as that (the point's own windows put back), the cali
+99d06f8df0	e2387dc073	2026-11-01	soak.py: windows_followed only for an attenuator step that weakens the carrier (linkd's windows follow down on
+86ba4c535b	3813045456	2026-11-01	the learning step tries the learned table at the QPSK rate only when it differs from the rule's (on the + lock
+c4c3472cc5	1d718d02ed	2026-11-01	the learning step back to the rounds after it when the plan before was lost with a restart (selftest.json kept
+1832cddeae	cb17ae5c1e	2026-11-01	the learning step gives up (keeping the old profile) if the loop changes lock point while it learns: every run
+0669fc52c5	4fdc632884	2026-11-01	soak.py: a server restart inside a disturbance's window (linkd's counts going down) is said, not flagged as a 
+667f9273fb	ec7eeeb802	2026-11-01	linkd keeps each lock point's calibration and puts it back when the loop changes point (near the same level); 
+cfebc87f75	201b2d14d0	2026-11-01	the page's 'Learned settings' (the learning step's choices: a bar per scheme, mean latency and its 99.9 %, the
+158684b53f	1a46053a9c	2026-11-01	IMPROVEMENTS: the best rev A can do in gateware and firmware (before physics runs, latency, sensitivity, robus
+5f68efc890	4edc449da7	2026-11-01	the self-test's learning step (plan 'learn', once through then the plan before; Jason: learn before the QPV ph
+23f7974355	3c48f1210d	2026-11-01	soak.py: a check that the self-test's quiet single symbols and QPSK after each disturbance lose under 1 % (13:
+837806edfa	bc45c3ed5f	2026-11-01	the self-test's calibration not while an intervention is announced and only at the level linkd keeps the windo
+a7b8aedb51	3abf17e469	2026-11-01	window_bias 0.6 by default: at 0.7 the round's QPSK at 2.5 M a second lost 3e-5 undecided or missed, quiet (th
+c820e31a5c	547e9e7043	2026-11-01	BRINGUP_LOG 4.30 (the A/B's weaker rounds, window_bias 0.7), 4.31 (the board's receiver against the B210's exa
+e0cd5bb422	45944b5c11	2026-11-01	b210link.py rxscope: the board's receiver on the bench scope against the B210's exact states (the idle, an exa
+e81616fe70	2d535073b2	2026-11-01	window_bias 0.7 by default (the A/B at 12:46: quiet as at 0.5, under a CW 10 dB down 150 times fewer false eve
+57a137ae03	8a5a5c4d58	2026-11-01	an open page reloads itself when its file on the board changes (/api/page, polled every 30 s: a page left open
+b6db381e54	d2452b5d18	2026-11-01	the aligned symbols' help: why Q moves with A1's flip (the saturated TX's AM-PM puts the flip at 190 degrees: 
+32ab013ca5	d95eadd707	2026-11-01	the scope plots' level labels in a right margin beside their lines, pushed apart where close, off the traces (
+f9e4e3df09	b0aa337465	2026-11-01	the fast constellation's idle circles at the capture's own level (from the page's live reference they slid a f
+3e7726ef8b	ba5a1545c2	2026-11-01	the calibration's place in each window's plateau a setting (window_bias, from the idle's side; 0.5 the middle 
+36a84085e8	aa1c49a79a	2026-11-01	the self-test's scheme rota turns only for a symbols step that names no scheme: the QPSK step (A3, named) turn
+749ba75645	2249734550	2026-11-01	IMPROVEMENTS: today's done items (OOK, FSK data, the PYNQ on the bench supply and its watchdog's power cycle, 
+cf8fa731dd	ba36b4c728	2026-11-01	the self-test's OOK step reads its I window at half the leg (between the carrier and its null), not the calibr
+457fabdd62	1c9bb1fd31	2026-11-01	the page reads the confusion matrix before the counters while the engine counts, so a live window can show sym
+123b462418	2c28d92035	2026-11-01	BRINGUP_LOG 4.29 (every link for every test: the board to itself, to the B210, from it, the B210 to itself; BP
+5da803a240	fbe98685fc	2026-11-01	ID 13: FSK data (TX mode 4 with the PRBS as source: each turn of the N points backwards when its PRBS bit is 1
+3e80b4d122	b7f2735d6a	2026-11-01	B210 streams: a short buffer repeated to 20 ms (400 samples at 20 Ms/s took 50 000 sends a second and underflo
+ff75c349c7	e9a045c2fd	2026-11-01	sdr_rx.py: OOK (the carrier's own line, the decision on the magnitude between the two levels, its Q factor) an
+434116b390	3d0f0072e7	2026-11-01	the watchdog power-cycles a silent PYNQ (--pynq-cycles N: the board to 0 V, both off 10 s, the PYNQ, its overl
+8db8af684a	b8d486f7f7	2026-11-01	b210link.py: OOK from the B210 checked on the board's I window (ID 12), all four schemes' events, the engine s
+0900063f48	04bb1ccc8d	2026-11-01	BRINGUP_LOG 4.27 (ID 12's failed load, the PYNQ's hang after its reboot, the PYNQ on the E3646A's output 2, th
+84bb13d299	d27258eae7	2026-11-01	the PYNQ on the E3646A's output 2 (12 V, 1.5 A, OVP 13.5 V): the board switched by its own output's voltage (t
+e0da41c2cb	6223a8ffba	2026-11-01	sim_pipe.py: the two named pipes unlinked once both ends are open, so a simulation killed mid-run leaves none 
+027b44efe2	a9abd84567	2026-11-01	MONDAY.md: the three kinds of data in each round, the scope at 50 ohm, the saturated TX as a point to make
+3671a1f751	b1b733dd05	2026-11-01	ID 12: the bit check's comparator chosen (RX_BER_CFG[31:30]: CMP_I, CMP_IP, CMP_IN, CMP_QP), so on-off keying 
+fa71e014a4	97c9913eb6	2026-11-01	BRINGUP_LOG 4.26 (soak14's night, the page's changes, the scope at 50 ohm, the board's TX heard by the B210: s
+88fbb2ce5a	e2f1c73d17	2026-11-01	the scope's DC from the idle (the scope watcher measures its offset in the self-test's carrier-alone step and 
+cf6d6e1644	2775d54f62	2026-11-01	the bench scope on 50 ohm (ch2, ch3: probe factor 21, the 1 k taps /21, REVB 34): the eye open at 20 Mbaud whe
+f15d042707	472066aee9	2026-11-01	REVB 34: I MON / Q MON are 1 k taps into the scope's cable (115 ns: the scope's eye closed above 5 Mbaud while
+0459f7d566	cad29c5729	2026-11-01	the page against Jason's first look (2026-11-01 07:00): panels that only grow (no jumping as captions change; 
+f165230b1f	e07883cf51	2026-11-01	the page: a recovery that did not lock says so, an interferer during an announced test named (soak14 #182: 'fo
+26e5252fca	dd8eaf4112	2026-11-01	TODO: the morning's A/B of the settled decision and the calibrated windows under one B210 setting
+835f75999f	78f273ff41	2026-11-01	the page's own-constellation panel: the dashed lines the plain rule's thresholds (half the leg), not the ones 
+a2c9d2e933	a24b01e6be	2026-11-01	BRINGUP_LOG: the 01:59 PST deploy
+1eda0df53b	9be14d0978	2026-11-01	the page: 'The board's own constellation, along each window' (the self-test's last sweep of the windows: where
+4eb424b956	b0ee68d812	2026-11-01	TODO: the state at 01:50 PST (ID 11, the settled decision, the calibrated windows)
+903f5fcdb8	ee449db00a	2026-11-01	MONDAY.md: the new latency and the 'settle' demonstration
+c75bed3a34	6674e2bee0	2026-11-01	IMPROVEMENTS: the settled decision and the calibrated windows done; MONDAY.md: the new latency and the 'settle
+15a7d6ccba	717edeaa5b	2026-11-01	BRINGUP_LOG 4.25 (the settled decision, the windows from the states' levels) and the 01:22-01:43 PST deploys
+abd1274d22	ceddb4cec3	2026-11-01	linkd: a lock far from the learned one (more than off_khz_min) is not a lock: not learned from, judged by VC l
+d44cd87d6d	5b81b3edcd	2026-11-01	the self-test's A3 settled on 6 held samples (with the calibrated windows 4 decided 2.1 % wrong; 6 none wrong,
+22b4287e6a	a2d3070b16	2026-11-01	the receiver's windows from the states' own levels: the self-test's 'calibrate' (A3's corners and A1's flip sw
+69d2305bb3	deced3ae41	2026-11-01	the self-test decides single symbols settled by default where the overlay can (ID 11): A1, A1w, A2 on 2 held s
+fcf80a6c88	76df0314f8	2026-11-01	BRINGUP_LOG: ID 11 in the firmware table, its deploy at 01:09 PST
+ebc4f1b49b	d1fece944c	2026-11-01	the self-test's roles for two boards: 'send' (BPSK PRBS15 continuously for the other board) and 'check' (the o
+d182a41cd7	77fc878d56	2026-11-01	linkd: link.json's tx_mhz and rx_mhz (two boards as two one-way links apart in frequency, MONDAY.md 5; 'mhz' b
+2b55222b78	ecbba1cd1e	2026-11-01	the self-test's 'levels' (each window's threshold swept with the scheme's states sent at random, the loop clos
+2ba14f7982	9ac98e86de	2026-11-01	ID 11: the settled decision pipelined (each sample's table bit and 'same as before' a clock ahead beside fs_d,
+71163c375d	4baef99938	2026-11-01	linkd: the windows follow the level down only (never above setup's); the self-test's 'corners' step (each stat
+fca148a460	838a1dcccc	2026-11-01	ID 11: the settled decision (RX_TIMING[31:24] = k: a single symbol decided on the first vector that is one sta
+b6ab252604	322a147e0b	2026-11-01	TODO: the state at 01:30 (ID 10, the windows following the level, the night's rehearsal)
+973c92c221	380bf81760	2026-11-01	MONDAY.md: the exact counts, the states table, the latency-against-certainty sweep (plan a3delay), the windows
+e11ff91a09	47e8ca2387	2026-11-01	BRINGUP_LOG 4.24: the demonstration rehearsed through the night (soak11-14 with the self-test), what it found 
+04ce274910	492c2767a0	2026-11-01	linkd: the receiver's windows follow the carrier's level; REVB 32-33, 17's static Q error measured
+6bda9a2a6d	a28f3dfef6	2026-11-01	the self-test: each symbol run's table of states sent and decided (on the page under the latency's spread); a 
+6f9a0485ef	983d9938ed	2026-11-01	BRINGUP_LOG, IMPROVEMENTS: ID 10 (the single symbols' counts add up) and its deploys
+62d8fcd459	c070dbc705	2026-11-01	the single symbols' counts on the page and in the self-test: sent (the references), undecided, the whole matri
+ae9f2945ff	190c14565f	2026-11-01	ID 10: the single symbols' counts add up (rx_engine.v)
+a8fa884ac5	d1ba99d540	2026-11-01	BRINGUP_LOG: the 00:24 and 00:34 page deploys in the version table
+f8eb0ea874	c5f479c80f	2026-11-01	soak.py: where a disturbed loop rested, from 1 s on and before linkd's recovery (linkd now recovers within 2 s
+ee28fd70cb	282053d25e	2026-11-01	the page: during a recovery the Now line and the lanes' caption say the board is bringing the link back (they 
+44a89f3592	50af0135db	2026-11-01	IMPROVEMENTS: the night's fixes in the done list (linkd waits for the carrier, the dragged loop, the slip afte
+7630dbec8d	b8f3d5affd	2026-11-01	the page: a loss while linkd waits for the carrier says so ('no carrier arrives ... the board recovers it the 
+89bf0acb98	5a5eeb7ce9	2026-11-01	BRINGUP_LOG: the slip fix deployed
+bb051e1c20	ac313addf4	2026-11-01	the page: a loss linkd mended between two full looks breaks the slip detector's run (it listed a recovery's ne
+3d177f2901	3cc0efe4b7	2026-10-31	BRINGUP_LOG: linkd's wait for the carrier deployed
+9e5da3c11b	324ed44ac2	2026-10-31	linkd: with no carrier at all (the lock monitor's 'no carrier') no recovery is tried and no back-off started: 
+d084397fa2	429585ba22	2026-10-31	BRINGUP_LOG: the 23:35 deploy in the version table
+b57d17ff60	be66417bd9	2026-10-31	the page: the offset from linkd's lock VC when it has one, the page's own learned only from readings within 5 
+a57a2722cf	4ebcf6bea9	2026-10-31	BRINGUP_LOG: the scope-log deploy in the version table
+6c322ad199	6cdb02249d	2026-10-31	MONDAY.md: two boards as two one-way links apart in frequency (A to B at 5.2 GHz, B to A at 5.8 GHz: C102 lift
+fa554b7fbb	897093e9c6	2026-10-31	dashboard: a bench scope capture into the day log at most once a minute a kind, thinned to 1 500 samples (ever
+b9737c8b42	74518a448c	2026-10-31	BRINGUP_LOG: the 23:07-23:24 deploys in the version table
+ae5a5324ab	afa417fa88	2026-10-31	the latency's spread: the self-test keeps each symbol run's histogram (served by /api/selftest, kept out of th
+669fb2e3e3	6c2f75bebf	2026-10-31	netbus: the client connects again and resends once when the board's server has restarted since its last reques
+a8c3b2e75c	30d5784184	2026-10-31	TODO: the state at 23:00 (ID 9, the self-test, the demonstration's page, the audited soaks; MONDAY.md and IMPR
+399577d9d1	26829ef639	2026-10-31	the page: 'Unwanted power in Q' not judged, and 'Comparator activity' said to be the board's own, while its ow
+413a59d2ad	fb53d1dfe6	2026-10-31	BRINGUP_LOG: the 22:46-22:57 deploys in the version table
+9c106e0591	412c38a055	2026-10-31	the self-test's data reads the carrier's level in a 0.1 s gap each second and the page shows it (RX ANT -41.02
+d8a7a2d153	1a11ccddb7	2026-10-31	the page: ?view=demo puts the link's activity, its signal, bit errors, symbols and the scope's views first; th
+2918d0d12e	209fc4f348	2026-10-31	the page: the demonstration's controls (the self-test's plan, the holdover) with ?controls=1, the plain page r
+77125570a1	bafbf0cb77	2026-10-31	BRINGUP_LOG: the 22:39 deploy in the version table
+489d21ee35	1eb52ad26a	2026-10-31	the page's server: the history sent from the looks as already encoded for the log (10 minutes 0.18 s, not 2.3 
+43cf212c22	4d57438efd	2026-10-31	BRINGUP_LOG: ID 9 in the gateware table, the 22:24-22:36 deploys in the server table
+e2b193558e	4a0dce4e43	2026-10-31	ID 9 on the board (overlay from 6ed3555, Vivado 2022.1 Performance_NetDelay_high: WNS +0.084 ns, WHS +0.038 ns
+5432a152f6	0b0b036856	2026-10-31	the page: a loss that linkd mended between two looks (every look meanwhile busy, linkd recovering) shown and c
+9c434e6453	4089447ebc	2026-10-31	the self-test records what the B210 was announced to do during each step (the page's results line says it); th
+07b4b54828	3173b896e9	2026-10-31	BRINGUP_LOG 4.23 (data and single symbols under the B210: clean without it, the interference in every count; w
+dcc9367f13	6ed35557ad	2026-10-31	CostasLink gateware (ID 0x434C0009): the random message masked to the bits a message takes before its reductio
+0697889f92	f2c1a613d4	2026-10-31	the demo against its first photographs: the status card's grid with the Now line, the link's activity as whole
+72029de182	96e8c1a9ff	2026-10-31	MONDAY.md: Jason's plan for 2026-11-02 in detail (the students' demo with its commands, the VNA tests A and F,
+cf70fbd6f1	f0b735c940	2026-10-31	the demonstration (Jason, 2026-10-31: on Monday the students watch single-shot 'idle to one of N' latency test
+5410e45d30	84447f2e2a	2026-10-31	data on the link in the randomized soak and on the page (Jason, 2026-10-31: test single symbols' latency and l
+ec8c217a83	7587cb4a0d	2026-10-31	BRINGUP_LOG: the 21:25 deploy's commit
+e13d35fbbb	ff4812a494	2026-10-31	the page: a holdover hold with the carrier still there (the lock monitor busy) is 'Interference: holding', not
+bdc8b3aca0	527ee63fac	2026-10-31	BRINGUP_LOG 4.22: the check count (422)
+b7df5fdb5e	b58171d882	2026-10-31	BRINGUP_LOG 4.22: the signal holdover against 33 random carrier interruptions with linkd: all held (23 ms-53.6
+a80a28e583	e686aafcb2	2026-10-31	soak.py: a gap held through by the holdover named so, not 'no carrier'
+86567cc312	b26ee8ddf3	2026-10-31	dashboard: the holds' time-held rates across the 32-bit counters' wrap (every 42.9 s of holding; a 35 s holdov
+c980c04337	401e11e2a0	2026-10-31	BRINGUP_LOG: the 19:46 and 20:05 deploys in the version table
+ff25cee122	45db369b25	2026-10-31	the page while the holdover holds (photographed in soak7): the map says the loop is held, not locked, and the 
+6abc2043a1	77371e2a67	2026-10-31	soak.py --holdover: the signal holdover on for a run and off at its end; a slip across a holdover counts as on
+7009fd8a5e	4a99d66f9f	2026-10-31	REVB 31: the interruption threshold from 49 random gaps (held to 44 ms, the false lock 57-222 ms, the rail fro
+a686902bd8	0c110b0ccf	2026-10-31	BRINGUP_LOG 4.21: the carrier interrupted at random: the lock survives 44 ms (half of those slip half a cycle)
+6f61cb246a	fdfb1b6481	2026-10-31	soak.py: a short interruption named in ms (the page read 'switched off for 0.0 s')
+1ca59b4347	63724c3dd9	2026-10-31	BRINGUP_LOG: the slip events deployed 18:12
+fb5e1f72b8	10af020d7f	2026-10-31	soak.py rides out a restart of the board's server (a refused connection ended the interruption run at 17:45): 
+b1149b27c3	6e9e778286	2026-10-31	BRINGUP_LOG: every firmware and server version on the board in one place (the overlays ID 3-8, and the day's 1
+2b6dbac8e6	d633ca4ef9	2026-10-31	the carrier's level the same on both lock points, and phase slips listed (soak.py's carrier interruptions): th
+a35664d969	0268def730	2026-10-31	BRINGUP_LOG 4.20: randomized disturbances checked against the page's log, its API, linkd and its photographs (
+8ffe3c92af	43ea4ff17a	2026-10-31	soak.py: carrier interruptions from 10 ms (soak2: 0.33 s put the loop in the false lock, 0.9 s on the rail), o
+8e38159e22	fa3d0c6154	2026-10-31	the page against soak2's photographs (10 trials, all checks passed): the recovery's modes in words ('watching'
+b538bedc53	825cc88161	2026-10-31	the page against soak.py's photographs: while the board is too busy to read (the recovery running) every panel
+a45294363a	44f7bae101	2026-10-31	soak.py: disturbances with random parameters (Jason, 2026-10-31: randomize the tests' parameters and check bot
+59e6780cb1	e5c32a447c	2026-10-31	TODO: unattended operation's status at 14:50 (linkd and ID 8 done, the page's third version checked by pageche
+393eedfe5a	8ff2a2e007	2026-10-31	BRINGUP_LOG 4.18 (the unattended runs on ID 8: 58 disturbances, 18 losses, 18 recovered by linkd, the page loc
+67b338e998	ba6e0f1638	2026-10-31	dashboard v3 (Jason, 2026-10-31: the S-curve vs the pull-in map, RX ANT stopping in bursts, the empty skew plo
+0eb209ef8d	c375efc565	2026-10-31	dashboard v2 (Jason, 2026-10-31): the page from dashboard.html (read at every request: page changes need no re
+044d82f0b1	75efa649d1	2026-10-31	CostasLink-PYNQ-Z2: the commits these files name, renamed to their hashes after the history was rewritten with
+47ade13d97	eba111909e	2026-10-31	CostasLink-PYNQ-Z2: the bench's full record (bringup/data, about 250 MB) no longer tracked: it stays on the be
+b05d886d6b	fe45870c23	2026-10-31	docs/LOCK.md: what a hold costs and where it does harm (7.6: bursts, the near carrier, why it must start at on
+b2ca736709	96381327ba	2026-10-31	CostasLink-PYNQ-Z2 TODO: the board server is the PYNQ's boot service (costaslink-netbus, from ~/costaslink_cur
+dee942a607	0ae831c525	2026-10-31	CostasLink-PYNQ-Z2 bring-up, board A: overlay ID 0x434C0008 deployed with link.json; the board set the link up
+97a9d8f779	a9b6fa7b2d	2026-10-31	ihold.v: the scaled release registered in three steps (the subtract, shift, add and compare in one clock misse
+f604037683	34706d081e	2026-10-31	dashboard: 'What happened', the board's losses and recoveries in words, newest first (with the oscillator's di
+d732fcacde	72c9272a4e	2026-10-31	linkd: set the link up from nothing at start when link.json sits beside the server (the carrier, its null, the
+de741dbb7e	8adc05196e	2026-10-31	CostasLink-PYNQ-Z2 bring-up, board A: the recovery on the board itself, end to end (BRINGUP_LOG 4.16): linkd 2
+15b680794b	f9103e4bbe	2026-10-31	gen_xdc.py: the PYNQ-Z2's LED pins for the overlay (ID 8) come from the generator: the hand edit of costaslink
+0a5149afb9	a46e7d1ee8	2026-10-31	CostasLink-PYNQ-Z2: TODO's unattended-operation status; REVB U4 (an integrator reset switch, so gateware alone
+816347cb10	f1dec7d1b3	2026-10-31	CostasLink gateware (ID 0x434C0008): lockmon.v, the lock's state judged in gateware every 10 ms from 64 sub-wi
+f59e3808fa	70c8ef8396	2026-10-31	netbus: requests that only look (pings, register reads, the detectors, the holds' and the timing recovery's st
+976a8de68e	96806809b1	2026-10-31	BRINGUP_LOG 4.15: the count is 0 of 171 disturbances not recovered (234 trials with the 63 burst trains), not 
+0684273639	06436cbd0e	2026-10-31	CostasLink-PYNQ-Z2 bring-up, board A: the automatic recovery proven from the PC (BRINGUP_LOG 4.15): 0 of 135 f
+35a42d4e29	7375babece	2026-10-31	CostasLink: linkd.py, the link's automatic recovery in the board server (netbus.py serve --linkd; pynq_serve.s
+809a5d2139	0ca2f8b70f	2026-10-31	CostasLink driver: dashboard.py, the board's read-only live status page served by the board server (netbus.py 
+347780b2af	e72227edbd	2026-10-31	CostasLink-PYNQ-Z2 bring-up, board A: the interference hold under bursts (BRINGUP_LOG 4.14): every hold costs 
+2fedf39101	c2942e1729	2026-10-31	CostasLink-PYNQ-Z2 TODO: the dashboard's help pop-ups on every plot, and the good-direction arrow and green / 
+866922f8fb	c55ce5eea6	2026-10-31	CostasLink-PYNQ-Z2: unattended operation (Jason, 2026-10-31): REVB U1-U3 (lock and signal-strength LEDs, a bar
+3c764230f2	10e04cbff6	2026-10-31	CostasLink gateware (ID 0x434C0007): the interference hold's persistence (RX_IHOLD_PERSIST): a hold starts onl
+02ab896623	828eae03c3	2026-10-31	CostasLink-PYNQ-Z2 bring-up, board A: the interference hold near the carrier (BRINGUP_LOG 4.13a): a 200 ms rel
+5893b4c450	f04a21122d	2026-10-31	CostasLink-PYNQ-Z2 bring-up, board A: the interference hold against a CW near the carrier (BRINGUP_LOG 4.13): 
+ec6e1cb4c5	c24647347e	2026-10-31	docs/LOCK.md: the drag threshold figure from all 16 of the weekend's 5.2 GHz runs, the kinds of point nudged a
+fe1c50b480	14f8ba2c47	2026-10-31	CostasLink-PYNQ-Z2 bring-up, board A: the I comparator's trim opens the BPSK eye (RX_CDR_SKEW follows I_OFF_F)
+8290225691	84be29762f	2026-10-31	CostasLink-PYNQ-Z2 bring-up, board A: the first round on overlay 0x434C0006 (BRINGUP_LOG 4.11): 120 of 120 dra
+85c962c328	93aa250260	2026-10-31	CostasLink-PYNQ-Z2 bring-up, board A: 160 of 160 dragging CWs back at the 20 ms release; the timing recovery's
+8521517508	f778b3d707	2026-10-31	CostasLink gateware (ID 0x434C0006): the timing recovery tracks one edge polarity and centres on the skew, aga
+4817f12ddb	0f805e0fe3	2026-10-31	CostasLink-PYNQ-Z2 bring-up, board A: the weekend's first round (BRINGUP_LOG 4.9); its interference hold ran a
+f97199d777	8b134ae5a3	2026-10-30	CostasLink-PYNQ-Z2 bring-up: TODO: the holds done; where the server runs from
+09a0682ffa	4899c343e9	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: both holds work (BRINGUP_LOG 4.8b): a 1 s CW at +9 dB and a blocked carr
+bd9a87e9e0	65e3a7f210	2026-10-30	REVB 29: the loop's state and the oscillator reach the FPGA only through a slow I2C ADC and DAC, and the integ
+367a06ae8a	e8dd166041	2026-10-30	BRINGUP_LOG 4.8a: the armed interference hold prevented the drag but held itself on one window's chatter; docs
+eadd8aee1d	447a8221e4	2026-10-30	CostasLink gateware: the interference hold's busy window needs two comparators (QP and QN) each active in thre
+65ddc515ea	04017d791b	2026-10-30	docs/LOCK.md: how the Costas loop holds lock and how it loses it, for students: the S-curve, the capture effec
+1283f89844	2b5f86bc50	2026-10-30	CostasLink gateware: the interference hold starts only after a quiet window (a lost, beating loop is never hel
+801780afd9	cf08267b09	2026-10-30	CostasLink gateware: the signal holdover (ihold.v LEVEL 1; ID version 5 with the interference hold): LOOP_HOLD
+711463317c	41c6306fb3	2026-10-30	CostasLink-PYNQ-Z2 bring-up: weekend.py pullauto (the gateware's interference hold through the dragging CWs) a
+7a4f8fd84b	882e9e4a51	2026-10-30	CostasLink gateware: the interference hold (ihold.v; ID version 5): LOOP_HOLD while the chosen comparators (QP
+8f6e8f38b9	b7ba3fd621	2026-10-30	CostasLink-PYNQ-Z2 bring-up: TODO: the interference hold and a gateware lock detector and search next; where t
+cfdcaad865	bef7d68943	2026-10-30	CostasLink-PYNQ-Z2 bring-up: the weekend's rounds add the B210 -> board timing-recovery check (b210cdr), and r
+825c356dcd	fb670ac082	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: the BER check's timing recovery on the board (BRINGUP_LOG 4.7, REVB 28 f
+698337d01a	0f95af3c5a	2026-10-30	CostasLink-PYNQ-Z2 bring-up: the loss-of-lock explainer's model and measurements (loopmodel.py: the averaged s
+e5918e8007	0b0973085c	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: why BPSK segments read random with the loop locked (BRINGUP_LOG 4.6, REV
+edc22b58fc	14ce7657b3	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: the pull (BRINGUP_LOG 4.5): a strong CW drags the loop to the rail on it
+092acc5ede	2e09484225	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: the data of the weekend's round 1, the over-the-air soak and the B210 li
+8d7512646b	56bdaa368f	2026-10-30	CostasLink gateware: timing recovery for the BER check (ber_cdr.v; ID version 4): CMP_I's symbol frame tracked
+ae01d58045	150ba09be5	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: the B210 as the other end (BRINGUP_LOG 4.4): B210 -> board events all ri
+cc7dd64404	7a55341676	2026-10-30	CostasLink-PYNQ-Z2 bring-up: the B210 as the link's other end (b210link.py: board -> B210 through a software r
+4a9c19c742	33ca44fb04	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: round 1 at 5.0 and 5.5 GHz (BRINGUP_LOG 4.3a): the drag's thresholds per
+10ee26472f	3bbe5abeda	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: round 1 at 5.2 GHz (BRINGUP_LOG 4.3): a strong interferer drags the VCO 
+da44795a28	a6ec69e9bc	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: the over-the-air baseline logged (BRINGUP_LOG 4.2); TODO step 5 done; th
+a9e00b9f26	073b74b71e	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: the over-the-air baseline (all schemes decoded and confirmed at 5.0 / 5.
+fe0ab81e73	8b40883dce	2026-10-30	CostasLink-PYNQ-Z2 bring-up: weekend.py (over the air with the B210: the decisions under interference, near-ca
+8070609bb8	997513762d	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: over the air with the B210 (BRINGUP_LOG 4.0-4.1): the links set up; in 7
+be36777113	d2d988f893	2026-10-30	CostasLink-PYNQ-Z2 bring-up: ota.py soak rotates the carrier hourly, tells blips (interference passing: locked
+27b03ccb6e	c608d9ef0f	2026-10-30	CostasLink-PYNQ-Z2 bring-up: b210.py tones at 2 Ms/s and bursts at 10 Ms/s with 50 ms buffers (no underflow); 
+6cc31fc72f	599e75c603	2026-10-30	CostasLink-PYNQ-Z2 bring-up: plots/locklab.png (the detector, dropouts, where releases end, acquisition from r
+a8134c0043	54a6b642ba	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: acquisition at 5.2 GHz (BRINGUP_LOG 3.9j): 52 of 52 real offsets to +-73
+3fd912560b	a8bdd9c229	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: acquisition from a real offset (BRINGUP_LOG 3.9j): 26 of 26 offsets to +
+509c7f4d4c	8d4663fd96	2026-10-30	CostasLink-PYNQ-Z2: max2871_regs.regs_frac (fractional-N words: INT 0, FRAC, CPL 01, LDF 0) for an emulated bo
+e1ca3145cf	465382d43a	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: TX_DIS pushes the TX's reference (BRINGUP_LOG 3.9i): the TX LO 35-80 Hz 
+bee31f80f4	6b6163d13d	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: the lock lab's loopback conclusions (BRINGUP_LOG 3.9g-h and the summary)
+56313b3b37	64378c9a89	2026-10-30	CostasLink-PYNQ-Z2 bring-up: ota.py (over the air: find the carrier and DSA, the B210's band scan, the B210's 
+d9ea14aae2	9da78c987c	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: the lock lab (BRINGUP_LOG 3.9e-f): the hold keeps the phase to 0.01-2.5 
+82f0850d46	bcf53346b7	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: the lock lab, part 1 (BRINGUP_LOG 3.9a-d): CMP_I's edges detect the lock
+6d39734f8f	68707a80d6	2026-10-30	CostasLink-PYNQ-Z2 bring-up: b210.py (the USRP B210 as band monitor and interferer: scan, power, tone, WiFi-li
+4c728d8316	070519666a	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: the segmented BER (3.8h: the eye at a fixed phase limits it and moves wi
+ac8ccfe2bd	fb003a4e1a	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: the characterisation campaign (BRINGUP_LOG 3.8a-g): loss of lock is the 
+4026feba6e	f21029d0a2	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: the pop-in (BRINGUP_LOG 3.7): test B puts the leak on the board; V_MID i
+7b13a8e684	d0573ab9f5	2026-10-30	CostasLink-PYNQ-Z2 bring-up: podtests.py, tests B (the leak with both ports terminated, a guard that stops if 
+90a6887424	2b23174c23	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: the morning's open points checked (BRINGUP_LOG 3.6d): the one-sided pull
+5add29fbd3	8fadaeb017	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: the overnight watchdog's records to 08:02 (16.0 h watched, nothing out o
+68d6b35251	daadc73608	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: the sign jumpers moved and the loop locks as designed (BRINGUP_LOG 3.6-3
+aa12c5b092	0ddb1035f3	2026-10-30	CostasLink-PYNQ-Z2 bring-up: locktests.py, the Costas loop at its designed point after the sign jumpers moved 
+97fc5847ec	d1cd7029ec	2026-10-30	CostasLink-PYNQ-Z2 TODO: the night done (0b); the LNA's VCC and V_ENABLE on the Fluke 45 (3b); the bias-choke 
+319d8a04c4	c70668936d	2026-10-30	CostasLink-PYNQ-Z2 bring-up, board A: the night (BRINGUP_LOG 3.5): TCXO -1.006 ppm, 0.008 ppm rms reading to r
+adfeaa1e37	67c03967b8	2026-10-30	CostasLink-PYNQ-Z2 LATENCY.md: what the knobs mean for the QPV prover (two legs, not one turnaround; 20-50 ns 
+a1558eead1	bc0b240d4c	2026-10-29	CostasLink-PYNQ-Z2 bring-up, board A: the latency knobs (bringup/LATENCY.md) and the fast path's hop against t
+7cd096fc3a	b48b394b76	2026-10-29	CostasLink-PYNQ-Z2 TODO: step 0 done (the reply overlay deployed; turnaround 22-25 ns fast path, about 51 ns c
+5f15bcfdaa	845740c896	2026-10-29	CostasLink-PYNQ-Z2 bring-up, board A: the reply overlay deployed and the turnaround measured in loopback (fast
+461fe02946	af3f8a17b2	2026-10-29	Merge the CostasLink gateware's turnaround paths (the synchronous reply, the combinational fast path, the ring
+3af30a1ff1	6ad5af40a3	2026-10-29	CostasLink-PYNQ-Z2 bring-up: the TODO list for board A (pop-ins first, the VNA and grid trip on Monday, C102 l
+60e2c53d2f	39129d7206	2026-10-29	CostasLink-PYNQ-Z2 bring-up, board A: the LO drive (tests D and E): both mixers' LO ports saturated from -4 dB
+56216af5bc	1992095459	2026-10-29	CostasLink driver and docs: the turnaround measurements (Prompt 36)
+882f318ed6	253169c5a1	2026-10-29	CostasLink gateware: the receive-to-transmit paths and the turnaround counter (Prompt 36)
+2d51965f83	fe3bc6978d	2026-10-29	CostasLink-PYNQ-Z2 bring-up, board A: the schemes at 5.2 GHz, A3r with the fast I arm nulled (20 000 of 20 000
+2e4ce2774c	25e43a1908	2026-10-29	CostasLink-PYNQ-Z2 REVB Q10-Q11: a DC monitor mux to a DVM jack and the ADC; a current monitor per rail
+12ac337e62	e2f684bd36	2026-10-29	CostasLink-PYNQ-Z2: the as-laid simulation's report filed (sim/aslaid/REPORT.md); REVB 8 confirmed by the full
+0d72fef50a	26f16813ea	2026-10-29	CostasLink-PYNQ-Z2 sim/aslaid: gates 26-29 and 32 across the 53 RF and LO nets and the RF ICs' supply pins (ga
+02247364ff	736e08ccbd	2026-10-29	CostasLink-PYNQ-Z2 sim/aslaid: the board as laid out, simulated port to port (extractor, field-solved line tab
+cdcb4e4a10	5743d035d2	2026-10-29	CostasLink-PYNQ-Z2 REVB: quality of life, the jumpers and DNP options set from software (an I2C expander's out
+0b45794fab	d158a2f150	2026-10-29	CostasLink-PYNQ-Z2 bring-up, board A: the loop and the schemes in loopback at 5.0 GHz (A1q, OOK, A2r, A3r all 
+bdb8653f32	c8ff076084	2026-10-29	CostasLink-PYNQ-Z2 BRINGUP.md: the VV grid pair off the carrier (flat -47.5 +- 1 dB over 4.5-6.0 GHz, -48.2 at
+296ab93d5e	801e842cd6	2026-10-29	CostasLink-PYNQ-Z2 REVB row 9: the loop's sign, cause found (Response 10 inverted the I arm, a mirror not a ro
+ad44638fbb	5c4cd4df74	2026-10-29	CostasLink-PYNQ-Z2 REVB row 10: the ADL5611 chokes' self-resonance from Murata's table (2.7 GHz or above)
+2130f81dc0	f2ba7072ac	2026-10-29	CostasLink-PYNQ-Z2 bring-up, board A: the fine map (the chain rolls off; above 5.86 GHz a TX leak that skips t
+daaf4c1daa	2a5e364737	2026-10-29	CostasLink-PYNQ-Z2 bring-up: the loop's acquisition plot (night_acquire), its legend and the clipped-VC states
+bc2dd2407b	b4298384a6	2026-10-29	CostasLink-PYNQ-Z2 bring-up, board A: RX MON's spectrum with the TX muted (no oscillation; a noise hump at 6.4
+729872314b	f7f1577d24	2026-10-29	CostasLink-PYNQ-Z2 bring-up, board A: the loop's acquisition map (locks at VC 1.861 V at 4.5, 5.0, 5.5 and 5.8
+2f0b26af63	6bc32bbb40	2026-10-29	CostasLink-PYNQ-Z2 bring-up, board A stage 3: the receive chain's gain falls 35 dB from 4.5 to 5.8 GHz (REVB 8
+d20061857a	d2aae32643	2026-10-29	CostasLink-PYNQ-Z2 bring-up, board A: the Costas loop locks at 5.0 GHz, at the 90-degree point (the sign jumpe
+f9c6e9a671	2f6ebd69f9	2026-10-29	CostasLink-PYNQ-Z2 bring-up: plot_board.py and board A's first plots (the RF levels over 3-6 GHz, the VCXO's p
+b1f022e719	9351ff0b96	2026-10-29	CostasLink-PYNQ-Z2 bring-up: overnight.py, board A's unattended sections (the receive chain over 3-6 GHz, I/Q 
+10abca3e00	347f8a7dec	2026-10-29	CostasLink-PYNQ-Z2 bring-up, board A: the +-25 MHz sidebands scale as 20 log of REF IN's drive, no third harmo
+2a62fbbfb4	d606386112	2026-10-29	CostasLink-PYNQ-Z2 bring-up, board A stage 2.4: the TX synthesizer locks to REF IN; the +-25 MHz sidebands fol
+f71488c494	60f451c0b3	2026-10-29	CostasLink-PYNQ-Z2 bring-up: stage 2.4 with the analyser on TX ANT, at 25.000 and 25.002 MHz, telling the TCXO
+1838dc2c86	3294df3d04	2026-10-29	CostasLink-PYNQ-Z2 bring-up, board A at TX ANT: +3.8 dBm (6 dB low, an 11 dB tilt over 3-6 GHz), the coupler 2
+795c7ff955	4c34fd5da3	2026-10-29	CostasLink-PYNQ-Z2 bring-up, board A stage 2.3: the carrier nulled 55 dB, the axis flat, TX MON 7 dB low; the 
+554956489a	0ee2bdfa3c	2026-10-29	CostasLink-PYNQ-Z2 bring-up, board A: LO RX MON -8.7 dBm and unflat; neither LO MON tap is in the RF/LO net cl
+a5a18af086	452d9305e0	2026-10-29	CostasLink-PYNQ-Z2: LO TX MON's 25.7 dB shortfall is its tap's track, 115.6 mm for a 12.3 mm hop; tools/detour
+90216fd73a	6c05c625ec	2026-10-29	CostasLink-PYNQ-Z2 bring-up, board A stage 2.2: REF OUT and the VCXO pull pass; LO TX MON 25 dB low; the held 
+ab807e49d1	71462312c6	2026-10-29	CostasLink-PYNQ-Z2 bring-up: board A's scan (600 dpi) and phone photos of the receiving inspection
+4f624e500f	22120f6d0a	2026-10-29	CostasLink-PYNQ-Z2 bring-up, rev A board A: stages 1.0-1.5 and 2.1 passed, the log, the rev B list and the ben
+b945ab3ad5	8a95e89c57	2026-10-29	CostasLink-PYNQ-Z2: the assembly drawings fill a Letter page, in black, with their scale printed
+aeec56136d	ffb56a1aa9	2026-10-29	CostasLink-PYNQ-Z2 gateware: the I2C pins' tristates kept (every earlier PYNQ overlay drove SDA and SCL), a st
+9988e5b4ac	9bae8e64d1	2026-10-24	CostasLink-PYNQ-Z2: the VNA's measurements of the accessories folded into the bring-up: a calibrated room link
+c3e4864660	571874a3a0	2026-10-18	CostasLink-PYNQ-Z2: JLCPCB's pre-production question on T101 / L102 answered from the board file (Prompt 41)
+db12393d4d	e2a1612ae2	2026-10-18	Every board's README opens with its title, 3D renders and a short description; tools/render_boards.py renders 
+e1fdb53b8d	f0dd2400a6	2026-10-18	CostasLink-PYNQ-Z2: the preview's 32 rotation readings recorded, nothing unseen; the bring-up's inspection is 
+70b3f459e6	09a3b74b83	2026-10-18	CostasLink-PYNQ-Z2: the order folded into the bring-up: stage 0 done, the receiving inspection at stage 1.0, T
+af125e1b89	d7d0e65d33	2026-10-17	CostasLink-PYNQ-Z2: the order's two readings folded back: SMA C496551 rotation 0 (read in the preview, both bo
+aa69f82d67	e648688fae	2026-10-17	CostasLink-PYNQ-Z2: JLCPCB's production files checked layer by layer against the upload, nothing to change (Pr
+978075da55	0971dfc484	2026-10-17	CostasLink-PYNQ-Z2: the design review before the order: every path traced, TR A's tap 4.7 k, JP203 in the TRIG
+41ce8779a8	d92ff41192	2026-10-17	CostasLink-PYNQ-Z2: Jason's read of the schematic and board: function-first notes, jacks for every monitored n
+995c3f9d4d	f2c1910298	2026-10-15	CostasLink-PYNQ-Z2: the track round RX ANT's pin gone, the SMA pad a plain circle, the launch check made stand
+16afd8e4dc	9905eae6cf	2026-10-15	CostasLink-PYNQ-Z2: the SMA launches decided by the field solve, the top pour 0.9 mm off each launch pad (Prom
+41a83f6633	6fc5453ab2	2026-10-14	CostasLink-PYNQ-Z2: the SMA launches measured in the gerbers and simulated (Prompt 33, part 1)
+c4c123a359	216b0c135a	2026-10-14	CostasLink-PYNQ-Z2: the SyzygyRadioBoard checklist applied, every path traced by hand (Prompt 32)
+baf0b2432d	87e6faed85	2026-10-14	CostasLink-PYNQ-Z2: no consignment, two receiver faults fixed, a fresh look before the order (Prompt 31)
+5b582b3745	7afd8ecb92	2026-10-12	CostasLink-PYNQ-Z2: one source of truth per value, remade by one command, documents checked; the release once 
+6305a6a174	97a97f0bb1	2026-10-12	CostasLink-PYNQ-Z2: the antenna jacks' ESD shunts fitted; the band's edges (Prompt 29)
+1391c8b193	421d13a932	2026-10-12	CostasLink-PYNQ-Z2: interference detectors, antenna ESD shunts, the band rev A covers (Prompt 28)
+fcb46887bb	1a940e1c77	2026-10-12	CostasLink-PYNQ-Z2: the system around the radio, and rev A's place in it (Prompt 27)
+75e809e2e0	6ae54d8523	2026-10-12	CostasLink-PYNQ-Z2: an interference survey with no lock on rev A (Prompt 26)
+17506900e0	31d08284dc	2026-10-12	CostasLink-PYNQ-Z2: the frequency-agile plan and what interference costs (Prompt 25)
+743258ffab	ad9f60f051	2026-10-12	CostasLink-PYNQ-Z2: E-band, free-space optics, fancier FPGAs, WiFi channels (Prompt 23)
+261c282614	158ec238c0	2026-10-12	CostasLink-PYNQ-Z2: the latency roadmap's costs from line items and Digi-Key prices (Prompt 22)
+4e54039905	e634783bb6	2026-10-12	CostasLink-PYNQ-Z2: how low the latency could go, and what it costs (Prompt 21)
+ec3abd1693	4c4dedbafe	2026-10-12	CostasLink-PYNQ-Z2: other hosts in numbers: Icepi, SYZYGY/Brain-1, an ECP5 on the board (Prompt 20)
+185667228f	f5bd144a7d	2026-10-12	CostasLink-PYNQ-Z2: build 18, the design review's fixes and the trajectories (Prompts 18-19)
+fae5a2e15c	ad732cda53	2026-10-12	CostasLink-PYNQ-Z2: the four design reviews of build 17, as received
+37755906ac	2f97506534	2026-10-11	CostasLink-PYNQ-Z2: the whole project, for the design review (Prompt 17)

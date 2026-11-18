@@ -68,6 +68,10 @@ make pnr-icepi    # yosys + nextpnr-ecp5 + ecppack -> ../build/gateware_scratch/
 Tools: an OSS CAD Suite on `PATH` (or `make BIN=...`); Python 3 for the driver.  Everything is written
 under `../build/gateware_scratch/`.
 
+**The PYNQ-Z2's board files are not in this repository** (they are TUL's).  `pynq/build.tcl` looks for them in
+`pynq/board_files/pynq-z2/A.0/` (`board.xml`, `part0_pins.xml`, `preset.xml`): download TUL's PYNQ-Z2 board files
+(the PYNQ documentation's PYNQ-Z2 setup guide links them) and unpack them there.  Git ignores that folder.
+
 **PYNQ-Z2.**  `source <Vivado 2022.1>/settings64.sh; cd gateware; vivado -mode batch -nojournal -log
 ../build/pynq_build.log -source pynq/build.tcl` builds the project in `../build/pynq/costaslink/` and, if
 timing is met (it refuses otherwise), writes `../build/pynq/overlay/costaslink_top.{bit,hwh,xsa}` and the

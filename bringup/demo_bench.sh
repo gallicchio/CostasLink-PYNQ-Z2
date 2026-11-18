@@ -3,7 +3,7 @@
 #   [A_ARGS=...] [B_ARGS=...] demo_bench.sh start [extra args for both]     logs/demo_A.out, logs/demo_B.out, pids in logs/demo_A.pid, demo_B.pid
 #   demo_bench.sh stop                            SIGTERM to the two PIDs (SIGINT does not get through the lock) (their keepers stop; the boards are left as they are)
 S=$(cd "$(dirname "$0")" && pwd)
-BR=/home/jason/OpticsPCBs/CostasLink-PYNQ-Z2/bringup
+BR=${CL_BRINGUP:-$S}                         # the project's bringup/: this script's own folder, unless it runs from a copy
 case "$1" in
   start)
     shift

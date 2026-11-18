@@ -3,7 +3,7 @@ line), 1.5 s more, then the screen (the lab driver's screenshot) to a PNG.  The 
 switch, so a shot inside a view's 5 / 10 s does not collide with it."""
 import os, sys, time
 which, view, out, log = sys.argv[1:5]
-br = sys.argv[5] if len(sys.argv) > 5 else os.path.expanduser("~/OpticsPCBs/CostasLink-PYNQ-Z2/bringup")
+br = sys.argv[5] if len(sys.argv) > 5 else os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, br)
 os.chdir(br)
 import scope_e  # noqa: E402

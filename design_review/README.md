@@ -11,7 +11,7 @@ what was done about each finding is [`../DESIGN_REVIEW_RESPONSE.md`](../DESIGN_R
 | [`GPT-5.6Terra/`](GPT-5.6Terra/) | GPT-5.6 Terra | build 17 |
 | [`Grok4.7/`](Grok4.7/) | Grok 4.7 | build 17 |
 | [`KimiK3/`](KimiK3/) | Kimi K3 | build 17 |
-| [`Claude_Prompt31/`](Claude_Prompt31/) | a fresh Claude instance and three independent reviews (2026-10-14) | the board before the order |
+| [`Claude_Prompt31/`](Claude_Prompt31/) | three independent reviews by fresh Claude agents (2026-10-14) | build 33, the routed board before the order |
 
 Reading them:
 
