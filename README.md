@@ -8,6 +8,13 @@ and answers, and the electronics add tens of nanoseconds to the light's travel t
 
 <a href="photos/20261104_161904.jpg"><img src="docs/images/photos/20261104_161904.jpg" alt="The rev A board plugged onto a PYNQ-Z2, with SMA cables on its antenna jacks"></a>
 
+<a href="docs/images/render-iso.png"><img src="docs/images/render-iso.png" alt="3D render of the rev A board from above and to one side"></a>
+
+<p><a href="docs/images/render-top.png"><img src="docs/images/render-top.png" alt="Render of the front of the board: every jack and test point labelled" width="49%"></a> <a href="docs/images/render-bottom.png"><img src="docs/images/render-bottom.png" alt="Render of the back of the board: the jumper and antenna instructions printed on it" width="49%"></a></p>
+
+Rev A on its PYNQ-Z2, and as drawn in KiCad: the front, with every jack labelled, and the back, with its
+instructions. Click any image to open it at full size.
+
 ## What rev A measured
 
 | | measured | how |
