@@ -44,7 +44,7 @@ F = {
     "jlc": "%.0f-%.0f" % tuple(COST["jlc"]),
 }
 
-DOCS = ["PLAN.md", "BRINGUP.md", "README.md", "docs/SYSTEM.md", "docs/HOSTS.md", "docs/TRAJECTORIES.md", "docs/PATHS.md", "gateware/README.md"]
+DOCS = ["PLAN.md", "BRINGUP.md", "docs/DESIGN_STATUS.md", "docs/SYSTEM.md", "docs/HOSTS.md", "docs/TRAJECTORIES.md", "docs/PATHS.md", "gateware/README.md"]
 
 import parts as PARTS_MOD                          # noqa: E402
 DK = {}                                            # Digi-Key number -> (stock, price) as gen/parts.py saw them
