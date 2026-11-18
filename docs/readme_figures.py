@@ -24,7 +24,9 @@ PNG_DIR = sys.argv[sys.argv.index("--png") + 1] if "--png" in sys.argv else None
 
 
 def save(fig, name):
-    fig.savefig(os.path.join(OUT, name + ".svg"), format="svg", bbox_inches="tight", pad_inches=0.12, facecolor=P.SURFACE)
+    plt.rcParams["svg.hashsalt"] = name                         # the same bytes on every run: no date, fixed ids
+    fig.savefig(os.path.join(OUT, name + ".svg"), format="svg", bbox_inches="tight", pad_inches=0.12, facecolor=P.SURFACE,
+                metadata={"Date": None})
     if PNG_DIR:
         fig.savefig(os.path.join(PNG_DIR, name + ".png"), dpi=130, bbox_inches="tight", pad_inches=0.12, facecolor=P.SURFACE)
     plt.close(fig)
