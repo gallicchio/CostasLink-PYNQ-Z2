@@ -8,7 +8,7 @@ Prompt 18 (2026-10-11).  Four reviewers worked from DESIGN_REVIEW_PROMPT.md on b
 * Grok 4.7
 * Kimi K3
 
-Their reports are in `design_review_<name>/`.  `design_review_Claude/` is the author's own early
+Their reports are in `design_review/<name>/`.  `design_review/Claude/` is the author's own early
 review, from before the brief.
 
 I checked every finding against the datasheet text in `build/txt/`, the shipped board and the

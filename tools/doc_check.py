@@ -8,7 +8,7 @@ A claim is a regular expression whose groups are numbers as a document writes th
 looked for in, and the text each group must read now, formatted from build/*.json, the netlist and the
 release.  Every match must read the current value, and every claim must match at least once: rewording a
 sentence drops its check only with an edit here.  History is not checked: CLAUDE_CODE_CHAT.md,
-DESIGN_REVIEW_*.md, the design_review_*/ rounds, REVA_CHANGES.md's past rows; a past number in a checked
+DESIGN_REVIEW_*.md, the design_review/ rounds, REVA_CHANGES.md's past rows; a past number in a checked
 document says it is past ("build 17 had ...") so that no claim's pattern takes it for the present.
 Also checked: the register table in gateware/README.md is regmap.py --md's, and PLAN.md section 15's two range
 tables are build/link_rates.md's, verbatim.  Run by build.py's last step, `docs`.

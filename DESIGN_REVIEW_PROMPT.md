@@ -27,28 +27,28 @@ author's own KiCad or build may be using the project while you work.  Other peop
 
 1. **One directory is yours, in `CostasLink-PYNQ-Z2/`, and everything you produce goes in it.**  The author made
    them empty:
-   - `design_review_Gemini3.8Flash/`
-   - `design_review_GPT-5.6Terra/`
-   - `design_review_Grok4.6/`
-   - `design_review_KimiK3/`
+   - `design_review/Gemini3.8Flash/`
+   - `design_review/GPT-5.6Terra/`
+   - `design_review/Grok4.6/`
+   - `design_review/KimiK3/`
 
-   A reviewer not on that list makes `design_review_<YourName>/` beside them.  Name the report
-   `DESIGN_REVIEW_<YourName>.md`, after the directory, so `design_review_KimiK3/DESIGN_REVIEW_KimiK3.md`.  Notes,
+   A reviewer not on that list makes `design_review/<YourName>/` beside them.  Name the report
+   `DESIGN_REVIEW_<YourName>.md`, after the directory, so `design_review/KimiK3/DESIGN_REVIEW_KimiK3.md`.  Notes,
    scratch scripts, extracted text, renders, DRC and ERC reports, copies of files you annotate: there and nowhere
    else.
 2. **Do not modify, move, delete or create any file outside your directory.**  That means:
    - not the sheets, the board or anything else in `hardware/`;
    - not `mfg/release/`, the Python (`gen/`, `tools/`, `sim/`, `mfg/`), `gateware/` or `build/`;
    - not the markdown, not `CLAUDE_PCB.md` one level up;
-   - not another reviewer's directory, and not `design_review_Claude/`.
+   - not another reviewer's directory, and not `design_review/Claude/`.
 
    Other reviewers are reading those files right now, and a changed file silently invalidates their work and the
    author's.
 3. **To try a change, or to run anything that writes, copy the project into your own directory first and work on
    the copy.**  From `CostasLink-PYNQ-Z2/`:
    ```bash
-   D=design_review_<YourName>; mkdir -p $D
-   rsync -a --exclude build --exclude datasheets --exclude 'design_review_*' --exclude __pycache__ \
+   D=design_review/<YourName>; mkdir -p $D
+   rsync -a --exclude build --exclude datasheets --exclude design_review --exclude __pycache__ \
          --exclude '*.lck' --exclude '*-backups' ./ $D/repo/
    ```
    That is about 50 MB.  Read the datasheets and the build products in place: they are read-only to you, not hidden.
@@ -78,7 +78,7 @@ author's own KiCad or build may be using the project while you work.  Other peop
      copy.  Never run `kicad-cli` with `--save-board` or `--refill-zones`, or with `-o` outside your directory.
    - The readers you may run in place, output redirected into your directory, are in §6.
 6. **Form your own findings before you read anyone else's.**
-   - `design_review_Claude/` is the author's own self-review of an early build (2026-10-09, Response 9).
+   - `design_review/Claude/` is the author's own self-review of an early build (2026-10-09, Response 9).
      `CLAUDE_CODE_CHAT.md`, `PLAN.md` and `REVA_CHANGES.md` are the author's account.  Read them whenever you like,
      but do not let them set your list.
    - Once your report is drafted, read the other reviewers' directories if they have anything in them, and add a
@@ -297,7 +297,7 @@ Everything the build makes is in the tree, so nothing has to be built to review 
 Suite (`~/openfpga/oss-cad-suite/bin`) and Vivado 2024.1 (`~/Downloads/Xilinx/Vivado/2024.1/settings64.sh`).
 
 ```bash
-D=design_review_<YourName>
+D=design_review/<YourName>
 K=~/.local/kicad10/AppDir/AppRun
 # KiCad's own checks and pictures: read the shipped file (NO --save-board, NO --refill-zones; that is the copper the
 # Gerbers came from)
@@ -386,7 +386,7 @@ pdftotext -layout datasheets/<file>.pdf $D/<file>.txt      # or read build/txt/,
 
 ## 8. What would be most useful back
 
-All of it in `design_review_<YourName>/DESIGN_REVIEW_<YourName>.md`:
+All of it in `design_review/<YourName>/DESIGN_REVIEW_<YourName>.md`:
 
 1. **The verdict in one paragraph:** order it, or not, and the one thing that decides it.
 2. **The findings table:** severity (would kill the board / would cost a respin / would cost a day / cosmetic), the
